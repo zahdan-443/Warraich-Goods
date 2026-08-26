@@ -1,0 +1,10 @@
+# Force Git to treat image files as binary to avoid UTF-8 character conversion corruption
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.svg text
+*.jks binary
+*.keystore binary

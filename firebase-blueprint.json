@@ -1,0 +1,140 @@
+{
+  "entities": {
+    "UserData": {
+      "title": "UserData",
+      "description": "User specific transport application state sync data",
+      "type": "object",
+      "properties": {
+        "trips": {
+          "type": "array"
+        },
+        "vehicles": {
+          "type": "array"
+        },
+        "drivers": {
+          "type": "array"
+        },
+        "routes": {
+          "type": "array"
+        },
+        "fuelLogs": {
+          "type": "array"
+        },
+        "bilties": {
+          "type": "array"
+        },
+        "role": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      }
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile directory entry",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "lastLogin": {
+          "type": "string"
+        }
+      }
+    },
+    "BiltyAccess": {
+      "title": "BiltyAccess",
+      "description": "Allowed UID and Email list for Bilty Generator authorization",
+      "type": "object",
+      "properties": {
+        "allowedUIDs": {
+          "type": "array"
+        },
+        "allowedEmails": {
+          "type": "array"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      }
+    },
+    "BiltyRecord": {
+      "title": "BiltyRecord",
+      "description": "Individual bilty receipt record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "biltyNo": { "type": "string" },
+        "date": { "type": "string" },
+        "vehicleNo": { "type": "string" },
+        "driverName": { "type": "string" }
+      }
+    },
+    "CompanyProfile": {
+      "title": "CompanyProfile",
+      "description": "Company branding, contact info, and registration details",
+      "type": "object",
+      "properties": {
+        "nameUr": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "phoneNumbers": { "type": "string" },
+        "headOfficeUr": { "type": "string" },
+        "headOfficeEn": { "type": "string" },
+        "ntn": { "type": "string" },
+        "taglineUr": { "type": "string" },
+        "logoUrl": { "type": "string" }
+      }
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Audit trail log of fleet and bilty operations",
+      "type": "object",
+      "properties": {
+        "timestamp": { "type": "string" },
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "category": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/usersData/{userId}": {
+      "schema": "UserData",
+      "description": "User account documents containing user app data"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles"
+    },
+    "/access/biltyAccess": {
+      "schema": "BiltyAccess",
+      "description": "Global access configuration for bilty feature"
+    },
+    "/bilties/{biltyId}": {
+      "schema": "BiltyRecord",
+      "description": "Global bilty documents for authorized creation and access"
+    },
+    "/settings/companyProfile": {
+      "schema": "CompanyProfile",
+      "description": "Company profile configuration"
+    },
+    "/activityLog/{logId}": {
+      "schema": "ActivityLog",
+      "description": "System activity logs"
+    }
+  }
+}

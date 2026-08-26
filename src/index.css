@@ -1,0 +1,245 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-urdu: "Noto Nastaliq Urdu", serif;
+  
+  --color-nat-bg: #fdfbf7;
+  --color-nat-text: #4a4a35;
+  --color-nat-accent: #8b9d77;
+  --color-nat-accent-dark: #5a5a40;
+  --color-nat-accent-hover: #4a4a35;
+  --color-nat-surface: #ffffff;
+  --color-nat-surface-subtle: #f0f0e4;
+  --color-nat-surface-soft: #f9f9f2;
+  --color-nat-border: #ecece0;
+  --color-nat-border-dark: #e2e2d5;
+  --color-nat-muted: #8e8e75;
+}
+
+body.urdu {
+  font-family: var(--font-urdu);
+  direction: rtl;
+}
+
+html, body, #root {
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Dark Mode Theme Overrides */
+html.dark {
+  --color-nat-bg: #161713;
+  --color-nat-text: #e2e2d5;
+  --color-nat-surface: #20211a;
+  --color-nat-surface-subtle: #2b2c23;
+  --color-nat-surface-soft: #25261e;
+  --color-nat-border: #36372c;
+  --color-nat-border-dark: #434437;
+  --color-nat-muted: #a3a48e;
+}
+
+html.dark body {
+  background-color: #161713;
+  color: #e2e2d5;
+}
+
+html.dark .bg-white {
+  background-color: #20211a !important;
+  color: #e2e2d5 !important;
+}
+
+html.dark .bg-\[\#fdfbf7\] {
+  background-color: #161713 !important;
+  color: #e2e2d5 !important;
+}
+
+html.dark .bg-\[\#f9f9f2\] {
+  background-color: #25261e !important;
+  color: #e2e2d5 !important;
+}
+
+html.dark .bg-\[\#f0f0e4\] {
+  background-color: #2b2c23 !important;
+  color: #e2e2d5 !important;
+}
+
+html.dark .border-\[\#ecece0\] {
+  border-color: #36372c !important;
+}
+
+html.dark .border-\[\#e2e2d5\] {
+  border-color: #434437 !important;
+}
+
+html.dark .text-\[\#4a4a35\] {
+  color: #f2f2e8 !important;
+}
+
+html.dark .text-\[\#5a5a40\] {
+  color: #e2e2d5 !important;
+}
+
+html.dark .text-\[\#8e8e75\] {
+  color: #b0b19b !important;
+}
+
+/* Emerald Theme Overrides */
+html.theme-emerald body {
+  background-color: #f0f7f4;
+  color: #1d3b2a;
+}
+html.theme-emerald .bg-\[\#fdfbf7\] {
+  background-color: #f0f7f4 !important;
+  color: #1d3b2a !important;
+}
+html.theme-emerald .bg-\[\#f9f9f2\] {
+  background-color: #e4f0ea !important;
+  color: #1d3b2a !important;
+}
+html.theme-emerald .bg-white {
+  background-color: #ffffff !important;
+  color: #1d3b2a !important;
+}
+html.theme-emerald .border-\[\#ecece0\] {
+  border-color: #cce3d6 !important;
+}
+html.theme-emerald .text-\[\#4a4a35\] {
+  color: #163823 !important;
+}
+
+/* Desert Gold Theme Overrides */
+html.theme-desert body {
+  background-color: #fcf8ee;
+  color: #4a3818;
+}
+html.theme-desert .bg-\[\#fdfbf7\] {
+  background-color: #fcf8ee !important;
+  color: #4a3818 !important;
+}
+html.theme-desert .bg-\[\#f9f9f2\] {
+  background-color: #f5eedc !important;
+  color: #4a3818 !important;
+}
+html.theme-desert .bg-white {
+  background-color: #ffffff !important;
+  color: #4a3818 !important;
+}
+html.theme-desert .border-\[\#ecece0\] {
+  border-color: #e6dac0 !important;
+}
+html.theme-desert .text-\[\#4a4a35\] {
+  color: #3d2d10 !important;
+}
+
+/* Royal Navy Theme Overrides */
+html.theme-navy body {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+html.theme-navy .bg-\[\#fdfbf7\] {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+html.theme-navy .bg-\[\#f9f9f2\] {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+html.theme-navy .bg-white {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+html.theme-navy .border-\[\#ecece0\] {
+  border-color: #334155 !important;
+}
+html.theme-navy .text-\[\#4a4a35\] {
+  color: #f8fafc !important;
+}
+html.theme-navy .text-\[\#5a5a40\] {
+  color: #cbd5e1 !important;
+}
+html.theme-navy .text-\[\#8e8e75\] {
+  color: #94a3b8 !important;
+}
+
+/* Print Rules for Bilty Generation */
+#printable-bilty-dom,
+#printable-bilty-dom *,
+.printable-bilty-area,
+.printable-bilty-area * {
+  color-scheme: light !important;
+  --color-slate-900: #0f172a !important;
+  --color-slate-800: #1e293b !important;
+  --color-slate-700: #334155 !important;
+  --color-slate-600: #475569 !important;
+  --color-slate-500: #64748b !important;
+  --color-slate-400: #94a3b8 !important;
+  --color-slate-300: #cbd5e1 !important;
+  --color-slate-200: #e2e8f0 !important;
+  --color-slate-100: #f1f5f9 !important;
+  --color-slate-50: #f8fafc !important;
+  --color-amber-500: #f59e0b !important;
+  --color-amber-300: #fcd34d !important;
+  --color-rose-700: #be123c !important;
+  --color-rose-800: #9f1239 !important;
+  --color-emerald-700: #047857 !important;
+  --color-emerald-800: #065f46 !important;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 4mm 5mm;
+  }
+  
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: visible !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .printable-bilty-area,
+  .printable-bilty-area * {
+    visibility: visible;
+  }
+
+  .printable-bilty-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+    overflow: hidden !important;
+  }
+}
+
+
+

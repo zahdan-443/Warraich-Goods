@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user is warraichgoods43@gmail.com
+    function isOwner() {
+      return isSignedIn() && request.auth.token.email != null && request.auth.token.email == 'warraichgoods43@gmail.com';
+    }
+
+    // Helper function to check if user is an Owner or in access/biltyAccess.allowedUIDs / allowedEmails
+    function isBiltyAuthorized() {
+      return isSignedIn() && (
+        isOwner() ||
+        (
+          exists(/databases/$(database)/documents/access/biltyAccess) &&
+          (
+            request.auth.uid in get(/databases/$(database)/documents/access/biltyAccess).data.allowedUIDs ||
+            (request.auth.token.email != null && request.auth.token.email in get(/databases/$(database)/documents/access/biltyAccess).data.allowedEmails)
+          )
+        )
+      );
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // User personal transport app data
+    match /usersData/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // User profile entries
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Access configuration for Bilty Generator authorization (ONLY Fleet Owners can edit allowed UIDs)
+    match /access/biltyAccess {
+      allow read: if isSignedIn();
+      allow write: if isOwner();
+    }
+
+    // Bilties collection (Read & write allowed ONLY if authenticated user is an Owner or listed in access/biltyAccess.allowedUIDs)
+    match /bilties/{biltyId} {
+      allow read, write: if isBiltyAuthorized();
+    }
+
+    // Company Profile and System Settings (All signed-in can read, ONLY Owner can write)
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner();
+    }
+
+    // Activity Log (Owner can read and manage, signed-in users can create entries)
+    match /activityLog/{logId} {
+      allow read: if isOwner();
+      allow create: if isSignedIn();
+      allow update, delete: if isOwner();
+    }
+  }
+}
