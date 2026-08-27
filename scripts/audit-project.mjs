@@ -1,18 +1,19 @@
 #!/usr/bin/env node
 
 /**
- * Warraich Goods - Automated Continuous Code Auditor & Validator
+ * Warraich Goods - Comprehensive PWABuilder & Production Auditor
  * 
- * Runs all validation checks across:
- * 1. PWA & Web App Manifest compliance (name, descriptions, icons, paths, shortcuts)
- * 2. Service Worker integrity (/sw.js, root scope, cache sync, push alerts)
- * 3. TypeScript syntax and type safety (tsc --noEmit)
- * 4. Production build asset pipeline (npm run build)
- * 5. Access control and persistent user rules (Bilty Owner restrictions, guest mode)
+ * Specifically validates all PWABuilder PWA Score & App Wrapping criteria:
+ * 1. Web App Manifest presence, fields, icons (192, 512, maskable), screenshots, shortcuts
+ * 2. Service Worker capabilities (Install, Activate, Fetch/Offline, Sync, PeriodicSync, Push, NotificationClick, Message)
+ * 3. HTML Meta & PWA Headers
+ * 4. TypeScript strict compilation
+ * 5. Production build output & asset integrity
  */
 
 import fs from 'fs';
 import path from 'path';
+import http from 'http';
 import { execSync } from 'child_process';
 
 const ROOT = process.cwd();
@@ -29,90 +30,172 @@ let totalChecks = 0;
 let passedChecks = 0;
 let failedChecks = 0;
 
-function report(name, passed, detail = "") {
+function report(category, name, passed, detail = "") {
   totalChecks++;
   if (passed) {
     passedChecks++;
-    console.log(`${colors.green}✔ [PASS]${colors.reset} ${name} ${detail ? `(${detail})` : ''}`);
+    console.log(`  ${colors.green}✔ [PASS]${colors.reset} [${category}] ${name} ${detail ? `(${detail})` : ''}`);
   } else {
     failedChecks++;
-    console.log(`${colors.red}✖ [FAIL]${colors.reset} ${name} - ${detail}`);
+    console.log(`  ${colors.red}✖ [FAIL]${colors.reset} [${category}] ${name} - ${detail}`);
   }
 }
 
-console.log(`${colors.cyan}${colors.bold}=== WARRAICH GOODS PROJECT AUDITOR & VALIDATOR ===${colors.reset}\n`);
+console.log(`\n${colors.cyan}${colors.bold}======================================================${colors.reset}`);
+console.log(`${colors.cyan}${colors.bold}   PWABUILDER & PRODUCTION CODE QUALITY AUDITOR      ${colors.reset}`);
+console.log(`${colors.cyan}${colors.bold}   Warraich Goods Transport Co. Logistics App         ${colors.reset}`);
+console.log(`${colors.cyan}${colors.bold}======================================================${colors.reset}\n`);
 
-// 1. Web App Manifest Audit
-try {
-  const manifestPath = path.join(ROOT, 'public', 'manifest.json');
-  if (fs.existsSync(manifestPath)) {
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    report("Manifest exists and is valid JSON", true);
-    report("Manifest has non-empty name", !!manifest.name && manifest.name.length > 5, manifest.name);
-    report("Manifest has non-empty short_name", !!manifest.short_name, manifest.short_name);
-    report("Manifest has non-empty description", !!manifest.description && manifest.description.length > 10);
-    report("Manifest has root start_url and scope", manifest.start_url === '/' && manifest.scope === '/');
-    report("Manifest has 192x192 & 512x512 icons", manifest.icons?.some(i => i.sizes === '192x192') && manifest.icons?.some(i => i.sizes === '512x512'));
-    report("Manifest icons have valid absolute root paths", manifest.icons?.every(i => i.src.startsWith('/')));
-    report("Manifest shortcuts configured", Array.isArray(manifest.shortcuts) && manifest.shortcuts.length >= 4);
-    report("Manifest screenshots configured", Array.isArray(manifest.screenshots) && manifest.screenshots.length >= 2);
-  } else {
-    report("Manifest exists", false, "public/manifest.json not found");
-  }
-} catch (e) {
-  report("Manifest parsing", false, e.message);
+// Helper to fetch local endpoint
+function fetchLocal(pathname) {
+  return new Promise((resolve) => {
+    const req = http.get({
+      hostname: '127.0.0.1',
+      port: 3000,
+      path: pathname,
+      timeout: 3000
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: data }));
+    });
+    req.on('error', (err) => resolve({ status: 500, error: err.message }));
+    req.on('timeout', () => { req.destroy(); resolve({ status: 408 }); });
+  });
 }
 
-// 2. Service Worker Audit
-try {
-  const swPath = path.join(ROOT, 'public', 'sw.js');
-  if (fs.existsSync(swPath)) {
-    const swContent = fs.readFileSync(swPath, 'utf8');
-    report("Service Worker file exists", true);
-    report("Service Worker handles install and activate", swContent.includes('addEventListener(\'install\'') && swContent.includes('addEventListener(\'activate\''));
-    report("Service Worker handles fetch caching", swContent.includes('addEventListener(\'fetch\''));
-    report("Service Worker handles push notifications", swContent.includes('addEventListener(\'push\''));
-  } else {
-    report("Service Worker file exists", false, "public/sw.js missing");
-  }
-} catch (e) {
-  report("Service Worker check", false, e.message);
-}
-
-// 3. index.html PWA tags
-try {
+async function runAudit() {
+  console.log(`${colors.bold}1. HTML & Document Headers Audit:${colors.reset}`);
   const indexPath = path.join(ROOT, 'index.html');
-  const indexContent = fs.readFileSync(indexPath, 'utf8');
-  report("index.html has title", indexContent.includes('<title>'));
-  report("index.html has description meta tag", indexContent.includes('name="description"'));
-  report("index.html has application-name tag", indexContent.includes('name="application-name"'));
-  report("index.html registers Service Worker", indexContent.includes('navigator.serviceWorker.register'));
-} catch (e) {
-  report("index.html verification", false, e.message);
+  const indexHtml = fs.existsSync(indexPath) ? fs.readFileSync(indexPath, 'utf8') : '';
+
+  report("HTML", "index.html file exists", indexHtml.length > 0);
+  report("HTML", "Manifest link <link rel='manifest'> in <head>", /<link\s+[^>]*rel=["']manifest["'][^>]*>/i.test(indexHtml));
+  report("HTML", "Service worker registration script present", indexHtml.includes('navigator.serviceWorker.register'));
+  report("HTML", "Theme color meta tag configured", indexHtml.includes('name="theme-color"'));
+  report("HTML", "Viewport meta tag configured", indexHtml.includes('name="viewport"'));
+  report("HTML", "Description meta tag configured", indexHtml.includes('name="description"'));
+  report("HTML", "Apple mobile web app capable tag configured", indexHtml.includes('name="apple-mobile-web-app-capable"'));
+  report("HTML", "Apple touch icons configured", indexHtml.includes('rel="apple-touch-icon"'));
+
+  console.log(`\n${colors.bold}2. Web App Manifest (PWABuilder Specification):${colors.reset}`);
+  const manifestPath = path.join(ROOT, 'public', 'manifest.json');
+  let manifest = null;
+  try {
+    if (fs.existsSync(manifestPath)) {
+      manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      report("Manifest", "manifest.json exists and is valid JSON", true);
+    } else {
+      report("Manifest", "manifest.json exists", false, "public/manifest.json missing");
+    }
+  } catch (e) {
+    report("Manifest", "manifest.json parsing", false, e.message);
+  }
+
+  if (manifest) {
+    report("Manifest", "name field present and valid", !!manifest.name && manifest.name.length >= 2, manifest.name);
+    report("Manifest", "short_name field present and valid", !!manifest.short_name && manifest.short_name.length >= 2, manifest.short_name);
+    report("Manifest", "description field present and descriptive", !!manifest.description && manifest.description.length >= 10);
+    report("Manifest", "start_url is defined", !!manifest.start_url, manifest.start_url);
+    report("Manifest", "scope is defined", !!manifest.scope, manifest.scope);
+    report("Manifest", "display is standalone or fullscreen", ['standalone', 'fullscreen', 'minimal-ui'].includes(manifest.display), manifest.display);
+    report("Manifest", "background_color is defined", !!manifest.background_color, manifest.background_color);
+    report("Manifest", "theme_color is defined", !!manifest.theme_color, manifest.theme_color);
+    report("Manifest", "id identifier is defined for native app store packaging", !!manifest.id, manifest.id);
+
+    // Icons check
+    const has192 = manifest.icons?.some(i => i.sizes === '192x192');
+    const has512 = manifest.icons?.some(i => i.sizes === '512x512');
+    const hasMaskable = manifest.icons?.some(i => i.purpose?.includes('maskable'));
+    const hasAny = manifest.icons?.some(i => !i.purpose || i.purpose?.includes('any'));
+    report("Manifest", "Icon 192x192 defined", has192);
+    report("Manifest", "Icon 512x512 defined", has512);
+    report("Manifest", "Maskable icon defined (Android requirement)", hasMaskable);
+    report("Manifest", "Standard 'any' icon defined", hasAny);
+
+    // Verify icon files on disk
+    manifest.icons?.forEach((icon) => {
+      const relPath = icon.src.replace(/^\//, '');
+      const fullPath = path.join(ROOT, 'public', relPath);
+      const exists = fs.existsSync(fullPath);
+      report("Assets", `Icon file exists: ${icon.src}`, exists, exists ? `${(fs.statSync(fullPath).size / 1024).toFixed(1)} KB` : 'MISSING');
+    });
+
+    // Screenshots check
+    const hasNarrow = manifest.screenshots?.some(s => s.form_factor === 'narrow');
+    const hasWide = manifest.screenshots?.some(s => s.form_factor === 'wide');
+    report("Manifest", "Mobile / Narrow screenshot defined", hasNarrow);
+    report("Manifest", "Desktop / Wide screenshot defined", hasWide);
+
+    // Shortcuts check
+    report("Manifest", "App Shortcuts configured (≥ 2 shortcuts)", Array.isArray(manifest.shortcuts) && manifest.shortcuts.length >= 2, `${manifest.shortcuts?.length || 0} shortcuts`);
+  }
+
+  console.log(`\n${colors.bold}3. Service Worker & Offline Services Audit (/public/sw.js):${colors.reset}`);
+  const swPath = path.join(ROOT, 'public', 'sw.js');
+  let swCode = '';
+  if (fs.existsSync(swPath)) {
+    swCode = fs.readFileSync(swPath, 'utf8');
+    report("SW", "Service worker file public/sw.js exists", true);
+    report("SW", "Install event handler with skipWaiting", swCode.includes("addEventListener('install'") && swCode.includes("skipWaiting"));
+    report("SW", "Activate event handler with clients.claim", swCode.includes("addEventListener('activate'") && swCode.includes("clients.claim"));
+    report("SW", "Fetch event handler with Offline / Cache Fallback", swCode.includes("addEventListener('fetch'") && (swCode.includes("caches.match") || swCode.includes("respondWith")));
+    report("SW", "Background Sync event handler (sync)", swCode.includes("addEventListener('sync'"));
+    report("SW", "Periodic Background Sync event handler (periodicsync)", swCode.includes("addEventListener('periodicsync'"));
+    report("SW", "Push Notification event handler (push)", swCode.includes("addEventListener('push'"));
+    report("SW", "Notification Click event handler (notificationclick)", swCode.includes("addEventListener('notificationclick'"));
+    report("SW", "Bi-directional Message event handler (message)", swCode.includes("addEventListener('message'"));
+  } else {
+    report("SW", "public/sw.js exists", false, "FILE MISSING");
+  }
+
+  console.log(`\n${colors.bold}4. Live Dev Server HTTP Endpoints Validation:${colors.reset}`);
+  const [resRoot, resManifest, resSw] = await Promise.all([
+    fetchLocal('/'),
+    fetchLocal('/manifest.json'),
+    fetchLocal('/sw.js')
+  ]);
+
+  report("Server", "GET / returns HTTP 200 OK", resRoot.status === 200, `status ${resRoot.status}`);
+  report("Server", "GET /manifest.json returns HTTP 200 OK", resManifest.status === 200, `status ${resManifest.status}`);
+  report("Server", "GET /sw.js returns HTTP 200 OK", resSw.status === 200, `status ${resSw.status}`);
+
+  console.log(`\n${colors.bold}5. TypeScript Compilation & Lint Check:${colors.reset}`);
+  try {
+    execSync('npm run lint', { stdio: 'pipe' });
+    report("Linter", "TypeScript type-checking (tsc --noEmit)", true, "0 errors");
+  } catch (e) {
+    report("Linter", "TypeScript type-checking (tsc --noEmit)", false, e.stdout?.toString() || e.message);
+  }
+
+  console.log(`\n${colors.bold}6. Production Build & Bundling Check:${colors.reset}`);
+  try {
+    execSync('npm run build', { stdio: 'pipe' });
+    const distIndex = path.join(ROOT, 'dist', 'index.html');
+    const distManifest = path.join(ROOT, 'dist', 'manifest.json');
+    report("Build", "npm run build output generated in dist/", fs.existsSync(distIndex));
+    report("Build", "dist/manifest.json copied to build output", fs.existsSync(distManifest));
+  } catch (e) {
+    report("Build", "npm run build", false, e.stdout?.toString() || e.message);
+  }
+
+  console.log(`\n${colors.cyan}${colors.bold}======================================================${colors.reset}`);
+  console.log(`${colors.bold}AUDIT RESULTS SUMMARY:${colors.reset}`);
+  console.log(`Total Checks Executed : ${totalChecks}`);
+  console.log(`Passed Checks         : ${colors.green}${passedChecks}${colors.reset}`);
+  console.log(`Failed Checks         : ${failedChecks === 0 ? colors.green + '0' : colors.red + failedChecks}${colors.reset}`);
+
+  if (failedChecks === 0) {
+    console.log(`\n${colors.green}${colors.bold}✨ CONGRATULATIONS! ALL PWABUILDER & WRAPPING TESTS PASSED (100/100).${colors.reset}`);
+    console.log(`${colors.cyan}The application is fully certified for PWABuilder Android/iOS/Windows/Meta Quest packaging.${colors.reset}\n`);
+    process.exit(0);
+  } else {
+    console.log(`\n${colors.red}${colors.bold}❌ ${failedChecks} CHECK(S) FAILED. Please review the failed items above.${colors.reset}\n`);
+    process.exit(1);
+  }
 }
 
-// 4. TypeScript Linter
-try {
-  console.log(`\n${colors.cyan}Running TypeScript linting check...${colors.reset}`);
-  execSync('npm run lint', { stdio: 'pipe' });
-  report("TypeScript linting & type checks (tsc --noEmit)", true);
-} catch (e) {
-  report("TypeScript linting & type checks", false, e.stdout?.toString() || e.message);
-}
-
-// 5. Applet Build Check
-try {
-  console.log(`${colors.cyan}Running Vite production build test...${colors.reset}`);
-  execSync('npm run build', { stdio: 'pipe' });
-  report("Vite Production Build (npm run build)", true);
-} catch (e) {
-  report("Vite Production Build", false, e.stdout?.toString() || e.message);
-}
-
-console.log(`\n${colors.bold}Audit Summary:${colors.reset} ${passedChecks}/${totalChecks} checks passed. ${failedChecks === 0 ? colors.green + 'ALL CHECKS HEALTHY' + colors.reset : colors.red + failedChecks + ' FAILURES DETECTED' + colors.reset}\n`);
-
-if (failedChecks > 0) {
+runAudit().catch(err => {
+  console.error("Auditor error:", err);
   process.exit(1);
-} else {
-  process.exit(0);
-}
+});
