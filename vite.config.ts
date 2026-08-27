@@ -11,9 +11,12 @@ export default defineConfig(() => {
       react(),
       tailwindcss(),
       VitePWA({
-        filename: 'manifest.json',
+        manifestFilename: 'manifest.json',
         registerType: 'autoUpdate',
-        injectRegister: 'auto',
+        injectRegister: false,
+        devOptions: {
+          enabled: true
+        },
         includeAssets: [
           'logo.png',
           'icon-192.png',
