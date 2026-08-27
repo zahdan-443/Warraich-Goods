@@ -9,30 +9,30 @@
    - Bi-Directional Message Channel & Skip Waiting Support
    ========================================================================== */
 
-const CACHE_NAME = 'warraich-goods-v9';
+const CACHE_NAME = 'warraich-goods-v10';
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/manifest.webmanifest',
-  '/logo.png',
-  '/app-icon.png',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/screenshot-mobile.png',
-  '/screenshot-desktop.png',
-  '/vehicle-icon.png',
-  '/trip-icon.png',
-  '/bilty-icon.png',
-  '/gari-hisaab-icon.png',
-  '/safar-diary-icon.png',
-  '/echallan-icon.png',
-  '/license-icon.png',
-  '/quick-ops-icon.png',
-  '/scan-me-qr.png',
-  '/splash.png',
-  '/splash-screen.png',
-  '/toll-icon.png'
+  './',
+  './index.html',
+  './manifest.json',
+  './manifest.webmanifest',
+  './logo.png',
+  './app-icon.png',
+  './icon-192.png',
+  './icon-512.png',
+  './screenshot-mobile.png',
+  './screenshot-desktop.png',
+  './vehicle-icon.png',
+  './trip-icon.png',
+  './bilty-icon.png',
+  './gari-hisaab-icon.png',
+  './safar-diary-icon.png',
+  './echallan-icon.png',
+  './license-icon.png',
+  './quick-ops-icon.png',
+  './scan-me-qr.png',
+  './splash.png',
+  './splash-screen.png',
+  './toll-icon.png'
 ];
 
 // Custom Urdu/English Offline Fallback Page
