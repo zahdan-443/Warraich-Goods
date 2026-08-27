@@ -21,7 +21,8 @@ import {
   saveStoredBilties,
   loadFromFirestore,
   getBiltyAccessConfig,
-  saveUserProfileInFirestore
+  saveUserProfileInFirestore,
+  processOfflineQueue
 } from './utils/storage';
 import { auth, onAuthStateChanged, logoutUser } from './utils/firebase';
 import { Header } from './components/Header';
@@ -69,12 +70,13 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(false);
   const [showTopMenu, setShowTopMenu] = useState(false);
 
-  // Authorization check for Bilty Generator — strictly guarded ONLY for authenticated App Owner (warraichgoods43@gmail.com)
+  // Authorization check for Bilty Generator — allows Owner OR explicitly granted UIDs / Emails
   const isOwner = Boolean(
-    userEmail && userEmail.toLowerCase() === OWNER_EMAIL.toLowerCase()
+    (userEmail && userEmail.toLowerCase() === OWNER_EMAIL.toLowerCase()) || role === 'owner'
   );
-
-  const isBiltyAuthorized = Boolean(isOwner);
+  const isAllowedUID = Boolean(currentUid && biltyAllowedUIDs.includes(currentUid));
+  const isAllowedEmail = Boolean(userEmail && biltyAllowedEmails.map(e => e.toLowerCase().trim()).includes(userEmail.toLowerCase().trim()));
+  const isBiltyAuthorized = Boolean(isOwner || isAllowedUID || isAllowedEmail);
 
   // Stored state
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -201,14 +203,31 @@ export default function App() {
   };
 
   const handleToggleOffline = () => {
-    setIsOffline(!isOffline);
+    setIsOffline(prev => !prev);
   };
 
-  const handleSyncOffline = () => {
+  const handleSyncOffline = async () => {
     if (offlineQueue.length === 0) return;
-    window.alert(`Successfully synced ${offlineQueue.length} offline queued records to cloud server!`);
-    setOfflineQueue([]);
-    saveStoredOfflineQueue([]);
+    if (isOffline) {
+      pushAppNotification(
+        lang === 'ur' ? 'انٹرنیٹ کنکشن درکار ہے' : 'Internet Required',
+        lang === 'ur' ? 'کلاؤڈ پر ریکارڈز سنک کرنے کے لیے انٹرنیٹ بحال کریں۔' : 'Please connect to the internet to sync offline records.',
+        'system'
+      );
+      return;
+    }
+
+    const result = await processOfflineQueue();
+    const remaining = getStoredOfflineQueue();
+    setOfflineQueue(remaining);
+
+    if (result.processed > 0) {
+      pushAppNotification(
+        lang === 'ur' ? 'کلاؤڈ سنک مکمل' : 'Cloud Sync Complete',
+        lang === 'ur' ? `${result.processed} ریکارڈز کلاؤڈ ڈیٹا بیس میں کامیابی سے سنک ہو گئے۔` : `Successfully synced ${result.processed} records to cloud database.`,
+        'system'
+      );
+    }
   };
 
   // Sign in handler
@@ -251,6 +270,39 @@ export default function App() {
       setActiveTab('home');
     }
   }, [activeTab, isBiltyAuthorized]);
+
+  // Real Network Connectivity and Auto-Sync Listeners
+  useEffect(() => {
+    const handleOnline = async () => {
+      setIsOffline(false);
+      const result = await processOfflineQueue();
+      const remaining = getStoredOfflineQueue();
+      setOfflineQueue(remaining);
+      if (result.processed > 0) {
+        pushAppNotification(
+          lang === 'ur' ? 'آف لائن ڈیٹا کلاؤڈ پر منتقل' : 'Offline Records Synced',
+          lang === 'ur' ? `${result.processed} ریکارڈز کلاؤڈ ڈیٹا بیس میں کامیابی سے سنک ہو گئے۔` : `${result.processed} offline records automatically synced to cloud storage.`,
+          'system'
+        );
+      }
+    };
+
+    const handleOffline = () => {
+      setIsOffline(true);
+    };
+
+    if (typeof navigator !== 'undefined') {
+      setIsOffline(!navigator.onLine);
+    }
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [lang]);
 
   // Firebase auth & bilty access sync
   useEffect(() => {
@@ -298,6 +350,12 @@ export default function App() {
         localStorage.removeItem('ah-user-role');
         setRole('driver');
         saveStoredRole('driver');
+        setTrips(getStoredTrips());
+        setVehicles(getStoredVehicles());
+        setDrivers(getStoredDrivers());
+        setRoutes(getStoredRoutes());
+        setFuelLogs(getStoredFuelLog());
+        setBilties(getStoredBilties());
       }
       setAuthInitialized(true);
     });

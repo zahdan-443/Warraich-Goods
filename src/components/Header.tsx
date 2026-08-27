@@ -4,6 +4,8 @@ import { DICTIONARY, Language, AppNotification, UserRole } from '../types';
 import { AlHadiLogo } from './AlHadiLogo';
 import { logoIconData } from '../assets/dashboardIcons';
 import { AboutUsModal } from './AboutUsModal';
+import { SyncStatusBadge } from './SyncStatusBadge';
+import { ExportPrivacyModal } from './ExportPrivacyModal';
 import { 
   getNotificationPermission, 
   requestNotificationPermission, 
@@ -56,6 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [logoErr, setLogoErr] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showExportPrivacyModal, setShowExportPrivacyModal] = useState(false);
   const [internalShowTopMenu, setInternalShowTopMenu] = useState(false);
   const [themePref, setThemePref] = useState<'light' | 'dark' | 'system' | 'emerald' | 'desert' | 'navy'>('light');
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>('default');
@@ -175,19 +178,23 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Right: Notification Bell Icon ONLY */}
-          <button
-            onClick={() => setShowNotifs(true)}
-            className="p-2 rounded-xl bg-white border border-[#ecece0] hover:border-[#8b9d77] text-[#5a5a40] relative cursor-pointer active:scale-95 transition-all shadow-2xs shrink-0"
-            title={lang === 'ur' ? 'نوٹیفیکیشنز' : 'Notifications'}
-          >
-            <Bell className="w-5 h-5 text-[#8b9d77]" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#EF4444] text-white text-[9px] font-bold flex items-center justify-center animate-pulse">
-                {unreadCount}
-              </span>
-            )}
-          </button>
+          {/* Right: Sync Status Badge & Notification Bell */}
+          <div className="flex items-center gap-2 shrink-0">
+            <SyncStatusBadge lang={lang} onSyncComplete={onSyncOffline} />
+
+            <button
+              onClick={() => setShowNotifs(true)}
+              className="p-2 rounded-xl bg-white border border-[#ecece0] hover:border-[#8b9d77] text-[#5a5a40] relative cursor-pointer active:scale-95 transition-all shadow-2xs shrink-0"
+              title={lang === 'ur' ? 'نوٹیفیکیشنز' : 'Notifications'}
+            >
+              <Bell className="w-5 h-5 text-[#8b9d77]" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#EF4444] text-white text-[9px] font-bold flex items-center justify-center animate-pulse">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -394,6 +401,33 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 </div>
 
+                {/* EXPORT DATA & PRIVACY CONTROLS CARD */}
+                <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] space-y-2.5 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-2xl bg-white border border-[#ecece0] shadow-2xs text-[#1e3a68] shrink-0">
+                      <Shield className="w-5 h-5 text-[#c59b27]" />
+                    </div>
+                    <div>
+                      <div className="font-serif font-bold text-sm text-[#4a4a35]">
+                        {lang === 'ur' ? 'ڈیٹا بیک اپ و پرائیویسی' : 'Export & Privacy'}
+                      </div>
+                      <div className="text-[11px] text-[#8e8e75]">
+                        {lang === 'ur' ? 'شناختی کارڈ ماسکنگ اور CSV / JSON ڈاؤن لوڈ' : 'CNIC masking, CSV and JSON backups'}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      handleCloseMenu();
+                      setShowExportPrivacyModal(true);
+                    }}
+                    className="w-full py-2.5 px-3 bg-[#1e3a68] hover:bg-[#162a4d] text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-all active:scale-95"
+                  >
+                    <Shield className="w-4 h-4 text-[#c59b27]" />
+                    <span>{lang === 'ur' ? 'ایکسپورٹ پرائیویسی مینیو کھولیں' : 'Open Export Privacy Controls'}</span>
+                  </button>
+                </div>
+
                 {/* SECOND LAST ITEM: SHARE APP PROMINENT CARD */}
                 <div className="p-4 rounded-3xl bg-emerald-50/90 border border-emerald-200 space-y-2.5 shadow-2xs">
                   <div className="flex items-center gap-3">
@@ -475,6 +509,13 @@ export const Header: React.FC<HeaderProps> = ({
       <AboutUsModal
         isOpen={showAboutModal}
         onClose={() => setShowAboutModal(false)}
+        lang={lang}
+      />
+
+      {/* Data Export & Privacy Controls Modal */}
+      <ExportPrivacyModal
+        isOpen={showExportPrivacyModal}
+        onClose={() => setShowExportPrivacyModal(false)}
         lang={lang}
       />
 

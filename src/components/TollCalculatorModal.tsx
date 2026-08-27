@@ -17,7 +17,8 @@ import {
   Info,
   Layers,
   ArrowRight,
-  ExternalLink
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
 import { Language, TollCity, TollVehicleClass, TollRatesConfig, DICTIONARY } from '../types';
 import { 
@@ -26,6 +27,7 @@ import {
   calculateToll, 
   getStoredTollRates, 
   getCachedTollRates,
+  syncTollRatesWithNHA,
   TollCalculationResult 
 } from '../utils/tollMatrix';
 
@@ -49,6 +51,8 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
   const [hasMtag, setHasMtag] = useState<boolean>(true);
   const [rates, setRates] = useState<TollRatesConfig>(getCachedTollRates());
   const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [result, setResult] = useState<TollCalculationResult | null>(null);
 
@@ -65,6 +69,22 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
       setIsOnline(navigator.onLine);
     } catch {
       setIsOnline(false);
+    }
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    setSyncStatusMsg(null);
+    try {
+      const res = await syncTollRatesWithNHA();
+      setRates(res.rates);
+      setSyncStatusMsg(lang === 'ur' ? '2026 این ایچ اے ریٹ کامیابی سے سنک ہو گئے' : '2026 NHA Rates Synced');
+      setTimeout(() => setSyncStatusMsg(null), 3000);
+    } catch {
+      setSyncStatusMsg(lang === 'ur' ? 'آف لائن کیش استعمال ہو رہا ہے' : 'Using offline cache');
+      setTimeout(() => setSyncStatusMsg(null), 3000);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -96,7 +116,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
     const toName = CITIES_LIST.find(c => c.id === toCity)?.[lang === 'ur' ? 'nameUr' : 'nameEn'] || toCity;
     const vName = VEHICLE_CLASSES.find(v => v.id === vehicleClass)?.[lang === 'ur' ? 'nameUr' : 'nameEn'] || vehicleClass;
     
-    let text = `🛣️ *Warraich Goods - NHA Toll Tax Estimate*\n`;
+    let text = `🛣️ *Warraich Goods - NHA Toll Tax Estimate (2026)*\n`;
     text += `📍 Route: ${fromName} ➔ ${toName}\n`;
     text += `🚚 Vehicle: ${vName}\n`;
     text += `💳 M-Tag Status: ${hasMtag ? 'Active (No Surcharge)' : 'Non-M-Tag (+50% Surcharge)'}\n`;
@@ -123,7 +143,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
     const toName = CITIES_LIST.find(c => c.id === toCity)?.[lang === 'ur' ? 'nameUr' : 'nameEn'] || toCity;
     const vName = VEHICLE_CLASSES.find(v => v.id === vehicleClass)?.[lang === 'ur' ? 'nameUr' : 'nameEn'] || vehicleClass;
     
-    let text = `🛣️ *Warraich Goods - NHA Toll Tax Estimate*\n`;
+    let text = `🛣️ *Warraich Goods - NHA Toll Tax Estimate (2026)*\n`;
     text += `📍 Route: ${fromName} ➔ ${toName}\n`;
     text += `🚚 Vehicle: ${vName}\n`;
     text += `💳 M-Tag: ${hasMtag ? 'Active (Exempt)' : 'Inactive (+50% Cash Penalty)'}\n`;
@@ -158,7 +178,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
               <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-[#8b9d77]/15 text-[#5a5a40] uppercase tracking-wider">
                   <Milestone className="w-3.5 h-3.5 text-[#8b9d77]" />
-                  {lang === 'ur' ? 'این ایچ اے ٹول ٹیکس' : 'NHA Motorway Tariffs'}
+                  {lang === 'ur' ? 'این ایچ اے 2026 ٹول ٹیکس' : 'NHA 2026 Motorway Tariffs'}
                 </span>
                 
                 <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
@@ -169,13 +189,32 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
                   {isOnline ? <Wifi className="w-3 h-3 text-emerald-600" /> : <WifiOff className="w-3 h-3 text-amber-600" />}
                   <span>{isOnline ? t.tollCalc.onlineLive : t.tollCalc.offlineCached}</span>
                 </span>
+
+                <button
+                  type="button"
+                  onClick={handleManualSync}
+                  disabled={isSyncing}
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#fdfbf7] hover:bg-[#8b9d77] hover:text-white text-[#5a5a40] border border-[#ecece0] transition-all cursor-pointer active:scale-95 shadow-2xs"
+                  title="Sync 2026 NHA Rates"
+                >
+                  <RefreshCw className={`w-2.5 h-2.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isSyncing ? (lang === 'ur' ? 'سنک ہو رہا ہے...' : 'Syncing...') : (lang === 'ur' ? 'ریٹس ریفریش' : 'Sync Rates')}</span>
+                </button>
               </div>
+
+              {syncStatusMsg && (
+                <p className="text-[11px] font-bold text-emerald-700 animate-in fade-in">
+                  ✓ {syncStatusMsg}
+                </p>
+              )}
               
               <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-[#4a4a35]">
                 {t.tollCalc.title}
               </h2>
               <p className="text-[#8e8e75] text-xs mt-0.5">
-                {t.tollCalc.subtitle}
+                {lang === 'ur' 
+                  ? 'پاکستان کے تمام 22 بڑے شہروں، موٹرویز (M1-M16) اور نیشنل ہائی ویز کے مصدقہ ٹول ریٹس' 
+                  : 'NHA verified toll tariffs for 22 cities across M1-M16 motorways and N-5/N-55 corridors'}
               </p>
             </div>
           </div>
@@ -207,7 +246,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
               >
                 {CITIES_LIST.map(c => (
                   <option key={`from-${c.id}`} value={c.id}>
-                    {lang === 'ur' ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} - ${c.nameUr}`}
+                    {lang === 'ur' ? `${c.nameUr} (${c.nameEn}) - [${c.province}]` : `${c.nameEn} (${c.nameUr}) - [${c.province}]`}
                   </option>
                 ))}
               </select>
@@ -237,7 +276,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
               >
                 {CITIES_LIST.map(c => (
                   <option key={`to-${c.id}`} value={c.id}>
-                    {lang === 'ur' ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} - ${c.nameUr}`}
+                    {lang === 'ur' ? `${c.nameUr} (${c.nameEn}) - [${c.province}]` : `${c.nameEn} (${c.nameUr}) - [${c.province}]`}
                   </option>
                 ))}
               </select>
@@ -260,33 +299,52 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
               >
                 {VEHICLE_CLASSES.map(v => (
                   <option key={v.id} value={v.id}>
-                    {lang === 'ur' ? `${v.nameUr} - ${v.nameEn}` : `${v.nameEn} (${v.nameUr})`}
+                    {lang === 'ur' ? `[${v.nhaCode}] ${v.nameUr} - ${v.nameEn}` : `[${v.nhaCode}] ${v.nameEn} (${v.nameUr})`}
                   </option>
                 ))}
               </select>
+              <p className="text-[10px] text-[#8e8e75] px-1">
+                {VEHICLE_CLASSES.find(v => v.id === vehicleClass)?.descEn}
+              </p>
             </div>
 
             {/* Active M-Tag Checkbox */}
-            <div className="flex items-center">
+            <div className="flex items-start">
               <label className="flex items-start gap-3 p-3 bg-white rounded-2xl border border-[#ecece0] hover:border-[#8b9d77] transition-all cursor-pointer w-full select-none shadow-2xs">
                 <input
                   type="checkbox"
                   checked={hasMtag}
                   onChange={(e) => setHasMtag(e.target.checked)}
+                  disabled={vehicleClass === 'bike'}
                   className="w-4 h-4 mt-0.5 text-[#8b9d77] rounded border-gray-300 focus:ring-[#8b9d77]"
                 />
                 <div>
                   <span className="text-xs font-bold font-serif text-[#4a4a35] block">
-                    {t.tollCalc.activeMtag}
+                    {vehicleClass === 'bike' ? (lang === 'ur' ? 'موٹر سائیکل (ایم ٹیگ لازمی نہیں)' : 'Motorcycle (M-Tag Exempt)') : t.tollCalc.activeMtag}
                   </span>
                   <span className="text-[10px] text-[#8e8e75] block leading-tight mt-0.5">
-                    {t.tollCalc.mtagSub}
+                    {vehicleClass === 'bike' ? (lang === 'ur' ? 'قومی شاہراہوں کے مخصوص پلوں پر کیش ٹول' : 'Bridge tokens on designated national highways') : t.tollCalc.mtagSub}
                   </span>
                 </div>
               </label>
             </div>
 
           </div>
+
+          {/* Motorcycle Warning if motorway is selected */}
+          {vehicleClass === 'bike' && (
+            <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <strong>{lang === 'ur' ? 'موٹر سائیکل و ٹو وہیلر پالیسی:' : 'Motorcycle Policy Notice:'}</strong>
+                <p className="text-[11px] text-amber-800 mt-0.5">
+                  {lang === 'ur'
+                    ? 'این ایچ اے قوانین کے تحت بند موٹرویز (M-1, M-2, M-3, M-4, M-5) پر موٹر سائیکل کا داخلہ ممنوع ہے۔ قومی شاہراہوں (N-5, N-55) اور پلوں پر 20 روپے فی ٹول پلازہ ریٹ لاگو ہوتا ہے۔'
+                    : 'Per NHA regulations, 2-wheelers are prohibited on closed access-controlled motorways (M-2, M-5). On national highways & bridges (N-5/N-55), Rs. 20 per plaza applies.'}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Calculate Button */}
           <div className="pt-2">
@@ -338,7 +396,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
                     ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
                     : 'bg-amber-50 text-amber-800 border border-amber-200'
                 }`}>
-                  {hasMtag ? 'M-Tag Verified' : 'Non-M-Tag Cash (+50%)'}
+                  {vehicleClass === 'bike' ? 'Highway Rate' : (hasMtag ? 'M-Tag Verified' : 'Non-M-Tag Cash (+50%)')}
                 </span>
               </div>
             </div>
@@ -393,7 +451,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
 
               {/* Surcharge */}
               <div className={`p-3.5 rounded-2xl border text-center ${
-                !hasMtag 
+                !hasMtag && vehicleClass !== 'bike'
                   ? 'bg-amber-50 border-amber-200 text-amber-900' 
                   : 'bg-[#fdfbf7] border-[#ecece0] text-[#8e8e75]'
               }`}>
@@ -401,7 +459,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
                   {t.tollCalc.surcharge}
                 </span>
                 <div className="font-serif font-bold text-lg">
-                  {!hasMtag ? `+ Rs. ${result.surcharge.toLocaleString()}` : 'Rs. 0 (Exempt)'}
+                  {!hasMtag && vehicleClass !== 'bike' ? `+ Rs. ${result.surcharge.toLocaleString()}` : 'Rs. 0 (Exempt)'}
                 </div>
               </div>
 
@@ -420,7 +478,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
             {/* Action Buttons: Apply, Copy, WhatsApp */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#ecece0]">
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {onApplyToTrip && (
                   <button
                     type="button"

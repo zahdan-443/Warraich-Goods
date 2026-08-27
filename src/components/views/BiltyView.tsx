@@ -7,7 +7,8 @@ import QRCode from 'qrcode';
 import { VoiceInputButton } from '../VoiceInputButton';
 import { CameraOcrInput } from '../CameraOcrInput';
 import { PrintableBilty } from '../PrintableBilty';
-import { exportContactsCSV, getContactList } from '../../utils/storage';
+import { exportContactsCSV, getContactList, allocateNextBiltyNumber } from '../../utils/storage';
+import { validateBiltyFreight } from '../../utils/calculator';
 
 const getQrDataUrl = async (record: BiltyRecord): Promise<string> => {
   const currentOrigin = typeof window !== 'undefined' && window.location && window.location.origin
@@ -116,13 +117,23 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResult, setSearchResult] = useState<BiltyRecord | null | undefined>(undefined);
 
-  const handleGenerate = (e: React.FormEvent) => {
+  const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     const totalNum = parseFloat(total) || 0;
     const advanceNum = parseFloat(advance) || 0;
 
+    // Financial Validation
+    const validation = validateBiltyFreight(totalNum, advanceNum);
+    if (!validation.isValid) {
+      alert(validation.error || 'درست کرایہ اور پیشگی رقم درج کریں۔');
+      return;
+    }
+
+    // Allocate sequential unique Bilty Number via Transaction / Monotonic counter
+    const allocatedBiltyNo = await allocateNextBiltyNumber();
+
     const record: Omit<BiltyRecord, 'id'> = {
-      biltyNo: 'AH-' + String(bilties.length + 1).padStart(4, '0'),
+      biltyNo: allocatedBiltyNo,
       vehicleNo: vehicleNo.trim(),
       date: date.trim() || getTodayFormatted(),
       driverName: driverName.trim(),
@@ -137,9 +148,9 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty 
       qty: qty.trim(),
       itemDescription: itemDescription.trim(),
       weight: weight.trim(),
-      total: totalNum,
-      advance: advanceNum,
-      payable: totalNum - advanceNum,
+      total: validation.total,
+      advance: validation.advance,
+      payable: validation.payable,
     };
 
     onAddBilty(record);
@@ -582,7 +593,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty 
                   type="text"
                   value={senderCnic}
                   onChange={(e) => setSenderCnic(e.target.value)}
-                  placeholder="35201-1234567-1"
+                  placeholder="XXXXX-XXXXXXX-X"
                   className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono transition-all"
                 />
               </div>

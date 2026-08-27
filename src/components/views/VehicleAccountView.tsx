@@ -21,6 +21,7 @@ import {
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { getLogoBase64 } from '../../utils/pdfHelper';
+import { validateVehicleAccountFinancials } from '../../utils/calculator';
 
 interface VehicleAccountViewProps {
   lang: Language;
@@ -155,6 +156,22 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
   };
 
   const handleSaveToDiary = () => {
+    const finValidation = validateVehicleAccountFinancials(incomes, {
+      diesel: dieselVal,
+      toll: tollVal,
+      challan: challanVal,
+      rotiKharcha: rotiVal,
+      chowkidara: chowkidaraVal,
+      gariKaam: gariKaamVal,
+      driverCommission: commissionVal,
+      customTotal: customTotal
+    });
+
+    if (!finValidation.isValid) {
+      window.alert(finValidation.error || 'براہ کرم گاڑی کے درست اور مثبت اخراجات درج کریں۔');
+      return;
+    }
+
     if (grandTotalExpenses <= 0 && totalIncome <= 0) {
       window.alert(isUrdu ? 'براہ کرم پہلے گاڑی کی آمدن یا اخراجات درج کریں۔' : 'Please input income or expenses before saving.');
       return;
@@ -173,9 +190,9 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
           loading: 0,
           driver: Math.round(rotiVal + commissionVal),
           other: Math.round(challanVal + chowkidaraVal + gariKaamVal + customTotal),
-          total: Math.round(grandTotalExpenses),
-          totalIncome: Math.round(totalIncome),
-          netProfit: Math.round(netProfit),
+          total: Math.round(finValidation.totalExpense),
+          totalIncome: Math.round(finValidation.totalIncome),
+          netProfit: Math.round(finValidation.netProfit),
           incomes: incomes,
           isReturn: false,
           date: new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -288,7 +305,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
         <div style="border-bottom: 3px solid #8b9d77; padding-bottom: 16px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: flex-start; direction: rtl;">
           <div style="flex: 1; text-align: right;">
             <h1 style="margin: 0; font-size: 26px; color: #4a4a35; font-weight: 900; font-family: inherit;">وڑائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)</h1>
-            <p style="margin: 4px 0 0 0; font-size: 14px; color: #8b9d77; font-weight: bold;">گاڑی کے سفر کا تفصیلی حساب و آمدن خرچ لیجر (Vehicle Ledger)</p>
+            <p style="margin: 4px 0 0 0; font-size: 14px; color: #8b9d77; font-weight: bold;">گاڑی کے سفر کا تفصیلی حساب و آمدن خرچ لیجر</p>
             
             <div style="margin-top: 10px; background: #fafaf5; border: 1.5px solid #e0e0d0; padding: 8px 14px; border-radius: 10px; font-size: 12px; line-height: 1.6; display: inline-block;">
               <div style="color: #c0392b; font-weight: bold;">چیف ایگزیکٹو: زاہدان نصر وڑائچ</div>
@@ -308,7 +325,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
         <!-- Income Breakdown -->
         <div style="background: #f4f9f1; border: 1.5px solid #cde4c5; border-radius: 14px; padding: 16px 18px; margin-bottom: 22px; direction: rtl;">
           <h2 style="font-size: 16px; color: #275e23; margin: 0 0 10px 0; border-bottom: 1.5px solid #cde4c5; padding-bottom: 8px; text-align: right;">
-            💵 حاصل شدہ آمدن و کرایہ جات کی تفصیل (Freight Incomes)
+            💵 حاصل شدہ آمدن و کرایہ جات کی تفصیل
           </h2>
           <table style="width: 100%; border-collapse: collapse; font-size: 13px; direction: rtl;">
             ${incomeRowsHtml}
@@ -321,41 +338,41 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
 
         <!-- Expenses Breakdown -->
         <h2 style="font-size: 16px; color: #4a4a35; border-bottom: 2px solid #8b9d77; padding-bottom: 8px; margin-bottom: 14px; text-align: right;">
-          🧾 سفری اخراجات کی مکمل تفصیل (Trip Expenses Breakdown)
+          🧾 سفری اخراجات کی مکمل تفصیل
         </h2>
 
         <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 22px; direction: rtl;">
           <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">1. ڈیزل خرچہ (Diesel):</td>
+            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">1. ڈیزل خرچہ (ایندھن):</td>
             <td style="padding: 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${fmt(dieselVal)}</td>
           </tr>
           <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">2. ٹول پلازہ ٹیکس (Toll Plaza):</td>
+            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">2. ٹول پلازہ موٹروے ٹیکس:</td>
             <td style="padding: 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${fmt(tollVal)}</td>
           </tr>
           <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">3. چالان اخراجات (Challan):</td>
+            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">3. ٹریفک چالان و جرمانہ:</td>
             <td style="padding: 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${fmt(challanVal)}</td>
           </tr>
           <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">4. روٹی خرچہ (Food Allowance):</td>
+            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">4. روٹی و خوراک خرچہ:</td>
             <td style="padding: 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${fmt(rotiVal)}</td>
           </tr>
           <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">5. چوکیداری و پارکنگ (Parking/Guard):</td>
+            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">5. چوکیداری و اڈا پارکنگ:</td>
             <td style="padding: 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${fmt(chowkidaraVal)}</td>
           </tr>
           <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">6. گاڑی کی مرمت و کام (Maintenance):</td>
+            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">6. گاڑی کا کام و مرمت:</td>
             <td style="padding: 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${fmt(gariKaamVal)}</td>
           </tr>
           <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">7. ڈرائیور کمیشن (Driver Commission):</td>
+            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">7. ڈرائیور کمیشن و اجرت:</td>
             <td style="padding: 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${fmt(commissionVal)}</td>
           </tr>
           ${customRowsHtml}
           <tr style="border-top: 2px solid #8b9d77;">
-            <td style="padding: 10px 8px; font-weight: 900; font-size: 14px; color: #4a4a35; text-align: right;">کل واصل اخراجات (Total Expenses):</td>
+            <td style="padding: 10px 8px; font-weight: 900; font-size: 14px; color: #4a4a35; text-align: right;">کل سفری اخراجات:</td>
             <td style="padding: 10px 8px; font-weight: 900; text-align: left; font-size: 16px; font-family: sans-serif; color: #4a4a35; direction: ltr;">PKR ${grandTotalExpenses.toLocaleString('en-US')}</td>
           </tr>
         </table>
@@ -363,7 +380,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
         <!-- Net Profit Card -->
         <div style="background: ${netProfit >= 0 ? '#275e23' : '#c0392b'}; color: #ffffff; border-radius: 16px; padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; direction: rtl;">
           <div style="text-align: right;">
-            <div style="font-size: 17px; font-weight: 900;">${netProfit >= 0 ? 'خالص منافع / بچت (Net Profit):' : 'خسارہ / بقایا خرچہ (Net Deficit):'}</div>
+            <div style="font-size: 17px; font-weight: 900;">${netProfit >= 0 ? 'خالص منافع / بچت:' : 'خسارہ / بقایا خرچہ:'}</div>
             <div style="font-size: 12px; opacity: 0.95; margin-top: 2px;">آمدن (PKR ${totalIncome.toLocaleString()}) منفی خرچہ (PKR ${grandTotalExpenses.toLocaleString()})</div>
           </div>
           <div style="font-size: 28px; font-weight: 900; font-family: sans-serif; direction: ltr;">PKR ${Math.abs(netProfit).toLocaleString('en-US')}</div>
@@ -494,7 +511,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <Wallet className="w-5 h-5" />
               </div>
               <h2 className="text-base sm:text-lg font-bold text-[#275e23]">
-                {isUrdu ? '1. حاصل آمدن و کرایہ جات (Freight Income)' : '1. Freight Earnings & Incomes'}
+                {isUrdu ? '1. حاصل شدہ آمدن و کرایہ جات' : '1. Freight Earnings & Incomes'}
               </h2>
             </div>
             <button
@@ -565,7 +582,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <Receipt className="w-5 h-5" />
               </div>
               <h2 className="text-base sm:text-lg font-bold text-[#4a4a35]">
-                {isUrdu ? '2. سفری اخراجات تفصیل (Trip Expenses)' : '2. Detailed Trip Expenses'}
+                {isUrdu ? '2. تمام سفری اخراجات کی تفصیل' : '2. Detailed Trip Expenses'}
               </h2>
             </div>
             <button
@@ -582,7 +599,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {/* 1. Diesel */}
             <div className="bg-white p-3 rounded-2xl border border-[#ecece0] space-y-1">
               <label className="block text-xs font-bold text-[#4a4a35]">
-                {isUrdu ? '1. ڈیزل خرچہ (Diesel Expense)' : '1. Diesel Fuel Expense'}
+                {isUrdu ? '1. ڈیزل خرچہ (ایندھن)' : '1. Diesel Fuel Expense'}
               </label>
               <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77]">
                 <input
@@ -601,7 +618,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {/* 2. Toll Plaza */}
             <div className="bg-white p-3 rounded-2xl border border-[#ecece0] space-y-1">
               <label className="block text-xs font-bold text-[#4a4a35]">
-                {isUrdu ? '2. ٹول پلازہ ٹیکس (Toll Plaza)' : '2. Motorway Toll Plaza'}
+                {isUrdu ? '2. ٹول پلازہ موٹروے ٹیکس' : '2. Motorway Toll Plaza'}
               </label>
               <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77]">
                 <input
@@ -620,7 +637,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {/* 3. Challan */}
             <div className="bg-white p-3 rounded-2xl border border-[#ecece0] space-y-1">
               <label className="block text-xs font-bold text-[#4a4a35]">
-                {isUrdu ? '3. ٹریفک چالان (Traffic Challan)' : '3. Traffic Challan'}
+                {isUrdu ? '3. ٹریفک چالان و جرمانہ' : '3. Traffic Challan'}
               </label>
               <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77]">
                 <input
@@ -639,7 +656,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {/* 4. Roti Kharcha */}
             <div className="bg-white p-3 rounded-2xl border border-[#ecece0] space-y-1">
               <label className="block text-xs font-bold text-[#4a4a35]">
-                {isUrdu ? '4. روٹی خرچہ (Food Allowance)' : '4. Food / Daily Allowance'}
+                {isUrdu ? '4. روٹی و خوراک خرچہ' : '4. Food / Daily Allowance'}
               </label>
               <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77]">
                 <input
@@ -658,7 +675,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {/* 5. Chowkidara / Parking */}
             <div className="bg-white p-3 rounded-2xl border border-[#ecece0] space-y-1">
               <label className="block text-xs font-bold text-[#4a4a35]">
-                {isUrdu ? '5. چوکیداری و پارکنگ (Parking Guard)' : '5. Parking / Chowkidari'}
+                {isUrdu ? '5. چوکیداری و اڈا پارکنگ' : '5. Parking / Chowkidari'}
               </label>
               <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77]">
                 <input
@@ -677,7 +694,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {/* 6. Gari Kaam / Repair */}
             <div className="bg-white p-3 rounded-2xl border border-[#ecece0] space-y-1">
               <label className="block text-xs font-bold text-[#4a4a35]">
-                {isUrdu ? '6. گاڑی کا کام / مرمت (Maintenance)' : '6. Vehicle Repair & Maintenance'}
+                {isUrdu ? '6. گاڑی کا کام و مرمت' : '6. Vehicle Repair & Maintenance'}
               </label>
               <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77]">
                 <input
@@ -696,7 +713,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {/* 7. Driver Commission */}
             <div className="bg-white p-3 rounded-2xl border border-[#ecece0] space-y-1">
               <label className="block text-xs font-bold text-[#4a4a35]">
-                {isUrdu ? '7. ڈرائیور کمیشن (Driver Commission)' : '7. Driver Commission'}
+                {isUrdu ? '7. ڈرائیور کمیشن و اجرت' : '7. Driver Commission'}
               </label>
               <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77]">
                 <input
@@ -770,8 +787,8 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <TrendingUp className="w-5 h-5" />
                 <span className="text-base sm:text-lg font-bold">
                   {netProfit >= 0
-                    ? (isUrdu ? 'خالص بچت / نفع (Net Profit)' : 'Net Profit (Earnings - Expenses)')
-                    : (isUrdu ? 'خسارہ / بقایا خرچہ (Net Deficit)' : 'Net Deficit (Expenses exceed Income)')
+                    ? (isUrdu ? 'خالص بچت و منافع' : 'Net Profit (Earnings - Expenses)')
+                    : (isUrdu ? 'خسارہ / بقایا خرچہ' : 'Net Deficit (Expenses exceed Income)')
                   }
                 </span>
               </div>

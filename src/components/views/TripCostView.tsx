@@ -6,6 +6,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { fetchOSRMRouteDistance, PAKISTAN_CITIES } from '../../utils/mapRoutes';
 import { getLogoBase64 } from '../../utils/pdfHelper';
+import { validateFinancialNumber, validateTripFinancials } from '../../utils/calculator';
 
 interface TripCostViewProps {
   lang: Language;
@@ -123,21 +124,40 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 
   // Calculate & Navigate to Dedicated Result Screen
   const handleCalculate = () => {
-    const p = parseFloat(fuelPrice);
-    const m = parseFloat(mileage);
-    const d = parseFloat(distance);
-    const expVal = parseFloat(combinedExpenses) || 0;
+    const fuelVal = validateFinancialNumber(fuelPrice, 'Fuel Rate', { allowZero: false });
+    const mileageVal = validateFinancialNumber(mileage, 'Mileage', { allowZero: false });
+    const distVal = validateFinancialNumber(distance, 'Distance', { allowZero: false });
+    const expVal = validateFinancialNumber(combinedExpenses, 'Other Expenses', { allowZero: true });
 
-    if (isNaN(p) || isNaN(m) || isNaN(d) || p <= 0 || m <= 0 || d <= 0) {
-      setError(isUrdu ? 'براہ کرم فیول ریٹ، ایوریج اور فاصلہ درست درج کریں۔' : 'Please enter valid numbers for Fuel Rate, Mileage, and Distance.');
+    if (!fuelVal.isValid || !mileageVal.isValid || !distVal.isValid || !expVal.isValid) {
+      setError(
+        isUrdu
+          ? 'براہ کرم فیول ریٹ، ایوریج اور فاصلہ درست اور مثبت درج کریں۔'
+          : fuelVal.error || mileageVal.error || distVal.error || expVal.error || 'Please enter valid positive numbers.'
+      );
       return;
     }
     setError(null);
 
+    const p = fuelVal.value;
+    const m = mileageVal.value;
+    const d = distVal.value;
+    const exp = expVal.value;
+
     const effDist = isReturn ? d * 2 : d;
     const consumedL = effDist / m;
     const fuelCostVal = consumedL * p;
-    const totalCostVal = fuelCostVal + expVal;
+    const totalCostVal = fuelCostVal + exp;
+
+    const tripFinCheck = validateTripFinancials({
+      dist: effDist,
+      fuelCost: Math.round(fuelCostVal),
+      toll: Math.round(exp),
+      loading: 0,
+      driver: 0,
+      other: 0,
+      total: Math.round(totalCostVal)
+    });
 
     const calcObj = {
       fuelType: 'Diesel 🛢️',
@@ -145,11 +165,11 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       dist: effDist,
       consumed: consumedL.toFixed(2),
       fuelCost: Math.round(fuelCostVal),
-      toll: Math.round(expVal),
+      toll: Math.round(exp),
       loading: 0,
       driver: 0,
       other: 0,
-      total: Math.round(totalCostVal),
+      total: tripFinCheck.computedTotal,
       isReturn,
       date: new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' }),
       time: new Date().toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }),
@@ -158,7 +178,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       dest: destCity,
       fuelRateVal: p,
       mileageVal: m,
-      combinedExpensesVal: expVal
+      combinedExpensesVal: exp
     };
 
     setLastCalc(calcObj);

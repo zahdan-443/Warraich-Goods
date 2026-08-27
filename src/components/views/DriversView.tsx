@@ -30,10 +30,10 @@ export const DriversView: React.FC<DriversViewProps> = ({
     if (!name.trim()) return;
     onAddDriver({
       name: name.trim(),
-      phone: phone.trim() || '3000000000',
-      license: license.trim() || 'PB-00000',
+      phone: phone.trim(),
+      license: license.trim(),
       lictype,
-      cnic: cnic.trim() || '35201-0000000-0'
+      cnic: cnic.trim()
     });
     setName('');
     setPhone('');
@@ -153,7 +153,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Mukhtar Ali"
+                placeholder="Driver Name / نام"
                 className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-4 py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none"
                 required
               />
@@ -166,7 +166,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="03001234567"
+                  placeholder="03XX-XXXXXXX"
                   className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-4 py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono"
                 />
               </div>
@@ -193,7 +193,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
                   type="text"
                   value={license}
                   onChange={(e) => setLicense(e.target.value)}
-                  placeholder="PB-99214"
+                  placeholder="LIC-XXXXX"
                   className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-4 py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono uppercase"
                 />
               </div>
@@ -204,7 +204,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
                   type="text"
                   value={cnic}
                   onChange={(e) => setCnic(e.target.value)}
-                  placeholder="35201-1234567-1"
+                  placeholder="XXXXX-XXXXXXX-X"
                   className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-4 py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono"
                 />
               </div>

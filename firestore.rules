@@ -6,9 +6,13 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check if user is warraichgoods43@gmail.com
+    // Helper function to check if user is the Owner / Admin (via email, custom claims, or admin collection)
     function isOwner() {
-      return isSignedIn() && request.auth.token.email != null && request.auth.token.email == 'warraichgoods43@gmail.com';
+      return isSignedIn() && (
+        (request.auth.token.email != null && request.auth.token.email == 'warraichgoods43@gmail.com') ||
+        (request.auth.token.role != null && (request.auth.token.role == 'owner' || request.auth.token.role == 'admin')) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
     }
 
     // Helper function to check if user is an Owner or in access/biltyAccess.allowedUIDs / allowedEmails
@@ -30,15 +34,19 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // User personal transport app data
+    // User personal transport app root data
     match /usersData/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // User profile entries
+    // User profile entries and nested collections (trips, vehicles, drivers, routes, fuel, bilties)
     match /users/{userId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn() && request.auth.uid == userId;
+
+      match /collections/{collectionId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     // Access configuration for Bilty Generator authorization (ONLY Fleet Owners can edit allowed UIDs)
@@ -52,8 +60,19 @@ service cloud.firestore {
       allow read, write: if isBiltyAuthorized();
     }
 
+    // Counters collection for transaction-based sequential Bilty allocation
+    match /counters/{counterId} {
+      allow read, write: if isSignedIn();
+    }
+
     // Company Profile and System Settings (All signed-in can read, ONLY Owner can write)
     match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner();
+    }
+
+    // System Admins collection
+    match /admins/{adminId} {
       allow read: if isSignedIn();
       allow write: if isOwner();
     }

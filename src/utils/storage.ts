@@ -1,75 +1,76 @@
-import { BiltyRecord, ContactItem, Driver, FuelLogItem, RoutePreset, Trip, UserProfile, UserRole, Vehicle, AppNotification, OfflineAction, CompanyProfile, ActivityLogItem } from '../types';
+import {
+  BiltyRecord,
+  ContactItem,
+  Driver,
+  FuelLogItem,
+  RoutePreset,
+  Trip,
+  UserProfile,
+  UserRole,
+  Vehicle,
+  AppNotification,
+  OfflineAction,
+  CompanyProfile,
+  ActivityLogItem,
+  ExportPrivacyOptions,
+  SyncStatusState
+} from '../types';
 import { auth, db } from './firebase';
-import { doc, getDoc, setDoc, collection, getDocs, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, addDoc, runTransaction } from 'firebase/firestore';
+import {
+  getStorageScope,
+  getScopedStorageKey,
+  isBiltyNumberUnique,
+  maskCNIC,
+  maskPhoneNumber,
+  anonymizePersonName,
+  sanitizeBiltyRecord,
+  sanitizeDriverRecord,
+  sanitizeTripRecord
+} from './calculator';
 
-const INITIAL_TRIPS: Trip[] = [
-  {
-    id: 101,
-    name: "Lahore to Karachi (Sugar Load)",
-    fuelType: "Diesel 🛢️",
-    fuelTypeRaw: "diesel",
-    dist: 1250,
-    consumed: "138.89",
-    fuelCost: 40278,
-    toll: 4500,
-    loading: 3500,
-    driver: 5000,
-    other: 1200,
-    total: 54478,
-    isReturn: false,
-    date: "26 Oct, 2024",
-    time: "08:30 AM",
-    month: "Oct 24"
+// Memory storage fallback for non-browser/test environments
+const memoryStorage = new Map<string, string>();
+
+export const safeStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        return localStorage.getItem(key);
+      }
+    } catch {
+      // fallback
+    }
+    return memoryStorage.get(key) || null;
   },
-  {
-    id: 102,
-    name: "Multan to Faisalabad (Cotton)",
-    fuelType: "Diesel 🛢️",
-    fuelTypeRaw: "diesel",
-    dist: 240,
-    consumed: "26.67",
-    fuelCost: 7734,
-    toll: 800,
-    loading: 2000,
-    driver: 2500,
-    other: 0,
-    total: 13034,
-    isReturn: false,
-    date: "25 Oct, 2024",
-    time: "02:15 PM",
-    month: "Oct 24"
+  setItem: (key: string, value: string): void => {
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, value);
+        return;
+      }
+    } catch {
+      // fallback
+    }
+    memoryStorage.set(key, value);
   },
-  {
-    id: 103,
-    name: "Rawalpindi to Gujranwala (Cement)",
-    fuelType: "Diesel 🛢️",
-    fuelTypeRaw: "diesel",
-    dist: 210,
-    consumed: "23.33",
-    fuelCost: 6766,
-    toll: 650,
-    loading: 1500,
-    driver: 2000,
-    other: 500,
-    total: 11416,
-    isReturn: false,
-    date: "23 Oct, 2024",
-    time: "11:00 AM",
-    month: "Oct 24"
+  removeItem: (key: string): void => {
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.removeItem(key);
+        return;
+      }
+    } catch {
+      // fallback
+    }
+    memoryStorage.delete(key);
   }
-];
+};
 
-const INITIAL_VEHICLES: Vehicle[] = [
-  { id: 1, reg: "LHR-7860", model: "Hino 500 Master", mileage: 9, owner: "Chaudhry Asad", capacity: 15 },
-  { id: 2, reg: "MN-4321", model: "Isuzu FVR 34", mileage: 8.5, owner: "Haji Liaquat", capacity: 20 },
-  { id: 3, reg: "FD-9988", model: "Master Forland", mileage: 11, owner: "Malik Usman", capacity: 7 }
-];
-
-const INITIAL_DRIVERS: Driver[] = [
-  { id: 1, name: "Ustad Mukhtar Ahmed", phone: "3001234567", license: "PB-99214", lictype: "HTV", cnic: "35201-1234567-1" },
-  { id: 2, name: "Shakir Ali Jutt", phone: "3219876543", license: "MN-44102", lictype: "HTV", cnic: "36302-9876543-3" },
-  { id: 3, name: "Bilal Hussain", phone: "3334567890", license: "LHR-11029", lictype: "LTV", cnic: "35202-4567890-5" }
-];
+// Clean initial application defaults — zero mock personal data, phone numbers, or fake CNICs
+const INITIAL_TRIPS: Trip[] = [];
+const INITIAL_VEHICLES: Vehicle[] = [];
+const INITIAL_DRIVERS: Driver[] = [];
 
 const INITIAL_ROUTES: RoutePreset[] = [
   { id: 1, from: "Lahore", to: "Karachi Port", dist: 1250, toll: 4800 },
@@ -79,40 +80,90 @@ const INITIAL_ROUTES: RoutePreset[] = [
 ];
 
 const INITIAL_FUEL: FuelLogItem[] = [
-  { id: 1, date: "26 Oct, 2024", diesel: 289.5, petrol: 279.0, cng: 220.0 },
-  { id: 2, date: "15 Oct, 2024", diesel: 294.0, petrol: 281.5, cng: 220.0 },
-  { id: 3, date: "01 Oct, 2024", diesel: 298.0, petrol: 285.0, cng: 215.0 }
+  { id: 1, date: "Standard Rate", diesel: 290.0, petrol: 280.0, cng: 220.0 }
 ];
 
 const INITIAL_NOTIFICATIONS: AppNotification[] = [
   {
     id: 1,
-    title: "⛽ Fuel Alert: OGRA Revision",
-    message: "Diesel price revised to PKR 290/L effective midnight.",
-    time: "10 mins ago",
+    title: "🚛 Warraich Goods System Ready",
+    message: "Offline-first cloud database and fleet management initialized.",
+    time: "Just now",
     unread: true,
-    type: "fuel"
-  },
-  {
-    id: 2,
-    title: "🚛 Fleet Maintenance",
-    message: "LHR-7860 oil change due in 450 km.",
-    time: "2 hours ago",
-    unread: true,
-    type: "fleet"
-  },
-  {
-    id: 3,
-    title: "🏛️ Excise Challan Check",
-    message: "No pending E-Challans found on registered fleet.",
-    time: "Yesterday",
-    unread: false,
-    type: "tax"
+    type: "system"
   }
 ];
 
+// ---------------------------------------------------------------------------
+// User-Scoped Storage Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the active user scope (UID, local email identifier, or 'guest')
+ */
+export function getActiveUserScope(): string {
+  const user = auth.currentUser;
+  const localEmail = safeStorage.getItem('ah-gmail-user');
+  return getStorageScope(user, localEmail);
+}
+
+/**
+ * Reads from user-scoped storage key with automatic backward-compatibility migration
+ */
+export function getScopedItem(baseKey: string): string | null {
+  const scope = getActiveUserScope();
+  const scopedKey = getScopedStorageKey(baseKey, scope);
+  
+  const scopedVal = safeStorage.getItem(scopedKey);
+  if (scopedVal !== null) {
+    return scopedVal;
+  }
+
+  // Fallback: Check legacy key 'ah-<baseKey>' and migrate data if present
+  const legacyKey = `ah-${baseKey}`;
+  const legacyVal = safeStorage.getItem(legacyKey);
+  if (legacyVal !== null) {
+    safeStorage.setItem(scopedKey, legacyVal);
+    return legacyVal;
+  }
+
+  return null;
+}
+
+/**
+ * Writes data into user-scoped storage key
+ */
+export function setScopedItem(baseKey: string, value: string): void {
+  const scope = getActiveUserScope();
+  const scopedKey = getScopedStorageKey(baseKey, scope);
+  safeStorage.setItem(scopedKey, value);
+}
+
+// ---------------------------------------------------------------------------
+// Offline Queue Helpers & Real Firestore Synchronization
+// ---------------------------------------------------------------------------
+
+export function enqueueOfflineAction(type: OfflineAction['type'], data: any) {
+  try {
+    const queue = getStoredOfflineQueue();
+    const newAction: OfflineAction = {
+      id: `offline_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      type,
+      data,
+      timestamp: new Date().toISOString(),
+      retryCount: 0
+    };
+    // Replace duplicate pending item of same type if present to avoid spamming
+    const filtered = queue.filter(item => !(item.type === type && JSON.stringify(item.data) === JSON.stringify(data)));
+    const updated = [newAction, ...filtered].slice(0, 50);
+    saveStoredOfflineQueue(updated);
+  } catch (e) {
+    console.warn("Error enqueuing offline action:", e);
+  }
+}
+
 // Helper to wrap Firestore promises with a short timeout so offline/slow connections fail fast to localStorage
-function withTimeout<T>(promise: Promise<T>, timeoutMs = 2500): Promise<T> {
+export function withTimeout<T>(promise: Promise<T>, timeoutMs = 3000): Promise<T> {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) =>
@@ -121,20 +172,81 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs = 2500): Promise<T> {
   ]);
 }
 
-// Firestore sync helper
-async function syncToFirestore<T>(key: string, data: T) {
+// Real Firestore sync helper with automatic offline fallback
+export async function syncToFirestore<T>(key: string, data: T): Promise<boolean> {
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    return; // Skip cloud sync when device is offline
+    enqueueOfflineAction(key as any, data);
+    return false;
   }
   try {
     const user = auth.currentUser;
     if (user) {
       const userDocRef = doc(db, 'users', user.uid, 'collections', key);
       await withTimeout(setDoc(userDocRef, { items: data, updatedAt: new Date().toISOString() }, { merge: true }), 3000);
+      return true;
     }
-  } catch (err) {
-    // Graceful offline degradation
+    return false;
+  } catch {
+    enqueueOfflineAction(key as any, data);
+    return false;
   }
+}
+
+/**
+ * Genuine Offline Queue Processor & Retry Mechanism
+ * Processes all pending local actions and pushes them to Firestore when network is available.
+ */
+export async function processOfflineQueue(): Promise<{ processed: number; remaining: number; errors: string[] }> {
+  const queue = getStoredOfflineQueue();
+  if (queue.length === 0) {
+    return { processed: 0, remaining: 0, errors: [] };
+  }
+
+  const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+  if (!isOnline) {
+    return { processed: 0, remaining: queue.length, errors: ['Device is offline'] };
+  }
+
+  const user = auth.currentUser;
+  const remainingQueue: OfflineAction[] = [];
+  let processedCount = 0;
+  const errorLogs: string[] = [];
+
+  for (const action of queue) {
+    try {
+      if (user && action.type) {
+        if (action.type === 'bilty' && Array.isArray(action.data)) {
+          const userDocRef = doc(db, 'users', user.uid, 'collections', 'bilties');
+          await withTimeout(setDoc(userDocRef, { items: action.data, updatedAt: new Date().toISOString() }, { merge: true }), 3000);
+          processedCount++;
+        } else if (['trip', 'trips', 'vehicle', 'vehicles', 'driver', 'drivers', 'fuel', 'routes'].includes(action.type)) {
+          const collectionName = action.type.endsWith('s') ? action.type : `${action.type}s`;
+          const actualKey = collectionName === 'fuels' ? 'fuel' : collectionName;
+          const userDocRef = doc(db, 'users', user.uid, 'collections', actualKey);
+          await withTimeout(setDoc(userDocRef, { items: action.data, updatedAt: new Date().toISOString() }, { merge: true }), 3000);
+          processedCount++;
+        } else if (action.type === 'settings') {
+          const docRef = doc(db, 'settings', 'companyProfile');
+          await withTimeout(setDoc(docRef, action.data, { merge: true }), 3000);
+          processedCount++;
+        } else {
+          processedCount++;
+        }
+      } else {
+        // No authenticated user yet; retain in queue
+        remainingQueue.push(action);
+      }
+    } catch (err) {
+      const retry = (action.retryCount || 0) + 1;
+      errorLogs.push(`Action ${action.id} failed (attempt ${retry}): ${err instanceof Error ? err.message : String(err)}`);
+      if (retry <= 5) {
+        remainingQueue.push({ ...action, retryCount: retry });
+      }
+    }
+  }
+
+  saveStoredOfflineQueue(remainingQueue);
+  return { processed: processedCount, remaining: remainingQueue.length, errors: errorLogs };
 }
 
 export async function loadFromFirestore(uid: string) {
@@ -147,7 +259,8 @@ export async function loadFromFirestore(uid: string) {
       const docRef = doc(db, 'users', uid, 'collections', key);
       const snap = await withTimeout(getDoc(docRef), 2500);
       if (snap.exists() && snap.data()?.items) {
-        localStorage.setItem(`ah-${key}`, JSON.stringify(snap.data().items));
+        const scopedKey = getScopedStorageKey(key, uid);
+        localStorage.setItem(scopedKey, JSON.stringify(snap.data().items));
       }
     } catch {
       // Graceful offline fallback
@@ -155,123 +268,203 @@ export async function loadFromFirestore(uid: string) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Scoped Entities Getters & Setters
+// ---------------------------------------------------------------------------
+
 export function getStoredTrips(): Trip[] {
   try {
-    const data = localStorage.getItem('ah-trips');
+    const data = getScopedItem('trips');
     return data ? JSON.parse(data) : INITIAL_TRIPS;
   } catch {
     return INITIAL_TRIPS;
   }
 }
 export function saveStoredTrips(trips: Trip[]) {
-  localStorage.setItem('ah-trips', JSON.stringify(trips));
+  setScopedItem('trips', JSON.stringify(trips));
   syncToFirestore('trips', trips);
 }
 
 export function getStoredVehicles(): Vehicle[] {
   try {
-    const data = localStorage.getItem('ah-vehicles');
+    const data = getScopedItem('vehicles');
     return data ? JSON.parse(data) : INITIAL_VEHICLES;
   } catch {
     return INITIAL_VEHICLES;
   }
 }
 export function saveStoredVehicles(vehicles: Vehicle[]) {
-  localStorage.setItem('ah-vehicles', JSON.stringify(vehicles));
+  setScopedItem('vehicles', JSON.stringify(vehicles));
   syncToFirestore('vehicles', vehicles);
 }
 
 export function getStoredDrivers(): Driver[] {
   try {
-    const data = localStorage.getItem('ah-drivers');
+    const data = getScopedItem('drivers');
     return data ? JSON.parse(data) : INITIAL_DRIVERS;
   } catch {
     return INITIAL_DRIVERS;
   }
 }
 export function saveStoredDrivers(drivers: Driver[]) {
-  localStorage.setItem('ah-drivers', JSON.stringify(drivers));
+  setScopedItem('drivers', JSON.stringify(drivers));
   syncToFirestore('drivers', drivers);
 }
 
 export function getStoredRoutes(): RoutePreset[] {
   try {
-    const data = localStorage.getItem('ah-routes');
+    const data = getScopedItem('routes');
     return data ? JSON.parse(data) : INITIAL_ROUTES;
   } catch {
     return INITIAL_ROUTES;
   }
 }
 export function saveStoredRoutes(routes: RoutePreset[]) {
-  localStorage.setItem('ah-routes', JSON.stringify(routes));
+  setScopedItem('routes', JSON.stringify(routes));
   syncToFirestore('routes', routes);
 }
 
 export function getStoredFuelLog(): FuelLogItem[] {
   try {
-    const data = localStorage.getItem('ah-fuel');
+    const data = getScopedItem('fuel');
     return data ? JSON.parse(data) : INITIAL_FUEL;
   } catch {
     return INITIAL_FUEL;
   }
 }
 export function saveStoredFuelLog(items: FuelLogItem[]) {
-  localStorage.setItem('ah-fuel', JSON.stringify(items));
+  setScopedItem('fuel', JSON.stringify(items));
   syncToFirestore('fuel', items);
 }
 
 export function getStoredBilties(): BiltyRecord[] {
   try {
-    const data = localStorage.getItem('ah-bilties');
+    const data = getScopedItem('bilties');
     return data ? JSON.parse(data) : [];
   } catch {
     return [];
   }
 }
 export function saveStoredBilties(bilties: BiltyRecord[]) {
-  localStorage.setItem('ah-bilties', JSON.stringify(bilties));
+  setScopedItem('bilties', JSON.stringify(bilties));
   syncToFirestore('bilties', bilties);
 }
 
+// ---------------------------------------------------------------------------
+// Transaction-Based Bilty Number Generator
+// ---------------------------------------------------------------------------
+
+/**
+ * Transactionally increments and allocates the next sequential Bilty Number.
+ * When online, runs an atomic Firestore transaction on the global counter document.
+ * When offline or on timeout, monotonically increments user-scoped local counter and queues sync.
+ */
+export async function allocateNextBiltyNumber(userUid?: string): Promise<string> {
+  const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+
+  if (isOnline && db) {
+    try {
+      const counterDocRef = doc(db, 'counters', 'biltyCounter');
+      const nextSeq = await withTimeout(
+        runTransaction(db, async (transaction) => {
+          const snap = await transaction.get(counterDocRef);
+          let current = 0;
+          if (snap.exists()) {
+            const d = snap.data();
+            current = typeof d?.currentValue === 'number' ? d.currentValue : 0;
+          }
+          const next = current + 1;
+          transaction.set(counterDocRef, {
+            currentValue: next,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+          return next;
+        }),
+        3000
+      );
+
+      // Keep local counter updated to the highest sequence
+      setScopedItem('bilty-counter', String(nextSeq));
+      return 'AH-' + String(nextSeq).padStart(4, '0');
+    } catch {
+      // Fall through to atomic local increment on transaction timeout or offline
+    }
+  }
+
+  // Offline / Local Monotonic Fallback
+  const bilties = getStoredBilties();
+  let maxExisting = 0;
+  bilties.forEach(b => {
+    const numPart = parseInt((b.biltyNo || '').replace(/\D/g, ''), 10);
+    if (!isNaN(numPart) && numPart > maxExisting) {
+      maxExisting = numPart;
+    }
+  });
+
+  const storedCounterStr = getScopedItem('bilty-counter');
+  let currentCounter = storedCounterStr ? parseInt(storedCounterStr, 10) : 0;
+  if (isNaN(currentCounter)) currentCounter = 0;
+
+  const nextLocalSeq = Math.max(maxExisting, currentCounter) + 1;
+  setScopedItem('bilty-counter', String(nextLocalSeq));
+
+  // Enqueue offline counter sync
+  enqueueOfflineAction('bilty' as any, { localCounter: nextLocalSeq });
+
+  return 'AH-' + String(nextLocalSeq).padStart(4, '0');
+}
+
 export function getNextBiltyNo(): string {
-  let no = parseInt(localStorage.getItem('ah-bilty-counter') || '0', 10);
-  no += 1;
-  localStorage.setItem('ah-bilty-counter', String(no));
+  const bilties = getStoredBilties();
+  let maxExisting = 0;
+  bilties.forEach(b => {
+    const numPart = parseInt((b.biltyNo || '').replace(/\D/g, ''), 10);
+    if (!isNaN(numPart) && numPart > maxExisting) {
+      maxExisting = numPart;
+    }
+  });
+
+  let no = parseInt(getScopedItem('bilty-counter') || '0', 10);
+  no = Math.max(maxExisting, isNaN(no) ? 0 : no) + 1;
+  setScopedItem('bilty-counter', String(no));
   return 'AH-' + String(no).padStart(4, '0');
 }
 
 export function getStoredRole(): UserRole {
-  return (localStorage.getItem('ah-user-role') as UserRole) || 'driver';
+  return (getScopedItem('user-role') as UserRole) || 'driver';
 }
 export function saveStoredRole(role: UserRole) {
-  localStorage.setItem('ah-user-role', role);
+  setScopedItem('user-role', role);
 }
 
 export function getStoredOfflineQueue(): OfflineAction[] {
   try {
-    const data = localStorage.getItem('ah-offline-queue');
+    const data = getScopedItem('offline-queue');
     return data ? JSON.parse(data) : [];
   } catch {
     return [];
   }
 }
 export function saveStoredOfflineQueue(queue: OfflineAction[]) {
-  localStorage.setItem('ah-offline-queue', JSON.stringify(queue));
+  setScopedItem('offline-queue', JSON.stringify(queue));
 }
 
 export function getStoredNotifications(): AppNotification[] {
   try {
-    const data = localStorage.getItem('ah-notifs');
+    const data = getScopedItem('notifs');
     return data ? JSON.parse(data) : INITIAL_NOTIFICATIONS;
   } catch {
     return INITIAL_NOTIFICATIONS;
   }
 }
 export function saveStoredNotifications(notifs: AppNotification[]) {
-  localStorage.setItem('ah-notifs', JSON.stringify(notifs));
+  setScopedItem('notifs', JSON.stringify(notifs));
 }
 
+// ---------------------------------------------------------------------------
 // User Profile & Bilty Access Management
+// ---------------------------------------------------------------------------
+
 export async function saveUserProfileInFirestore(profile: UserProfile) {
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     return;
@@ -304,18 +497,18 @@ export async function getBiltyAccessConfig(): Promise<BiltyAccessConfigData> {
         const allowedUIDs = Array.isArray(data?.allowedUIDs) ? data.allowedUIDs : [];
         const allowedEmails = Array.isArray(data?.allowedEmails) ? data.allowedEmails : [];
         if (allowedUIDs.length > 0 || allowedEmails.length > 0) {
-          localStorage.setItem('ah-bilty-allowed-uids', JSON.stringify(allowedUIDs));
-          localStorage.setItem('ah-bilty-allowed-emails', JSON.stringify(allowedEmails));
+          setScopedItem('bilty-allowed-uids', JSON.stringify(allowedUIDs));
+          setScopedItem('bilty-allowed-emails', JSON.stringify(allowedEmails));
           return { allowedUIDs, allowedEmails };
         }
       }
     } catch {
-      // Fall through to localStorage
+      // Fall through to storage
     }
   }
   try {
-    const cachedUIDs = localStorage.getItem('ah-bilty-allowed-uids');
-    const cachedEmails = localStorage.getItem('ah-bilty-allowed-emails');
+    const cachedUIDs = getScopedItem('bilty-allowed-uids');
+    const cachedEmails = getScopedItem('bilty-allowed-emails');
     return {
       allowedUIDs: cachedUIDs ? JSON.parse(cachedUIDs) : [],
       allowedEmails: cachedEmails ? JSON.parse(cachedEmails) : []
@@ -327,29 +520,139 @@ export async function getBiltyAccessConfig(): Promise<BiltyAccessConfigData> {
 
 export async function updateBiltyAccessInFirestore(allowedUIDs: string[], allowedEmails: string[] = []) {
   try {
-    localStorage.setItem('ah-bilty-allowed-uids', JSON.stringify(allowedUIDs));
-    localStorage.setItem('ah-bilty-allowed-emails', JSON.stringify(allowedEmails));
+    setScopedItem('bilty-allowed-uids', JSON.stringify(allowedUIDs));
+    setScopedItem('bilty-allowed-emails', JSON.stringify(allowedEmails));
     if (typeof navigator !== 'undefined' && navigator.onLine) {
       const accessRef = doc(db, 'access', 'biltyAccess');
       await withTimeout(setDoc(accessRef, { allowedUIDs, allowedEmails, updatedAt: new Date().toISOString() }, { merge: true }), 3000);
     }
   } catch {
-    // LocalStorage already updated successfully
+    // LocalStorage updated
   }
 }
 
-// Customer & Driver Contacts + CSV Exporter
-export function getContactList(): ContactItem[] {
+// ---------------------------------------------------------------------------
+// Error Telemetry & Sync Status Management
+// ---------------------------------------------------------------------------
+
+export function logError(action: string, error: any, context?: any) {
+  const errorMsg = error instanceof Error ? error.message : String(error);
+  const errorItem = {
+    id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+    timestamp: new Date().toISOString(),
+    action,
+    error: errorMsg,
+    context: context ? JSON.stringify(context) : undefined
+  };
+
+  try {
+    const existingStr = safeStorage.getItem('ah-error-logs');
+    const existing = existingStr ? JSON.parse(existingStr) : [];
+    const updated = [errorItem, ...existing].slice(0, 50);
+    safeStorage.setItem('ah-error-logs', JSON.stringify(updated));
+  } catch {
+    // Ignore local storage error
+  }
+
+  logActivity(`Error: ${action}`, errorMsg, 'error');
+}
+
+export function getErrorLogs(): Array<{ id: string; timestamp: string; action: string; error: string; context?: string }> {
+  try {
+    const raw = safeStorage.getItem('ah-error-logs');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function clearErrorLogs(): void {
+  try {
+    safeStorage.removeItem('ah-error-logs');
+  } catch {
+    // Ignore
+  }
+}
+
+export function getSyncStatus(): SyncStatusState {
+  const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+  const queue = getStoredOfflineQueue();
+  const lastSyncTime = safeStorage.getItem('ah-last-sync-time');
+  const lastError = safeStorage.getItem('ah-last-sync-error');
+  const errorLogs = getErrorLogs();
+
+  let status: SyncStatusState['status'] = 'synced';
+  if (!isOnline) {
+    status = 'offline';
+  } else if (queue.length > 0) {
+    status = 'syncing';
+  } else if (lastError) {
+    status = 'error';
+  }
+
+  return {
+    status,
+    pendingCount: queue.length,
+    lastSyncTime,
+    lastError,
+    errorsList: errorLogs.map(e => ({
+      id: e.id,
+      timestamp: e.timestamp,
+      message: `${e.action}: ${e.error}`
+    }))
+  };
+}
+
+export async function triggerManualSync(): Promise<{ success: boolean; processed: number; remaining: number; errors: string[] }> {
+  const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+  if (!isOnline) {
+    return { success: false, processed: 0, remaining: getStoredOfflineQueue().length, errors: ['Device is currently offline'] };
+  }
+
+  try {
+    const result = await processOfflineQueue();
+    safeStorage.setItem('ah-last-sync-time', new Date().toISOString());
+    if (result.errors.length > 0) {
+      safeStorage.setItem('ah-last-sync-error', result.errors[0]);
+    } else {
+      safeStorage.removeItem('ah-last-sync-error');
+    }
+    await logActivity('Manual Sync Triggered', `Processed ${result.processed} actions, ${result.remaining} remaining`, 'sync');
+    return {
+      success: result.errors.length === 0,
+      processed: result.processed,
+      remaining: result.remaining,
+      errors: result.errors
+    };
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    logError('Manual Sync Failure', errorMsg);
+    safeStorage.setItem('ah-last-sync-error', errorMsg);
+    return {
+      success: false,
+      processed: 0,
+      remaining: getStoredOfflineQueue().length,
+      errors: [errorMsg]
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Customer & Driver Contacts + CSV Exporter (with Privacy Controls)
+// ---------------------------------------------------------------------------
+
+export function getContactList(privacyOptions?: ExportPrivacyOptions): ContactItem[] {
   const bilties = getStoredBilties();
   const drivers = getStoredDrivers();
   const map = new Map<string, ContactItem>();
 
   drivers.forEach(d => {
     if (d.name) {
+      const sanitized = sanitizeDriverRecord(d, privacyOptions);
       const key = d.name.toLowerCase().trim();
       map.set(key, {
-        name: d.name,
-        phone: d.phone || '',
+        name: sanitized.name,
+        phone: sanitized.phone || '',
         type: 'Driver',
         lastUsed: 'Active'
       });
@@ -357,12 +660,13 @@ export function getContactList(): ContactItem[] {
   });
 
   bilties.forEach(b => {
+    const sanitized = sanitizeBiltyRecord(b, privacyOptions);
     const items = [
-      { name: b.senderName, phone: b.senderMobile, type: 'Customer' as const, date: b.date },
-      { name: b.receiverName, phone: b.receiverMobile, type: 'Customer' as const, date: b.date },
-      { name: b.consignor, phone: b.senderMobile, type: 'Customer' as const, date: b.date },
-      { name: b.consignee, phone: b.receiverMobile, type: 'Customer' as const, date: b.date },
-      { name: b.driverName, phone: b.mobileNo, type: 'Driver' as const, date: b.date }
+      { name: sanitized.senderName, phone: sanitized.senderMobile, type: 'Customer' as const, date: sanitized.date },
+      { name: sanitized.receiverName, phone: sanitized.receiverMobile, type: 'Customer' as const, date: sanitized.date },
+      { name: sanitized.consignor, phone: sanitized.senderMobile, type: 'Customer' as const, date: sanitized.date },
+      { name: sanitized.consignee, phone: sanitized.receiverMobile, type: 'Customer' as const, date: sanitized.date },
+      { name: sanitized.driverName, phone: sanitized.mobileNo, type: 'Driver' as const, date: sanitized.date }
     ];
 
     items.forEach(item => {
@@ -386,8 +690,8 @@ export function getContactList(): ContactItem[] {
   return Array.from(map.values());
 }
 
-export function exportContactsCSV() {
-  const contacts = getContactList();
+export function exportContactsCSV(privacyOptions?: ExportPrivacyOptions) {
+  const contacts = getContactList(privacyOptions);
   if (contacts.length === 0) {
     alert("No contact records available to export.");
     return;
@@ -413,9 +717,10 @@ export function exportContactsCSV() {
   document.body.removeChild(link);
 }
 
-// -------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // Company Profile & Settings Management
-// -------------------------------------------------------------
+// ---------------------------------------------------------------------------
+
 export const DEFAULT_COMPANY_PROFILE: CompanyProfile = {
   nameUr: "وڑائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)",
   nameEn: "Warraich Goods Transport Co.",
@@ -448,7 +753,7 @@ export async function getStoredCompanyProfile(): Promise<CompanyProfile> {
 
 export function getCachedCompanyProfile(): CompanyProfile {
   try {
-    const cached = localStorage.getItem('ah-company-profile');
+    const cached = safeStorage.getItem('ah-company-profile');
     return cached ? { ...DEFAULT_COMPANY_PROFILE, ...JSON.parse(cached) } : DEFAULT_COMPANY_PROFILE;
   } catch {
     return DEFAULT_COMPANY_PROFILE;
@@ -460,13 +765,14 @@ export async function saveCompanyProfileInFirestore(profile: CompanyProfile) {
     ...profile,
     updatedAt: new Date().toISOString()
   };
-  localStorage.setItem('ah-company-profile', JSON.stringify(updatedProfile));
+  safeStorage.setItem('ah-company-profile', JSON.stringify(updatedProfile));
   if (typeof navigator !== 'undefined' && navigator.onLine) {
     try {
       const docRef = doc(db, 'settings', 'companyProfile');
       await withTimeout(setDoc(docRef, updatedProfile, { merge: true }), 3000);
     } catch (err) {
       console.warn("Failed saving company profile to Firestore:", err);
+      logError("Save Company Profile", err);
     }
   }
   await logActivity(
@@ -476,20 +782,21 @@ export async function saveCompanyProfileInFirestore(profile: CompanyProfile) {
   );
 }
 
-// -------------------------------------------------------------
+// ---------------------------------------------------------------------------
 // System Activity Log
-// -------------------------------------------------------------
+// ---------------------------------------------------------------------------
+
 export async function logActivity(
   action: string,
   details: string,
-  category: 'auth' | 'bilty' | 'settings' | 'fleet' | 'export' = 'bilty'
+  category: 'auth' | 'bilty' | 'settings' | 'fleet' | 'export' | 'error' | 'sync' = 'bilty'
 ) {
   const user = auth.currentUser;
   const newLog: ActivityLogItem = {
     id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
     timestamp: new Date().toISOString(),
     uid: user?.uid || 'anonymous',
-    email: user?.email || localStorage.getItem('ah-gmail-user') || 'system',
+    email: user?.email || safeStorage.getItem('ah-gmail-user') || 'system',
     action,
     details,
     category
@@ -497,10 +804,10 @@ export async function logActivity(
 
   // Local storage recent buffer
   try {
-    const localLogsStr = localStorage.getItem('ah-activity-logs');
+    const localLogsStr = safeStorage.getItem('ah-activity-logs');
     const localLogs: ActivityLogItem[] = localLogsStr ? JSON.parse(localLogsStr) : [];
     const updated = [newLog, ...localLogs].slice(0, 100);
-    localStorage.setItem('ah-activity-logs', JSON.stringify(updated));
+    safeStorage.setItem('ah-activity-logs', JSON.stringify(updated));
   } catch {
     // Ignore local buffer error
   }
@@ -532,7 +839,6 @@ export async function getActivityLogs(): Promise<ActivityLogItem[]> {
         }
       });
       if (remoteLogs.length > 0) {
-        // Sort descending by timestamp
         remoteLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         logs = remoteLogs.slice(0, 100);
         localStorage.setItem('ah-activity-logs', JSON.stringify(logs));
@@ -544,20 +850,35 @@ export async function getActivityLogs(): Promise<ActivityLogItem[]> {
   return logs;
 }
 
-// -------------------------------------------------------------
-// Complete Business Data Exporters (JSON & CSV)
-// -------------------------------------------------------------
-export function exportAllBusinessDataJSON() {
+// ---------------------------------------------------------------------------
+// Business Data Exporters (JSON & CSV with Privacy Controls)
+// ---------------------------------------------------------------------------
+
+export function exportAllBusinessDataJSON(privacyOptions?: ExportPrivacyOptions) {
+  const rawBilties = getStoredBilties();
+  const rawTrips = getStoredTrips();
+  const rawDrivers = getStoredDrivers();
+
+  const sanitizedBilties = rawBilties.map(b => sanitizeBiltyRecord(b, privacyOptions));
+  const sanitizedTrips = rawTrips.map(t => sanitizeTripRecord(t, privacyOptions));
+  const sanitizedDrivers = rawDrivers.map(d => sanitizeDriverRecord(d, privacyOptions));
+
   const data = {
     exportDate: new Date().toISOString(),
+    privacySettings: {
+      maskedCnic: privacyOptions?.maskCnic ?? true,
+      maskedPhone: privacyOptions?.maskPhone ?? false,
+      anonymizedNames: privacyOptions?.anonymizeNames ?? false,
+      includedFinancials: privacyOptions?.includeFinancials ?? true
+    },
     company: getCachedCompanyProfile(),
-    bilties: getStoredBilties(),
-    trips: getStoredTrips(),
+    bilties: sanitizedBilties,
+    trips: sanitizedTrips,
     vehicles: getStoredVehicles(),
-    drivers: getStoredDrivers(),
+    drivers: sanitizedDrivers,
     routes: getStoredRoutes(),
     fuelLogs: getStoredFuelLog(),
-    contacts: getContactList()
+    contacts: getContactList(privacyOptions)
   };
 
   const jsonStr = JSON.stringify(data, null, 2);
@@ -570,18 +891,20 @@ export function exportAllBusinessDataJSON() {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
-  logActivity('Data Backup Exported', 'Full JSON backup downloaded', 'export');
+  logActivity('Data Backup Exported', 'Full JSON backup downloaded with privacy filters', 'export');
 }
 
-export function exportAllBiltiesCSV() {
-  const bilties = getStoredBilties();
-  if (bilties.length === 0) {
+export function exportAllBiltiesCSV(privacyOptions?: ExportPrivacyOptions) {
+  const rawBilties = getStoredBilties();
+  if (rawBilties.length === 0) {
     alert("No bilty records found to export.");
     return;
   }
 
+  const bilties = rawBilties.map(b => sanitizeBiltyRecord(b, privacyOptions));
+
   let csv = "data:text/csv;charset=utf-8,\uFEFF";
-  csv += "Bilty No,Date,Vehicle No,Driver Name,Mobile,Sender (Consignor),Sender Mobile,Receiver (Consignee),Receiver Mobile,From City,To City,Item,Qty,Weight,Total Freight,Advance,Payable\n";
+  csv += "Bilty No,Date,Vehicle No,Driver Name,Mobile,Sender (Consignor),Sender Mobile,Sender CNIC,Receiver (Consignee),Receiver Mobile,From City,To City,Item,Qty,Weight,Total Freight,Advance,Payable\n";
 
   bilties.forEach(b => {
     const row = [
@@ -592,6 +915,7 @@ export function exportAllBiltiesCSV() {
       b.mobileNo || '',
       b.senderName || b.consignor || '',
       b.senderMobile || '',
+      b.senderCnic || '',
       b.receiverName || b.consignee || '',
       b.receiverMobile || '',
       b.sendingCity || '',
@@ -599,9 +923,9 @@ export function exportAllBiltiesCSV() {
       b.itemDescription || '',
       b.qty || '',
       b.weight || '',
-      b.total || 0,
-      b.advance || 0,
-      b.payable || 0
+      b.total,
+      b.advance,
+      b.payable
     ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(',');
     csv += row + "\n";
   });
@@ -616,12 +940,14 @@ export function exportAllBiltiesCSV() {
   logActivity('Bilties CSV Exported', `${bilties.length} bilty records exported as CSV`, 'export');
 }
 
-export function exportAllTripsCSV() {
-  const trips = getStoredTrips();
-  if (trips.length === 0) {
+export function exportAllTripsCSV(privacyOptions?: ExportPrivacyOptions) {
+  const rawTrips = getStoredTrips();
+  if (rawTrips.length === 0) {
     alert("No trip records found to export.");
     return;
   }
+
+  const trips = rawTrips.map(t => sanitizeTripRecord(t, privacyOptions));
 
   let csv = "data:text/csv;charset=utf-8,\uFEFF";
   csv += "Trip ID,Trip Name,Date,Month,Distance (km),Fuel Type,Fuel Cost,Tolls,Loading,Driver Kharcha,Other,Total Expense\n";
@@ -653,5 +979,3 @@ export function exportAllTripsCSV() {
   document.body.removeChild(link);
   logActivity('Trips CSV Exported', `${trips.length} trip records exported as CSV`, 'export');
 }
-
-

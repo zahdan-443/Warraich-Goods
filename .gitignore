@@ -10,3 +10,14 @@ firebase-applet-config.json
 !firebase-applet-config.example.json
 *.jks
 *.keystore
+*.p12
+*.key
+*.pem
+*.crt
+keystores/
+android/keystores/
+android/app/*.keystore
+android/app/*.jks
+android/app/google-services.json
+firebase-debug.log*
+firestore-debug.log*

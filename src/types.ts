@@ -130,6 +130,21 @@ export interface CompanyProfile {
   updatedAt?: string;
 }
 
+export interface ExportPrivacyOptions {
+  maskCnic?: boolean;
+  maskPhone?: boolean;
+  includeFinancials?: boolean;
+  anonymizeNames?: boolean;
+}
+
+export interface SyncStatusState {
+  status: 'online' | 'offline' | 'syncing' | 'error' | 'synced';
+  pendingCount: number;
+  lastSyncTime: string | null;
+  lastError: string | null;
+  errorsList: Array<{ id: string; timestamp: string; message: string; retryCount?: number }>;
+}
+
 export interface ActivityLogItem {
   id: string;
   timestamp: string;
@@ -137,7 +152,7 @@ export interface ActivityLogItem {
   email: string;
   action: string;
   details: string;
-  category?: 'auth' | 'bilty' | 'settings' | 'fleet' | 'export';
+  category?: 'auth' | 'bilty' | 'settings' | 'fleet' | 'export' | 'error' | 'sync';
 }
 
 export interface UserProfile {
@@ -157,10 +172,11 @@ export interface ContactItem {
 }
 
 export interface OfflineAction {
-  id: number;
-  type: 'trip' | 'vehicle' | 'driver' | 'fuel';
+  id: number | string;
+  type: 'trip' | 'vehicle' | 'driver' | 'fuel' | 'bilty' | 'settings' | 'routes';
   data: any;
   timestamp: string;
+  retryCount?: number;
 }
 
 export interface AppNotification {
@@ -174,24 +190,38 @@ export interface AppNotification {
 
 export type TollCity = 
   | 'Karachi'
+  | 'Hyderabad'
   | 'Sukkur'
   | 'Rahim Yar Khan'
+  | 'Bahawalpur'
   | 'Multan'
+  | 'Sahiwal'
   | 'Samundri'
   | 'Faisalabad'
+  | 'Sargodha'
   | 'Lahore'
   | 'Gujranwala'
+  | 'Sialkot'
   | 'Rawalpindi'
-  | 'Peshawar';
+  | 'Islamabad'
+  | 'Peshawar'
+  | 'Abbottabad'
+  | 'Swat'
+  | 'Quetta'
+  | 'Gwadar'
+  | 'DIKhan'
+  | 'Gilgit';
 
-export type TollVehicleClass = 'car' | 'wagon' | 'bus' | 'truck' | 'articulated';
+export type TollVehicleClass = 'bike' | 'car' | 'wagon' | 'coaster' | 'bus' | 'truck' | 'articulated';
 
 export interface MotorwayRate {
   name: string;
   total_km: number;
   rates: {
+    bike?: number;
     car: number;
     wagon: number;
+    coaster?: number;
     bus: number;
     truck: number;
     articulated: number;
@@ -202,8 +232,10 @@ export interface M2Rate {
   name: string;
   total_km: number;
   per_km_rate: {
+    bike?: number;
     car: number;
     wagon: number;
+    coaster?: number;
     bus: number;
     truck: number;
     articulated: number;
@@ -213,8 +245,10 @@ export interface M2Rate {
 export interface HighwayRate {
   name: string;
   per_plaza_rate: {
+    bike: number;
     car: number;
     wagon: number;
+    coaster?: number;
     bus: number;
     truck: number;
     articulated: number;
@@ -228,16 +262,22 @@ export interface TollRatesConfig {
     M3: MotorwayRate;
     M4: MotorwayRate;
     M5: MotorwayRate;
+    M9?: MotorwayRate;
+    M11?: MotorwayRate;
+    M14?: MotorwayRate;
+    M15?: MotorwayRate;
+    M16?: MotorwayRate;
   };
   highways: {
     N5: HighwayRate;
+    N55?: HighwayRate;
   };
   updatedAt?: string;
   updatedBy?: string;
 }
 
 export interface MotorwaySegment {
-  code: 'M1' | 'M2' | 'M3' | 'M4' | 'M5';
+  code: 'M1' | 'M2' | 'M3' | 'M4' | 'M5' | 'M9' | 'M11' | 'M14' | 'M15' | 'M16';
   nameEn: string;
   nameUr: string;
   km: number;
@@ -443,6 +483,32 @@ export const DICTIONARY = {
       approxNote: "Toll amounts are based on NHA tariffs (revised 2026). Rates can be adjusted by the Owner in the Control Panel.",
       applyToTrip: "Apply to Trip Calculator",
       copied: "Toll breakdown copied to clipboard!"
+    },
+    vehicleAccount: {
+      title: "Vehicle Trip Account & Net Profit",
+      subtitle: "Record freight earnings, trip expenses, and compute net profit ledger",
+      vehicleSelector: "Select or Enter Vehicle Reg No:",
+      incomeSection: "1. Freight Incomes & Karaya",
+      addIncome: "Add Freight / Karaya",
+      totalIncome: "Total Freight Earnings:",
+      expenseSection: "2. Detailed Trip Expenses",
+      addExpense: "Add Custom Expense",
+      diesel: "1. Diesel Fuel Expense",
+      toll: "2. Toll Plaza & Motorway Tax",
+      challan: "3. Traffic Challan & Penalties",
+      roti: "4. Driver Food & Daily Kharcha",
+      chowkidara: "5. Chowkidari & Parking",
+      gariKaam: "6. Vehicle Repair & Maintenance",
+      driverCommission: "7. Driver Commission / Wage",
+      customLabel: "Custom Expense Title",
+      totalExpenses: "Total Trip Expenses:",
+      netProfit: "Net Profit / Savings",
+      netDeficit: "Net Deficit / Loss",
+      whatsappShare: "WhatsApp Ledger",
+      pdfDownload: "Download PDF Ledger",
+      saveDiary: "Save to Safar Diary",
+      resetBtn: "Clear Fields",
+      savedSuccess: "Vehicle account successfully saved to Safar Diary."
     }
   },
   ur: {
@@ -654,6 +720,32 @@ export const DICTIONARY = {
       approxNote: "ٹول کی رقوم این ایچ اے 2026ء کے نرخوں کے مطابق ہیں۔ اونر کنٹرول پینل سے کسی بھی وقت ریٹس تبدیل کیے جا سکتے ہیں۔",
       applyToTrip: "سفر خرچ کیلکولیٹر میں لگائیں",
       copied: "ٹول تفصیلات کاپی ہو گئیں!"
+    },
+    vehicleAccount: {
+      title: "گاڑی کا تفصیلی حساب و آمدن",
+      subtitle: "کرایہ (آمدن) اور تمام سفری اخراجات درج کر کے خالص بچت کا حساب لگائیں",
+      vehicleSelector: "گاڑی منتخب کریں یا نمبر درج کریں:",
+      incomeSection: "1. حاصل شدہ آمدن و کرایہ جات",
+      addIncome: "نیا کرایہ شامل کریں",
+      totalIncome: "کل حاصل شدہ آمدن (کل کرایہ):",
+      expenseSection: "2. تمام سفری اخراجات کی تفصیل",
+      addExpense: "اضافی خرچہ درج کریں",
+      diesel: "1. ڈیزل خرچہ (ایندھن)",
+      toll: "2. ٹول پلازہ موٹروے ٹیکس",
+      challan: "3. ٹریفک چالان و جرمانہ",
+      roti: "4. روٹی خرچہ (ڈرائیور خوراک)",
+      chowkidara: "5. چوکیداری و اڈا پارکنگ",
+      gariKaam: "6. گاڑی کا کام و مرمت",
+      driverCommission: "7. ڈرائیور کمیشن و اجرت",
+      customLabel: "اضافی خرچہ کا نام",
+      totalExpenses: "کل سفری اخراجات:",
+      netProfit: "خالص بچت و منافع",
+      netDeficit: "خسارہ / بقایا خرچہ",
+      whatsappShare: "واٹس ایپ رپورٹ",
+      pdfDownload: "پی ڈی ایف لیجر",
+      saveDiary: "ڈائری میں محفوظ کریں",
+      resetBtn: "صاف کریں",
+      savedSuccess: "گاڑی کا حساب سفر ڈائری میں کامیابی سے محفوظ ہو گیا ہے۔"
     }
   }
 };

@@ -81,6 +81,15 @@
         "driverName": { "type": "string" }
       }
     },
+    "CounterData": {
+      "title": "CounterData",
+      "description": "Sequential counter value",
+      "type": "object",
+      "properties": {
+        "currentValue": { "type": "number" },
+        "updatedAt": { "type": "string" }
+      }
+    },
     "CompanyProfile": {
       "title": "CompanyProfile",
       "description": "Company branding, contact info, and registration details",
@@ -120,6 +129,14 @@
       "schema": "UserProfile",
       "description": "User profiles"
     },
+    "/users/{userId}/collections/{collectionId}": {
+      "schema": "UserData",
+      "description": "User isolated nested collections for trips, vehicles, drivers, routes, fuel, and bilties"
+    },
+    "/admins/{adminId}": {
+      "schema": "UserProfile",
+      "description": "System administrator and fleet owner records"
+    },
     "/access/biltyAccess": {
       "schema": "BiltyAccess",
       "description": "Global access configuration for bilty feature"
@@ -127,6 +144,10 @@
     "/bilties/{biltyId}": {
       "schema": "BiltyRecord",
       "description": "Global bilty documents for authorized creation and access"
+    },
+    "/counters/{counterId}": {
+      "schema": "CounterData",
+      "description": "Transaction-based sequential counters for bilty and invoice numbering"
     },
     "/settings/companyProfile": {
       "schema": "CompanyProfile",

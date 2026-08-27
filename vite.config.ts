@@ -32,16 +32,14 @@ export default defineConfig(() => {
           'splash.png',
           'splash-screen.png',
           'toll-icon.png',
-          'toll_icon.png',
-          'warraich-release-key.jks',
-          'warraich-release-key.keystore'
+          'toll_icon.png'
         ],
         workbox: {
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           skipWaiting: true,
           maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2,jks,keystore}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
           navigateFallback: 'index.html',
           navigateFallbackDenylist: [/^\/api/],
           runtimeCaching: [
