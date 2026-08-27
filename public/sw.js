@@ -7,12 +7,12 @@
    - Background Sync for Offline Bilty & Transport Logs
    ========================================================================== */
 
-const CACHE_NAME = 'warraich-goods-v7';
+const CACHE_NAME = 'warraich-goods-v8';
 const STATIC_ASSETS = [
   '/',
-  './',
   '/index.html',
   '/manifest.json',
+  '/manifest.webmanifest',
   '/logo.png',
   '/app-icon.png',
   '/icon-192.png',
@@ -147,10 +147,10 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Warraich Goods Transport Co.';
   const options = {
     body: data.body || 'New transport system alert',
-    icon: './icon-192.png',
-    badge: './icon-192.png',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
     vibrate: [200, 100, 200],
-    data: data.url || './',
+    data: data.url || '/',
     tag: data.tag || 'wg-push-alert'
   };
   event.waitUntil(self.registration.showNotification(title, options));
@@ -159,7 +159,7 @@ self.addEventListener('push', (event) => {
 // Notification Click Event: Focus app window or open
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = event.notification.data?.url || './';
+  const targetUrl = event.notification.data?.url || '/';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
       for (let client of windowClients) {

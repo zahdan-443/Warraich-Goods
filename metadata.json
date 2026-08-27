@@ -1,6 +1,6 @@
 {
   "name": "Warraich Goods",
-  "description": "Road Freight Toolkit for trip cost calculation, fleet management, driver directories, saved routes, and verification portals.",
+  "description": "Comprehensive bilingual (Urdu & English) cargo transport, fleet management, and digital Bilty generator system for Warraich Goods logistics.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

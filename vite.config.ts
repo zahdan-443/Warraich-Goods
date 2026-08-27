@@ -6,11 +6,12 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: './',
+    base: '/',
     plugins: [
       react(),
       tailwindcss(),
       VitePWA({
+        filename: 'manifest.json',
         registerType: 'autoUpdate',
         injectRegister: 'auto',
         includeAssets: [
@@ -40,7 +41,7 @@ export default defineConfig(() => {
           skipWaiting: true,
           maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
-          navigateFallback: 'index.html',
+          navigateFallback: '/index.html',
           navigateFallbackDenylist: [/^\/api/],
           runtimeCaching: [
             {
@@ -76,9 +77,9 @@ export default defineConfig(() => {
           name: 'Warraich Goods - Road Freight & Fleet Management',
           short_name: 'Warraich Goods',
           description: 'Comprehensive bilingual (Urdu & English) cargo transport, fleet management, and digital Bilty generator system for Warraich Goods logistics.',
-          id: './?source=pwa',
-          start_url: './',
-          scope: './',
+          id: '/?source=pwa',
+          start_url: '/',
+          scope: '/',
           display: 'standalone',
           display_override: ['standalone', 'window-controls-overlay', 'minimal-ui', 'browser'],
           orientation: 'portrait-primary',
@@ -89,25 +90,25 @@ export default defineConfig(() => {
           categories: ['business', 'productivity', 'utilities', 'logistics'],
           icons: [
             {
-              src: 'icon-192.png',
+              src: '/icon-192.png',
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any'
             },
             {
-              src: 'icon-192.png',
+              src: '/icon-192.png',
               sizes: '192x192',
               type: 'image/png',
               purpose: 'maskable'
             },
             {
-              src: 'icon-512.png',
+              src: '/icon-512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any'
             },
             {
-              src: 'icon-512.png',
+              src: '/icon-512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable'
@@ -115,14 +116,14 @@ export default defineConfig(() => {
           ],
           screenshots: [
             {
-              src: 'screenshot-mobile.png',
+              src: '/screenshot-mobile.png',
               sizes: '540x960',
               type: 'image/png',
               form_factor: 'narrow',
               label: 'Warraich Goods Mobile Fleet & Calculator Screen'
             },
             {
-              src: 'screenshot-desktop.png',
+              src: '/screenshot-desktop.png',
               sizes: '1280x720',
               type: 'image/png',
               form_factor: 'wide',
@@ -134,31 +135,45 @@ export default defineConfig(() => {
               name: 'New Bilty (نئی بلٹی)',
               short_name: 'Bilty',
               description: 'Create a new transport waybill',
-              url: './?tab=bilty',
-              icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }]
+              url: '/?tab=bilty',
+              icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' }]
             },
             {
               name: 'Trip Calculator (کیلکولیٹر)',
               short_name: 'Calculator',
               description: 'Calculate road freight diesel and trip expenses',
-              url: './?tab=calculator',
-              icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }]
+              url: '/?tab=calculator',
+              icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' }]
             },
             {
               name: 'Vehicle Account (گاڑی کا حساب)',
               short_name: 'Account',
               description: 'Post-trip vehicle income and expense ledger',
-              url: './?tab=vehicleAccount',
-              icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }]
+              url: '/?tab=vehicleAccount',
+              icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' }]
             },
             {
               name: 'Safar Diary (سفر ڈائری)',
               short_name: 'Diary',
               description: 'Track driver trips and highway logs',
-              url: './?tab=safar',
-              icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }]
+              url: '/?tab=safar',
+              icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' }]
             }
-          ]
+          ],
+          launch_handler: {
+            client_mode: 'focus-existing'
+          },
+          handle_links: 'preferred',
+          share_target: {
+            action: '/',
+            method: 'GET',
+            params: {
+              title: 'title',
+              text: 'text',
+              url: 'url'
+            }
+          },
+          prefer_related_applications: false
         }
       })
     ],

@@ -42,6 +42,8 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
     };
   }, [isInstalled]);
 
+  const [showManualGuide, setShowManualGuide] = useState<boolean>(false);
+
   const handleInstallClick = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
@@ -52,13 +54,7 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
       setDeferredPrompt(null);
       setShowModal(false);
     } else {
-      // Show instructions for manual install
-      alert(
-        lang === 'ur'
-          ? 'ایپ انسٹال کرنے کے لیے اپنے براؤزر کے مینیو (⋮ یا Share) پر کلک کریں اور "Add to Home Screen" یا "Install App" منتخب کریں۔'
-          : 'To install, open your browser menu (⋮ or Share icon) and tap "Add to Home Screen" or "Install App".'
-      );
-      setShowModal(false);
+      setShowManualGuide(true);
     }
   };
 
@@ -121,6 +117,20 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
               <span>{lang === 'ur' ? 'محفوظ اینڈ ٹو اینڈ گوڈاؤن ریکارڈ' : 'Encrypted & secure offline transport database'}</span>
             </div>
           </div>
+
+          {/* Manual Install Instructions Card */}
+          {showManualGuide && (
+            <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 animate-in fade-in space-y-1">
+              <strong className="block font-bold">
+                {lang === 'ur' ? 'براؤزر سے انسٹال کرنے کا طریقہ:' : 'How to install manually:'}
+              </strong>
+              <p className="text-[11px] leading-relaxed text-amber-800">
+                {lang === 'ur'
+                  ? 'اوپر دائیں کونے میں براؤزر کے تین نقطوں (⋮) یا شیئر (Share) بٹن پر کلک کریں اور "Install app" یا "Add to Home screen" منتخب کریں۔'
+                  : 'Tap your browser menu (⋮ or Share button) and select "Install app" or "Add to Home screen".'}
+              </p>
+            </div>
+          )}
 
           {/* Install Button */}
           <button
