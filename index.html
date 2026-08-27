@@ -22,7 +22,7 @@
       // Immediate ServiceWorker Registration for PWABuilder and PWA installation
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
-          navigator.serviceWorker.register('./sw.js', { scope: './' })
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
             .then(function(reg) {
               console.log('PWA ServiceWorker registered successfully:', reg.scope);
             })
