@@ -29,19 +29,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Noto+Nastaliq+Urdu:wght@400;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
     <script>
-      // PWABuilder & Browser Standard Service Worker Registration
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-          var swPath = './sw.js';
-          navigator.serviceWorker.register(swPath)
-            .then(function(registration) {
-              console.log('Warraich Goods SW registered with scope:', registration.scope);
-              registration.update();
-            })
-            .catch(function(error) {
-              console.warn('Warraich Goods SW registration notice:', error);
-            });
-        });
+        navigator.serviceWorker.register('sw.js')
+          .then(function(reg) {
+            console.log('SW registered:', reg.scope);
+            if (reg.update) reg.update();
+          })
+          .catch(function(err) {
+            console.warn('SW notice:', err);
+          });
       }
     </script>
   </head>
