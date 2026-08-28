@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { getLogoBase64 } from '../../utils/pdfHelper';
+import { getLogoBase64, sharePdfFileOrWhatsApp } from '../../utils/pdfHelper';
 import { validateVehicleAccountFinancials } from '../../utils/calculator';
 
 interface VehicleAccountViewProps {
@@ -205,51 +205,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
     }
   };
 
-  const handleWhatsAppShare = () => {
-    const fmt = (num: number) => 'Rs ' + num.toLocaleString('en-US');
-    let msg = `🚛 *وڑائچ گڈز — گاڑی کا مکمل حساب و منافع رپورٹ*\n` +
-      `🚗 گاڑی نمبر: ${vehicleNo}\n` +
-      `📅 تاریخ: ${new Date().toLocaleDateString('en-PK')}\n\n` +
-      `💵 *آمدن و کرایہ جات (Freight Income):*\n`;
-
-    incomes.forEach((item, idx) => {
-      msg += `• ${item.label}: ${fmt(item.amount || 0)}\n`;
-    });
-    msg += `👉 *کل حاصل آمدن: ${fmt(totalIncome)}*\n\n`;
-
-    msg += `🧾 *اخراجات تفصیل (Trip Expenses):*\n` +
-      `⛽ ڈیزل خرچہ: ${fmt(dieselVal)}\n` +
-      `🛣️ ٹول پلازہ: ${fmt(tollVal)}\n` +
-      `🚔 چالان: ${fmt(challanVal)}\n` +
-      `🍲 روٹی خرچہ: ${fmt(rotiVal)}\n` +
-      `🛡️ چوکیداری / پارکنگ: ${fmt(chowkidaraVal)}\n` +
-      `🔧 گاڑی کا کام / مرمت: ${fmt(gariKaamVal)}\n` +
-      `👨‍✈️ ڈرائیور کمیشن: ${fmt(commissionVal)}\n`;
-
-    if (customExpenses.length > 0) {
-      customExpenses.forEach((item) => {
-        if (item.amount > 0) {
-          msg += `• ${item.label}: ${fmt(item.amount)}\n`;
-        }
-      });
-    }
-
-    msg += `👉 *کل واصل خرچہ: ${fmt(grandTotalExpenses)}*\n\n`;
-
-    if (netProfit >= 0) {
-      msg += `💰 *خالص بچت / نفع (Net Profit): ${fmt(netProfit)}* 🟢\n\n`;
-    } else {
-      msg += `⚠️ *خسارہ / بقایا خرچہ (Deficit): ${fmt(Math.abs(netProfit))}* 🔴\n\n`;
-    }
-
-    msg += `📞 وڑائچ گڈز ٹرانسپورٹ کمپنی: 0300-5370443`;
-
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
-  };
-
-  const handleExportPDF = async () => {
-    if (isExportingPdf) return;
-    setIsExportingPdf(true);
+  const generateAccountPdf = async (): Promise<{ pdf: jsPDF; pdfBlob: Blob; fileName: string } | null> => {
     let container: HTMLDivElement | null = null;
     try {
       const logoDataUrl = await getLogoBase64();
@@ -400,7 +356,6 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
 
       document.body.appendChild(container);
 
-      // Render canvas via html2canvas safely
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
@@ -436,14 +391,89 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
       pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(pdfHeight, 297), undefined, 'FAST');
 
       const fileName = `Gari_Hisaab_${vehicleNo}_${Date.now()}.pdf`;
-      pdf.save(fileName);
+      const pdfBlob = pdf.output('blob');
+      return { pdf, pdfBlob, fileName };
     } catch (err) {
       console.error('PDF generation failed:', err);
-      alert('پی ڈی ایف بنانے میں مسئلہ آیا: ' + (err instanceof Error ? err.message : String(err)));
+      return null;
     } finally {
       if (container && container.parentNode) {
         container.parentNode.removeChild(container);
       }
+    }
+  };
+
+  const handleWhatsAppShare = async () => {
+    const fmt = (num: number) => 'Rs ' + num.toLocaleString('en-US');
+    let msg = `🚛 *وڑائچ گڈز — گاڑی کا مکمل حساب و منافع رپورٹ*\n` +
+      `🚗 گاڑی نمبر: ${vehicleNo}\n` +
+      `📅 تاریخ: ${new Date().toLocaleDateString('en-PK')}\n\n` +
+      `💵 *آمدن و کرایہ جات (Freight Income):*\n`;
+
+    incomes.forEach((item) => {
+      msg += `• ${item.label}: ${fmt(item.amount || 0)}\n`;
+    });
+    msg += `👉 *کل حاصل آمدن: ${fmt(totalIncome)}*\n\n`;
+
+    msg += `🧾 *اخراجات تفصیل (Trip Expenses):*\n` +
+      `⛽ ڈیزل خرچہ: ${fmt(dieselVal)}\n` +
+      `🛣️ ٹول پلازہ: ${fmt(tollVal)}\n` +
+      `🚔 چالان: ${fmt(challanVal)}\n` +
+      `🍲 روٹی خرچہ: ${fmt(rotiVal)}\n` +
+      `🛡️ چوکیداری / پارکنگ: ${fmt(chowkidaraVal)}\n` +
+      `🔧 گاڑی کا کام / مرمت: ${fmt(gariKaamVal)}\n` +
+      `👨‍✈️ ڈرائیور کمیشن: ${fmt(commissionVal)}\n`;
+
+    if (customExpenses.length > 0) {
+      customExpenses.forEach((item) => {
+        if (item.amount > 0) {
+          msg += `• ${item.label}: ${fmt(item.amount)}\n`;
+        }
+      });
+    }
+
+    msg += `👉 *کل واصل خرچہ: ${fmt(grandTotalExpenses)}*\n\n`;
+
+    if (netProfit >= 0) {
+      msg += `💰 *خالص بچت / نفع (Net Profit): ${fmt(netProfit)}* 🟢\n\n`;
+    } else {
+      msg += `⚠️ *خسارہ / بقایا خرچہ (Deficit): ${fmt(Math.abs(netProfit))}* 🔴\n\n`;
+    }
+
+    msg += `📞 وڑائچ گڈز ٹرانسپورٹ کمپنی: 0300-5370443`;
+
+    try {
+      const result = await generateAccountPdf();
+      if (result) {
+        await sharePdfFileOrWhatsApp({
+          pdfBlob: result.pdfBlob,
+          fileName: result.fileName,
+          title: `گاڑی حساب رپورٹ - ${vehicleNo}`,
+          textSummary: msg,
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn('PDF direct share fallback:', e);
+    }
+
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  const handleExportPDF = async () => {
+    if (isExportingPdf) return;
+    setIsExportingPdf(true);
+    try {
+      const result = await generateAccountPdf();
+      if (result) {
+        result.pdf.save(result.fileName);
+      } else {
+        alert('پی ڈی ایف بنانے میں مسئلہ آیا، دوبارہ کوشش کریں۔');
+      }
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      alert('پی ڈی ایف بنانے میں مسئلہ آیا: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
       setIsExportingPdf(false);
     }
   };

@@ -3,6 +3,8 @@ import QRCode from 'qrcode';
 import { BiltyRecord } from '../types';
 import { getCachedCompanyProfile } from '../utils/storage';
 import { logoIconData } from '../assets/dashboardIcons';
+import { getLogoBase64 } from '../utils/pdfHelper';
+import { AlHadiLogo } from './AlHadiLogo';
 
 interface PrintableBiltyProps {
   record: BiltyRecord;
@@ -44,7 +46,19 @@ export const ZahdanSignatureSvg: React.FC<{ className?: string }> = ({ className
 
 export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUrl: propQrUrl }) => {
   const [internalQrUrl, setInternalQrUrl] = useState<string>('');
+  const [resolvedLogo, setResolvedLogo] = useState<string>('');
+  const [logoFailed, setLogoFailed] = useState<boolean>(false);
   const company = getCachedCompanyProfile();
+
+  useEffect(() => {
+    let isMounted = true;
+    getLogoBase64().then((b64) => {
+      if (isMounted && b64) {
+        setResolvedLogo(b64);
+      }
+    });
+    return () => { isMounted = false; };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -159,22 +173,49 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
           
           {/* Left / Main Branding Block */}
           <div className="flex items-center gap-3 flex-1">
-            <img
-              src={logoIconData}
-              alt="وڑائچ گڈز لوگو"
-              className="rounded-full p-0.5 shrink-0"
-              style={{
-                width: '68px',
-                height: '68px',
-                minWidth: '68px',
-                minHeight: '68px',
-                maxWidth: '68px',
-                maxHeight: '68px',
-                backgroundColor: '#ffffff',
-                border: '2px solid #8b9d77',
-                objectFit: 'contain'
-              }}
-            />
+            {!logoFailed ? (
+              <img
+                src={resolvedLogo || logoIconData}
+                alt="وڑائچ گڈز لوگو"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.dataset.triedBackup) {
+                    target.dataset.triedBackup = '1';
+                    target.src = './logo.png';
+                  } else if (!target.dataset.triedIcon) {
+                    target.dataset.triedIcon = '1';
+                    target.src = './app-icon.png';
+                  } else {
+                    setLogoFailed(true);
+                  }
+                }}
+                className="rounded-full p-0.5 shrink-0"
+                style={{
+                  width: '68px',
+                  height: '68px',
+                  minWidth: '68px',
+                  minHeight: '68px',
+                  maxWidth: '68px',
+                  maxHeight: '68px',
+                  backgroundColor: '#ffffff',
+                  border: '2px solid #8b9d77',
+                  objectFit: 'contain'
+                }}
+              />
+            ) : (
+              <div
+                className="rounded-full p-1 shrink-0 flex items-center justify-center bg-white"
+                style={{
+                  width: '68px',
+                  height: '68px',
+                  minWidth: '68px',
+                  minHeight: '68px',
+                  border: '2px solid #8b9d77'
+                }}
+              >
+                <AlHadiLogo className="w-14 h-14" />
+              </div>
+            )}
             <div className="flex flex-col justify-center text-right">
               {/* Urdu Big Title */}
               <h1

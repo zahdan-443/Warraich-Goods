@@ -465,21 +465,132 @@ export function saveStoredNotifications(notifs: AppNotification[]) {
 // User Profile & Bilty Access Management
 // ---------------------------------------------------------------------------
 
-export async function saveUserProfileInFirestore(profile: UserProfile) {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    return;
-  }
+export function getLocalRegisteredUsers(): UserProfile[] {
   try {
-    if (profile.uid) {
-      const userRef = doc(db, 'users', profile.uid);
+    const raw = safeStorage.getItem('ah-registered-users-list');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalRegisteredUsers(users: UserProfile[]) {
+  try {
+    safeStorage.setItem('ah-registered-users-list', JSON.stringify(users));
+  } catch {
+    // ignore
+  }
+}
+
+export async function saveUserProfileInFirestore(profile: UserProfile) {
+  // Always update local persistent registry
+  try {
+    const existing = getLocalRegisteredUsers();
+    const cleanEmail = (profile.email || '').toLowerCase().trim();
+    const filtered = existing.filter(u => 
+      (u.email && cleanEmail && u.email.toLowerCase().trim() !== cleanEmail) &&
+      (u.uid !== profile.uid)
+    );
+    const updated: UserProfile = {
+      ...profile,
+      email: cleanEmail || profile.email,
+      lastLogin: profile.lastLogin || new Date().toISOString()
+    };
+    filtered.unshift(updated);
+    saveLocalRegisteredUsers(filtered);
+  } catch (err) {
+    console.warn("Error caching user locally:", err);
+  }
+
+  // Also update Firestore
+  if (typeof navigator !== 'undefined' && navigator.onLine) {
+    try {
+      const userKey = profile.uid || (profile.email ? profile.email.replace(/[.@]/g, '_') : `user_${Date.now()}`);
+      const userRef = doc(db, 'users', userKey);
       await withTimeout(setDoc(userRef, {
         ...profile,
         lastLogin: new Date().toISOString()
       }, { merge: true }), 2500);
+    } catch {
+      // Graceful offline fallback
     }
-  } catch {
-    // Graceful offline fallback
   }
+}
+
+export async function getAllRegisteredUsers(): Promise<UserProfile[]> {
+  const localUsers = getLocalRegisteredUsers();
+  const userMap = new Map<string, UserProfile>();
+
+  // Add default owner
+  userMap.set('warraichgoods43@gmail.com', {
+    uid: 'owner_uid',
+    name: 'زاہدان نصر وڑائچ (آنر)',
+    email: 'warraichgoods43@gmail.com',
+    role: 'owner',
+    lastLogin: new Date().toISOString()
+  });
+
+  // Populate from local storage
+  localUsers.forEach(u => {
+    const key = (u.email || u.uid || '').toLowerCase().trim();
+    if (key) {
+      userMap.set(key, u);
+    }
+  });
+
+  // Populate from Firestore
+  if (typeof navigator === 'undefined' || navigator.onLine) {
+    try {
+      const usersRef = collection(db, 'users');
+      const snap = await Promise.race([
+        getDocs(usersRef),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500))
+      ]);
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data && (data.uid || data.email)) {
+          const email = (data.email || '').toLowerCase().trim();
+          const key = email || data.uid;
+          if (key) {
+            userMap.set(key, {
+              uid: data.uid || key,
+              name: data.name || email || 'User',
+              email: email,
+              role: data.role || 'driver',
+              lastLogin: data.lastLogin
+            });
+          }
+        }
+      });
+    } catch {
+      // Offline fallback
+    }
+  }
+
+  // Also check allowed emails from bilty access to make sure they are visible
+  const cachedEmailsStr = getScopedItem('bilty-allowed-emails');
+  if (cachedEmailsStr) {
+    try {
+      const emails: string[] = JSON.parse(cachedEmailsStr);
+      emails.forEach(e => {
+        const clean = e.toLowerCase().trim();
+        if (clean && !userMap.has(clean)) {
+          userMap.set(clean, {
+            uid: `email_${clean.replace(/[^a-zA-Z0-9]/g, '_')}`,
+            name: clean.split('@')[0],
+            email: clean,
+            role: 'driver'
+          });
+        }
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  const list = Array.from(userMap.values());
+  saveLocalRegisteredUsers(list);
+  return list;
 }
 
 export interface BiltyAccessConfigData {

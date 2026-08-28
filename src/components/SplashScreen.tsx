@@ -12,24 +12,23 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
   const [fadeOut, setFadeOut] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
 
-  // splash.png use kar rahe hain — 1080x1920 proper PNG hai
-  // splash-screen.png JPEG hai aur 2752x5716 bahut badi hai
   const base = import.meta.env.BASE_URL ?? './';
   const cleanBase = base.endsWith('/') ? base : base + '/';
 
   const candidates = [
-    `${cleanBase}splash.png`,        // /Warraich-Goods/splash.png  ← GitHub Pages
-    `${cleanBase}splash-screen.png`, // backup
-    `./splash.png`,                   // relative fallback
+    `${cleanBase}splash.png`,
+    `./splash.png`,
+    `${cleanBase}splash-screen.png`,
     `./splash-screen.png`,
   ];
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
+    // Quick, smooth 1.5s splash
     const timer = setTimeout(() => {
       setFadeOut(true);
-      setTimeout(onDismiss, 500);
-    }, 3000);
+      setTimeout(onDismiss, 400);
+    }, 1500);
     return () => clearTimeout(timer);
   }, [onDismiss]);
 
@@ -43,7 +42,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
 
   const dismiss = () => {
     setFadeOut(true);
-    setTimeout(onDismiss, 400);
+    setTimeout(onDismiss, 300);
   };
 
   return (
@@ -53,9 +52,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
         position: 'fixed',
         inset: 0,
         zIndex: 100,
-        background: '#000',
+        background: 'linear-gradient(180deg, #162a4d 0%, #0f1c34 100%)',
         opacity: fadeOut ? 0 : 1,
-        transition: 'opacity 0.5s ease-in-out',
+        transition: 'opacity 0.4s ease-in-out',
         cursor: 'pointer',
       }}
     >
@@ -74,28 +73,32 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
             display: 'block',
           }}
         />
-      ) : (
-        <div style={{
-          width: '100%',
-          height: '100%',
+      ) : null}
+
+      {/* Elegant Fallback Emblem if image is loading or failed */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '20px',
-          background: '#162a4d',
-        }}>
-          <AlHadiLogo className="w-28 h-28" />
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ color: '#c59b27', fontSize: '24px', fontWeight: 'bold' }}>
-              Warraich Goods
-            </div>
-            <div style={{ color: 'white', fontSize: '14px', marginTop: '6px' }}>
-              وڑائچ گڈز ٹرانسپورٹ کمپنی
-            </div>
+          gap: '16px',
+          zIndex: imgFailed ? 1 : 0,
+        }}
+      >
+        <AlHadiLogo className="w-24 h-24 drop-shadow-md" />
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ color: '#c59b27', fontSize: '22px', fontWeight: 'bold', fontFamily: 'serif' }}>
+            Warraich Goods
+          </div>
+          <div style={{ color: '#e2e8f0', fontSize: '13px', marginTop: '4px', fontFamily: "'Noto Sans Arabic', sans-serif" }}>
+            وڑائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
+

@@ -5,7 +5,7 @@ import { Calculator, RotateCcw, Share2, CheckCircle2, BookmarkPlus, FileDown, Ar
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { fetchOSRMRouteDistance, PAKISTAN_CITIES } from '../../utils/mapRoutes';
-import { getLogoBase64 } from '../../utils/pdfHelper';
+import { getLogoBase64, sharePdfFileOrWhatsApp } from '../../utils/pdfHelper';
 import { validateFinancialNumber, validateTripFinancials } from '../../utils/calculator';
 
 interface TripCostViewProps {
@@ -205,25 +205,8 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     setSaveSuccess(true);
   };
 
-  const handleWhatsAppShare = () => {
-    if (!lastCalc) return;
-    const fmt = (n: number) => 'PKR ' + n.toLocaleString();
-    const msg = `🚛 *وڑائچ گڈز — کرایہ اور سفری اخراجات لاگ*\n` +
-      `📍 روانگی (از): ${lastCalc.origin}\n` +
-      `🏁 منزل (تا): ${lastCalc.dest}\n` +
-      `🛣️ روٹ فاصلہ: ${lastCalc.dist} km ${lastCalc.isReturn ? '(راؤنڈ ٹرپ)' : ''}\n` +
-      `🛢️ فیول کھپت: ${lastCalc.consumed} Liters\n` +
-      `⛽ فیول خرچہ: ${fmt(lastCalc.fuelCost)}\n` +
-      `💵 ڈرائیور و دیگر اخراجات: ${fmt(lastCalc.combinedExpensesVal || 0)}\n\n` +
-      `💰 *کل سفری اخراجات (Total Freight Cost): ${fmt(lastCalc.total)}*\n` +
-      `📅 تاریخ: ${lastCalc.date}`;
-
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
-  };
-
-  const handleExportPDF = async () => {
-    if (!lastCalc || isExportingPdf) return;
-    setIsExportingPdf(true);
+  const generateTripCostPdf = async (): Promise<{ pdf: jsPDF; pdfBlob: Blob; fileName: string } | null> => {
+    if (!lastCalc) return null;
     let container: HTMLDivElement | null = null;
     try {
       const logoDataUrl = await getLogoBase64();
@@ -330,7 +313,6 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 
       document.body.appendChild(container);
 
-      // Render canvas via html2canvas safely
       const canvas = await html2canvas(container, {
         scale: 2,
         useCORS: true,
@@ -366,14 +348,63 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(pdfHeight, 297), undefined, 'FAST');
 
       const fileName = `Trip_Cost_${Date.now()}.pdf`;
-      pdf.save(fileName);
+      const pdfBlob = pdf.output('blob');
+      return { pdf, pdfBlob, fileName };
     } catch (err) {
       console.error('PDF export error:', err);
-      alert('پی ڈی ایف بنانے میں مسئلہ آیا: ' + (err instanceof Error ? err.message : String(err)));
+      return null;
     } finally {
       if (container && container.parentNode) {
         container.parentNode.removeChild(container);
       }
+    }
+  };
+
+  const handleWhatsAppShare = async () => {
+    if (!lastCalc) return;
+    const fmt = (n: number) => 'PKR ' + n.toLocaleString();
+    const msg = `🚛 *وڑائچ گڈز — کرایہ اور سفری اخراجات لاگ*\n` +
+      `📍 روانگی (از): ${lastCalc.origin}\n` +
+      `🏁 منزل (تا): ${lastCalc.dest}\n` +
+      `🛣️ روٹ فاصلہ: ${lastCalc.dist} km ${lastCalc.isReturn ? '(راؤنڈ ٹرپ)' : ''}\n` +
+      `🛢️ فیول کھپت: ${lastCalc.consumed} Liters\n` +
+      `⛽ فیول خرچہ: ${fmt(lastCalc.fuelCost)}\n` +
+      `💵 ڈرائیور و دیگر اخراجات: ${fmt(lastCalc.combinedExpensesVal || 0)}\n\n` +
+      `💰 *کل سفری اخراجات (Total Freight Cost): ${fmt(lastCalc.total)}*\n` +
+      `📅 تاریخ: ${lastCalc.date}`;
+
+    try {
+      const result = await generateTripCostPdf();
+      if (result) {
+        await sharePdfFileOrWhatsApp({
+          pdfBlob: result.pdfBlob,
+          fileName: result.fileName,
+          title: `سفر خرچہ رپورٹ - ${lastCalc.origin} تا ${lastCalc.dest}`,
+          textSummary: msg,
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn('Trip PDF share fallback:', e);
+    }
+
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  const handleExportPDF = async () => {
+    if (!lastCalc || isExportingPdf) return;
+    setIsExportingPdf(true);
+    try {
+      const result = await generateTripCostPdf();
+      if (result) {
+        result.pdf.save(result.fileName);
+      } else {
+        alert('پی ڈی ایف بنانے میں مسئلہ آیا، دوبارہ کوشش کریں۔');
+      }
+    } catch (err) {
+      console.error('PDF export error:', err);
+      alert('پی ڈی ایف بنانے میں مسئلہ آیا: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
       setIsExportingPdf(false);
     }
   };

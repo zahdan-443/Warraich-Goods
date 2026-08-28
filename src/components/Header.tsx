@@ -178,10 +178,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Right: Sync Status Badge & Notification Bell */}
+          {/* Right: Notification Bell */}
           <div className="flex items-center gap-2 shrink-0">
-            <SyncStatusBadge lang={lang} onSyncComplete={onSyncOffline} />
-
             <button
               onClick={() => setShowNotifs(true)}
               className="p-2 rounded-xl bg-white border border-[#ecece0] hover:border-[#8b9d77] text-[#5a5a40] relative cursor-pointer active:scale-95 transition-all shadow-2xs shrink-0"
@@ -220,6 +218,19 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* Drawer Controls Stack */}
               <div className="p-5 space-y-4">
+
+                {/* CLOUD SYNC STATUS SECTION */}
+                <div className="p-3.5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] shadow-2xs flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-[#4a4a35] font-serif">
+                      {lang === 'ur' ? 'کلاؤڈ سنک اسٹیٹس' : 'Cloud Sync Status'}
+                    </div>
+                    <div className="text-[10px] text-[#8e8e75]">
+                      {lang === 'ur' ? 'آن لائن / آف لائن ڈیٹا ہم آہنگی' : 'Online / Offline sync'}
+                    </div>
+                  </div>
+                  <SyncStatusBadge lang={lang} onSyncComplete={onSyncOffline} />
+                </div>
 
                 {/* SINGLE UNIFIED LOGIN / ACCOUNT CONTROL CARD */}
                 <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] shadow-2xs">
