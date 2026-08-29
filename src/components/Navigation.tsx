@@ -26,20 +26,25 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, onSelectTab, 
   const navItems = rawNavItems.filter((item) => item.id !== 'bilty' || isBiltyAuthorized);
 
   return (
-    <nav className="flex items-center justify-start md:justify-center overflow-x-auto no-scrollbar gap-6 md:gap-8 px-4 md:px-12 py-3 md:py-4 bg-[#fdfbf7] border-b border-[#ecece0] sticky top-20 z-40">
+    <nav 
+      aria-label={lang === 'ur' ? 'مرکزی نیویگیشن' : 'Main Navigation'}
+      className="flex items-center justify-start md:justify-center overflow-x-auto no-scrollbar gap-6 md:gap-8 px-4 md:px-12 py-3 md:py-4 bg-[#fdfbf7] border-b border-[#ecece0] sticky top-20 z-40"
+    >
       {navItems.map((item) => {
         const isActive = activeTab === item.id;
         return (
           <button
             key={item.id}
             onClick={() => onSelectTab(item.id)}
+            aria-current={isActive ? 'page' : undefined}
+            aria-label={item.label}
             className={`flex items-center gap-2 text-xs uppercase tracking-widest font-medium whitespace-nowrap py-1.5 md:py-2 transition-all cursor-pointer shrink-0 ${
               isActive
                 ? 'text-[#8b9d77] border-b-2 border-[#8b9d77] font-bold'
-                : 'text-[#8e8e75] hover:text-[#4a4a35]'
+                : 'text-[#5a5a40] hover:text-[#2d2d20]'
             }`}
           >
-            <span className={isActive ? 'text-[#8b9d77]' : 'text-[#8e8e75]'}>{item.icon}</span>
+            <span className={isActive ? 'text-[#8b9d77]' : 'text-[#5a5a40]'}>{item.icon}</span>
             <span>{item.label}</span>
           </button>
         );

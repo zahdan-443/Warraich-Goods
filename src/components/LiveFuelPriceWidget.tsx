@@ -277,19 +277,21 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
 
       {showApiConfig && (
         <div className="p-4 bg-[#fdfbf7] rounded-2xl border border-[#ecece0] space-y-2 animate-fadeIn">
-          <label className="block text-xs font-bold text-[#5a5a40]">
+          <label htmlFor="custom-fuel-api-url" className="block text-xs font-bold text-[#5a5a40]">
             Custom Backend API endpoint URL (Optional):
           </label>
           <div className="flex gap-2">
             <input
+              id="custom-fuel-api-url"
               type="url"
+              aria-label="Custom Backend API endpoint URL"
               placeholder="https://your-backend-api.com/fuel"
               value={customApiUrl}
               onChange={(e) => setCustomApiUrl(e.target.value)}
               className="flex-1 px-3 py-1.5 text-xs font-mono bg-white border border-[#ecece0] rounded-xl focus:outline-none focus:border-[#8b9d77]"
             />
           </div>
-          <p className="text-[11px] text-[#8e8e75]">
+          <p className="text-[11px] text-[#5a5a40]">
             If left blank, clicks on "Sync PSO Rates" will fetch directly according to PSO POL Archives (psopk.com/fuel-prices/pol/archives).
           </p>
         </div>

@@ -158,6 +158,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={handleOpenMenu}
               className="p-2 bg-white border border-[#ecece0] hover:border-[#8b9d77] rounded-xl shadow-2xs text-[#5a5a40] shrink-0 cursor-pointer active:scale-95 transition-all"
               title={lang === 'ur' ? "سیٹنگز اور کنٹرول مینیو کھولیں" : "Click to open System Menu"}
+              aria-label={lang === 'ur' ? "سیٹنگز اور کنٹرول مینیو کھولیں" : "Open System Controls Menu"}
             >
               <Menu className="w-5 h-5 text-[#8b9d77]" />
             </button>
@@ -184,6 +185,7 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setShowNotifs(true)}
               className="p-2 rounded-xl bg-white border border-[#ecece0] hover:border-[#8b9d77] text-[#5a5a40] relative cursor-pointer active:scale-95 transition-all shadow-2xs shrink-0"
               title={lang === 'ur' ? 'نوٹیفیکیشنز' : 'Notifications'}
+              aria-label={lang === 'ur' ? 'نوٹیفیکیشنز کھولیں' : 'Open Notifications'}
             >
               <Bell className="w-5 h-5 text-[#8b9d77]" />
               {unreadCount > 0 && (
@@ -211,7 +213,11 @@ export const Header: React.FC<HeaderProps> = ({
                     <p className="text-[10px] text-[#8b9d77] font-sans uppercase tracking-wider">{lang === 'ur' ? 'سسٹم کنٹرول مینیو' : 'System Controls Menu'}</p>
                   </div>
                 </div>
-                <button onClick={handleCloseMenu} className="p-2 rounded-full bg-[#f0f0e4] hover:bg-[#e2e2d5] text-[#5a5a40] cursor-pointer">
+                <button 
+                  onClick={handleCloseMenu} 
+                  className="p-2 rounded-full bg-[#f0f0e4] hover:bg-[#e2e2d5] text-[#5a5a40] cursor-pointer"
+                  aria-label={lang === 'ur' ? 'مینیو بند کریں' : 'Close System Menu'}
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>

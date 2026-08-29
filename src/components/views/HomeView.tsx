@@ -559,7 +559,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <header className="flex items-center justify-between mb-6">
             <button 
               onClick={handlePrevMonth}
-              className="p-1.5 rounded-full border border-[#ecece0] hover:border-[#8b9d77] text-[#8e8e75] hover:text-[#4a4a35] transition-all cursor-pointer"
+              aria-label={lang === 'ur' ? 'پچھلا مہینہ' : 'Previous Month'}
+              className="p-1.5 rounded-full border border-[#ecece0] hover:border-[#8b9d77] text-[#5a5a40] hover:text-[#2d2d20] transition-all cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -568,7 +569,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </h3>
             <button 
               onClick={handleNextMonth}
-              className="p-1.5 rounded-full border border-[#ecece0] hover:border-[#8b9d77] text-[#8e8e75] hover:text-[#4a4a35] transition-all cursor-pointer"
+              aria-label={lang === 'ur' ? 'اگلا مہینہ' : 'Next Month'}
+              className="p-1.5 rounded-full border border-[#ecece0] hover:border-[#8b9d77] text-[#5a5a40] hover:text-[#2d2d20] transition-all cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -597,6 +599,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <button
                   key={idx}
                   onClick={() => handleDayClick(day)}
+                  aria-label={`${day.dayNum} ${monthNamesEN[day.month]} ${day.year}`}
                   className={`relative p-1.5 w-7 h-7 mx-auto rounded-full flex flex-col items-center justify-center cursor-pointer transition-all ${
                     isSelected 
                       ? 'bg-[#8b9d77] text-white font-bold shadow-2xs' 
@@ -604,7 +607,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                         ? 'border border-[#8b9d77] text-[#4a4a35] font-bold'
                         : day.isCurrentMonth 
                           ? 'text-[#4a4a35] hover:bg-[#f9f9f2]' 
-                          : 'text-[#8e8e75]/40 hover:bg-[#f9f9f2]/50'
+                          : 'text-[#8e8e75]/60 hover:bg-[#f9f9f2]/50'
                   }`}
                 >
                   <span>{day.dayNum}</span>
@@ -619,7 +622,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           {/* Schedule Events List for Selected Day */}
           <div className="mt-4 pt-4 border-t border-[#ecece0] flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-xs uppercase tracking-wider font-bold text-[#8e8e75] flex items-center gap-1.5">
+              <h4 className="text-xs uppercase tracking-wider font-bold text-[#5a5a40] flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-[#8b9d77]" />
                 <span>
                   {lang === 'ur' 
@@ -631,6 +634,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 onClick={() => setShowAddEvent(!showAddEvent)}
                 className="p-1 rounded-full bg-[#f0f0e4] text-[#8b9d77] hover:bg-[#8b9d77] hover:text-white transition-all cursor-pointer"
                 title={lang === 'ur' ? "شیڈول شامل کریں" : "Add Event"}
+                aria-label={lang === 'ur' ? "شیڈول شامل کریں" : "Add Event"}
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -645,6 +649,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     required
                     value={newEventTitle}
                     onChange={(e) => setNewEventTitle(e.target.value)}
+                    aria-label={lang === 'ur' ? 'شیڈول عنوان' : 'Event Title'}
                     placeholder={lang === 'ur' ? 'مثال: لاہور گندم لوڈ روانگی' : 'e.g., Lahore Wheat Cargo'}
                     className="w-full text-xs px-2.5 py-1.5 bg-white border border-[#ecece0] rounded-lg focus:outline-none focus:border-[#8b9d77]"
                   />
@@ -653,6 +658,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   <select
                     value={newEventType}
                     onChange={(e: any) => setNewEventType(e.target.value)}
+                    aria-label={lang === 'ur' ? 'ایونٹ کی قسم' : 'Event Type'}
                     className="flex-1 text-[11px] px-2 py-1.5 bg-white border border-[#ecece0] rounded-lg text-[#4a4a35] focus:outline-none focus:border-[#8b9d77]"
                   >
                     <option value="load">{lang === 'ur' ? 'مال برداری (Load)' : 'Cargo Load'}</option>
@@ -662,6 +668,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   </select>
                   <button 
                     type="submit"
+                    aria-label={lang === 'ur' ? 'محفوظ کریں' : 'Save Event'}
                     className="px-3 py-1.5 bg-[#8b9d77] text-white text-[11px] font-bold rounded-lg hover:bg-[#7a8c66] transition-all cursor-pointer"
                   >
                     {lang === 'ur' ? 'شامل کریں' : 'Save'}
