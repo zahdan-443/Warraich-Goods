@@ -753,7 +753,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   {lang === 'ur' ? 'سفر ڈائری لاگز' : 'Safar Diary Logs'}
                 </span>
                 <h2 className="text-2xl md:text-3xl font-serif font-bold text-[#4a4a35]">
-                  {lang === 'ur' ? 'وڑائچ سفر ڈائری اور ریکارڈ' : 'Warraich Safar Diary'}
+                  {lang === 'ur' ? 'ڈرائیور دوست سفر ڈائری اور ریکارڈ' : 'Driver Dost Safar Diary'}
                 </h2>
                 <p className="text-[#8b9d77] italic text-xs mt-1">{currentDate}</p>
               </div>
