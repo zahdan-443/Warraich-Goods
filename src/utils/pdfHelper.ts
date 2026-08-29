@@ -6,8 +6,39 @@
 
 import { toJpeg } from 'html-to-image';
 import jsPDF from 'jspdf';
+import DOMPurify from 'dompurify';
 import { BiltyRecord } from '../types';
 import { getCachedCompanyProfile } from './storage';
+
+/**
+ * Escapes unsafe characters for HTML injection prevention.
+ */
+export function escapeHtml(str: unknown): string {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * Sanitizes arbitrary HTML using DOMPurify to eliminate DOM-based XSS risks.
+ */
+export function sanitizeHtml(html: string): string {
+  if (typeof window !== 'undefined' && DOMPurify) {
+    const purify = typeof DOMPurify.sanitize === 'function' ? DOMPurify : (DOMPurify as any)(window);
+    if (purify && typeof purify.sanitize === 'function') {
+      return purify.sanitize(html);
+    }
+  }
+  // Node / test environment fallback
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/on\w+\s*=\s*(['"]).*?\1/gi, '')
+    .replace(/on\w+\s*=\s*[^>\s]+/gi, '');
+}
 
 let cachedLogoBase64: string | null = null;
 

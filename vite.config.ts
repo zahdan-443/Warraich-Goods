@@ -16,8 +16,6 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
-        'canvg': path.resolve(__dirname, 'src/utils/emptyStub.ts'),
-        'dompurify': path.resolve(__dirname, 'src/utils/emptyStub.ts'),
       },
     },
     server: {

@@ -5,7 +5,7 @@ import { Calculator, RotateCcw, Share2, CheckCircle2, BookmarkPlus, FileDown, Ar
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { fetchOSRMRouteDistance, PAKISTAN_CITIES } from '../../utils/mapRoutes';
-import { getLogoBase64, sharePdfFileOrWhatsApp } from '../../utils/pdfHelper';
+import { getLogoBase64, sharePdfFileOrWhatsApp, escapeHtml, sanitizeHtml } from '../../utils/pdfHelper';
 import { validateFinancialNumber, validateTripFinancials } from '../../utils/calculator';
 
 interface TripCostViewProps {
@@ -236,7 +236,16 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
             <span style="font-size: 8px; font-weight: 900; color: #4a4a35; font-family: sans-serif; letter-spacing: 0.5px; margin-top: 2px;">DRIVER DOST</span>
           </div>`;
 
-      container.innerHTML = `
+      const safeOrigin = escapeHtml(lastCalc.origin || '');
+      const safeDest = escapeHtml(lastCalc.dest || '');
+      const safeDist = escapeHtml(lastCalc.dist);
+      const safeFuelRate = escapeHtml(lastCalc.fuelRateVal);
+      const safeMileage = escapeHtml(lastCalc.mileageVal);
+      const safeConsumed = escapeHtml(lastCalc.consumed);
+      const safeDate = escapeHtml(lastCalc.date || new Date().toLocaleDateString('en-PK'));
+      const safeTime = escapeHtml(lastCalc.time || new Date().toLocaleTimeString('en-PK'));
+
+      container.innerHTML = sanitizeHtml(`
         <div style="border-bottom: 3px solid #8b9d77; padding-bottom: 16px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: flex-start; direction: rtl;">
           <div style="flex: 1; text-align: right;">
             <h1 style="margin: 0; font-size: 26px; color: #4a4a35; font-weight: 900; font-family: inherit;">ڈرائیور دوست - ٹرانسپورٹ و سفر ڈائری (Driver Dost)</h1>
@@ -251,19 +260,19 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
           <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; margin-right: 15px;">
             ${logoHtml}
             <div style="text-align: center; font-size: 11px; color: #555; font-family: sans-serif; direction: ltr;">
-              <div><strong>Date:</strong> ${lastCalc.date || new Date().toLocaleDateString('en-PK')}</div>
+              <div><strong>Date:</strong> ${safeDate}</div>
             </div>
           </div>
         </div>
 
         <div style="background: #fdfbf7; border: 1.5px solid #ecece0; padding: 14px 18px; border-radius: 14px; margin-bottom: 22px; font-size: 15px; direction: rtl; text-align: right;">
           <div style="margin-bottom: 6px;">
-            <strong style="color: #4a4a35;">از (روانگی):</strong> <span style="font-weight: bold; color: #222;">${lastCalc.origin}</span> 
+            <strong style="color: #4a4a35;">از (روانگی):</strong> <span style="font-weight: bold; color: #222;">${safeOrigin}</span> 
             &nbsp; ➔ &nbsp; 
-            <strong style="color: #4a4a35;">تا (منزل):</strong> <span style="font-weight: bold; color: #222;">${lastCalc.dest}</span>
+            <strong style="color: #4a4a35;">تا (منزل):</strong> <span style="font-weight: bold; color: #222;">${safeDest}</span>
           </div>
           <div style="font-size: 13px; color: #666;">
-            <strong>کل روٹ فاصلہ:</strong> ${lastCalc.dist} کلومیٹر ${lastCalc.isReturn ? '(راؤنڈ ٹرپ دگنا فاصلہ)' : ''}
+            <strong>کل روٹ فاصلہ:</strong> ${safeDist} کلومیٹر ${lastCalc.isReturn ? '(راؤنڈ ٹرپ دگنا فاصلہ)' : ''}
           </div>
         </div>
 
@@ -274,15 +283,15 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
         <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 25px; direction: rtl;">
           <tr style="border-bottom: 1px solid #e5e7eb;">
             <td style="padding: 11px 8px; color: #4b5563; font-weight: bold; text-align: right;">ڈیزل ریٹ:</td>
-            <td style="padding: 11px 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">PKR ${lastCalc.fuelRateVal} / Ltr</td>
+            <td style="padding: 11px 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">PKR ${safeFuelRate} / Ltr</td>
           </tr>
           <tr style="border-bottom: 1px solid #e5e7eb;">
             <td style="padding: 11px 8px; color: #4b5563; font-weight: bold; text-align: right;">گاڑی کی ایوریج:</td>
-            <td style="padding: 11px 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${lastCalc.mileageVal} KM / Ltr</td>
+            <td style="padding: 11px 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${safeMileage} KM / Ltr</td>
           </tr>
           <tr style="border-bottom: 1px solid #e5e7eb;">
             <td style="padding: 11px 8px; color: #4b5563; font-weight: bold; text-align: right;">ڈیزل کھپت (Fuel Consumed):</td>
-            <td style="padding: 11px 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${lastCalc.consumed} Liters</td>
+            <td style="padding: 11px 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${safeConsumed} Liters</td>
           </tr>
           <tr style="border-bottom: 1px solid #e5e7eb;">
             <td style="padding: 11px 8px; color: #4b5563; font-weight: bold; text-align: right;">ڈیزل کا کل خرچہ:</td>
@@ -306,10 +315,10 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
           </div>
           <div style="text-align: left; direction: ltr; font-family: sans-serif; font-size: 11px;">
             <div><strong>Verified By:</strong> Driver Dost System</div>
-            <div><strong>Time:</strong> ${lastCalc.time || new Date().toLocaleTimeString('en-PK')}</div>
+            <div><strong>Time:</strong> ${safeTime}</div>
           </div>
         </div>
-      `;
+      `);
 
       document.body.appendChild(container);
 

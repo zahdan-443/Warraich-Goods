@@ -32,6 +32,7 @@ import {
   clearErrorLogs,
   getSyncStatus
 } from '../utils/storage';
+import { escapeHtml, sanitizeHtml } from '../utils/pdfHelper';
 import { OfflineAction } from '../types';
 
 describe('Warraich Goods Logistics & Security Test Suite', () => {
@@ -498,6 +499,36 @@ describe('Warraich Goods Logistics & Security Test Suite', () => {
       expect(status).toHaveProperty('pendingCount');
       expect(status).toHaveProperty('lastSyncTime');
       expect(status).toHaveProperty('errorsList');
+    });
+  });
+
+  // =========================================================================
+  // 13. DOM-based XSS Prevention & HTML Sanitization
+  // =========================================================================
+  describe('13. DOM-based XSS Prevention & HTML Sanitization', () => {
+    it('should safely escape malicious characters from user input strings', () => {
+      const maliciousInput = '<script>alert("XSS")</script>&<img src=x onerror=alert(1)>';
+      const escaped = escapeHtml(maliciousInput);
+      expect(escaped).not.toContain('<script>');
+      expect(escaped).not.toContain('</script>');
+      expect(escaped).toContain('&lt;script&gt;');
+      expect(escaped).toContain('&amp;');
+      expect(escaped).toContain('&quot;');
+    });
+
+    it('should sanitize injected HTML using DOMPurify', () => {
+      const dangerousHtml = '<div onclick="alert(1)">Hello <script>evil()</script><img src="x" onerror="evil()" /></div>';
+      const clean = sanitizeHtml(dangerousHtml);
+      expect(clean).not.toContain('<script>');
+      expect(clean).not.toContain('onerror');
+      expect(clean).not.toContain('onclick');
+      expect(clean).toContain('Hello');
+    });
+
+    it('should handle null or undefined safely in escapeHtml', () => {
+      expect(escapeHtml(null)).toBe('');
+      expect(escapeHtml(undefined)).toBe('');
+      expect(escapeHtml(12345)).toBe('12345');
     });
   });
 

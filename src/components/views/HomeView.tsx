@@ -25,8 +25,6 @@ import {
   Wrench,
   Menu,
   Receipt,
-  Key,
-  Download,
   Copy,
   Check,
   Milestone,
@@ -413,8 +411,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </div>
                 <p className="text-[11px] text-amber-800 font-sans mt-0.5">
                   {lang === 'ur' 
-                    ? 'بلٹی رسائی، سائننگ کی اسٹور، کمپنی پروفائل و مالیاتی رپورٹس' 
-                    : 'Bilty authorization, Keystore details, company settings & reports'}
+                    ? 'بلٹی رسائی، کمپنی پروفائل و مالیاتی رپورٹس' 
+                    : 'Bilty authorization, company settings & reports'}
                 </p>
               </div>
             </div>
@@ -996,74 +994,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
               )}
 
             </div>
-
-            {/* Keystore Signing Credentials Card for Android / PWA packaging (CONFIDENTIAL: ONLY for App Owner warraichgoods43@gmail.com) */}
-            {userEmail?.toLowerCase() === 'warraichgoods43@gmail.com' && (
-              <div className="p-5 sm:p-6 rounded-3xl bg-amber-50/70 border border-amber-300 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-xl bg-amber-200/80 text-amber-900">
-                      <Key className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-serif font-bold text-sm text-[#4a4a35] flex items-center gap-2">
-                        <span>{lang === 'ur' ? 'اینڈرائیڈ کی اسٹور اور سائننگ ڈیٹیلز' : 'Android Keystore & Signing Details'}</span>
-                        <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-amber-200 text-amber-900 font-bold">
-                          Confidential Owner
-                        </span>
-                      </h3>
-                      <p className="text-[11px] text-[#8e8e75]">
-                        {lang === 'ur' ? 'گوگل پلے اور اے اے بی سائننگ کے لیے مستند کی اسٹور اور پاس ورڈز' : 'Official keystore and passwords for signing AAB / APK packages'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Credentials grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
-                  <div className="p-3 bg-white rounded-2xl border border-amber-200 space-y-1">
-                    <span className="text-[10px] text-[#8e8e75] uppercase font-bold tracking-wider">Key Alias</span>
-                    <div className="font-mono text-xs font-bold text-[#4a4a35] select-all bg-[#f9f9f2] p-1.5 rounded-lg border border-[#ecece0]">
-                      warraich
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-white rounded-2xl border border-amber-200 space-y-1">
-                    <span className="text-[10px] text-[#8e8e75] uppercase font-bold tracking-wider">Keystore Password</span>
-                    <div className="font-mono text-xs font-bold text-[#4a4a35] select-all bg-[#f9f9f2] p-1.5 rounded-lg border border-[#ecece0]">
-                      Warraich12345
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-white rounded-2xl border border-amber-200 space-y-1">
-                    <span className="text-[10px] text-[#8e8e75] uppercase font-bold tracking-wider">Key Password</span>
-                    <div className="font-mono text-xs font-bold text-[#4a4a35] select-all bg-[#f9f9f2] p-1.5 rounded-lg border border-[#ecece0]">
-                      Warraich12345
-                    </div>
-                  </div>
-                </div>
-
-                {/* Download Buttons */}
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <a
-                    href={`${import.meta.env.BASE_URL}warraich-release-key.jks`}
-                    download="warraich-release-key.jks"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-all shadow-xs cursor-pointer"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>{lang === 'ur' ? 'ڈاؤن لوڈ .JKS فائل' : 'Download .JKS File'}</span>
-                  </a>
-                  <a
-                    href={`${import.meta.env.BASE_URL}warraich-release-key.keystore`}
-                    download="warraich-release-key.keystore"
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-amber-300 text-[#4a4a35] text-xs font-bold hover:bg-[#f9f9f2] transition-all shadow-xs cursor-pointer"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>{lang === 'ur' ? 'ڈاؤن لوڈ .KEYSTORE فائل' : 'Download .KEYSTORE File'}</span>
-                  </a>
-                </div>
-              </div>
-            )}
 
             {/* Modal Footer Close Button */}
             <div className="text-center pt-2 border-t border-[#ecece0]">

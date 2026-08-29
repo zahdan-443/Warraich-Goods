@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { getLogoBase64, sharePdfFileOrWhatsApp } from '../../utils/pdfHelper';
+import { getLogoBase64, sharePdfFileOrWhatsApp, escapeHtml, sanitizeHtml } from '../../utils/pdfHelper';
 import { validateVehicleAccountFinancials } from '../../utils/calculator';
 
 interface VehicleAccountViewProps {
@@ -230,9 +230,10 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
 
       let incomeRowsHtml = '';
       incomes.forEach((item) => {
+        const safeLabel = escapeHtml(item.label || '');
         incomeRowsHtml += `
           <tr style="border-bottom: 1px solid #e2ebd8;">
-            <td style="padding: 9px 8px; color: #2d5a27; font-weight: bold; text-align: right;">${item.label}:</td>
+            <td style="padding: 9px 8px; color: #2d5a27; font-weight: bold; text-align: right;">${safeLabel}:</td>
             <td style="padding: 9px 8px; font-weight: bold; text-align: left; font-family: sans-serif; color: #1e4620; direction: ltr;">${fmt(item.amount || 0)}</td>
           </tr>
         `;
@@ -241,14 +242,19 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
       let customRowsHtml = '';
       customExpenses.forEach((item) => {
         if (item.amount > 0) {
+          const safeLabel = escapeHtml(item.label || '');
           customRowsHtml += `
             <tr style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 9px 8px; color: #4b5563; font-weight: bold; text-align: right;">${item.label}:</td>
+              <td style="padding: 9px 8px; color: #4b5563; font-weight: bold; text-align: right;">${safeLabel}:</td>
               <td style="padding: 9px 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${fmt(item.amount)}</td>
             </tr>
           `;
         }
       });
+
+      const safeVehicleNo = escapeHtml(vehicleNo || 'ٹرک');
+      const safeDate = escapeHtml(new Date().toLocaleDateString('en-PK'));
+      const safeTime = escapeHtml(new Date().toLocaleTimeString('en-PK'));
 
       const logoHtml = logoDataUrl
         ? `<img src="${logoDataUrl}" alt="Driver Dost Logo" style="width: 76px; height: 76px; object-fit: contain; border-radius: 50%; border: 3px solid #c59b27; padding: 2px; background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.08);" />`
@@ -257,7 +263,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             <span style="font-size: 8px; font-weight: 900; color: #4a4a35; font-family: sans-serif; letter-spacing: 0.5px; margin-top: 2px;">DRIVER DOST</span>
           </div>`;
 
-      container.innerHTML = `
+      container.innerHTML = sanitizeHtml(`
         <div style="border-bottom: 3px solid #8b9d77; padding-bottom: 16px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: flex-start; direction: rtl;">
           <div style="flex: 1; text-align: right;">
             <h1 style="margin: 0; font-size: 26px; color: #4a4a35; font-weight: 900; font-family: inherit;">ڈرائیور دوست - گاڑی حساب و لیجر (Driver Dost)</h1>
@@ -272,8 +278,8 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
           <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; margin-right: 15px;">
             ${logoHtml}
             <div style="text-align: center; font-size: 11px; color: #555; font-family: sans-serif; direction: ltr;">
-              <div><strong>Vehicle:</strong> ${vehicleNo}</div>
-              <div><strong>Date:</strong> ${new Date().toLocaleDateString('en-PK')}</div>
+              <div><strong>Vehicle:</strong> ${safeVehicleNo}</div>
+              <div><strong>Date:</strong> ${safeDate}</div>
             </div>
           </div>
         </div>
@@ -348,11 +354,11 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             <div style="font-style: italic;">یہ کمپیوٹر سے تیار کردہ تصدیق شدہ سسٹمیٹک رسید ہے۔</div>
           </div>
           <div style="text-align: left; direction: ltr; font-family: sans-serif; font-size: 11px;">
-            <div><strong>Verified Vehicle:</strong> ${vehicleNo}</div>
-            <div><strong>Generated:</strong> ${new Date().toLocaleTimeString('en-PK')}</div>
+            <div><strong>Verified Vehicle:</strong> ${safeVehicleNo}</div>
+            <div><strong>Generated:</strong> ${safeTime}</div>
           </div>
         </div>
-      `;
+      `);
 
       document.body.appendChild(container);
 
