@@ -11,7 +11,32 @@ export default defineConfig(() => {
       tailwindcss()
     ],
     build: {
-      chunkSizeWarningLimit: 3000,
+      chunkSizeWarningLimit: 1500,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('firebase')) {
+                return 'vendor-firebase';
+              }
+              if (
+                id.includes('jspdf') ||
+                id.includes('html2canvas') ||
+                id.includes('html-to-image') ||
+                id.includes('dompurify')
+              ) {
+                return 'vendor-pdf';
+              }
+              if (id.includes('lucide-react')) {
+                return 'vendor-icons';
+              }
+              if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
+                return 'vendor-react';
+              }
+            }
+          },
+        },
+      },
     },
     resolve: {
       alias: {

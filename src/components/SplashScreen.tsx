@@ -22,11 +22,18 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    // Show splash for 1.8s then smoothly fade out
+    // Show splash briefly (600ms) then smoothly fade out
     const timer = setTimeout(() => {
       setFadeOut(true);
-      setTimeout(onDismiss, 400);
-    }, 1800);
+      setTimeout(() => {
+        try {
+          sessionStorage.setItem('ah_splash_shown', '1');
+        } catch {
+          // ignore
+        }
+        onDismiss();
+      }, 250);
+    }, 600);
     return () => clearTimeout(timer);
   }, [onDismiss]);
 
@@ -38,7 +45,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
 
   const dismiss = () => {
     setFadeOut(true);
-    setTimeout(onDismiss, 300);
+    try {
+      sessionStorage.setItem('ah_splash_shown', '1');
+    } catch {
+      // ignore
+    }
+    setTimeout(onDismiss, 200);
   };
 
   return (
@@ -50,7 +62,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
         zIndex: 9999,
         backgroundColor: '#162a4d',
         opacity: fadeOut ? 0 : 1,
-        transition: 'opacity 0.4s ease-in-out',
+        transition: 'opacity 0.25s ease-in-out',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -62,6 +74,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
         src={candidates[idx]}
         alt="Driver Dost Splash Screen"
         onError={handleError}
+        decoding="async"
+        loading="eager"
         style={{
           width: '100%',
           height: '100%',

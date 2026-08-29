@@ -31,18 +31,7 @@ import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { Footer } from './components/Footer';
 import { HomeView } from './components/views/HomeView';
-import { TripCostView } from './components/views/TripCostView';
-import { VehiclesView } from './components/views/VehiclesView';
-import { DriversView } from './components/views/DriversView';
-import { RoutesView } from './components/views/RoutesView';
-import { FuelLogView } from './components/views/FuelLogView';
-import { VerifyView } from './components/views/VerifyView';
-import { BiltyView } from './components/views/BiltyView';
-import { VehicleAccountView } from './components/views/VehicleAccountView';
 import { SplashScreen } from './components/SplashScreen';
-import { AuthModal } from './components/AuthModal';
-import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
-import { InstallPwaModal } from './components/InstallPwaModal';
 import { 
   sendSystemNotification, 
   isNotificationSupported, 
@@ -50,12 +39,30 @@ import {
   requestNotificationPermission 
 } from './utils/notifications';
 
+const TripCostView = React.lazy(() => import('./components/views/TripCostView').then(m => ({ default: m.TripCostView })));
+const VehiclesView = React.lazy(() => import('./components/views/VehiclesView').then(m => ({ default: m.VehiclesView })));
+const DriversView = React.lazy(() => import('./components/views/DriversView').then(m => ({ default: m.DriversView })));
+const RoutesView = React.lazy(() => import('./components/views/RoutesView').then(m => ({ default: m.RoutesView })));
+const FuelLogView = React.lazy(() => import('./components/views/FuelLogView').then(m => ({ default: m.FuelLogView })));
+const VerifyView = React.lazy(() => import('./components/views/VerifyView').then(m => ({ default: m.VerifyView })));
+const BiltyView = React.lazy(() => import('./components/views/BiltyView').then(m => ({ default: m.BiltyView })));
+const VehicleAccountView = React.lazy(() => import('./components/views/VehicleAccountView').then(m => ({ default: m.VehicleAccountView })));
+const AuthModal = React.lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
+const ManageBiltyAccessModal = React.lazy(() => import('./components/ManageBiltyAccessModal').then(m => ({ default: m.ManageBiltyAccessModal })));
+const InstallPwaModal = React.lazy(() => import('./components/InstallPwaModal').then(m => ({ default: m.InstallPwaModal })));
+
 export default function App() {
   const OWNER_EMAIL = 'warraichgoods43@gmail.com';
 
   const [lang, setLang] = useState<Language>('en');
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState<boolean>(() => {
+    try {
+      return typeof window !== 'undefined' && !sessionStorage.getItem('ah_splash_shown');
+    } catch {
+      return true;
+    }
+  });
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showBiltyAccessModal, setShowBiltyAccessModal] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);
@@ -621,120 +628,131 @@ export default function App() {
       )}
 
       <main className="flex-1 flex flex-col w-full">
-        {activeTab === 'home' && (
-          <HomeView
-            lang={lang}
-            trips={trips}
-            vehicles={vehicles}
-            drivers={drivers}
-            bilties={bilties}
-            userRole={role}
-            userEmail={userEmail}
-            isBiltyAuthorized={isBiltyAuthorized}
-            onNavigate={handleNavigate}
-            onOpenMenu={() => {
-              window.history.pushState({ modal: true }, '');
-              setShowTopMenu(true);
-            }}
-            onOpenSignIn={handleSignIn}
-            onOpenBiltyAccess={() => setShowBiltyAccessModal(true)}
-            onSaveTrip={handleSaveTrip}
-            onLogFuelPrice={handleLogFuelPrice}
-          />
-        )}
+        <React.Suspense
+          fallback={
+            <div className="flex-1 flex items-center justify-center p-12 text-[#8e8e75] text-sm">
+              <div className="w-6 h-6 border-2 border-[#8b9d77] border-t-transparent rounded-full animate-spin inline-block mr-2" />
+              <span>{lang === 'ur' ? 'لوڈ ہو رہا ہے...' : 'Loading...'}</span>
+            </div>
+          }
+        >
+          {activeTab === 'home' && (
+            <HomeView
+              lang={lang}
+              trips={trips}
+              vehicles={vehicles}
+              drivers={drivers}
+              bilties={bilties}
+              userRole={role}
+              userEmail={userEmail}
+              isBiltyAuthorized={isBiltyAuthorized}
+              onNavigate={handleNavigate}
+              onOpenMenu={() => {
+                window.history.pushState({ modal: true }, '');
+                setShowTopMenu(true);
+              }}
+              onOpenSignIn={handleSignIn}
+              onOpenBiltyAccess={() => setShowBiltyAccessModal(true)}
+              onSaveTrip={handleSaveTrip}
+              onLogFuelPrice={handleLogFuelPrice}
+            />
+          )}
 
-        {activeTab === 'calculator' && (
-          <TripCostView
-            lang={lang}
-            trips={trips}
-            onSaveTrip={handleSaveTrip}
-            onDeleteTrip={handleDeleteTrip}
-            onClearAllTrips={handleClearAllTrips}
-            initialMileage={selectedMileage}
-            onNavigate={handleNavigate}
-          />
-        )}
+          {activeTab === 'calculator' && (
+            <TripCostView
+              lang={lang}
+              trips={trips}
+              onSaveTrip={handleSaveTrip}
+              onDeleteTrip={handleDeleteTrip}
+              onClearAllTrips={handleClearAllTrips}
+              initialMileage={selectedMileage}
+              onNavigate={handleNavigate}
+            />
+          )}
 
-        {activeTab === 'vehicle' && (
-          <VehiclesView
-            lang={lang}
-            vehicles={vehicles}
-            onAddVehicle={handleAddVehicle}
-            onDeleteVehicle={handleDeleteVehicle}
-            onSelectMileage={handleSelectMileage}
-          />
-        )}
+          {activeTab === 'vehicle' && (
+            <VehiclesView
+              lang={lang}
+              vehicles={vehicles}
+              onAddVehicle={handleAddVehicle}
+              onDeleteVehicle={handleDeleteVehicle}
+              onSelectMileage={handleSelectMileage}
+            />
+          )}
 
-        {activeTab === 'drivers' && (
-          <DriversView
-            lang={lang}
-            drivers={drivers}
-            onAddDriver={handleAddDriver}
-            onDeleteDriver={handleDeleteDriver}
-          />
-        )}
+          {activeTab === 'drivers' && (
+            <DriversView
+              lang={lang}
+              drivers={drivers}
+              onAddDriver={handleAddDriver}
+              onDeleteDriver={handleDeleteDriver}
+            />
+          )}
 
-        {activeTab === 'routes' && (
-          <RoutesView
-            lang={lang}
-            routes={routes}
-            onAddRoute={handleAddRoute}
-            onDeleteRoute={handleDeleteRoute}
-            onApplyRoute={handleApplyRoute}
-          />
-        )}
+          {activeTab === 'routes' && (
+            <RoutesView
+              lang={lang}
+              routes={routes}
+              onAddRoute={handleAddRoute}
+              onDeleteRoute={handleDeleteRoute}
+              onApplyRoute={handleApplyRoute}
+            />
+          )}
 
-        {activeTab === 'fuel' && (
-          <FuelLogView
-            lang={lang}
-            fuelLogs={fuelLogs}
-            onLogFuelPrice={handleLogFuelPrice}
-          />
-        )}
+          {activeTab === 'fuel' && (
+            <FuelLogView
+              lang={lang}
+              fuelLogs={fuelLogs}
+              onLogFuelPrice={handleLogFuelPrice}
+            />
+          )}
 
-        {activeTab === 'verify' && (
-          <VerifyView lang={lang} />
-        )}
+          {activeTab === 'verify' && (
+            <VerifyView lang={lang} />
+          )}
 
-        {activeTab === 'bilty' && isBiltyAuthorized && (
-          <BiltyView
-            lang={lang}
-            bilties={bilties}
-            onAddBilty={handleAddBilty}
-          />
-        )}
+          {activeTab === 'bilty' && isBiltyAuthorized && (
+            <BiltyView
+              lang={lang}
+              bilties={bilties}
+              onAddBilty={handleAddBilty}
+            />
+          )}
 
-        {activeTab === 'vehicleAccount' && (
-          <VehicleAccountView
-            lang={lang}
-            vehicles={vehicles}
-            onNavigate={handleNavigate}
-            onSaveTrip={handleSaveTrip}
-          />
-        )}
+          {activeTab === 'vehicleAccount' && (
+            <VehicleAccountView
+              lang={lang}
+              vehicles={vehicles}
+              onNavigate={handleNavigate}
+              onSaveTrip={handleSaveTrip}
+            />
+          )}
+        </React.Suspense>
       </main>
 
       {activeTab !== 'calculator' && <Footer />}
 
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={handleAuthSuccess}
-        lang={lang}
-      />
+      <React.Suspense fallback={null}>
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+          lang={lang}
+        />
 
-      <ManageBiltyAccessModal
-        isOpen={showBiltyAccessModal}
-        onClose={() => setShowBiltyAccessModal(false)}
-        currentUserUid={currentUid}
-        onUpdated={({ allowedUIDs, allowedEmails }) => {
-          setBiltyAllowedUIDs(allowedUIDs);
-          setBiltyAllowedEmails(allowedEmails);
-        }}
-        lang={lang}
-      />
+        <ManageBiltyAccessModal
+          isOpen={showBiltyAccessModal}
+          onClose={() => setShowBiltyAccessModal(false)}
+          currentUserUid={currentUid}
+          onUpdated={({ allowedUIDs, allowedEmails }) => {
+            setBiltyAllowedUIDs(allowedUIDs);
+            setBiltyAllowedEmails(allowedEmails);
+          }}
+          lang={lang}
+        />
 
-      <InstallPwaModal lang={lang} />
+        <InstallPwaModal lang={lang} />
+      </React.Suspense>
 
       {exitToast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-[#4a4a35] text-white rounded-full text-xs font-bold shadow-xl border border-[#8b9d77] animate-bounce">
