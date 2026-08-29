@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Warraich Goods - Production Progressive Web App Service Worker (v3.0)
+   Driver Dost - Production Progressive Web App Service Worker (v3.1)
    Features:
    - App Shell Caching & Version Cleanup
    - Network-First with Cache Fallback & Custom Offline Page
@@ -9,7 +9,7 @@
    - Bi-Directional Message Channel & Skip Waiting Support
    ========================================================================== */
 
-const CACHE_NAME = 'warraich-goods-v10';
+const CACHE_NAME = 'driver-dost-v11';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -42,7 +42,7 @@ const OFFLINE_HTML = `
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Warraich Goods - آف لائن (Offline)</title>
+  <title>Driver Dost - آف لائن (Offline)</title>
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; background-color: #fdfbf7; color: #4a4a35; text-align: center; padding: 2rem; margin: 0; }
     .card { background: white; border: 1px solid #ecece0; padding: 2.5rem 2rem; border-radius: 1.5rem; max-width: 420px; margin: 3rem auto; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
@@ -55,7 +55,7 @@ const OFFLINE_HTML = `
 <body>
   <div class="card">
     <h1>آف لائن موڈ (Offline Mode)</h1>
-    <p>آپ کے پاس انٹرنیٹ کنیکشن دستیاب نہیں ہے۔ وڑائچ گڈز کی پہلے سے محفوظ معلومات دستیاب ہیں۔</p>
+    <p>آپ کے پاس انٹرنیٹ کنیکشن دستیاب نہیں ہے۔ ڈرائیور دوست کی پہلے سے محفوظ معلومات دستیاب ہیں۔</p>
     <p style="font-size: 0.85rem; color: #b58b28; margin-top: 1rem;">Internet connection unavailable. Cached transport records remain securely stored on your device.</p>
     <a href="/" class="btn" onclick="window.location.reload(); return false;">دوبارہ کوشش کریں (Retry Connection)</a>
   </div>

@@ -230,21 +230,21 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       const fmt = (n: number) => 'Rs ' + n.toLocaleString('en-US');
 
       const logoHtml = logoDataUrl
-        ? `<img src="${logoDataUrl}" alt="Warraich Logo" style="width: 76px; height: 76px; object-fit: contain; border-radius: 50%; border: 3px solid #c59b27; padding: 2px; background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.08);" />`
+        ? `<img src="${logoDataUrl}" alt="Driver Dost Logo" style="width: 76px; height: 76px; object-fit: contain; border-radius: 50%; border: 3px solid #c59b27; padding: 2px; background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.08);" />`
         : `<div style="width: 76px; height: 76px; border-radius: 50%; border: 3px solid #c59b27; background: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.08); text-align: center;">
-            <span style="font-size: 24px; line-height: 1;">🚛</span>
-            <span style="font-size: 9px; font-weight: 900; color: #4a4a35; font-family: sans-serif; letter-spacing: 0.5px; margin-top: 2px;">WARRAICH</span>
+            <span style="font-size: 24px; line-height: 1;">🚚</span>
+            <span style="font-size: 8px; font-weight: 900; color: #4a4a35; font-family: sans-serif; letter-spacing: 0.5px; margin-top: 2px;">DRIVER DOST</span>
           </div>`;
 
       container.innerHTML = `
         <div style="border-bottom: 3px solid #8b9d77; padding-bottom: 16px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: flex-start; direction: rtl;">
           <div style="flex: 1; text-align: right;">
-            <h1 style="margin: 0; font-size: 26px; color: #4a4a35; font-weight: 900; font-family: inherit;">وڑائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)</h1>
-            <p style="margin: 4px 0 0 0; font-size: 14px; color: #8b9d77; font-weight: bold;">سفری کرایہ اور اخراجات کا سرکاری بریک ڈاؤن (Freight Waybill)</p>
+            <h1 style="margin: 0; font-size: 26px; color: #4a4a35; font-weight: 900; font-family: inherit;">ڈرائیور دوست - ٹرانسپورٹ و سفر ڈائری (Driver Dost)</h1>
+            <p style="margin: 4px 0 0 0; font-size: 14px; color: #8b9d77; font-weight: bold;">سفری کرایہ، فیول کھپت اور اخراجات کا تفصیلی تخمینہ (Trip Cost Summary)</p>
             
             <div style="margin-top: 10px; background: #fafaf5; border: 1.5px solid #e0e0d0; padding: 8px 14px; border-radius: 10px; font-size: 12px; line-height: 1.6; display: inline-block;">
-              <div style="color: #c0392b; font-weight: bold;">چیف ایگزیکٹو: زاہدان نصر وڑائچ</div>
-              <div style="direction: ltr; text-align: right; font-weight: 800; color: #222; font-family: sans-serif;">0300-5370443 | 0339-5370443</div>
+              <div style="color: #275e23; font-weight: bold;">ڈرائیور دوست روڈ لاجسٹکس و روٹ سسٹم</div>
+              <div style="direction: ltr; text-align: right; font-weight: 800; color: #222; font-family: sans-serif;">Smart Freight & Trip Logger Pakistan</div>
             </div>
           </div>
           
@@ -301,11 +301,11 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 
         <div style="border-top: 1.5px solid #d1d5db; padding-top: 16px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 12px; color: #6b7280; line-height: 1.6; direction: rtl;">
           <div style="text-align: right;">
-            <div style="font-weight: bold; color: #374151;">وڑائچ گڈز ٹرانسپورٹ فلیٹ مینجمنٹ سسٹم</div>
+            <div style="font-weight: bold; color: #374151;">ڈرائیور دوست - روڈ لاجسٹکس و فلیٹ سسٹم</div>
             <div style="font-style: italic;">یہ کمپیوٹر سے تیار کردہ تصدیق شدہ سفری رسید ہے۔</div>
           </div>
           <div style="text-align: left; direction: ltr; font-family: sans-serif; font-size: 11px;">
-            <div><strong>Verified By:</strong> Warraich Fleet System</div>
+            <div><strong>Verified By:</strong> Driver Dost System</div>
             <div><strong>Time:</strong> ${lastCalc.time || new Date().toLocaleTimeString('en-PK')}</div>
           </div>
         </div>
@@ -347,7 +347,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, Math.min(pdfHeight, 297), undefined, 'FAST');
 
-      const fileName = `Trip_Cost_${Date.now()}.pdf`;
+      const fileName = `Driver_Dost_Trip_Cost_${Date.now()}.pdf`;
       const pdfBlob = pdf.output('blob');
       return { pdf, pdfBlob, fileName };
     } catch (err) {
@@ -363,7 +363,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   const handleWhatsAppShare = async () => {
     if (!lastCalc) return;
     const fmt = (n: number) => 'PKR ' + n.toLocaleString();
-    const msg = `🚛 *وڑائچ گڈز — کرایہ اور سفری اخراجات لاگ*\n` +
+    const msg = `🚛 *ڈرائیور دوست — کرایہ اور سفری اخراجات لاگ*\n` +
       `📍 روانگی (از): ${lastCalc.origin}\n` +
       `🏁 منزل (تا): ${lastCalc.dest}\n` +
       `🛣️ روٹ فاصلہ: ${lastCalc.dist} km ${lastCalc.isReturn ? '(راؤنڈ ٹرپ)' : ''}\n` +

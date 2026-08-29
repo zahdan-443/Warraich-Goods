@@ -81,12 +81,12 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
           <div className="w-16 h-16 rounded-3xl bg-white p-2 mx-auto mb-3 shadow-lg border-2 border-[#b58b28] flex items-center justify-center overflow-hidden">
             <PublicImage
               fileName="icon-192.png"
-              alt="Warraich Goods"
+              alt="Driver Dost"
               className="w-full h-full object-contain"
               fallbackIcon={
                 <PublicImage
                   fileName="logo.png"
-                  alt="Warraich Goods Logo"
+                  alt="Driver Dost Logo"
                   className="w-full h-full object-contain"
                 />
               }

@@ -60,7 +60,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
     >
       <img
         src={candidates[idx]}
-        alt="Warraich Goods Splash Screen"
+        alt="Driver Dost Splash Screen"
         onError={handleError}
         style={{
           width: '100%',

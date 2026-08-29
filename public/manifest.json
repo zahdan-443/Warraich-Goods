@@ -45,14 +45,14 @@
       "sizes": "540x960",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Warraich Goods Mobile Fleet & Calculator Screen"
+      "label": "Driver Dost Mobile Fleet & Calculator Screen"
     },
     {
       "src": "screenshot-desktop.png",
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Warraich Goods Desktop Dashboard & Trip Operations"
+      "label": "Driver Dost Desktop Dashboard & Trip Operations"
     }
   ],
   "shortcuts": [

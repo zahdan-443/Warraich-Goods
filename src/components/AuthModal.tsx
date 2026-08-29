@@ -389,7 +389,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         <div className="px-6 py-3.5 bg-[#f0f0e4] border-t border-[#ecece0] flex items-center justify-between text-[11px] text-[#8e8e75]">
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-[#1e3a68]" />
-            <span>Warraich Goods Security</span>
+            <span>Driver Dost Security</span>
           </span>
           <span className="font-mono text-[10px] text-emerald-700 font-bold">Encrypted & Secure</span>
         </div>

@@ -199,7 +199,7 @@ export const DefaultServiceVector: React.FC<{ name: string; className?: string }
   return (
     <div className={`w-full h-full bg-gradient-to-br from-[#162a4d] to-[#0b162a] rounded-xl sm:rounded-2xl p-2.5 sm:p-3 text-white flex flex-col items-center justify-center shadow-inner ${className}`}>
       <Truck className="w-8 h-8 sm:w-10 sm:h-10 text-[#c59b27] drop-shadow-md mb-1" />
-      <span className="text-xs font-bold font-serif text-[#c59b27]">Warraich Goods</span>
+      <span className="text-xs font-bold font-serif text-[#c59b27]">Driver Dost</span>
     </div>
   );
 };

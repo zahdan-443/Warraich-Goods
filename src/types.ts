@@ -294,9 +294,9 @@ export interface RouteDefinition {
 
 export const DICTIONARY = {
   en: {
-    appTitle: "Warraich",
-    appTitleHighlight: "Goods",
-    appSub: "Road Freight Toolkit",
+    appTitle: "Driver",
+    appTitleHighlight: "Dost",
+    appSub: "Road Freight & Fleet Toolkit",
     nav: {
       home: "Dashboard",
       calculator: "Trip Cost",
@@ -512,9 +512,9 @@ export const DICTIONARY = {
     }
   },
   ur: {
-    appTitle: "وڑائچ",
-    appTitleHighlight: "گڈز",
-    appSub: "روڈ فریٹ ٹول کٹ",
+    appTitle: "ڈرائیور",
+    appTitleHighlight: "دوست",
+    appSub: "روڈ فریٹ و سفر ڈائری",
     nav: {
       home: "ڈیش بورڈ",
       calculator: "سفر خرچ",
