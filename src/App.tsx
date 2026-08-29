@@ -21,6 +21,8 @@ import {
   saveStoredBilties,
   loadFromFirestore,
   getBiltyAccessConfig,
+  subscribeToBiltyAccess,
+  updateBiltyAccessInFirestore,
   saveUserProfileInFirestore,
   processOfflineQueue
 } from './utils/storage';
@@ -41,7 +43,12 @@ import { SplashScreen } from './components/SplashScreen';
 import { AuthModal } from './components/AuthModal';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
-import { sendSystemNotification, isNotificationSupported, getNotificationPermission } from './utils/notifications';
+import { 
+  sendSystemNotification, 
+  isNotificationSupported, 
+  getNotificationPermission,
+  requestNotificationPermission 
+} from './utils/notifications';
 
 export default function App() {
   const OWNER_EMAIL = 'warraichgoods43@gmail.com';
@@ -56,8 +63,22 @@ export default function App() {
     return localStorage.getItem('ah-gmail-user') || null;
   });
   const [currentUid, setCurrentUid] = useState<string | null>(null);
-  const [biltyAllowedUIDs, setBiltyAllowedUIDs] = useState<string[]>([]);
-  const [biltyAllowedEmails, setBiltyAllowedEmails] = useState<string[]>([]);
+  const [biltyAllowedUIDs, setBiltyAllowedUIDs] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem('ah-bilty-allowed-uids');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [biltyAllowedEmails, setBiltyAllowedEmails] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem('ah-bilty-allowed-emails');
+      return cached ? JSON.parse(cached).map((e: string) => String(e).toLowerCase().trim()) : [];
+    } catch {
+      return [];
+    }
+  });
   const [role, setRole] = useState<UserRole>(() => {
     const storedUser = localStorage.getItem('ah-gmail-user');
     if (storedUser && storedUser.toLowerCase() === OWNER_EMAIL.toLowerCase()) {
@@ -72,10 +93,13 @@ export default function App() {
 
   // Authorization check for Bilty Generator — allows Owner OR explicitly granted UIDs / Emails
   const isOwner = Boolean(
-    (userEmail && userEmail.toLowerCase() === OWNER_EMAIL.toLowerCase()) || role === 'owner'
+    (userEmail && userEmail.toLowerCase().trim() === OWNER_EMAIL.toLowerCase()) || role === 'owner'
   );
+  const cleanEmail = userEmail ? userEmail.toLowerCase().trim() : null;
   const isAllowedUID = Boolean(currentUid && biltyAllowedUIDs.includes(currentUid));
-  const isAllowedEmail = Boolean(userEmail && biltyAllowedEmails.map(e => e.toLowerCase().trim()).includes(userEmail.toLowerCase().trim()));
+  const isAllowedEmail = Boolean(
+    cleanEmail && biltyAllowedEmails.some(e => e.toLowerCase().trim() === cleanEmail)
+  );
   const isBiltyAuthorized = Boolean(isOwner || isAllowedUID || isAllowedEmail);
 
   // Stored state
@@ -304,7 +328,7 @@ export default function App() {
     };
   }, [lang]);
 
-  // Firebase auth & bilty access sync
+  // Firebase auth & bilty access real-time sync
   useEffect(() => {
     // Initial fetch of bilty access configuration
     getBiltyAccessConfig().then((config) => {
@@ -312,7 +336,13 @@ export default function App() {
       setBiltyAllowedEmails(config.allowedEmails);
     });
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    // Real-time listener for Bilty access changes in Firestore
+    const unsubBilty = subscribeToBiltyAccess((config) => {
+      setBiltyAllowedUIDs(config.allowedUIDs);
+      setBiltyAllowedEmails(config.allowedEmails);
+    });
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const userMail = user.email || user.displayName || 'Authenticated User';
         setUserEmail(userMail);
@@ -359,7 +389,45 @@ export default function App() {
       }
       setAuthInitialized(true);
     });
-    return () => unsubscribe();
+
+    return () => {
+      if (typeof unsubBilty === 'function') unsubBilty();
+      unsubscribeAuth();
+    };
+  }, []);
+
+  // Automatic Notification Auto-Enable on App Open & First User Gesture
+  useEffect(() => {
+    if (!isNotificationSupported()) return;
+
+    const requestAutoNotif = async () => {
+      if (getNotificationPermission() === 'default') {
+        try {
+          await requestNotificationPermission();
+        } catch (err) {
+          console.warn('Auto notification request notice:', err);
+        }
+      }
+    };
+
+    // Prompt after initial render
+    const timer = setTimeout(requestAutoNotif, 1000);
+
+    // Also trigger on first screen touch/tap in case browser requires immediate user gesture
+    const handleGesture = () => {
+      requestAutoNotif();
+      window.removeEventListener('click', handleGesture);
+      window.removeEventListener('touchstart', handleGesture);
+    };
+
+    window.addEventListener('click', handleGesture, { once: true });
+    window.addEventListener('touchstart', handleGesture, { once: true });
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('click', handleGesture);
+      window.removeEventListener('touchstart', handleGesture);
+    };
   }, []);
 
   // Route Protection for Bilty Generator

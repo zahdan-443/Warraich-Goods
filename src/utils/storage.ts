@@ -16,7 +16,7 @@ import {
   SyncStatusState
 } from '../types';
 import { auth, db } from './firebase';
-import { doc, getDoc, setDoc, collection, getDocs, addDoc, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, addDoc, runTransaction, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import {
   getStorageScope,
   getScopedStorageKey,
@@ -598,23 +598,28 @@ export interface BiltyAccessConfigData {
   allowedEmails: string[];
 }
 
+export function normalizeBiltyConfig(data: any): BiltyAccessConfigData {
+  const allowedUIDs: string[] = Array.isArray(data?.allowedUIDs) 
+    ? data.allowedUIDs.filter((id: unknown): id is string => typeof id === 'string' && id.trim().length > 0)
+    : [];
+  const rawEmails = Array.isArray(data?.allowedEmails) ? data.allowedEmails.filter(Boolean) : [];
+  const allowedEmails: string[] = Array.from(new Set(rawEmails.map((e: unknown) => String(e).toLowerCase().trim())));
+  return { allowedUIDs, allowedEmails };
+}
+
 export async function getBiltyAccessConfig(): Promise<BiltyAccessConfigData> {
   if (typeof navigator === 'undefined' || navigator.onLine) {
     try {
       const accessRef = doc(db, 'access', 'biltyAccess');
-      const snap = await withTimeout(getDoc(accessRef), 2000);
+      const snap = await withTimeout(getDoc(accessRef), 3000);
       if (snap.exists()) {
-        const data = snap.data();
-        const allowedUIDs = Array.isArray(data?.allowedUIDs) ? data.allowedUIDs : [];
-        const allowedEmails = Array.isArray(data?.allowedEmails) ? data.allowedEmails : [];
-        if (allowedUIDs.length > 0 || allowedEmails.length > 0) {
-          setScopedItem('bilty-allowed-uids', JSON.stringify(allowedUIDs));
-          setScopedItem('bilty-allowed-emails', JSON.stringify(allowedEmails));
-          return { allowedUIDs, allowedEmails };
-        }
+        const config = normalizeBiltyConfig(snap.data());
+        setScopedItem('bilty-allowed-uids', JSON.stringify(config.allowedUIDs));
+        setScopedItem('bilty-allowed-emails', JSON.stringify(config.allowedEmails));
+        return config;
       }
-    } catch {
-      // Fall through to storage
+    } catch (err) {
+      console.warn("Could not fetch remote bilty access config, using local cache:", err);
     }
   }
   try {
@@ -622,23 +627,58 @@ export async function getBiltyAccessConfig(): Promise<BiltyAccessConfigData> {
     const cachedEmails = getScopedItem('bilty-allowed-emails');
     return {
       allowedUIDs: cachedUIDs ? JSON.parse(cachedUIDs) : [],
-      allowedEmails: cachedEmails ? JSON.parse(cachedEmails) : []
+      allowedEmails: cachedEmails ? JSON.parse(cachedEmails).map((e: string) => e.toLowerCase().trim()) : []
     };
   } catch {
     return { allowedUIDs: [], allowedEmails: [] };
   }
 }
 
-export async function updateBiltyAccessInFirestore(allowedUIDs: string[], allowedEmails: string[] = []) {
+/**
+ * Real-time listener for Bilty access changes in Firestore
+ */
+export function subscribeToBiltyAccess(
+  onUpdate: (config: BiltyAccessConfigData) => void
+): Unsubscribe {
   try {
-    setScopedItem('bilty-allowed-uids', JSON.stringify(allowedUIDs));
-    setScopedItem('bilty-allowed-emails', JSON.stringify(allowedEmails));
+    const accessRef = doc(db, 'access', 'biltyAccess');
+    return onSnapshot(
+      accessRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const config = normalizeBiltyConfig(docSnap.data());
+          setScopedItem('bilty-allowed-uids', JSON.stringify(config.allowedUIDs));
+          setScopedItem('bilty-allowed-emails', JSON.stringify(config.allowedEmails));
+          onUpdate(config);
+        }
+      },
+      (err) => {
+        console.warn('Bilty access real-time subscription error:', err);
+      }
+    );
+  } catch (err) {
+    console.warn('Failed to set up bilty access snapshot listener:', err);
+    return () => {};
+  }
+}
+
+export async function updateBiltyAccessInFirestore(allowedUIDs: string[], allowedEmails: string[] = []) {
+  const cleanUIDs = Array.from(new Set(allowedUIDs.filter(Boolean)));
+  const cleanEmails = Array.from(new Set(allowedEmails.filter(Boolean).map(e => e.toLowerCase().trim())));
+  
+  try {
+    setScopedItem('bilty-allowed-uids', JSON.stringify(cleanUIDs));
+    setScopedItem('bilty-allowed-emails', JSON.stringify(cleanEmails));
     if (typeof navigator !== 'undefined' && navigator.onLine) {
       const accessRef = doc(db, 'access', 'biltyAccess');
-      await withTimeout(setDoc(accessRef, { allowedUIDs, allowedEmails, updatedAt: new Date().toISOString() }, { merge: true }), 3000);
+      await withTimeout(setDoc(accessRef, { 
+        allowedUIDs: cleanUIDs, 
+        allowedEmails: cleanEmails, 
+        updatedAt: new Date().toISOString() 
+      }, { merge: true }), 3000);
     }
-  } catch {
-    // LocalStorage updated
+  } catch (err) {
+    console.warn("Failed saving bilty access to firestore:", err);
   }
 }
 
