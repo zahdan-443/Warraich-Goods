@@ -22,23 +22,18 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // Automatically show modal when app opens if prompt is available
+    };
+
+    const handleOpenRequest = () => {
       setShowModal(true);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    // Fallback timer: if beforeinstallprompt fires late or on mobile browsers
-    const timer = setTimeout(() => {
-      const dismissed = localStorage.getItem('wg_install_dismissed');
-      if (!dismissed && !isInstalled) {
-        setShowModal(true);
-      }
-    }, 2000);
+    window.addEventListener('wg_open_install_modal', handleOpenRequest);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      clearTimeout(timer);
+      window.removeEventListener('wg_open_install_modal', handleOpenRequest);
     };
   }, [isInstalled]);
 

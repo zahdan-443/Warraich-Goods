@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send } from 'lucide-react';
+import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send, Download } from 'lucide-react';
 import { DICTIONARY, Language, AppNotification, UserRole } from '../types';
 import { AlHadiLogo } from './AlHadiLogo';
 import { logoIconData } from '../assets/dashboardIcons';
@@ -469,6 +469,33 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     <Share2 className="w-4 h-4 text-emerald-200" />
                     <span>{lang === 'ur' ? 'ایپ کا لنک شیئر کریں' : 'Share App Link'}</span>
+                  </button>
+                </div>
+
+                {/* INSTALL APP PROMINENT CARD */}
+                <div className="p-4 rounded-3xl bg-blue-50/90 border border-blue-200 space-y-2.5 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-2xl bg-white border border-blue-200 shadow-2xs text-[#1e3a68] shrink-0">
+                      <Download className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="font-serif font-bold text-sm text-[#1e3a68]">
+                        {lang === 'ur' ? 'ایپ انسٹال کریں (PWA)' : 'Install Official App'}
+                      </div>
+                      <div className="text-[11px] text-blue-700">
+                        {lang === 'ur' ? 'ہوم اسکرین پر آف لائن استعمال کے لیے انسٹال کریں' : 'Install on mobile home screen for quick offline access'}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      handleCloseMenu();
+                      window.dispatchEvent(new CustomEvent('wg_open_install_modal'));
+                    }}
+                    className="w-full py-2.5 px-3 bg-[#1e3a68] hover:bg-[#162a4d] text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-all active:scale-95"
+                  >
+                    <Download className="w-4 h-4 text-blue-200" />
+                    <span>{lang === 'ur' ? 'ایپ انسٹالیشن ونڈو کھولیں' : 'Install Driver Dost App'}</span>
                   </button>
                 </div>
 
