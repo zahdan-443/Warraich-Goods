@@ -41,7 +41,7 @@ service cloud.firestore {
 
     // User profile entries and nested collections (trips, vehicles, drivers, routes, fuel, bilties)
     match /users/{userId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());
       allow write: if isSignedIn() && request.auth.uid == userId;
 
       match /collections/{collectionId} {
@@ -49,9 +49,9 @@ service cloud.firestore {
       }
     }
 
-    // Access configuration for Bilty Generator authorization (Public read so client can verify permission immediately, ONLY Fleet Owner can write)
+    // Access configuration for Bilty Generator authorization (Signed in users can read to verify permission, ONLY Fleet Owner can write)
     match /access/biltyAccess {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isOwner();
     }
 
@@ -62,7 +62,7 @@ service cloud.firestore {
 
     // Counters collection for transaction-based sequential Bilty allocation
     match /counters/{counterId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
     // Company Profile and System Settings (All can read, ONLY Owner can write)
@@ -71,10 +71,9 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
-    // System Admins collection
+    // System Admins collection (ONLY Owner can read and write)
     match /admins/{adminId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner();
+      allow read, write: if isOwner();
     }
 
     // Activity Log (Owner can read and manage, signed-in users can create entries)

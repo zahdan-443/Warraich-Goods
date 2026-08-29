@@ -59,9 +59,7 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showBiltyAccessModal, setShowBiltyAccessModal] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(() => {
-    return localStorage.getItem('ah-gmail-user') || null;
-  });
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [currentUid, setCurrentUid] = useState<string | null>(null);
   const [biltyAllowedUIDs, setBiltyAllowedUIDs] = useState<string[]>(() => {
     try {
@@ -79,21 +77,15 @@ export default function App() {
       return [];
     }
   });
-  const [role, setRole] = useState<UserRole>(() => {
-    const storedUser = localStorage.getItem('ah-gmail-user');
-    if (storedUser && storedUser.toLowerCase() === OWNER_EMAIL.toLowerCase()) {
-      return 'owner';
-    }
-    return 'driver';
-  });
+  const [role, setRole] = useState<UserRole>('driver');
   const [offlineQueue, setOfflineQueue] = useState<OfflineAction[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isOffline, setIsOffline] = useState(false);
   const [showTopMenu, setShowTopMenu] = useState(false);
 
-  // Authorization check for Bilty Generator — allows Owner OR explicitly granted UIDs / Emails
+  // Authorization check for Bilty Generator — strictly requires valid Firebase Auth session
   const isOwner = Boolean(
-    (userEmail && userEmail.toLowerCase().trim() === OWNER_EMAIL.toLowerCase()) || role === 'owner'
+    currentUid && userEmail && userEmail.toLowerCase().trim() === OWNER_EMAIL.toLowerCase() && role === 'owner'
   );
   const cleanEmail = userEmail ? userEmail.toLowerCase().trim() : null;
   const isAllowedUID = Boolean(currentUid && biltyAllowedUIDs.includes(currentUid));
@@ -178,11 +170,6 @@ export default function App() {
     if (savedLang === 'en' || savedLang === 'ur') {
       setLang(savedLang);
     }
-    const savedEmail = localStorage.getItem('ah-gmail-user');
-    if (savedEmail) {
-      setUserEmail(savedEmail);
-    }
-    setRole(getStoredRole());
     setOfflineQueue(getStoredOfflineQueue());
     setNotifications(getStoredNotifications());
     setTrips(getStoredTrips());
