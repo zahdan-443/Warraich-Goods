@@ -49,25 +49,25 @@ service cloud.firestore {
       }
     }
 
-    // Access configuration for Bilty Generator authorization (Public read so client can verify permission immediately, ONLY Fleet Owner can write)
+    // Access configuration for Bilty Generator authorization (ONLY Fleet Owners can edit allowed UIDs)
     match /access/biltyAccess {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isOwner();
     }
 
-    // Bilties collection (Read & write allowed ONLY if authenticated user is an Owner or listed in access/biltyAccess.allowedUIDs / allowedEmails)
+    // Bilties collection (Read & write allowed ONLY if authenticated user is an Owner or listed in access/biltyAccess.allowedUIDs)
     match /bilties/{biltyId} {
       allow read, write: if isBiltyAuthorized();
     }
 
     // Counters collection for transaction-based sequential Bilty allocation
     match /counters/{counterId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
-    // Company Profile and System Settings (All can read, ONLY Owner can write)
+    // Company Profile and System Settings (All signed-in can read, ONLY Owner can write)
     match /settings/{settingId} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isOwner();
     }
 

@@ -21,8 +21,6 @@ import {
   saveStoredBilties,
   loadFromFirestore,
   getBiltyAccessConfig,
-  subscribeToBiltyAccess,
-  updateBiltyAccessInFirestore,
   saveUserProfileInFirestore,
   processOfflineQueue
 } from './utils/storage';
@@ -43,12 +41,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { AuthModal } from './components/AuthModal';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
-import { 
-  sendSystemNotification, 
-  isNotificationSupported, 
-  getNotificationPermission,
-  requestNotificationPermission 
-} from './utils/notifications';
+import { sendSystemNotification, isNotificationSupported, getNotificationPermission } from './utils/notifications';
 
 export default function App() {
   const OWNER_EMAIL = 'warraichgoods43@gmail.com';
