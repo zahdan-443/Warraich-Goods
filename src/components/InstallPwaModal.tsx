@@ -94,10 +94,10 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
           </div>
 
           <h3 className="font-serif font-bold text-lg text-white tracking-tight">
-            {lang === 'ur' ? 'وڑائچ گڈز ایپ انسٹال کریں' : 'Install Warraich Goods App'}
+            {lang === 'ur' ? 'ڈرائیور دوست ایپ انسٹال کریں' : 'Install Driver Dost App'}
           </h3>
           <p className="text-xs text-amber-200 font-sans mt-1">
-            {lang === 'ur' ? 'آف لائن رسائی اور تیز رفتار فلیٹ کنٹرول' : 'Fast offline access & road logistics toolkit'}
+            {lang === 'ur' ? 'آف لائن رسائی، سفر ڈائری اور تیز رفتار فلیٹ کنٹرول' : 'Fast offline trip logger & road logistics toolkit'}
           </p>
         </div>
 

@@ -1,8 +1,8 @@
 {
-  "name": "Warraich Goods - Road Freight & Fleet Management",
-  "short_name": "Warraich Goods",
-  "description": "Comprehensive bilingual (Urdu & English) cargo transport, fleet management, and digital Bilty generator system for Warraich Goods logistics.",
-  "id": "warraich-goods-logistics-pwa",
+  "name": "Driver Dost - Road Freight & Fleet Management",
+  "short_name": "Driver Dost",
+  "description": "Comprehensive bilingual (Urdu & English) cargo transport, road freight, trip cost calculator, and fleet management system.",
+  "id": "driver-dost-logistics-pwa",
   "start_url": "index.html",
   "scope": "./",
   "display": "standalone",

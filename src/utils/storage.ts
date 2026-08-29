@@ -86,7 +86,7 @@ const INITIAL_FUEL: FuelLogItem[] = [
 const INITIAL_NOTIFICATIONS: AppNotification[] = [
   {
     id: 1,
-    title: "🚛 Warraich Goods System Ready",
+    title: "🚛 Driver Dost System Ready",
     message: "Offline-first cloud database and fleet management initialized.",
     time: "Just now",
     unread: true,

@@ -551,7 +551,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               : 'Agay barhnay ka raaz bas pehla qadam uthana hai. Punjab ki sarak aur mehnat ki barkat.'}"
           </p>
           <p className="text-xs uppercase tracking-widest opacity-80 font-sans font-semibold">
-            {lang === 'ur' ? '- وڑائچ حکمت' : '- Warraich Freight Wisdom'}
+            {lang === 'ur' ? '- ڈرائیور دوست رہنمائی' : '- Driver Dost Wisdom'}
           </p>
           <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-white/10 rounded-full pointer-events-none group-hover:scale-110 transition-transform"></div>
         </div>

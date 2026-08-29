@@ -1,6 +1,6 @@
 {
-  "name": "Warraich Goods",
-  "description": "Comprehensive bilingual (Urdu & English) cargo transport, fleet management, and digital Bilty generator system for Warraich Goods logistics.",
+  "name": "Driver Dost",
+  "description": "Comprehensive bilingual (Urdu & English) cargo transport, road freight, trip cost calculator, and fleet management system.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

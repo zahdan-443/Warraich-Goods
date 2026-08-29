@@ -396,39 +396,7 @@ export default function App() {
     };
   }, []);
 
-  // Automatic Notification Auto-Enable on App Open & First User Gesture
-  useEffect(() => {
-    if (!isNotificationSupported()) return;
-
-    const requestAutoNotif = async () => {
-      if (getNotificationPermission() === 'default') {
-        try {
-          await requestNotificationPermission();
-        } catch (err) {
-          console.warn('Auto notification request notice:', err);
-        }
-      }
-    };
-
-    // Prompt after initial render
-    const timer = setTimeout(requestAutoNotif, 1000);
-
-    // Also trigger on first screen touch/tap in case browser requires immediate user gesture
-    const handleGesture = () => {
-      requestAutoNotif();
-      window.removeEventListener('click', handleGesture);
-      window.removeEventListener('touchstart', handleGesture);
-    };
-
-    window.addEventListener('click', handleGesture, { once: true });
-    window.addEventListener('touchstart', handleGesture, { once: true });
-
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('click', handleGesture);
-      window.removeEventListener('touchstart', handleGesture);
-    };
-  }, []);
+  // Notification permission is strictly on-demand (e.g. from Notification modal / settings)
 
   // Route Protection for Bilty Generator
   useEffect(() => {

@@ -155,7 +155,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             </div>
             <div>
               <h2 className="text-lg font-serif font-bold tracking-tight">
-                {lang === 'ur' ? 'وڑائچ گڈز سیکیور لاگ ان' : 'Warraich Goods Sign In'}
+                {lang === 'ur' ? 'ڈرائیور دوست سیکیور لاگ ان' : 'Driver Dost Sign In'}
               </h2>
               <p className="text-xs text-slate-300 font-sans mt-0.5">
                 {lang === 'ur' ? 'کلاؤڈ ڈیٹا سنک اور سیکیور پورٹل' : 'Cloud Sync & Fleet Management Access'}

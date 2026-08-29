@@ -75,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({
     setNotifPerm(res);
     if (res === 'granted') {
       sendSystemNotification(
-        lang === 'ur' ? 'وڑائچ گڈز الرٹس فعال ہو گئے' : 'Warraich Goods Alerts Enabled',
+        lang === 'ur' ? 'ڈرائیور دوست الرٹس فعال ہو گئے' : 'Driver Dost Alerts Enabled',
         lang === 'ur' ? 'تمام ٹرانسپورٹ الرٹس اب آپ کے فون کے اسٹیٹس بار پر آئیں گے۔' : 'Transport alerts will now appear in your device status bar.'
       );
     }
@@ -84,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
   const handleSendTestNotification = async () => {
     setTestSent(true);
     await sendSystemNotification(
-      lang === 'ur' ? 'وڑائچ گڈز ٹیسٹ نوٹیفکیشن 🚚' : 'Warraich Goods Test Alert 🚚',
+      lang === 'ur' ? 'ڈرائیور دوست ٹیسٹ نوٹیفکیشن 🚚' : 'Driver Dost Test Alert 🚚',
       lang === 'ur' ? 'یہ نوٹیفکیشن آپ کے فون کے اسٹیٹس بار اور نوٹیفکیشن پینل پر کامیابی سے موصول ہوا۔' : 'This test notification was delivered to your device status bar & notification shade.'
     );
     setTimeout(() => setTestSent(false), 3000);
@@ -121,10 +121,10 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleShareApp = async () => {
     const shareData = {
-      title: 'Warraich Goods - Freight & Fleet Management',
+      title: 'Driver Dost - Road Freight, Safar & Fleet Manager',
       text: lang === 'ur'
-        ? 'وڑائچ گڈز روڈ فریٹ، فلیٹ کنٹرول اور ڈیجیٹل بلٹی سسٹم۔'
-        : 'Warraich Goods Road Freight, Fleet Management & Digital Bilty System.',
+        ? 'ڈرائیور دوست - ٹرپ اخراجات کیلکولیٹر، ٹول ٹیکس، ڈیزل مانیٹر اور فلیٹ مینجمنٹ سسٹم۔'
+        : 'Driver Dost - Road Freight, Safar Diary, Toll Calculator & Fleet Management System.',
       url: window.location.origin + window.location.pathname,
     };
     if (navigator.share) {
@@ -168,11 +168,11 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex flex-col justify-center min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2 leading-tight">
                 <span className="text-sm sm:text-base md:text-lg font-serif font-bold tracking-tight text-[#4a4a35] whitespace-nowrap">
-                  Warraich Goods
+                  Driver Dost
                 </span>
                 <span className="text-gray-300 font-light">|</span>
                 <span className="text-xs sm:text-base font-serif font-bold text-[#8b9d77] whitespace-nowrap">
-                  وڑائچ گڈز
+                  ڈرائیور دوست
                 </span>
               </div>
             </div>
@@ -447,10 +447,10 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     <div>
                       <div className="font-serif font-bold text-sm text-emerald-950">
-                        {lang === 'ur' ? 'ایپ شیئر کریں' : 'Share Warraich Goods App'}
+                        {lang === 'ur' ? 'ایپ شیئر کریں' : 'Share Driver Dost App'}
                       </div>
                       <div className="text-[11px] text-emerald-700">
-                        {lang === 'ur' ? 'اپنے دوستوں اور کلائنٹس کے ساتھ ایپ شیئر کریں' : 'Send app link to drivers & clients'}
+                        {lang === 'ur' ? 'اپنے دوستوں اور ڈرائیور بھائیوں کے ساتھ ایپ شیئر کریں' : 'Send app link to drivers & fellow transporters'}
                       </div>
                     </div>
                   </div>
@@ -510,7 +510,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Drawer Footer */}
             <div className="p-4 bg-[#f0f0e4] border-t border-[#ecece0] text-center text-xs text-[#8e8e75]">
-              Warraich Goods Transport Co. · v2.4 Pro
+              Driver Dost · Pakistan Logistics & Transport Manager v2.4 Pro
             </div>
           </div>
         </div>

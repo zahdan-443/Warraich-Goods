@@ -174,10 +174,10 @@ self.addEventListener('push', (event) => {
     try {
       data = event.data.json();
     } catch (e) {
-      data = { title: 'Warraich Goods', body: event.data.text() };
+      data = { title: 'Driver Dost', body: event.data.text() };
     }
   }
-  const title = data.title || 'Warraich Goods Transport Co.';
+  const title = data.title || 'Driver Dost Transport Manager';
   const options = {
     body: data.body || 'New freight dispatch or vehicle update',
     icon: '/icon-192.png',

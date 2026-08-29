@@ -116,7 +116,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
     const toName = CITIES_LIST.find(c => c.id === toCity)?.[lang === 'ur' ? 'nameUr' : 'nameEn'] || toCity;
     const vName = VEHICLE_CLASSES.find(v => v.id === vehicleClass)?.[lang === 'ur' ? 'nameUr' : 'nameEn'] || vehicleClass;
     
-    let text = `🛣️ *Warraich Goods - NHA Toll Tax Estimate (2026)*\n`;
+    let text = `🛣️ *Driver Dost - NHA Toll Tax Estimate (2026)*\n`;
     text += `📍 Route: ${fromName} ➔ ${toName}\n`;
     text += `🚚 Vehicle: ${vName}\n`;
     text += `💳 M-Tag Status: ${hasMtag ? 'Active (No Surcharge)' : 'Non-M-Tag (+50% Surcharge)'}\n`;
@@ -143,7 +143,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
     const toName = CITIES_LIST.find(c => c.id === toCity)?.[lang === 'ur' ? 'nameUr' : 'nameEn'] || toCity;
     const vName = VEHICLE_CLASSES.find(v => v.id === vehicleClass)?.[lang === 'ur' ? 'nameUr' : 'nameEn'] || vehicleClass;
     
-    let text = `🛣️ *Warraich Goods - NHA Toll Tax Estimate (2026)*\n`;
+    let text = `🛣️ *Driver Dost - NHA Toll Tax Estimate (2026)*\n`;
     text += `📍 Route: ${fromName} ➔ ${toName}\n`;
     text += `🚚 Vehicle: ${vName}\n`;
     text += `💳 M-Tag: ${hasMtag ? 'Active (Exempt)' : 'Inactive (+50% Cash Penalty)'}\n`;
