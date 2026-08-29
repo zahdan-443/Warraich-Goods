@@ -1,10 +1,12 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", "Inter", "Noto Sans Arabic", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", ui-serif, Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --font-urdu: "Noto Nastaliq Urdu", serif;
+  --font-urdu: "Noto Sans Arabic", "Noto Nastaliq Urdu", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: "Noto Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-nastaliq: "Noto Nastaliq Urdu", serif;
   
   --color-nat-bg: #fdfbf7;
   --color-nat-text: #4a4a35;
@@ -19,9 +21,16 @@
   --color-nat-muted: #8e8e75;
 }
 
-body.urdu {
-  font-family: var(--font-urdu);
-  direction: rtl;
+body.urdu, [dir="rtl"] {
+  font-family: "Noto Sans Arabic", "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+}
+
+.font-nastaliq {
+  font-family: "Noto Nastaliq Urdu", serif !important;
+}
+
+.font-arabic {
+  font-family: "Noto Sans Arabic", sans-serif !important;
 }
 
 html, body, #root {

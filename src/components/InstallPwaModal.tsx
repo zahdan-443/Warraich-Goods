@@ -110,7 +110,7 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
             </div>
             <div className="flex items-center gap-2.5 bg-white p-3 rounded-2xl border border-[#ecece0]">
               <Smartphone className="w-4 h-4 text-[#8b9d77] shrink-0" />
-              <span>{lang === 'ur' ? 'موبائل ہوم اسکرین پر ایک کلک سے کھولیں' : 'One-tap launch from phone home screen'}</span>
+              <span>{lang === 'ur' ? 'موبائل ہوم اسکرین اور فل سکرین موڈ (بغیر براؤزر بار)' : 'Home screen launch & full screen (no browser bar)'}</span>
             </div>
             <div className="flex items-center gap-2.5 bg-white p-3 rounded-2xl border border-[#ecece0]">
               <ShieldCheck className="w-4 h-4 text-[#1e3a68] shrink-0" />

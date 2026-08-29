@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { BiltyRecord, ContactItem, DICTIONARY, Language } from '../../types';
-import { Receipt, Search, Download, FileText, MapPin, Share2, Phone, FileSpreadsheet, Printer } from 'lucide-react';
+import { Receipt, Search, Download, FileText, MapPin, Share2, Phone, FileSpreadsheet, Printer, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
 import { VoiceInputButton } from '../VoiceInputButton';
 import { CameraOcrInput } from '../CameraOcrInput';
 import { PrintableBilty } from '../PrintableBilty';
 import { exportContactsCSV, getContactList, allocateNextBiltyNumber } from '../../utils/storage';
 import { validateBiltyFreight } from '../../utils/calculator';
+import { generatePdfFromElement, shareBiltyPdfOrWhatsApp } from '../../utils/pdfHelper';
 
 const getQrDataUrl = async (record: BiltyRecord): Promise<string> => {
   const currentOrigin = typeof window !== 'undefined' && window.location && window.location.origin
@@ -175,12 +175,14 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty 
     setAdvance('');
   };
 
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
   const generateBiltyPdf = async (record: BiltyRecord): Promise<{ pdf: jsPDF; pdfBlob: Blob } | null> => {
     const qrUrl = await getQrDataUrl(record);
     setActivePrintQrUrl(qrUrl);
     setActivePrintRecord(record);
     // Allow React state to update DOM and QR code generation
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 450));
 
     const target = document.getElementById('printable-bilty-dom');
     if (!target) {
@@ -188,24 +190,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty 
       return null;
     }
 
-    // Force inline positioning on target right before html2canvas so layout engine computes true 794px width & 1123px height
-    const origPos = target.style.position;
-    const origTop = target.style.top;
-    const origLeft = target.style.left;
-    const origOpacity = target.style.opacity;
-    const origZIndex = target.style.zIndex;
-    const origWidth = target.style.width;
-    const origHeight = target.style.height;
-
-    target.style.position = 'fixed';
-    target.style.top = '0px';
-    target.style.left = '0px';
-    target.style.width = '794px';
-    target.style.height = '1123px';
-    target.style.opacity = '0.01';
-    target.style.zIndex = '-9999';
-
-    // Wait for all images inside target to finish loading
+    // Wait for any inner images to finish loading
     const imgs = Array.from(target.querySelectorAll('img'));
     await Promise.all(
       imgs.map(
@@ -215,77 +200,24 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty 
             else {
               img.onload = () => resolve(true);
               img.onerror = () => resolve(true);
-              setTimeout(() => resolve(true), 600);
+              setTimeout(() => resolve(true), 500);
             }
           })
       )
     );
 
-    const canvas = await html2canvas(target, {
+    const innerEl = document.getElementById('printable-bilty-inner') || target;
+    const { pdf, pdfBlob } = await generatePdfFromElement(innerEl as HTMLElement, {
       scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      width: 794,
-      height: 1123,
-      windowWidth: 1024,
-      windowHeight: 1200,
-      onclone: (clonedDoc) => {
-        // Strip dark or navy theme classes from cloned document so PDF canvas is strictly light theme
-        clonedDoc.documentElement.className = '';
-        clonedDoc.body.className = '';
-        clonedDoc.documentElement.style.backgroundColor = '#ffffff';
-        clonedDoc.documentElement.style.color = '#0f172a';
-        clonedDoc.body.style.backgroundColor = '#ffffff';
-        clonedDoc.body.style.color = '#0f172a';
-
-        const clonedEl = clonedDoc.getElementById('printable-bilty-dom');
-        if (clonedEl) {
-          clonedEl.style.position = 'static';
-          clonedEl.style.width = '794px';
-          clonedEl.style.minWidth = '794px';
-          clonedEl.style.maxWidth = '794px';
-          clonedEl.style.height = '1123px';
-          clonedEl.style.minHeight = '1123px';
-          clonedEl.style.maxHeight = '1123px';
-          clonedEl.style.opacity = '1';
-          clonedEl.style.visibility = 'visible';
-          clonedEl.style.display = 'flex';
-          clonedEl.style.flexDirection = 'column';
-          clonedEl.style.justifyContent = 'space-between';
-          clonedEl.style.backgroundColor = '#ffffff';
-          clonedEl.style.color = '#0f172a';
-          clonedEl.style.boxSizing = 'border-box';
-          clonedEl.style.overflow = 'hidden';
-        }
-      },
+      quality: 0.98,
     });
 
-    // Restore original target styles
-    target.style.position = origPos;
-    target.style.top = origTop;
-    target.style.left = origLeft;
-    target.style.opacity = origOpacity;
-    target.style.zIndex = origZIndex;
-    target.style.width = origWidth;
-    target.style.height = origHeight;
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.98);
-    const pdf = new jsPDF({
-      orientation: 'p',
-      unit: 'mm',
-      format: 'a4',
-    });
-
-    // A4 dimensions: 210mm x 297mm
-    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-
-    const pdfBlob = pdf.output('blob');
     return { pdf, pdfBlob };
   };
 
   const handleDownloadPDF = async (record: BiltyRecord) => {
+    if (isGeneratingPdf) return;
+    setIsGeneratingPdf(true);
     try {
       const result = await generateBiltyPdf(record);
       if (result) {
@@ -294,37 +226,30 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty 
     } catch (err) {
       console.error('PDF export failed:', err);
       alert('پی ڈی ایف بنانے میں مسئلہ آیا: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
   const handleWhatsAppShare = async (record: BiltyRecord) => {
+    if (isGeneratingPdf) return;
+    setIsGeneratingPdf(true);
     try {
       const result = await generateBiltyPdf(record);
       if (!result) return;
 
-      const pdfFile = new File([result.pdfBlob], `Bilty_${record.biltyNo}.pdf`, { type: 'application/pdf' });
-
-      // If Web Share API supports file sharing (mobile devices)
-      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-        await navigator.share({
-          title: `بلٹی رسید #${record.biltyNo}`,
-          text: `ورائچ گڈز ٹرانسپورٹ کمپنی - بلٹی رسید نمبر: ${record.biltyNo}`,
-          files: [pdfFile],
-        });
-        return;
-      }
-
-      // Fallback for Desktop: Save PDF & open WhatsApp Web
-      result.pdf.save(`Bilty_${record.biltyNo}.pdf`);
-
-      const summary = `🚚 *ورائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)*\n📄 *بلٹی نمبر:* ${record.biltyNo}\n🚛 *گاڑی نمبر:* ${record.vehicleNo}\n📅 *تاریخ:* ${record.date}\n🛣️ *روٹ:* ${record.sendingCity || '-'} تا ${record.receivingCity || '-'}\n👤 *کنسائنر:* ${record.senderName || record.consignor || '-'}\n👤 *کنسائنی:* ${record.receiverName || record.consignee || '-'}\n📦 *تفصیل مال:* ${record.itemDescription || '-'} (${record.qty || '-'})\n💰 *کل کرایہ:* Rs ${record.total ? record.total.toLocaleString() : '0'}\n💳 *بقایا:* Rs ${record.payable ? record.payable.toLocaleString() : '0'}\n📞 *رابطہ:* 0300-5370443 | 0339-5370443\n\n*(نوٹ: بلٹی کی پی ڈی ایف آپ کی ڈیوائس میں سیو کر دی گئی ہے، برائے مہربانی واٹس ایپ چیٹ میں فائل اٹیچ کر دیں۔)*`;
-
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(summary)}`;
-      window.open(whatsappUrl, '_blank');
+      await shareBiltyPdfOrWhatsApp({
+        record,
+        pdfBlob: result.pdfBlob,
+        pdfDoc: result.pdf,
+      });
     } catch (err) {
       console.error('WhatsApp share failed:', err);
-      const summary = `🚚 *ورائچ گڈز ٹرانسپورٹ کمپنی*\n📄 *بلٹی نمبر:* ${record.biltyNo}\n🚛 *گاڑی نمبر:* ${record.vehicleNo}\n📅 *تاریخ:* ${record.date}\n🛣️ *روٹ:* ${record.sendingCity || '-'} تا ${record.receivingCity || '-'}`;
-      window.open(`https://wa.me/?text=${encodeURIComponent(summary)}`, '_blank');
+      await shareBiltyPdfOrWhatsApp({
+        record,
+      });
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -357,7 +282,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty 
         <button
           type="button"
           onClick={() => handlePrintBuilty(record)}
-          className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs active:scale-98"
+          disabled={isGeneratingPdf}
+          className="w-full py-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs active:scale-98"
         >
           <Printer className="w-4 h-4 text-amber-400" />
           <span>{lang === 'ur' ? 'پرنٹ بلٹی (A4/A5)' : 'Print Builty'}</span>
@@ -366,18 +292,20 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty 
         <button
           type="button"
           onClick={() => handleDownloadPDF(record)}
-          className="w-full py-3 bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white text-[#5a5a40] rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
+          disabled={isGeneratingPdf}
+          className="w-full py-3 bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white disabled:opacity-50 text-[#5a5a40] rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
         >
-          <Download className="w-4 h-4" />
-          <span>{t.downloadBtn}</span>
+          {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin text-[#5a5a40]" /> : <Download className="w-4 h-4" />}
+          <span>{isGeneratingPdf ? (lang === 'ur' ? 'تیار ہو رہی ہے...' : 'Generating...') : t.downloadBtn}</span>
         </button>
 
         <button
           type="button"
           onClick={() => handleWhatsAppShare(record)}
-          className="w-full py-3 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs active:scale-98"
+          disabled={isGeneratingPdf}
+          className="w-full py-3 bg-[#25D366] hover:bg-[#20bd5a] disabled:opacity-50 text-white rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs active:scale-98"
         >
-          <Share2 className="w-4 h-4" />
+          {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Share2 className="w-4 h-4" />}
           <span>{lang === 'ur' ? 'واٹس ایپ شیئر' : 'WhatsApp Share'}</span>
         </button>
       </div>

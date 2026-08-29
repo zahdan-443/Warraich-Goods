@@ -14,7 +14,9 @@ import {
   CheckCircle2, 
   Users,
   Milestone,
-  Save
+  Save,
+  Key,
+  Download
 } from 'lucide-react';
 import { Language, UserProfile, ActivityLogItem, BiltyRecord, Trip, TollRatesConfig } from '../types';
 import { 
@@ -507,6 +509,34 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
                     );
                   })
                 )}
+              </div>
+
+              {/* PWABuilder Keystore Download Box for App Owner */}
+              <div className="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                    <Key className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-xs text-amber-950">
+                      {lang === 'ur' ? 'اینڈرائیڈ کی اسٹور فائل (PWABuilder سائننگ کے لیے)' : 'Android Keystore File (PWABuilder)'}
+                    </h5>
+                    <p className="text-[10px] text-amber-800">
+                      Password: <span className="font-mono font-bold">Warraich12345</span> | Alias: <span className="font-mono font-bold">warraich</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <a
+                    href={`${import.meta.env.BASE_URL}warraich-release-key.keystore`}
+                    download="warraich-release-key.keystore"
+                    className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>{lang === 'ur' ? '.keystore فائل ڈاؤن لوڈ کریں' : 'Download .keystore'}</span>
+                  </a>
+                </div>
               </div>
             </div>
           )}

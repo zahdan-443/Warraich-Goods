@@ -107,9 +107,9 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
     "بیوپاری کو چاہیے کہ مال وصول کرتے وقت اچھی طرح ملاحظہ کرے۔",
     "مال کو گاڑی میں بحفاظت لوڈ کرنے اور منزل پر ان لوڈ کرنے کی مکمل ذمہ داری اور لیبر کا خرچ متعلقہ پارٹی کا ہوگا۔",
     "فل ٹرک لوڈ کی صورت میں اگر روانگی کے وقت لگائی گئی سیل یا ترپال منزل پر درست حالت میں ہے، تو راستے میں مال کی کسی ڈیمیج کی کمپنی ذمہ دار نہ ہوگی۔",
-    "انڈوں، تیل، گھی، مربہ جات و دیگر مال کے رسنے، ضائع ہونے یا لیک ہونے کی کمپنی ذمہ دار نہ ہوگی۔ محفوظ اور معیاری پیکنگ بھیجنے والے کی ذمہ داری ہے۔ راستے میں سڑک کی خرابی، جھٹکوں، اتفاقیہ حادثہ یا موسم کی وجہ سے انڈوں یا دیگر سامان کی ٹوٹ پھوٹ کی ٹرانسپورٹ کمپنی ہرگز ذمہ دار نہیں ہوگی۔",
+    "انڈوں، تیل، گھی، مربہ جات و دیگر مال کے رسنے، ضائع ہونے یا لیک ہونے کی کمپنی ذمہ دار نہ ہوگی۔ محفوظ اور معیاری پیکنگ بھیجنے والے کی ذمہ داری ہے۔ راستے میں سڑک کی خرابی، جھٹکوں، اتفاقیہ حادثہ یا موسم کی وجہ سے سامان کی ٹوٹ پھوٹ کی ٹرانسپورٹ کمپنی ذمہ دار نہ ہوگی۔",
     "قدرتی آفات، دھند، ہڑتال، ٹریفک جام یا سڑک بند ہونے کی وجہ سے گاڑی لیٹ ہونے پر مال کے خراب ہونے یا مارکیٹ ریٹ گرنے کا کلیم قبول نہیں ہوگا۔",
-    "بلٹی پر لکھے گئے مال سے ہٹ کر کوئی غیر قانونی چیز نکلنے یا مقررہ حد سے زائد وزن ہونے پر اضافی کرایہ، تمام تر قانونی ذمہ داری، جرمانہ و چالان پارٹی ادا کرے گی۔",
+    "بلٹی پر درج مال سے ہٹ کر کوئی غیر قانونی چیز نکلنے یا مقررہ حد سے زائد وزن ہونے پر اضافی کرایہ، تمام تر قانونی ذمہ داری، جرمانہ و چالان پارٹی ادا کرے گی۔",
     "منزل پر پہنچنے کے 24 گھنٹے کے اندر گاڑی خالی کرنا لازمی ہے، ورنہ یومیہ ڈیمرج چارجز وصول کیے جائیں گے۔",
     "جس مال کے ہمراہ بیوپاری یا اس کا نمائندہ خود موجود ہوگا، اس مال کے کسی قسم کے نقصان کی کمپنی ذمہ دار نہ ہوگی۔",
     "کسی بھی تنازعے کی صورت میں حتمی فیصلہ ٹرانسپورٹ کمپنی کے دفتر میں باہمی رضامندی سے طے کیا جائے گا۔"
@@ -122,21 +122,27 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
   return (
     <div
       dir="rtl"
-      className="printable-bilty-container p-6 w-[794px] h-[1123px] mx-auto bg-white text-slate-900 border-2 border-slate-900 font-sans text-xs box-border flex flex-col justify-between print:p-3 print:w-full print:h-auto print:border-none"
+      id="printable-bilty-inner"
+      className="printable-bilty-container mx-auto box-border flex flex-col justify-between"
       style={{
         backgroundColor: '#ffffff',
         color: '#0f172a',
-        border: '2px solid #0f172a',
-        fontFamily: "'Noto Sans Arabic', 'Inter', Arial, sans-serif",
+        border: '2px solid #0f2942',
+        fontFamily: "'Noto Sans Arabic', 'Plus Jakarta Sans', 'Inter', Arial, sans-serif",
         lineHeight: '1.3',
         width: '794px',
         height: '1123px',
+        minWidth: '794px',
+        maxWidth: '794px',
+        minHeight: '1123px',
+        maxHeight: '1123px',
+        padding: '20px',
         boxSizing: 'border-box',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        position: 'relative'
       }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700;800;900&family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
         @media print {
           @page {
             size: A4 portrait;
@@ -154,13 +160,10 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
             border: none !important;
             box-shadow: none !important;
             margin: 0 !important;
-            padding: 14px !important;
+            padding: 16px !important;
             page-break-after: avoid !important;
             page-break-inside: avoid !important;
           }
-        }
-        .printable-bilty-container {
-          font-family: 'Noto Sans Arabic', 'Inter', Arial, sans-serif !important;
         }
         .printable-bilty-container * {
           box-sizing: border-box !important;
@@ -168,11 +171,11 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
       `}</style>
 
       {/* 1. TOP HEADER (BRANDING & CONSIGNMENT NOTE CARD) */}
-      <div className="pb-2.5 mb-2 border-b-2" style={{ borderColor: '#0f172a' }}>
-        <div className="flex flex-row items-stretch justify-between gap-3 text-right">
+      <div style={{ paddingBottom: '10px', marginBottom: '8px', borderBottom: '2px solid #0f2942' }}>
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', justifyContent: 'space-between', gap: '12px', textAlign: 'right' }}>
           
           {/* Left / Main Branding Block */}
-          <div className="flex items-center gap-3 flex-1">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 0%' }}>
             {!logoFailed ? (
               <img
                 src={resolvedLogo || logoIconData}
@@ -189,7 +192,6 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
                     setLogoFailed(true);
                   }
                 }}
-                className="rounded-full p-0.5 shrink-0"
                 style={{
                   width: '68px',
                   height: '68px',
@@ -197,34 +199,45 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
                   minHeight: '68px',
                   maxWidth: '68px',
                   maxHeight: '68px',
+                  borderRadius: '50%',
+                  padding: '2px',
                   backgroundColor: '#ffffff',
                   border: '2px solid #8b9d77',
-                  objectFit: 'contain'
+                  objectFit: 'contain',
+                  flexShrink: 0
                 }}
               />
             ) : (
               <div
-                className="rounded-full p-1 shrink-0 flex items-center justify-center bg-white"
                 style={{
                   width: '68px',
                   height: '68px',
                   minWidth: '68px',
                   minHeight: '68px',
-                  border: '2px solid #8b9d77'
+                  borderRadius: '50%',
+                  padding: '4px',
+                  backgroundColor: '#ffffff',
+                  border: '2px solid #8b9d77',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
                 }}
               >
                 <AlHadiLogo className="w-14 h-14" />
               </div>
             )}
-            <div className="flex flex-col justify-center text-right">
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'right' }}>
               {/* Urdu Big Title */}
               <h1
-                className="text-[21px] font-black tracking-tight"
                 style={{
-                  fontFamily: "'Noto Sans Arabic', Arial, sans-serif",
+                  fontFamily: "'Noto Sans Arabic', 'Noto Nastaliq Urdu', Arial, sans-serif",
+                  fontSize: '22px',
+                  fontWeight: 900,
+                  letterSpacing: '-0.02em',
                   lineHeight: '1.2',
                   color: '#0f2942',
-                  margin: '0 0 1px 0',
+                  margin: '0 0 2px 0',
                   padding: '0'
                 }}
               >
@@ -232,71 +245,89 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
               </h1>
 
               {/* English Subtitle */}
-              <div className="text-[11px] font-extrabold tracking-wider text-slate-700 font-sans uppercase">
+              <div style={{ fontSize: '11.5px', fontWeight: 800, letterSpacing: '0.05em', color: '#334155', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', Arial, sans-serif" }}>
                 {company.nameEn || 'WARRAICH GOODS TRANSPORT CO.'}
               </div>
 
               {/* Tagline / Sub-description */}
               <p
-                className="text-[10px] font-bold text-slate-600 mt-0.5"
-                style={{ fontFamily: "'Noto Sans Arabic', Arial, sans-serif" }}
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  color: '#475569',
+                  marginTop: '2px',
+                  marginBottom: '0',
+                  fontFamily: "'Noto Sans Arabic', Arial, sans-serif"
+                }}
               >
                 {company.taglineUr || 'ملک بھر میں مال برداری و لاجسٹکس سروس | آل پاکستان روڈ فریٹ'}
               </p>
 
               {/* Head Office & Phone Helpline */}
-              <div className="flex flex-row items-center gap-2 mt-1 text-[10px] font-bold text-slate-800">
+              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '4px', fontSize: '10px', fontWeight: 700, color: '#1e293b' }}>
                 <span>📍 <strong>ہیڈ آفس:</strong> {company.headOfficeUr || 'سمندری، فیصل آباد'}</span>
-                <span className="text-slate-300">|</span>
-                <span>📞 <strong>ہیلپ لائن:</strong> <span className="font-mono dir-ltr inline-block">0300-5370443, 0339-5370443</span></span>
+                <span style={{ color: '#cbd5e1' }}>|</span>
+                <span>📞 <strong>ہیلپ لائن:</strong> <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', display: 'inline-block' }}>0300-5370443, 0339-5370443</span></span>
               </div>
             </div>
           </div>
 
           {/* Right Navy Block: CONSIGNMENT NOTE / BILTY */}
           <div
-            className="rounded-xs shrink-0 w-[240px] flex flex-col justify-between overflow-hidden"
-            style={{ border: '2px solid #0f2942', backgroundColor: '#f8fafc' }}
+            style={{
+              width: '240px',
+              border: '2px solid #0f2942',
+              backgroundColor: '#f8fafc',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              overflow: 'hidden',
+              flexShrink: 0
+            }}
           >
             {/* Header Banner */}
             <div
-              className="py-1.5 px-2 text-center text-white"
-              style={{ backgroundColor: '#0f2942' }}
+              style={{
+                backgroundColor: '#0f2942',
+                color: '#ffffff',
+                padding: '6px 8px',
+                textAlign: 'center'
+              }}
             >
-              <div className="text-xs font-black tracking-wider uppercase font-sans">
+              <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', Arial, sans-serif" }}>
                 CONSIGNMENT NOTE / BILTY
               </div>
-              <div className="text-[10px] font-extrabold" style={{ fontFamily: "'Noto Sans Arabic', Arial" }}>
+              <div style={{ fontSize: '10.5px', fontWeight: 800, fontFamily: "'Noto Sans Arabic', Arial, sans-serif" }}>
                 با ضابطہ فریٹ بلٹی رسید
               </div>
             </div>
 
             {/* Meta Table Details */}
-            <div className="p-1.5 space-y-1 text-[10.5px] font-bold">
-              <div className="flex justify-between items-center border-b pb-0.5" style={{ borderColor: '#e2e8f0' }}>
-                <span className="text-slate-500 font-medium">بلٹی نمبر (Bilty No):</span>
-                <span className="font-black font-mono text-xs dir-ltr text-slate-900">{record.biltyNo}</span>
+            <div style={{ padding: '6px 8px', fontSize: '11px', fontWeight: 700, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px' }}>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>بلٹی نمبر (Bilty No):</span>
+                <span style={{ fontWeight: 900, fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', direction: 'ltr', color: '#0f172a' }}>{record.biltyNo}</span>
               </div>
-              <div className="flex justify-between items-center border-b pb-0.5" style={{ borderColor: '#e2e8f0' }}>
-                <span className="text-slate-500 font-medium">تاریخ (Date):</span>
-                <span className="font-bold font-mono text-[11px] dir-ltr text-slate-800">{record.date || '-'}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px' }}>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>تاریخ (Date):</span>
+                <span style={{ fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', direction: 'ltr', color: '#1e293b' }}>{record.date || '-'}</span>
               </div>
-              <div className="flex justify-between items-center border-b pb-0.5" style={{ borderColor: '#e2e8f0' }}>
-                <span className="text-slate-500 font-medium">گاڑی نمبر (Vehicle No):</span>
-                <span className="font-black font-mono text-xs dir-ltr text-slate-900">{record.vehicleNo}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px' }}>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>گاڑی نمبر (Vehicle No):</span>
+                <span style={{ fontWeight: 900, fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', direction: 'ltr', color: '#0f172a' }}>{record.vehicleNo}</span>
               </div>
-              <div className="flex justify-between items-center pt-0.5">
-                <span className="text-slate-500 font-medium">طریقہ ادائیگی (Terms):</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '2px' }}>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>طریقہ ادائیگی (Terms):</span>
                 {isPaid ? (
-                  <span className="px-2 py-0.5 rounded text-[9.5px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '9.5px', fontWeight: 900, backgroundColor: '#dcfce7', color: '#166534', border: '1px solid #86efac' }}>
                     PAID (ادا شدہ)
                   </span>
                 ) : isAdvanceOnly ? (
-                  <span className="px-2 py-0.5 rounded text-[9.5px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                  <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '9.5px', fontWeight: 900, backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }}>
                     ADVANCE (پیشگی + بقایا)
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded text-[9.5px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                  <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '9.5px', fontWeight: 900, backgroundColor: '#ffe4e6', color: '#9f1239', border: '1px solid #fda4af' }}>
                     TO BE PAID (بقایا بلٹی)
                   </span>
                 )}
@@ -308,139 +339,166 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
       </div>
 
       {/* 2. SENDER & RECEIVER BOXES (CONSIGNOR / CONSIGNEE) */}
-      <div className="grid grid-cols-2 gap-2 mb-2">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px', marginBottom: '8px' }}>
         {/* Right / Consignor Box */}
         <div
-          className="p-2.5 rounded-xs flex flex-col justify-between"
-          style={{ border: '2px solid #0f2942', backgroundColor: '#ffffff' }}
+          style={{
+            border: '2px solid #0f2942',
+            backgroundColor: '#ffffff',
+            padding: '8px 10px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between'
+          }}
         >
           <div
-            className="font-black text-xs pb-1 mb-1.5 border-b-2 flex justify-between items-center"
-            style={{ color: '#0f2942', borderColor: '#0f2942' }}
+            style={{
+              fontWeight: 900,
+              fontSize: '12px',
+              paddingBottom: '4px',
+              marginBottom: '6px',
+              borderBottom: '2px solid #0f2942',
+              color: '#0f2942',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}
           >
-            <span className="text-[12px]">مال بھیجنے والا (CONSIGNOR / SENDER)</span>
-            <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-slate-100 font-mono text-slate-700">کنسائنر</span>
+            <span>مال بھیجنے والا (CONSIGNOR / SENDER)</span>
+            <span style={{ fontSize: '9.5px', padding: '1px 6px', borderRadius: '3px', backgroundColor: '#f1f5f9', fontFamily: "'JetBrains Mono', monospace", color: '#334155' }}>کنسائنر</span>
           </div>
-          <div className="space-y-1 font-bold text-[11px] text-slate-800">
-            <div className="flex items-start justify-between">
-              <span className="text-slate-500 font-normal shrink-0">نام (Name):</span>
-              <span className="font-black text-slate-900 text-right">{record.senderName || record.consignor || '-'}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontWeight: 700, fontSize: '11px', color: '#1e293b' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span style={{ color: '#64748b', fontWeight: 500 }}>نام (Name):</span>
+              <span style={{ fontWeight: 900, color: '#0f172a', textAlign: 'right' }}>{record.senderName || record.consignor || '-'}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500 font-normal shrink-0">فون نمبر (Phone):</span>
-              <span className="font-mono dir-ltr font-black text-slate-900">{record.senderMobile || '-'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: '#64748b', fontWeight: 500 }}>فون نمبر (Phone):</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', fontWeight: 900, color: '#0f172a' }}>{record.senderMobile || '-'}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500 font-normal shrink-0">شناختی کارڈ (CNIC):</span>
-              <span className="font-mono dir-ltr text-slate-800">{record.senderCnic || '-'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: '#64748b', fontWeight: 500 }}>شناختی کارڈ (CNIC):</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', color: '#334155' }}>{record.senderCnic || '-'}</span>
             </div>
-            <div className="flex items-center justify-between pt-0.5 border-t border-slate-100">
-              <span className="text-slate-500 font-normal shrink-0">روانگی مقام (Dispatch From):</span>
-              <span className="font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded text-[11px]">{record.sendingCity || '-'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '3px', borderTop: '1px solid #f1f5f9' }}>
+              <span style={{ color: '#64748b', fontWeight: 500 }}>روانگی مقام (Dispatch From):</span>
+              <span style={{ fontWeight: 900, color: '#0f172a', backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '3px', fontSize: '11px' }}>{record.sendingCity || '-'}</span>
             </div>
           </div>
         </div>
 
         {/* Left / Consignee Box */}
         <div
-          className="p-2.5 rounded-xs flex flex-col justify-between"
-          style={{ border: '2px solid #0f2942', backgroundColor: '#ffffff' }}
+          style={{
+            border: '2px solid #0f2942',
+            backgroundColor: '#ffffff',
+            padding: '8px 10px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between'
+          }}
         >
           <div
-            className="font-black text-xs pb-1 mb-1.5 border-b-2 flex justify-between items-center"
-            style={{ color: '#0f2942', borderColor: '#0f2942' }}
+            style={{
+              fontWeight: 900,
+              fontSize: '12px',
+              paddingBottom: '4px',
+              marginBottom: '6px',
+              borderBottom: '2px solid #0f2942',
+              color: '#0f2942',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}
           >
-            <span className="text-[12px]">مال وصول کرنے والا (CONSIGNEE / RECEIVER)</span>
-            <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-slate-100 font-mono text-slate-700">کنسائنی</span>
+            <span>مال وصول کرنے والا (CONSIGNEE / RECEIVER)</span>
+            <span style={{ fontSize: '9.5px', padding: '1px 6px', borderRadius: '3px', backgroundColor: '#f1f5f9', fontFamily: "'JetBrains Mono', monospace", color: '#334155' }}>کنسائنی</span>
           </div>
-          <div className="space-y-1 font-bold text-[11px] text-slate-800">
-            <div className="flex items-start justify-between">
-              <span className="text-slate-500 font-normal shrink-0">نام (Name):</span>
-              <span className="font-black text-slate-900 text-right">{record.receiverName || record.consignee || '-'}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontWeight: 700, fontSize: '11px', color: '#1e293b' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <span style={{ color: '#64748b', fontWeight: 500 }}>نام (Name):</span>
+              <span style={{ fontWeight: 900, color: '#0f172a', textAlign: 'right' }}>{record.receiverName || record.consignee || '-'}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500 font-normal shrink-0">فون نمبر (Phone):</span>
-              <span className="font-mono dir-ltr font-black text-slate-900">{record.receiverMobile || '-'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: '#64748b', fontWeight: 500 }}>فون نمبر (Phone):</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', fontWeight: 900, color: '#0f172a' }}>{record.receiverMobile || '-'}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-500 font-normal shrink-0">شناختی کارڈ (CNIC / NTN):</span>
-              <span className="font-mono dir-ltr text-slate-800">-</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: '#64748b', fontWeight: 500 }}>شناختی کارڈ (CNIC / NTN):</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', color: '#334155' }}>-</span>
             </div>
-            <div className="flex items-center justify-between pt-0.5 border-t border-slate-100">
-              <span className="text-slate-500 font-normal shrink-0">منزل مقام (Destination Depot):</span>
-              <span className="font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded text-[11px]">{record.receivingCity || '-'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '3px', borderTop: '1px solid #f1f5f9' }}>
+              <span style={{ color: '#64748b', fontWeight: 500 }}>منزل مقام (Destination Depot):</span>
+              <span style={{ fontWeight: 900, color: '#0f172a', backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '3px', fontSize: '11px' }}>{record.receivingCity || '-'}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* 3. GOODS DESCRIPTION TABLE (جدولِ مال) */}
-      <div className="mb-2 overflow-hidden rounded-xs" style={{ border: '2px solid #0f2942' }}>
-        <table className="w-full text-right border-collapse text-xs">
+      <div style={{ marginBottom: '8px', overflow: 'hidden', border: '2px solid #0f2942' }}>
+        <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '11px' }}>
           <thead>
-            <tr
-              className="font-black text-[11px] text-white"
-              style={{ backgroundColor: '#0f2942' }}
-            >
-              <th className="p-2 border-l border-slate-600 w-12 text-center">Sr # (شمار)</th>
-              <th className="p-2 border-l border-slate-600 w-28 text-center">No. of Pkgs (تعداد / نگ)</th>
-              <th className="p-2 border-l border-slate-600 w-32 text-center">Packing Type (پیکنگ)</th>
-              <th className="p-2 border-l border-slate-600 text-right">Description of Goods (تفصیلِ سامان)</th>
-              <th className="p-2 border-l border-slate-600 w-28 text-center">Weight (وزن کلو)</th>
-              <th className="p-2 w-28 text-center">Rate (ریٹ فی نگ/کلو)</th>
+            <tr style={{ fontWeight: 900, fontSize: '11px', color: '#ffffff', backgroundColor: '#0f2942' }}>
+              <th style={{ padding: '6px 8px', borderLeft: '1px solid #334155', width: '48px', textAlign: 'center' }}>Sr # (شمار)</th>
+              <th style={{ padding: '6px 8px', borderLeft: '1px solid #334155', width: '110px', textAlign: 'center' }}>No. of Pkgs (تعداد / نگ)</th>
+              <th style={{ padding: '6px 8px', borderLeft: '1px solid #334155', width: '120px', textAlign: 'center' }}>Packing Type (پیکنگ)</th>
+              <th style={{ padding: '6px 8px', borderLeft: '1px solid #334155', textAlign: 'right' }}>Description of Goods (تفصیلِ سامان)</th>
+              <th style={{ padding: '6px 8px', borderLeft: '1px solid #334155', width: '100px', textAlign: 'center' }}>Weight (وزن کلو)</th>
+              <th style={{ padding: '6px 8px', width: '100px', textAlign: 'center' }}>Rate (ریٹ فی نگ/کلو)</th>
             </tr>
           </thead>
-          <tbody className="bg-white">
+          <tbody style={{ backgroundColor: '#ffffff' }}>
             {/* Primary Cargo Row */}
-            <tr className="font-bold text-[11px] text-slate-900 border-b border-slate-300">
-              <td className="p-2 text-center border-l border-slate-300 font-mono">1</td>
-              <td className="p-2 text-center border-l border-slate-300 font-mono font-black text-slate-900">
+            <tr style={{ fontWeight: 700, fontSize: '11.5px', color: '#0f172a', borderBottom: '1px solid #cbd5e1' }}>
+              <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #cbd5e1', fontFamily: "'JetBrains Mono', monospace" }}>1</td>
+              <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #cbd5e1', fontFamily: "'JetBrains Mono', monospace", fontWeight: 900 }}>
                 {record.qty || '-'} {record.qty ? 'Pkgs' : ''}
               </td>
-              <td className="p-2 text-center border-l border-slate-300 text-slate-700">
+              <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #cbd5e1', color: '#334155' }}>
                 بوری / کارٹن / مال
               </td>
-              <td className="p-2 border-l border-slate-300 font-black text-slate-900">
+              <td style={{ padding: '7px 8px', borderLeft: '1px solid #cbd5e1', fontWeight: 900, color: '#0f172a' }}>
                 {record.itemDescription || 'جنرل کارگو ٹرانسپورٹ'}
               </td>
-              <td className="p-2 text-center border-l border-slate-300 font-mono font-bold text-slate-900">
+              <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #cbd5e1', fontFamily: "'JetBrains Mono', monospace", fontWeight: 900 }}>
                 {record.weight || '-'} {record.weight ? 'kg' : ''}
               </td>
-              <td className="p-2 text-center font-mono text-slate-800">
+              <td style={{ padding: '7px 8px', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", color: '#334155' }}>
                 {record.total && record.qty ? `Rs ${(record.total / (parseFloat(record.qty) || 1)).toFixed(0)}` : '-'}
               </td>
             </tr>
 
             {/* Row 2 Placeholder */}
-            <tr className="text-[11px] text-slate-400 border-b border-slate-200 bg-slate-50/50">
-              <td className="p-1.5 text-center border-l border-slate-200 font-mono">2</td>
-              <td className="p-1.5 text-center border-l border-slate-200">-</td>
-              <td className="p-1.5 text-center border-l border-slate-200">-</td>
-              <td className="p-1.5 border-l border-slate-200">-</td>
-              <td className="p-1.5 text-center border-l border-slate-200">-</td>
-              <td className="p-1.5 text-center">-</td>
+            <tr style={{ fontSize: '11px', color: '#94a3b8', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0', fontFamily: "'JetBrains Mono', monospace" }}>2</td>
+              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>-</td>
+              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>-</td>
+              <td style={{ padding: '5px 8px', borderLeft: '1px solid #e2e8f0' }}>-</td>
+              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>-</td>
+              <td style={{ padding: '5px 8px', textAlign: 'center' }}>-</td>
             </tr>
 
             {/* Row 3 Placeholder */}
-            <tr className="text-[11px] text-slate-400 border-b border-slate-200 bg-white">
-              <td className="p-1.5 text-center border-l border-slate-200 font-mono">3</td>
-              <td className="p-1.5 text-center border-l border-slate-200">-</td>
-              <td className="p-1.5 text-center border-l border-slate-200">-</td>
-              <td className="p-1.5 border-l border-slate-200">-</td>
-              <td className="p-1.5 text-center border-l border-slate-200">-</td>
-              <td className="p-1.5 text-center">-</td>
+            <tr style={{ fontSize: '11px', color: '#94a3b8', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
+              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0', fontFamily: "'JetBrains Mono', monospace" }}>3</td>
+              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>-</td>
+              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>-</td>
+              <td style={{ padding: '5px 8px', borderLeft: '1px solid #e2e8f0' }}>-</td>
+              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>-</td>
+              <td style={{ padding: '5px 8px', textAlign: 'center' }}>-</td>
             </tr>
 
             {/* Summary Row */}
-            <tr className="font-black text-xs bg-slate-100 text-slate-900 border-t-2 border-slate-900">
-              <td className="p-2 text-center border-l border-slate-300 font-sans uppercase">TOTAL (ٹوٹل)</td>
-              <td className="p-2 text-center border-l border-slate-300 font-mono font-black">
+            <tr style={{ fontWeight: 900, fontSize: '12px', backgroundColor: '#f1f5f9', color: '#0f172a', borderTop: '2px solid #0f2942' }}>
+              <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #cbd5e1', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', Arial, sans-serif" }}>TOTAL (ٹوٹل)</td>
+              <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #cbd5e1', fontFamily: "'JetBrains Mono', monospace", fontWeight: 900 }}>
                 {record.qty || '-'} {record.qty ? 'Pkgs' : ''}
               </td>
-              <td colSpan={2} className="p-2 border-l border-slate-300 text-right text-[11px]">
+              <td colSpan={2} style={{ padding: '7px 8px', borderLeft: '1px solid #cbd5e1', textAlign: 'right', fontSize: '11px' }}>
                 Total Actual Weight / Chargeable Weight (کل چارج ایبل وزن):
               </td>
-              <td colSpan={2} className="p-2 text-center font-mono font-black text-slate-900">
+              <td colSpan={2} style={{ padding: '7px 8px', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 900, color: '#0f172a' }}>
                 {record.weight || '-'} {record.weight ? 'kg' : ''}
               </td>
             </tr>
@@ -449,61 +507,83 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
       </div>
 
       {/* 4. SPLIT GRID: FINANCIAL BREAKDOWN (LEFT) & TERMS & CONDITIONS (RIGHT) */}
-      <div className="grid grid-cols-12 gap-2 mb-2 items-stretch">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gap: '8px', marginBottom: '8px', alignItems: 'stretch' }}>
         
         {/* Left Side: Financial Breakdown (5 Columns) */}
         <div
-          className="col-span-5 p-2.5 rounded-xs flex flex-col justify-between"
-          style={{ border: '2px solid #0f2942', backgroundColor: '#ffffff' }}
+          style={{
+            gridColumn: 'span 5 / span 5',
+            border: '2px solid #0f2942',
+            backgroundColor: '#ffffff',
+            padding: '8px 10px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between'
+          }}
         >
           <div>
             <div
-              className="font-black text-xs pb-1 mb-1.5 border-b-2 flex justify-between items-center"
-              style={{ color: '#0f2942', borderColor: '#0f2942' }}
+              style={{
+                fontWeight: 900,
+                fontSize: '12px',
+                paddingBottom: '4px',
+                marginBottom: '6px',
+                borderBottom: '2px solid #0f2942',
+                color: '#0f2942',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
             >
               <span>مالیاتی تفصیلات (ACCOUNTS)</span>
-              <span className="text-[9.5px] font-mono text-slate-500">PKR</span>
+              <span style={{ fontSize: '9.5px', fontFamily: "'JetBrains Mono', monospace", color: '#64748b' }}>PKR</span>
             </div>
 
-            <div className="space-y-1 text-[11px] font-bold">
-              <div className="flex justify-between items-center py-0.5 border-b border-slate-100">
-                <span className="text-slate-600">بنیادی کرایہ (Freight Charges):</span>
-                <span className="font-mono dir-ltr font-black text-slate-900">Rs {fmt(record.total)}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', fontWeight: 700 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '3px', borderBottom: '1px solid #f1f5f9' }}>
+                <span style={{ color: '#475569' }}>بنیادی کرایہ (Freight Charges):</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', fontWeight: 900, color: '#0f172a' }}>Rs {fmt(record.total)}</span>
               </div>
-              <div className="flex justify-between items-center py-0.5 border-b border-slate-100">
-                <span className="text-slate-600">مزدوری / لوڈنگ (Labour Charges):</span>
-                <span className="font-mono dir-ltr text-slate-700">Rs 0</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '3px', borderBottom: '1px solid #f1f5f9' }}>
+                <span style={{ color: '#475569' }}>مزدوری / لوڈنگ (Labour Charges):</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', color: '#334155' }}>Rs 0</span>
               </div>
-              <div className="flex justify-between items-center py-0.5 border-b border-slate-100">
-                <span className="text-slate-600">لوکل ڈیلیوری (Local Delivery):</span>
-                <span className="font-mono dir-ltr text-slate-700">Rs 0</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '3px', borderBottom: '1px solid #f1f5f9' }}>
+                <span style={{ color: '#475569' }}>لوکل ڈیلیوری (Local Delivery):</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', color: '#334155' }}>Rs 0</span>
               </div>
-              <div className="flex justify-between items-center py-0.5 border-b border-slate-100">
-                <span className="text-slate-600">سرچارج / دیگر (Surcharge):</span>
-                <span className="font-mono dir-ltr text-slate-700">Rs 0</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '3px', borderBottom: '1px solid #f1f5f9' }}>
+                <span style={{ color: '#475569' }}>سرچارج / دیگر (Surcharge):</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', color: '#334155' }}>Rs 0</span>
               </div>
             </div>
           </div>
 
-          <div className="pt-2 mt-1 space-y-1.5">
+          <div style={{ paddingTop: '6px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {/* Grand Total Bar */}
             <div
-              className="p-1.5 rounded-xs text-white flex justify-between items-center"
-              style={{ backgroundColor: '#0f2942' }}
+              style={{
+                backgroundColor: '#0f2942',
+                color: '#ffffff',
+                padding: '6px 8px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
             >
-              <span className="text-[11px] font-black uppercase">GRAND TOTAL (کل رقم):</span>
-              <span className="text-sm font-mono font-black dir-ltr text-yellow-300">Rs {fmt(record.total)}</span>
+              <span style={{ fontSize: '11px', fontWeight: 900, textTransform: 'uppercase' }}>GRAND TOTAL (کل رقم):</span>
+              <span style={{ fontSize: '13.5px', fontFamily: "'JetBrains Mono', monospace", fontWeight: 900, direction: 'ltr', color: '#fde047' }}>Rs {fmt(record.total)}</span>
             </div>
 
             {/* Advance & Balance */}
-            <div className="grid grid-cols-2 gap-1.5 text-center font-bold text-[10.5px]">
-              <div className="p-1 rounded-xs bg-slate-100 border border-slate-300">
-                <span className="block text-[9px] text-slate-500 font-bold">پیشگی (Advance)</span>
-                <span className="font-mono font-black text-slate-900 dir-ltr text-xs">Rs {fmt(record.advance)}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px', textAlign: 'center', fontWeight: 700, fontSize: '10.5px' }}>
+              <div style={{ padding: '4px 6px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1' }}>
+                <span style={{ display: 'block', fontSize: '9px', color: '#64748b', fontWeight: 700 }}>پیشگی (Advance)</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 900, color: '#0f172a', direction: 'ltr', fontSize: '11.5px' }}>Rs {fmt(record.advance)}</span>
               </div>
-              <div className="p-1 rounded-xs bg-rose-50 border border-rose-300">
-                <span className="block text-[9px] text-rose-800 font-black">بقایا (Balance Payable)</span>
-                <span className="font-mono font-black text-rose-900 dir-ltr text-xs">Rs {fmt(record.payable)}</span>
+              <div style={{ padding: '4px 6px', backgroundColor: '#fff1f2', border: '1px solid #fecdd3' }}>
+                <span style={{ display: 'block', fontSize: '9px', color: '#9f1239', fontWeight: 900 }}>بقایا (Balance Payable)</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 900, color: '#9f1239', direction: 'ltr', fontSize: '11.5px' }}>Rs {fmt(record.payable)}</span>
               </div>
             </div>
           </div>
@@ -511,28 +591,44 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
 
         {/* Right Side: Terms & Conditions (7 Columns) */}
         <div
-          className="col-span-7 p-2.5 rounded-xs flex flex-col justify-between"
-          style={{ border: '2px solid #0f2942', backgroundColor: '#ffffff' }}
+          style={{
+            gridColumn: 'span 7 / span 7',
+            border: '2px solid #0f2942',
+            backgroundColor: '#ffffff',
+            padding: '8px 10px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between'
+          }}
         >
           <div>
             <div
-              className="font-black text-xs pb-1 mb-1 border-b-2 flex justify-between items-center"
-              style={{ color: '#0f2942', borderColor: '#0f2942' }}
+              style={{
+                fontWeight: 900,
+                fontSize: '12px',
+                paddingBottom: '4px',
+                marginBottom: '4px',
+                borderBottom: '2px solid #0f2942',
+                color: '#0f2942',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
             >
-              <span className="text-[11.5px]">شرائط و ضوابط (TERMS & CONDITIONS)</span>
-              <span className="text-[9px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded">اہم ہدایات</span>
+              <span style={{ fontSize: '11.5px' }}>شرائط و ضوابط (TERMS & CONDITIONS)</span>
+              <span style={{ fontSize: '9px', fontWeight: 700, color: '#be123c', backgroundColor: '#ffe4e6', padding: '1px 6px', borderRadius: '3px' }}>اہم ہدایات</span>
             </div>
 
-            <ol className="list-decimal pr-3.5 space-y-0.5 font-semibold text-[9.5px] leading-tight text-justify text-slate-800">
+            <ol style={{ paddingRight: '14px', margin: '0', display: 'flex', flexDirection: 'column', gap: '2px', fontWeight: 600, fontSize: '9.5px', lineHeight: '1.25', textAlign: 'justify', color: '#1e293b' }}>
               {termsList.map((term, idx) => (
-                <li key={idx} className="leading-tight">{term}</li>
+                <li key={idx} style={{ lineHeight: '1.25' }}>{term}</li>
               ))}
             </ol>
           </div>
 
-          <div className="mt-1 pt-1 border-t border-dashed border-slate-300 flex items-center justify-between text-[9px] font-black text-rose-700">
+          <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '9px', fontWeight: 900, color: '#be123c' }}>
             <span>⚠️ اوورلوڈ، چالان و جرمانہ بدمعہ بیوپاری ہوگا۔</span>
-            <span className="text-slate-900">🛑 بغیر اصل بلٹی مال ہرگز وصول نہ کریں۔</span>
+            <span style={{ color: '#0f172a' }}>🛑 بغیر اصل بلٹی مال ہرگز وصول نہ کریں۔</span>
           </div>
         </div>
 
@@ -540,95 +636,130 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
 
       {/* 5. DRIVER DETAILS BAR */}
       <div
-        className="p-1.5 mb-2 rounded-xs font-bold text-[10.5px] flex items-center justify-between text-slate-800"
-        style={{ border: '2px solid #0f2942', backgroundColor: '#f8fafc' }}
+        style={{
+          padding: '6px 10px',
+          marginBottom: '8px',
+          border: '2px solid #0f2942',
+          backgroundColor: '#f8fafc',
+          fontWeight: 700,
+          fontSize: '10.5px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          color: '#1e293b'
+        }}
       >
         <div>
-          <span className="text-slate-500 font-normal">ڈرائیور کا نام (Driver Name):</span>{' '}
-          <span className="font-black text-slate-900">{record.driverName || '-'}</span>
+          <span style={{ color: '#64748b', fontWeight: 500 }}>ڈرائیور کا نام (Driver Name):</span>{' '}
+          <span style={{ fontWeight: 900, color: '#0f172a' }}>{record.driverName || '-'}</span>
         </div>
-        <div className="border-r border-slate-300 pr-2">
-          <span className="text-slate-500 font-normal">موبائل نمبر (Cell):</span>{' '}
-          <span className="font-mono dir-ltr font-black text-slate-900">{record.mobileNo || '-'}</span>
+        <div style={{ borderRight: '1px solid #cbd5e1', paddingRight: '8px' }}>
+          <span style={{ color: '#64748b', fontWeight: 500 }}>موبائل نمبر (Cell):</span>{' '}
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', fontWeight: 900, color: '#0f172a' }}>{record.mobileNo || '-'}</span>
         </div>
-        <div className="border-r border-slate-300 pr-2">
-          <span className="text-slate-500 font-normal">لائسنس نمبر (License):</span>{' '}
-          <span className="font-mono dir-ltr text-slate-800">-</span>
+        <div style={{ borderRight: '1px solid #cbd5e1', paddingRight: '8px' }}>
+          <span style={{ color: '#64748b', fontWeight: 500 }}>لائسنس نمبر (License):</span>{' '}
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', color: '#334155' }}>-</span>
         </div>
-        <div className="border-r border-slate-300 pr-2">
-          <span className="text-slate-500 font-normal">گیٹ پاس / ٹوکن:</span>{' '}
-          <span className="font-mono dir-ltr text-slate-800">{record.biltyNo}</span>
+        <div style={{ borderRight: '1px solid #cbd5e1', paddingRight: '8px' }}>
+          <span style={{ color: '#64748b', fontWeight: 500 }}>گیٹ پاس / ٹوکن:</span>{' '}
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', color: '#334155' }}>{record.biltyNo}</span>
         </div>
       </div>
 
       {/* 6. BOTTOM SIGNATURES & VERIFICATION (3 BOXES) */}
-      <div className="grid grid-cols-3 gap-2 items-stretch">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px', alignItems: 'stretch' }}>
         
         {/* Box 1: Consignor Signature */}
         <div
-          className="p-2 text-center flex flex-col justify-between rounded-xs min-h-[76px]"
-          style={{ border: '2px solid #0f2942', backgroundColor: '#ffffff' }}
+          style={{
+            border: '2px solid #0f2942',
+            backgroundColor: '#ffffff',
+            padding: '8px',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            minHeight: '76px'
+          }}
         >
-          <div className="flex-1 flex items-end justify-center pb-1">
-            <div className="border-b-2 border-dashed w-4/5 text-[9px] italic text-slate-400">
+          <div style={{ flex: '1 1 0%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: '4px' }}>
+            <div style={{ borderBottom: '2px dashed #94a3b8', width: '80%', fontSize: '9px', fontStyle: 'italic', color: '#94a3b8' }}>
               (دستخط / مہر مال بھیجنے والا)
             </div>
           </div>
-          <div className="border-t border-slate-200 pt-1 font-black text-[11px] text-slate-900">
+          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '4px', fontWeight: 900, fontSize: '11px', color: '#0f172a' }}>
             Consignor Signature / Stamp
           </div>
         </div>
 
         {/* Box 2: Driver / Carrying Agent */}
         <div
-          className="p-2 text-center flex flex-col justify-between rounded-xs min-h-[76px]"
-          style={{ border: '2px solid #0f2942', backgroundColor: '#ffffff' }}
+          style={{
+            border: '2px solid #0f2942',
+            backgroundColor: '#ffffff',
+            padding: '8px',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            minHeight: '76px'
+          }}
         >
-          <div className="flex-1 flex items-end justify-center pb-1">
-            <div className="border-b-2 border-dashed w-4/5 text-[9px] italic text-slate-400">
+          <div style={{ flex: '1 1 0%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: '4px' }}>
+            <div style={{ borderBottom: '2px dashed #94a3b8', width: '80%', fontSize: '9px', fontStyle: 'italic', color: '#94a3b8' }}>
               (ڈرائیور / کیرئیر کا فزیکل سائن)
             </div>
           </div>
-          <div className="border-t border-slate-200 pt-1 font-black text-[11px] text-slate-900">
+          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '4px', fontWeight: 900, fontSize: '11px', color: '#0f172a' }}>
             Driver / Carrying Agent
           </div>
         </div>
 
         {/* Box 3: Authorized Signature & Stamp with Zahdan Nasr Signature & QR Code */}
         <div
-          className="p-1.5 text-center flex flex-row items-center justify-between gap-2 rounded-xs min-h-[76px]"
-          style={{ border: '2px solid #0f2942', backgroundColor: '#f8fafc' }}
+          style={{
+            border: '2px solid #0f2942',
+            backgroundColor: '#f8fafc',
+            padding: '6px 8px',
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px',
+            minHeight: '76px'
+          }}
         >
           {/* Digital Signature */}
-          <div className="flex-1 flex flex-col items-center justify-between h-full py-0.5">
+          <div style={{ flex: '1 1 0%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%', padding: '2px 0' }}>
             <ZahdanSignatureSvg className="w-32 h-8 inline-block" />
-            <div className="border-t border-slate-300 pt-0.5 w-full font-black text-[10px] text-slate-900">
+            <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '2px', width: '100%', fontWeight: 900, fontSize: '10px', color: '#0f172a', textAlign: 'center' }}>
               Authorized Stamp (زاہدان نصر)
             </div>
           </div>
 
           {/* QR Code */}
-          <div className="shrink-0 flex flex-col items-center justify-center pl-1 border-r border-slate-300">
+          <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingLeft: '4px', borderRight: '1px solid #cbd5e1' }}>
             {activeQrUrl ? (
               <img
                 src={activeQrUrl}
                 alt="QR Verification"
-                className="p-0.5 rounded-2xs"
                 style={{
                   width: '54px',
                   height: '54px',
                   backgroundColor: '#ffffff',
                   border: '1px solid #0f2942',
                   imageRendering: 'pixelated',
-                  objectFit: 'contain'
+                  objectFit: 'contain',
+                  padding: '2px'
                 }}
               />
             ) : (
-              <div className="w-12 h-12 bg-slate-100 border border-slate-300 flex items-center justify-center text-[8px] font-mono">
+              <div style={{ width: '48px', height: '48px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontFamily: 'monospace' }}>
                 QR
               </div>
             )}
-            <div className="text-[7.5px] font-black uppercase text-emerald-800 mt-0.5">
+            <div style={{ fontSize: '7.5px', fontWeight: 900, textTransform: 'uppercase', color: '#166534', marginTop: '2px' }}>
               VERIFIED BILTY
             </div>
           </div>
@@ -639,4 +770,3 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
     </div>
   );
 };
-

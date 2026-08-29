@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send } from 'lucide-react';
+import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send, Maximize, Minimize } from 'lucide-react';
 import { DICTIONARY, Language, AppNotification, UserRole } from '../types';
 import { AlHadiLogo } from './AlHadiLogo';
 import { logoIconData } from '../assets/dashboardIcons';
@@ -63,6 +63,31 @@ export const Header: React.FC<HeaderProps> = ({
   const [themePref, setThemePref] = useState<'light' | 'dark' | 'system' | 'emerald' | 'desert' | 'navy'>('light');
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>('default');
   const [testSent, setTestSent] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const handleToggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        }
+      }
+    } catch (e) {
+      console.warn('Fullscreen toggle failed:', e);
+    }
+  };
 
   useEffect(() => {
     if (isNotificationSupported()) {
@@ -178,8 +203,20 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Right: Notification Bell */}
+          {/* Right: Fullscreen Toggle & Notification Bell */}
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={handleToggleFullscreen}
+              className="p-2 rounded-xl bg-white border border-[#ecece0] hover:border-[#8b9d77] text-[#5a5a40] relative cursor-pointer active:scale-95 transition-all shadow-2xs shrink-0"
+              title={isFullscreen ? (lang === 'ur' ? 'عام موڈ' : 'Exit Fullscreen') : (lang === 'ur' ? 'فل سکرین موڈ' : 'Full Screen Mode')}
+            >
+              {isFullscreen ? (
+                <Minimize className="w-5 h-5 text-[#1e3a68]" />
+              ) : (
+                <Maximize className="w-5 h-5 text-[#8b9d77]" />
+              )}
+            </button>
+
             <button
               onClick={() => setShowNotifs(true)}
               className="p-2 rounded-xl bg-white border border-[#ecece0] hover:border-[#8b9d77] text-[#5a5a40] relative cursor-pointer active:scale-95 transition-all shadow-2xs shrink-0"
@@ -307,6 +344,39 @@ export const Header: React.FC<HeaderProps> = ({
                       </button>
                     </div>
                   )}
+                </div>
+
+                {/* Fullscreen Mode Control */}
+                <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-2xl bg-white border border-[#ecece0] shadow-2xs">
+                      {isFullscreen ? (
+                        <Minimize className="w-5 h-5 text-[#1e3a68]" />
+                      ) : (
+                        <Maximize className="w-5 h-5 text-[#8b9d77]" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-serif font-bold text-sm text-[#4a4a35]">
+                        {lang === 'ur' ? 'مکمل فل سکرین موڈ' : 'Full Screen App Mode'}
+                      </div>
+                      <div className="text-xs text-[#8e8e75]">
+                        {lang === 'ur' ? 'براؤزر بار ہٹائیں اور پوری سکرین پر چلائیں' : 'Hide browser bar & run full screen'}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleToggleFullscreen}
+                    className={`px-4 py-2 rounded-xl font-bold text-xs shadow-xs cursor-pointer active:scale-95 transition-all ${
+                      isFullscreen
+                        ? 'bg-[#1e3a68] text-white'
+                        : 'bg-[#8b9d77] hover:bg-[#798a67] text-white'
+                    }`}
+                  >
+                    {isFullscreen
+                      ? (lang === 'ur' ? 'عام موڈ' : 'Exit')
+                      : (lang === 'ur' ? 'فل سکرین' : 'Full Screen')}
+                  </button>
                 </div>
 
                 {/* Language Control */}
