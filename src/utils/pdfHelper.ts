@@ -5,7 +5,6 @@
  */
 
 import { toJpeg } from 'html-to-image';
-import html2canvasPro from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 import { BiltyRecord } from '../types';
 import { getCachedCompanyProfile } from './storage';
@@ -90,35 +89,11 @@ export async function generatePdfFromElement(
         margin: '0',
       },
     });
-  } catch (primaryErr) {
-    console.warn('html-to-image failed, attempting html2canvas-pro fallback:', primaryErr);
-
-    // 2. Secondary Engine: html2canvas-pro (has built-in modern CSS color and oklch support)
-    try {
-      const canvas = await html2canvasPro(element, {
-        scale,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        width: 794,
-        height: 1123,
-        windowWidth: 1024,
-        windowHeight: 1200,
-        onclone: (clonedDoc) => {
-          clonedDoc.documentElement.style.backgroundColor = '#ffffff';
-          clonedDoc.documentElement.style.color = '#0f172a';
-          clonedDoc.body.style.backgroundColor = '#ffffff';
-          clonedDoc.body.style.color = '#0f172a';
-        },
-      });
-      imgDataUrl = canvas.toDataURL('image/jpeg', quality);
-    } catch (fallbackErr) {
-      console.error('All PDF rendering engines failed:', fallbackErr);
-      throw new Error(
-        fallbackErr instanceof Error ? fallbackErr.message : 'پی ڈی ایف جنریٹ کرتے وقت رینڈرنگ میں خرابی پیش آئی۔'
-      );
-    }
+  } catch (err) {
+    console.error('html-to-image failed:', err);
+    throw new Error(
+      err instanceof Error ? err.message : 'پی ڈی ایف جنریٹ کرتے وقت رینڈرنگ میں خرابی پیش آئی۔'
+    );
   }
 
   if (!imgDataUrl || !imgDataUrl.startsWith('data:image/')) {

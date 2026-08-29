@@ -38,7 +38,7 @@ jobs:
 
       - name: Install NPM Dependencies
         run: |
-          npm ci
+          npm ci || npm install --no-audit --no-fund
 
       - name: Run Test Suite
         run: |
