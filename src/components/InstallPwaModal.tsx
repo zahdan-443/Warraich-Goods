@@ -14,7 +14,12 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
 
   useEffect(() => {
     // Check if already in standalone PWA mode
-    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+    const isStandalone = 
+      window.matchMedia('(display-mode: standalone)').matches || 
+      (window.navigator as any).standalone === true ||
+      document.referrer.includes('android-app://');
+
+    if (isStandalone) {
       setIsInstalled(true);
       return;
     }
@@ -22,6 +27,7 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      (window as any).__wg_pwa_deferred_prompt = e;
     };
 
     const handleOpenRequest = () => {
@@ -31,7 +37,16 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('wg_open_install_modal', handleOpenRequest);
 
+    // Auto-prompt after 2.5 seconds on app start if not in standalone
+    const timer = setTimeout(() => {
+      const sessionDismissed = sessionStorage.getItem('wg_install_session_dismissed');
+      if (!isStandalone && !sessionDismissed) {
+        setShowModal(true);
+      }
+    }, 2500);
+
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('wg_open_install_modal', handleOpenRequest);
     };
@@ -40,22 +55,28 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
   const [showManualGuide, setShowManualGuide] = useState<boolean>(false);
 
   const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setIsInstalled(true);
+    const promptEvent = deferredPrompt || (window as any).__wg_pwa_deferred_prompt;
+    if (promptEvent) {
+      try {
+        promptEvent.prompt();
+        const choiceResult = await promptEvent.userChoice;
+        if (choiceResult && choiceResult.outcome === 'accepted') {
+          setIsInstalled(true);
+          setShowModal(false);
+          return;
+        }
+      } catch (err) {
+        console.warn("Install prompt triggered error:", err);
       }
       setDeferredPrompt(null);
-      setShowModal(false);
-    } else {
-      setShowManualGuide(true);
     }
+    // Fallback: show Android step-by-step visual install guide
+    setShowManualGuide(true);
   };
 
   const handleClose = () => {
     setShowModal(false);
-    localStorage.setItem('wg_install_dismissed', 'true');
+    sessionStorage.setItem('wg_install_session_dismissed', 'true');
   };
 
   if (!showModal || isInstalled) return null;

@@ -39,38 +39,34 @@ import {
   requestNotificationPermission 
 } from './utils/notifications';
 
-const TripCostView = React.lazy(() => import('./components/views/TripCostView').then(m => ({ default: m.TripCostView })));
-const VehiclesView = React.lazy(() => import('./components/views/VehiclesView').then(m => ({ default: m.VehiclesView })));
-const DriversView = React.lazy(() => import('./components/views/DriversView').then(m => ({ default: m.DriversView })));
-const RoutesView = React.lazy(() => import('./components/views/RoutesView').then(m => ({ default: m.RoutesView })));
-const FuelLogView = React.lazy(() => import('./components/views/FuelLogView').then(m => ({ default: m.FuelLogView })));
-const VerifyView = React.lazy(() => import('./components/views/VerifyView').then(m => ({ default: m.VerifyView })));
-const BiltyView = React.lazy(() => import('./components/views/BiltyView').then(m => ({ default: m.BiltyView })));
-const VehicleAccountView = React.lazy(() => import('./components/views/VehicleAccountView').then(m => ({ default: m.VehicleAccountView })));
-const AuthModal = React.lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
-const ManageBiltyAccessModal = React.lazy(() => import('./components/ManageBiltyAccessModal').then(m => ({ default: m.ManageBiltyAccessModal })));
-const InstallPwaModal = React.lazy(() => import('./components/InstallPwaModal').then(m => ({ default: m.InstallPwaModal })));
+import { TripCostView } from './components/views/TripCostView';
+import { VehiclesView } from './components/views/VehiclesView';
+import { DriversView } from './components/views/DriversView';
+import { RoutesView } from './components/views/RoutesView';
+import { FuelLogView } from './components/views/FuelLogView';
+import { VerifyView } from './components/views/VerifyView';
+import { BiltyView } from './components/views/BiltyView';
+import { VehicleAccountView } from './components/views/VehicleAccountView';
+import { AuthModal } from './components/AuthModal';
+import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
+import { InstallPwaModal } from './components/InstallPwaModal';
 
 export default function App() {
   const OWNER_EMAIL = 'warraichgoods43@gmail.com';
 
   const [lang, setLang] = useState<Language>('en');
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
-  const [showSplash, setShowSplash] = useState<boolean>(() => {
-    try {
-      return typeof window !== 'undefined' && !sessionStorage.getItem('ah_splash_shown');
-    } catch {
-      return true;
-    }
-  });
+  const [showSplash, setShowSplash] = useState<boolean>(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showBiltyAccessModal, setShowBiltyAccessModal] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(() => {
+    return localStorage.getItem('ah-gmail-user') || null;
+  });
   const [currentUid, setCurrentUid] = useState<string | null>(null);
   const [biltyAllowedUIDs, setBiltyAllowedUIDs] = useState<string[]>(() => {
     try {
-      const cached = localStorage.getItem('ah-bilty-allowed-uids');
+      const cached = localStorage.getItem('wg_global_bilty_allowed_uids') || localStorage.getItem('ah-bilty-allowed-uids');
       return cached ? JSON.parse(cached) : [];
     } catch {
       return [];
@@ -78,7 +74,7 @@ export default function App() {
   });
   const [biltyAllowedEmails, setBiltyAllowedEmails] = useState<string[]>(() => {
     try {
-      const cached = localStorage.getItem('ah-bilty-allowed-emails');
+      const cached = localStorage.getItem('wg_global_bilty_allowed_emails') || localStorage.getItem('ah-bilty-allowed-emails');
       return cached ? JSON.parse(cached).map((e: string) => String(e).toLowerCase().trim()) : [];
     } catch {
       return [];
@@ -90,11 +86,11 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(false);
   const [showTopMenu, setShowTopMenu] = useState(false);
 
-  // Authorization check for Bilty Generator — strictly requires valid Firebase Auth session
-  const isOwner = Boolean(
-    currentUid && userEmail && userEmail.toLowerCase().trim() === OWNER_EMAIL.toLowerCase() && role === 'owner'
-  );
+  // Authorization check for Bilty Generator — accepts Owner OR any authorized Gmail/UID
   const cleanEmail = userEmail ? userEmail.toLowerCase().trim() : null;
+  const isOwner = Boolean(
+    cleanEmail && cleanEmail === OWNER_EMAIL.toLowerCase().trim()
+  );
   const isAllowedUID = Boolean(currentUid && biltyAllowedUIDs.includes(currentUid));
   const isAllowedEmail = Boolean(
     cleanEmail && biltyAllowedEmails.some(e => e.toLowerCase().trim() === cleanEmail)
@@ -263,6 +259,11 @@ export default function App() {
 
     const uid = currentUid || `user_${Date.now()}`;
     setCurrentUid(uid);
+
+    // Refresh bilty access immediately
+    const config = await getBiltyAccessConfig();
+    setBiltyAllowedUIDs(config.allowedUIDs);
+    setBiltyAllowedEmails(config.allowedEmails);
 
     await saveUserProfileInFirestore({
       uid,

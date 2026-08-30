@@ -180,6 +180,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
               <img
                 src={resolvedLogo || logoIconData}
                 alt="وڑائچ گڈز لوگو"
+                width={64}
+                height={64}
                 onError={(e) => {
                   const target = e.currentTarget;
                   if (!target.dataset.triedBackup) {
@@ -744,6 +746,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
               <img
                 src={activeQrUrl}
                 alt="QR Verification"
+                width={54}
+                height={54}
                 style={{
                   width: '54px',
                   height: '54px',

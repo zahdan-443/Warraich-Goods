@@ -58,7 +58,7 @@ const BiltyQrCode: React.FC<{ record: BiltyRecord; className?: string }> = ({ re
   }, [record.biltyNo, record.vehicleNo, record.sendingCity, record.receivingCity]);
 
   if (!qrUrl) return <div className={`animate-pulse bg-gray-100 rounded-lg ${className}`} />;
-  return <img src={qrUrl} alt="QR Code" className={className} />;
+  return <img src={qrUrl} alt="Bilty Tracking and Verification QR Code" width={100} height={100} className={className} />;
 };
 
 interface BiltyViewProps {

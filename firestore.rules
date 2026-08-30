@@ -49,9 +49,9 @@ service cloud.firestore {
       }
     }
 
-    // Access configuration for Bilty Generator authorization (Signed in users can read to verify permission, ONLY Fleet Owner can write)
+    // Access configuration for Bilty Generator authorization (All users can read to verify permission, ONLY Fleet Owner can write)
     match /access/biltyAccess {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isOwner();
     }
 

@@ -669,6 +669,352 @@ export const ROUTING_MATRIX: Record<string, RouteDefinition> = {
     ]
   },
 
+  // Sargodha Corridors
+  'Sargodha-Lahore': {
+    nameEn: 'Sargodha – Lahore Corridor (M-2 Kot Momin Interchange)',
+    nameUr: 'سرگودھا تا لاہور موٹروے (ایم 2 کوٹ مومن انٹرچینج)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M2', nameEn: 'Kot Momin / Sargodha – Lahore (M-2)', nameUr: 'کوٹ مومن سرگودھا تا لاہور (ایم 2)', km: 190 }
+    ]
+  },
+  'Sargodha-Islamabad': {
+    nameEn: 'Sargodha – Islamabad / Rawalpindi (M-2 Kot Momin / Salem)',
+    nameUr: 'سرگودھا تا اسلام آباد / راولپنڈی (ایم 2 موٹروے)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M2', nameEn: 'Kot Momin – Islamabad (M-2)', nameUr: 'کوٹ مومن تا اسلام آباد (ایم 2)', km: 180 }
+    ]
+  },
+  'Sargodha-Rawalpindi': {
+    nameEn: 'Sargodha – Rawalpindi (M-2 Kot Momin Interchange)',
+    nameUr: 'سرگودھا تا راولپنڈی موٹروے (ایم 2)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M2', nameEn: 'Kot Momin – Rawalpindi (M-2)', nameUr: 'کوٹ مومن تا راولپنڈی (ایم 2)', km: 180 }
+    ]
+  },
+  'Sargodha-Faisalabad': {
+    nameEn: 'Sargodha – Faisalabad Corridor (M-4 / Pindi Bhattian Link)',
+    nameUr: 'سرگودھا تا فیصل آباد (ایم 4 لنک)',
+    routeType: 'mixed',
+    plazas: 1,
+    highwayCode: 'N5',
+    segments: [
+      { code: 'M4', nameEn: 'Pindi Bhattian – Faisalabad (M-4)', nameUr: 'پنڈی بھٹیاں تا فیصل آباد (ایم 4)', km: 53 }
+    ]
+  },
+  'Sargodha-Multan': {
+    nameEn: 'Sargodha – Multan Corridor (M-2 + M-4)',
+    nameUr: 'سرگودھا تا ملتان (ایم 2 + ایم 4)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M4', nameEn: 'Pindi Bhattian – Multan (M-4 Full)', nameUr: 'پنڈی بھٹیاں تا ملتان (ایم 4)', km: 309 }
+    ]
+  },
+  'Sargodha-Peshawar': {
+    nameEn: 'Sargodha – Peshawar (M-2 + M-1 Motorway)',
+    nameUr: 'سرگودھا تا پشاور (ایم 2 + ایم 1 موٹروے)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M2', nameEn: 'Kot Momin – Islamabad (M-2)', nameUr: 'کوٹ مومن تا اسلام آباد (ایم 2)', km: 180 },
+      { code: 'M1', nameEn: 'Islamabad – Peshawar (M-1)', nameUr: 'اسلام آباد تا پشاور (ایم 1)', km: 155 }
+    ]
+  },
+
+  // Rahim Yar Khan Corridors
+  'Rahim Yar Khan-Multan': {
+    nameEn: 'Rahim Yar Khan – Multan (M-5 Motorway)',
+    nameUr: 'رحیم یار خان تا ملتان (ایم 5 موٹروے)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M5', nameEn: 'Rahim Yar Khan – Multan (M-5)', nameUr: 'رحیم یار خان تا ملتان (ایم 5)', km: 210 }
+    ]
+  },
+  'Rahim Yar Khan-Lahore': {
+    nameEn: 'Rahim Yar Khan – Lahore (M-5 + M-4 + M-3 Full Motorway)',
+    nameUr: 'رحیم یار خان تا لاہور (ایم 5 + ایم 4 + ایم 3 موٹروے)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M5', nameEn: 'Rahim Yar Khan – Multan (M-5)', nameUr: 'رحیم یار خان تا ملتان (ایم 5)', km: 210 },
+      { code: 'M4', nameEn: 'Multan – Abdul Hakeem (M-4)', nameUr: 'ملتان تا عبدالحکیم (ایم 4)', km: 104 },
+      { code: 'M3', nameEn: 'Abdul Hakeem – Lahore (M-3)', nameUr: 'عبدالحکیم تا لاہور (ایم 3)', km: 230 }
+    ]
+  },
+  'Rahim Yar Khan-Faisalabad': {
+    nameEn: 'Rahim Yar Khan – Faisalabad (M-5 + M-4 Motorway)',
+    nameUr: 'رحیم یار خان تا فیصل آباد (ایم 5 + ایم 4)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M5', nameEn: 'Rahim Yar Khan – Multan (M-5)', nameUr: 'رحیم یار خان تا ملتان (ایم 5)', km: 210 },
+      { code: 'M4', nameEn: 'Multan – Faisalabad (M-4)', nameUr: 'ملتان تا فیصل آباد (ایم 4)', km: 240 }
+    ]
+  },
+  'Rahim Yar Khan-Islamabad': {
+    nameEn: 'Rahim Yar Khan – Islamabad (M-5 + M-4 + M-2 Motorway)',
+    nameUr: 'رحیم یار خان تا اسلام آباد (ایم 5 + ایم 4 + ایم 2)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M5', nameEn: 'Rahim Yar Khan – Multan (M-5)', nameUr: 'رحیم یار خان تا ملتان (ایم 5)', km: 210 },
+      { code: 'M4', nameEn: 'Multan – Pindi Bhattian (M-4)', nameUr: 'ملتان تا پنڈی بھٹیاں (ایم 4)', km: 309 },
+      { code: 'M2', nameEn: 'Pindi Bhattian – Islamabad (M-2)', nameUr: 'پنڈی بھٹیاں تا اسلام آباد (ایم 2)', km: 220 }
+    ]
+  },
+  'Rahim Yar Khan-Rawalpindi': {
+    nameEn: 'Rahim Yar Khan – Rawalpindi (M-5 + M-4 + M-2 Motorway)',
+    nameUr: 'رحیم یار خان تا راولپنڈی (ایم 5 + ایم 4 + ایم 2)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M5', nameEn: 'Rahim Yar Khan – Multan (M-5)', nameUr: 'رحیم یار خان تا ملتان (ایم 5)', km: 210 },
+      { code: 'M4', nameEn: 'Multan – Pindi Bhattian (M-4)', nameUr: 'ملتان تا پنڈی بھٹیاں (ایم 4)', km: 309 },
+      { code: 'M2', nameEn: 'Pindi Bhattian – Rawalpindi (M-2)', nameUr: 'پنڈی بھٹیاں تا راولپنڈی (ایم 2)', km: 220 }
+    ]
+  },
+
+  // Bahawalpur Corridors
+  'Bahawalpur-Multan': {
+    nameEn: 'Bahawalpur – Multan (M-5 Jalalpur Pirwala / N-5)',
+    nameUr: 'بہاولپور تا ملتان (ایم 5 / این 5)',
+    routeType: 'mixed',
+    plazas: 1,
+    highwayCode: 'N5',
+    segments: [
+      { code: 'M5', nameEn: 'Jalalpur Pirwala – Multan (M-5)', nameUr: 'جلالپور پیروالا تا ملتان (ایم 5)', km: 85 }
+    ]
+  },
+  'Bahawalpur-Lahore': {
+    nameEn: 'Bahawalpur – Lahore (M-5 + M-4 + M-3 Motorway)',
+    nameUr: 'بہاولپور تا لاہور (ایم 5 + ایم 4 + ایم 3 موٹروے)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M5', nameEn: 'Bahawalpur Interchange – Multan (M-5)', nameUr: 'بہاولپور انٹرچینج تا ملتان (ایم 5)', km: 85 },
+      { code: 'M4', nameEn: 'Multan – Abdul Hakeem (M-4)', nameUr: 'ملتان تا عبدالحکیم (ایم 4)', km: 104 },
+      { code: 'M3', nameEn: 'Abdul Hakeem – Lahore (M-3)', nameUr: 'عبدالحکیم تا لاہور (ایم 3)', km: 230 }
+    ]
+  },
+  'Bahawalpur-Faisalabad': {
+    nameEn: 'Bahawalpur – Faisalabad (M-5 + M-4 Motorway)',
+    nameUr: 'بہاولپور تا فیصل آباد (ایم 5 + ایم 4 موٹروے)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M5', nameEn: 'Bahawalpur – Multan (M-5)', nameUr: 'بہاولپور تا ملتان (ایم 5)', km: 85 },
+      { code: 'M4', nameEn: 'Multan – Faisalabad (M-4)', nameUr: 'ملتان تا فیصل آباد (ایم 4)', km: 240 }
+    ]
+  },
+  'Bahawalpur-Islamabad': {
+    nameEn: 'Bahawalpur – Islamabad (M-5 + M-4 + M-2 Motorway)',
+    nameUr: 'بہاولپور تا اسلام آباد (ایم 5 + ایم 4 + ایم 2)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M5', nameEn: 'Bahawalpur – Multan (M-5)', nameUr: 'بہاولپور تا ملتان (ایم 5)', km: 85 },
+      { code: 'M4', nameEn: 'Multan – Pindi Bhattian (M-4)', nameUr: 'ملتان تا پنڈی بھٹیاں (ایم 4)', km: 309 },
+      { code: 'M2', nameEn: 'Pindi Bhattian – Islamabad (M-2)', nameUr: 'پنڈی بھٹیاں تا اسلام آباد (ایم 2)', km: 220 }
+    ]
+  },
+
+  // Sialkot Corridors
+  'Sialkot-Islamabad': {
+    nameEn: 'Sialkot – Islamabad (M-11 + M-2 Motorway / GT Road)',
+    nameUr: 'سیالکوٹ تا اسلام آباد (ایم 11 + ایم 2 موٹروے)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M11', nameEn: 'Sialkot – Kala Shah Kaku (M-11)', nameUr: 'سیالکوٹ تا کالا شاہ کاکو (ایم 11)', km: 103 },
+      { code: 'M2', nameEn: 'Kala Shah Kaku – Islamabad (M-2)', nameUr: 'کالا شاہ کاکو تا اسلام آباد (ایم 2)', km: 350 }
+    ]
+  },
+  'Sialkot-Rawalpindi': {
+    nameEn: 'Sialkot – Rawalpindi (M-11 + M-2 Motorway)',
+    nameUr: 'سیالکوٹ تا راولپنڈی (ایم 11 + ایم 2 موٹروے)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M11', nameEn: 'Sialkot – Kala Shah Kaku (M-11)', nameUr: 'سیالکوٹ تا کالا شاہ کاکو (ایم 11)', km: 103 },
+      { code: 'M2', nameEn: 'Kala Shah Kaku – Rawalpindi (M-2)', nameUr: 'کالا شاہ کاکو تا راولپنڈی (ایم 2)', km: 350 }
+    ]
+  },
+  'Sialkot-Peshawar': {
+    nameEn: 'Sialkot – Peshawar (M-11 + M-2 + M-1 Motorway)',
+    nameUr: 'سیالکوٹ تا پشاور (ایم 11 + ایم 2 + ایم 1)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M11', nameEn: 'Sialkot – Kala Shah Kaku (M-11)', nameUr: 'سیالکوٹ تا کالا شاہ کاکو (ایم 11)', km: 103 },
+      { code: 'M2', nameEn: 'Kala Shah Kaku – Islamabad (M-2)', nameUr: 'کالا شاہ کاکو تا اسلام آباد (ایم 2)', km: 350 },
+      { code: 'M1', nameEn: 'Islamabad – Peshawar (M-1)', nameUr: 'اسلام آباد تا پشاور (ایم 1)', km: 155 }
+    ]
+  },
+  'Sialkot-Multan': {
+    nameEn: 'Sialkot – Multan (M-11 + M-3 + M-4 Motorway)',
+    nameUr: 'سیالکوٹ تا ملتان (ایم 11 + ایم 3 + ایم 4)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M11', nameEn: 'Sialkot – Lahore / KSK (M-11)', nameUr: 'سیالکوٹ تا لاہور (ایم 11)', km: 103 },
+      { code: 'M3', nameEn: 'Lahore – Abdul Hakeem (M-3)', nameUr: 'لاہور تا عبدالحکیم (ایم 3)', km: 230 },
+      { code: 'M4', nameEn: 'Abdul Hakeem – Multan (M-4)', nameUr: 'عبدالحکیم تا ملتان (ایم 4)', km: 104 }
+    ]
+  },
+  'Sialkot-Faisalabad': {
+    nameEn: 'Sialkot – Faisalabad (M-11 + M-3 + M-4)',
+    nameUr: 'سیالکوٹ تا فیصل آباد (ایم 11 + ایم 3 + ایم 4)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M11', nameEn: 'Sialkot – Lahore (M-11)', nameUr: 'سیالکوٹ تا لاہور (ایم 11)', km: 103 },
+      { code: 'M3', nameEn: 'Lahore – Samundri / Faisalabad Link (M-3)', nameUr: 'لاہور تا سمندری انٹرچینج (ایم 3)', km: 145 }
+    ]
+  },
+  'Sialkot-Gujranwala': {
+    nameEn: 'Sialkot – Gujranwala Corridor (GT Road / Expressway)',
+    nameUr: 'سیالکوٹ تا گوجرانوالہ (ایکسپریس وے / جی ٹی روڈ)',
+    routeType: 'highway',
+    plazas: 1,
+    highwayCode: 'N5'
+  },
+
+  // Gujranwala Corridors
+  'Gujranwala-Islamabad': {
+    nameEn: 'Gujranwala – Islamabad (N-5 GT Road / M-2 Link)',
+    nameUr: 'گوجرانوالہ تا اسلام آباد (این 5 جی ٹی روڈ / ایم 2)',
+    routeType: 'mixed',
+    plazas: 2,
+    highwayCode: 'N5',
+    segments: [
+      { code: 'M2', nameEn: 'Pindi Bhattian – Islamabad (M-2)', nameUr: 'پنڈی بھٹیاں تا اسلام آباد (ایم 2)', km: 220 }
+    ]
+  },
+  'Gujranwala-Rawalpindi': {
+    nameEn: 'Gujranwala – Rawalpindi (N-5 GT Road / M-2)',
+    nameUr: 'گوجرانوالہ تا راولپنڈی (این 5 جی ٹی روڈ / ایم 2)',
+    routeType: 'mixed',
+    plazas: 2,
+    highwayCode: 'N5',
+    segments: [
+      { code: 'M2', nameEn: 'Pindi Bhattian – Rawalpindi (M-2)', nameUr: 'پنڈی بھٹیاں تا راولپنڈی (ایم 2)', km: 220 }
+    ]
+  },
+  'Gujranwala-Peshawar': {
+    nameEn: 'Gujranwala – Peshawar (GT Road / M-2 + M-1)',
+    nameUr: 'گوجرانوالہ تا پشاور (ایم 2 + ایم 1 موٹروے)',
+    routeType: 'mixed',
+    plazas: 1,
+    highwayCode: 'N5',
+    segments: [
+      { code: 'M2', nameEn: 'Pindi Bhattian – Islamabad (M-2)', nameUr: 'پنڈی بھٹیاں تا اسلام آباد (ایم 2)', km: 220 },
+      { code: 'M1', nameEn: 'Islamabad – Peshawar (M-1)', nameUr: 'اسلام آباد تا پشاور (ایم 1)', km: 155 }
+    ]
+  },
+  'Gujranwala-Multan': {
+    nameEn: 'Gujranwala – Multan (M-2 / M-4 Motorway)',
+    nameUr: 'گوجرانوالہ تا ملتان (ایم 4 موٹروے براستہ پنڈی بھٹیاں)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M4', nameEn: 'Pindi Bhattian – Multan (M-4)', nameUr: 'پنڈی بھٹیاں تا ملتان (ایم 4)', km: 309 }
+    ]
+  },
+
+  // Hyderabad to Upper Corridors
+  'Hyderabad-Sukkur': {
+    nameEn: 'Hyderabad – Sukkur (N-5 / N-55 Highway)',
+    nameUr: 'حیدرآباد تا سکھر (این 5 / این 55 شاہراہ)',
+    routeType: 'highway',
+    plazas: 4,
+    highwayCode: 'N5'
+  },
+  'Hyderabad-Multan': {
+    nameEn: 'Hyderabad – Multan (N-5 + M-5 Sukkur-Multan Motorway)',
+    nameUr: 'حیدرآباد تا ملتان (این 5 + ایم 5 موٹروے)',
+    routeType: 'mixed',
+    plazas: 4,
+    highwayCode: 'N5',
+    segments: [
+      { code: 'M5', nameEn: 'Sukkur – Multan (M-5 Full)', nameUr: 'سکھر تا ملتان (ایم 5 مکمل)', km: 392 }
+    ]
+  },
+  'Hyderabad-Lahore': {
+    nameEn: 'Hyderabad – Lahore (N-5 + M-5 + M-4 + M-3)',
+    nameUr: 'حیدرآباد تا لاہور (این 5 + ایم 5 + ایم 4 + ایم 3 موٹروے)',
+    routeType: 'mixed',
+    plazas: 4,
+    highwayCode: 'N5',
+    segments: [
+      { code: 'M5', nameEn: 'Sukkur – Multan (M-5)', nameUr: 'سکھر تا ملتان (ایم 5)', km: 392 },
+      { code: 'M4', nameEn: 'Multan – Abdul Hakeem (M-4)', nameUr: 'ملتان تا عبدالحکیم (ایم 4)', km: 104 },
+      { code: 'M3', nameEn: 'Abdul Hakeem – Lahore (M-3)', nameUr: 'عبدالحکیم تا لاہور (ایم 3)', km: 230 }
+    ]
+  },
+  'Hyderabad-Islamabad': {
+    nameEn: 'Hyderabad – Islamabad (N-5 + M-5 + M-4 + M-2)',
+    nameUr: 'حیدرآباد تا اسلام آباد (این 5 + ایم 5 + ایم 4 + ایم 2)',
+    routeType: 'mixed',
+    plazas: 4,
+    highwayCode: 'N5',
+    segments: [
+      { code: 'M5', nameEn: 'Sukkur – Multan (M-5)', nameUr: 'سکھر تا ملتان (ایم 5)', km: 392 },
+      { code: 'M4', nameEn: 'Multan – Pindi Bhattian (M-4)', nameUr: 'ملتان تا پنڈی بھٹیاں (ایم 4)', km: 309 },
+      { code: 'M2', nameEn: 'Pindi Bhattian – Islamabad (M-2)', nameUr: 'پنڈی بھٹیاں تا اسلام آباد (ایم 2)', km: 220 }
+    ]
+  },
+  'Hyderabad-Faisalabad': {
+    nameEn: 'Hyderabad – Faisalabad (N-5 + M-5 + M-4)',
+    nameUr: 'حیدرآباد تا فیصل آباد (این 5 + ایم 5 + ایم 4)',
+    routeType: 'mixed',
+    plazas: 4,
+    highwayCode: 'N5',
+    segments: [
+      { code: 'M5', nameEn: 'Sukkur – Multan (M-5)', nameUr: 'سکھر تا ملتان (ایم 5)', km: 392 },
+      { code: 'M4', nameEn: 'Multan – Faisalabad (M-4)', nameUr: 'ملتان تا فیصل آباد (ایم 4)', km: 240 }
+    ]
+  },
+
+  // KPK & Northern Corridors
+  'Abbottabad-Rawalpindi': {
+    nameEn: 'Abbottabad – Rawalpindi / Islamabad (M-15 Hazara Motorway)',
+    nameUr: 'ایبٹ آباد تا راولپنڈی / اسلام آباد (ایم 15 ہزارہ موٹروے)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M15', nameEn: 'Abbottabad – Burhan (M-15)', nameUr: 'ایبٹ آباد تا برہان (ایم 15)', km: 60 }
+    ]
+  },
+  'Swat-Rawalpindi': {
+    nameEn: 'Swat / Mingora – Rawalpindi (M-16 + M-1 Motorway)',
+    nameUr: 'سوات تا راولپنڈی (ایم 16 + ایم 1 موٹروے)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M16', nameEn: 'Chakdara – Karnal Sher Khan (M-16)', nameUr: 'چکدرہ تا کرنل شیر خان (ایم 16)', km: 160 },
+      { code: 'M1', nameEn: 'Karnal Sher Khan – Islamabad (M-1)', nameUr: 'کرنل شیر خان تا اسلام آباد (ایم 1)', km: 90 }
+    ]
+  },
+  'DIKhan-Lahore': {
+    nameEn: 'D.I. Khan – Lahore (M-14 Hakla Motorway + M-2 / M-3)',
+    nameUr: 'ڈیرہ اسماعیل خان تا لاہور (ایم 14 ہکلہ + ایم 2)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M14', nameEn: 'D.I. Khan – Hakla / Islamabad (M-14)', nameUr: 'ڈیرہ اسماعیل خان تا ہکلہ (ایم 14)', km: 292 },
+      { code: 'M2', nameEn: 'Hakla / Islamabad – Lahore (M-2)', nameUr: 'اسلام آباد تا لاہور (ایم 2)', km: 367 }
+    ]
+  },
+  'DIKhan-Peshawar': {
+    nameEn: 'D.I. Khan – Peshawar (N-55 Indus Highway / Kohat)',
+    nameUr: 'ڈیرہ اسماعیل خان تا پشاور (این 55 انڈس ہائی وے)',
+    routeType: 'highway',
+    plazas: 4,
+    highwayCode: 'N55'
+  },
+  'DIKhan-Multan': {
+    nameEn: 'D.I. Khan – Multan (N-55 Indus Highway / Muzaffargarh)',
+    nameUr: 'ڈیرہ اسماعیل خان تا ملتان (این 55 انڈس ہائی وے)',
+    routeType: 'highway',
+    plazas: 3,
+    highwayCode: 'N55'
+  },
+  'Quetta-Islamabad': {
+    nameEn: 'Quetta – Islamabad (N-50 Zhob + M-14 Hakla-D.I. Khan Motorway)',
+    nameUr: 'کوئٹہ تا اسلام آباد (این 50 ژوب + ایم 14 ہکلہ موٹروے)',
+    routeType: 'mixed',
+    plazas: 3,
+    highwayCode: 'N5',
+    segments: [
+      { code: 'M14', nameEn: 'D.I. Khan – Hakla / Islamabad (M-14)', nameUr: 'ڈیرہ اسماعیل خان تا ہکلہ اسلام آباد (ایم 14)', km: 292 }
+    ]
+  },
+
   // Balochistan & Long Haul Routes
   'Quetta-Karachi': {
     nameEn: 'Quetta – Karachi (N-25 RCD Highway)',

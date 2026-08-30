@@ -391,6 +391,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   return (
     <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 md:p-10 max-w-7xl mx-auto w-full">
+      {/* Primary Semantic H1 Heading for SEO & Screen Readers */}
+      <h1 className="sr-only">
+        {lang === 'ur' 
+          ? 'ڈرائیور دوست - روڈ فریٹ، سفر اخراجات کیلکولیٹر اور گاڑی حساب' 
+          : 'Driver Dost - Road Freight, Trip Cost Calculator & Fleet Management'}
+      </h1>
       
       {/* Left Column (7 cols): Warraich Goods Section & Live Fuel Prices */}
       <div className="lg:col-span-7 flex flex-col gap-6 sm:gap-8">

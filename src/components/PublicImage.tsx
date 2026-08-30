@@ -242,9 +242,11 @@ export const PublicImage: React.FC<PublicImageProps> = ({
   return (
     <img
       src={candidates[candidateIndex]}
-      alt={alt}
-      loading={rest.loading || "lazy"}
+      alt={alt || "Driver Dost Transport"}
+      loading={rest.loading || "eager"}
       decoding="async"
+      width={rest.width || 400}
+      height={rest.height || 400}
       className={className}
       onError={handleError}
       {...rest}

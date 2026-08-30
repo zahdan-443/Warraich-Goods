@@ -6,7 +6,7 @@
   "start_url": "index.html",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["standalone", "fullscreen", "window-controls-overlay", "minimal-ui"],
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait-primary",
   "lang": "ur",
   "dir": "rtl",

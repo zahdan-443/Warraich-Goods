@@ -616,6 +616,10 @@ export async function getBiltyAccessConfig(): Promise<BiltyAccessConfigData> {
         const config = normalizeBiltyConfig(snap.data());
         setScopedItem('bilty-allowed-uids', JSON.stringify(config.allowedUIDs));
         setScopedItem('bilty-allowed-emails', JSON.stringify(config.allowedEmails));
+        safeStorage.setItem('wg_global_bilty_allowed_uids', JSON.stringify(config.allowedUIDs));
+        safeStorage.setItem('wg_global_bilty_allowed_emails', JSON.stringify(config.allowedEmails));
+        safeStorage.setItem('ah-bilty-allowed-emails', JSON.stringify(config.allowedEmails));
+        safeStorage.setItem('ah-bilty-allowed-uids', JSON.stringify(config.allowedUIDs));
         return config;
       }
     } catch (err) {
@@ -623,8 +627,8 @@ export async function getBiltyAccessConfig(): Promise<BiltyAccessConfigData> {
     }
   }
   try {
-    const cachedUIDs = getScopedItem('bilty-allowed-uids');
-    const cachedEmails = getScopedItem('bilty-allowed-emails');
+    const cachedUIDs = safeStorage.getItem('wg_global_bilty_allowed_uids') || safeStorage.getItem('ah-bilty-allowed-uids') || getScopedItem('bilty-allowed-uids');
+    const cachedEmails = safeStorage.getItem('wg_global_bilty_allowed_emails') || safeStorage.getItem('ah-bilty-allowed-emails') || getScopedItem('bilty-allowed-emails');
     return {
       allowedUIDs: cachedUIDs ? JSON.parse(cachedUIDs) : [],
       allowedEmails: cachedEmails ? JSON.parse(cachedEmails).map((e: string) => e.toLowerCase().trim()) : []
@@ -649,6 +653,10 @@ export function subscribeToBiltyAccess(
           const config = normalizeBiltyConfig(docSnap.data());
           setScopedItem('bilty-allowed-uids', JSON.stringify(config.allowedUIDs));
           setScopedItem('bilty-allowed-emails', JSON.stringify(config.allowedEmails));
+          safeStorage.setItem('wg_global_bilty_allowed_uids', JSON.stringify(config.allowedUIDs));
+          safeStorage.setItem('wg_global_bilty_allowed_emails', JSON.stringify(config.allowedEmails));
+          safeStorage.setItem('ah-bilty-allowed-emails', JSON.stringify(config.allowedEmails));
+          safeStorage.setItem('ah-bilty-allowed-uids', JSON.stringify(config.allowedUIDs));
           onUpdate(config);
         }
       },
@@ -669,6 +677,10 @@ export async function updateBiltyAccessInFirestore(allowedUIDs: string[], allowe
   try {
     setScopedItem('bilty-allowed-uids', JSON.stringify(cleanUIDs));
     setScopedItem('bilty-allowed-emails', JSON.stringify(cleanEmails));
+    safeStorage.setItem('wg_global_bilty_allowed_uids', JSON.stringify(cleanUIDs));
+    safeStorage.setItem('wg_global_bilty_allowed_emails', JSON.stringify(cleanEmails));
+    safeStorage.setItem('ah-bilty-allowed-emails', JSON.stringify(cleanEmails));
+    safeStorage.setItem('ah-bilty-allowed-uids', JSON.stringify(cleanUIDs));
     if (typeof navigator !== 'undefined' && navigator.onLine) {
       const accessRef = doc(db, 'access', 'biltyAccess');
       await withTimeout(setDoc(accessRef, { 
