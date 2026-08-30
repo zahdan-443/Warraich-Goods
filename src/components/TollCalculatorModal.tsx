@@ -176,7 +176,9 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
                 <div className="w-11 h-11 rounded-2xl bg-white border border-[#ecece0] p-1 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
                   <PublicImage
                     fileName={tollIconData}
-                    alt="Motorway Toll Tax"
+                    alt="Pakistan Motorway and Highway Toll Tax Rates 2026"
+                    width={44}
+                    height={44}
                     className="w-full h-full object-cover rounded-xl"
                     fallbackIcon={<Milestone className="w-6 h-6 text-[#8b9d77]" />}
                   />

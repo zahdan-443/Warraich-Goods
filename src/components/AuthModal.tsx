@@ -138,11 +138,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               <div className="flex items-start gap-2.5">
                 <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${isUnauthorizedDomain ? 'text-amber-600' : 'text-red-600'}`} />
                 <div className="space-y-1">
-                  <h4 className="font-bold text-xs">
+                  <div className="font-bold text-xs">
                     {isUnauthorizedDomain 
                       ? (lang === 'ur' ? 'فائر بیس ڈومین تصدیق درکار ہے' : 'Firebase Domain Authorization Notice') 
                       : (lang === 'ur' ? 'سیکیورٹی و لاگ ان الرٹ' : 'Authentication Alert')}
-                  </h4>
+                  </div>
                   <p className="text-[11px] leading-relaxed text-[#5a5a40]">
                     {error}
                   </p>

@@ -209,7 +209,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="flex items-center gap-3">
                   <AlHadiLogo className="w-10 h-10" />
                   <div>
-                    <h3 className="font-serif font-bold text-base text-[#4a4a35]">{t.appTitle}</h3>
+                    <div className="font-serif font-bold text-base text-[#4a4a35]">{t.appTitle}</div>
                     <p className="text-[10px] text-[#8b9d77] font-sans uppercase tracking-wider">{lang === 'ur' ? 'سسٹم کنٹرول مینیو' : 'System Controls Menu'}</p>
                   </div>
                 </div>
@@ -513,9 +513,9 @@ export const Header: React.FC<HeaderProps> = ({
                         <Building2 className="w-4 h-4" />
                       </div>
                       <div>
-                        <h4 className="font-serif font-bold text-sm text-[#1e3a68] group-hover:text-blue-700 transition-colors">
+                        <div className="font-serif font-bold text-sm text-[#1e3a68] group-hover:text-blue-700 transition-colors">
                           {lang === 'ur' ? 'ہمارے بارے میں اور رابطہ' : 'About Us & Contact Us'}
-                        </h4>
+                        </div>
                         <p className="text-[10px] text-[#8e8e75] font-sans">
                           {lang === 'ur' ? 'مکمل تفصیلات اور دفتر کی معلومات' : 'Company profile, services & office address'}
                         </p>
@@ -571,9 +571,9 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-full bg-[#8b9d77] flex items-center justify-center text-xs">🔥</div>
                 <div>
-                  <h3 className="font-serif font-bold text-sm">
+                  <div className="font-serif font-bold text-sm">
                     {lang === 'ur' ? 'نوٹیفیکیشن و الرٹس' : 'Push & System Feed'}
-                  </h3>
+                  </div>
                   <p className="text-[10px] text-[#c2c2a3] font-mono">
                     {lang === 'ur' ? 'کلاؤڈ و موبائل اسٹیٹس بار' : 'CLOUD & STATUS BAR ALERTS'}
                   </p>

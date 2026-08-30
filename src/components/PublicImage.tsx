@@ -217,6 +217,8 @@ export const PublicImage: React.FC<PublicImageProps> = ({
   fallbackIcon,
   className,
   alt = '',
+  width = 400,
+  height = 400,
   ...rest
 }) => {
   const clean = (fileName || '').replace(/^\.?\//, '');
@@ -239,14 +241,18 @@ export const PublicImage: React.FC<PublicImageProps> = ({
     return <DefaultServiceVector name={clean} className={className} />;
   }
 
+  const computedAlt = alt && alt.trim().length > 0 
+    ? alt 
+    : `Driver Dost Transport Logistics - ${clean.replace(/[-_.]/g, ' ')}`;
+
   return (
     <img
       src={candidates[candidateIndex]}
-      alt={alt || "Driver Dost Transport"}
+      alt={computedAlt}
       loading={rest.loading || "eager"}
       decoding="async"
-      width={rest.width || 400}
-      height={rest.height || 400}
+      width={width}
+      height={height}
       className={className}
       onError={handleError}
       {...rest}

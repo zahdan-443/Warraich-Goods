@@ -44,9 +44,9 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
       {/* Official PSO POL Archive Notice */}
       <div className="p-5 bg-[#f0f0e4]/80 rounded-3xl border border-[#d8d8c0] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
         <div>
-          <h4 className="font-serif font-bold text-sm text-[#4a4a35]">
+          <div className="font-serif font-bold text-sm text-[#4a4a35]">
             {lang === 'ur' ? 'پاکستان اسٹیٹ آئل (PSO) سرکاری قیمتیں' : 'Official PSO POL Fuel Price Archives'}
-          </h4>
+          </div>
           <p className="text-xs text-[#8e8e75] mt-0.5">
             {lang === 'ur' ? 'ڈیزل اور پٹرول کے سرکاری نرخ ایک جیسے نہیں ہوتے۔ تازہ ترین نوٹیفکیشن چیک کریں:' : 'Diesel and Petrol prices vary per Government notification. Verify benchmark rates directly via Pakistan State Oil:'}
           </p>
@@ -81,10 +81,10 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
         </header>
 
         <form onSubmit={handleSave} className="space-y-6 pt-2">
-          <h3 className="font-serif font-bold text-lg text-[#4a4a35] flex items-center gap-2">
+          <h2 className="font-serif font-bold text-lg text-[#4a4a35] flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#8b9d77]"></span>
             {t.logTitle}
-          </h3>
+          </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-4 bg-[#fdfbf7] rounded-2xl border border-[#ecece0] focus-within:border-[#8b9d77] transition-colors">
@@ -140,10 +140,10 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
       {/* Bottom Card: Price Trend Diary */}
       <div className="bg-white p-8 md:p-10 rounded-[40px] shadow-sm border border-[#ecece0] space-y-6">
         <div className="flex items-center justify-between border-b border-[#ecece0] pb-4">
-          <h3 className="font-serif font-bold text-xl text-[#4a4a35] flex items-center gap-2">
+          <h2 className="font-serif font-bold text-xl text-[#4a4a35] flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-[#8b9d77]" />
             <span>{t.trendTitle}</span>
-          </h3>
+          </h2>
           <span className="text-xs text-[#8e8e75] uppercase tracking-wider font-bold">
             {fuelLogs.length} Entries
           </span>

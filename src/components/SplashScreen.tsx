@@ -72,7 +72,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
     >
       <img
         src={candidates[idx]}
-        alt="Driver Dost Splash Screen"
+        alt="Driver Dost Transport Logistics Welcome Screen"
+        width={1080}
+        height={1920}
         onError={handleError}
         decoding="async"
         loading="eager"

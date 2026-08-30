@@ -257,7 +257,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
       const safeTime = escapeHtml(new Date().toLocaleTimeString('en-PK'));
 
       const logoHtml = logoDataUrl
-        ? `<img src="${logoDataUrl}" alt="Driver Dost Logo" style="width: 76px; height: 76px; object-fit: contain; border-radius: 50%; border: 3px solid #c59b27; padding: 2px; background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.08);" />`
+        ? `<img src="${logoDataUrl}" alt="Driver Dost Logistics Official Emblem" width="76" height="76" style="width: 76px; height: 76px; object-fit: contain; border-radius: 50%; border: 3px solid #c59b27; padding: 2px; background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.08);" />`
         : `<div style="width: 76px; height: 76px; border-radius: 50%; border: 3px solid #c59b27; background: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.08); text-align: center;">
             <span style="font-size: 24px; line-height: 1;">🚚</span>
             <span style="font-size: 8px; font-weight: 900; color: #4a4a35; font-family: sans-serif; letter-spacing: 0.5px; margin-top: 2px;">DRIVER DOST</span>
@@ -266,7 +266,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
       container.innerHTML = sanitizeHtml(`
         <div style="border-bottom: 3px solid #8b9d77; padding-bottom: 16px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: flex-start; direction: rtl;">
           <div style="flex: 1; text-align: right;">
-            <h1 style="margin: 0; font-size: 26px; color: #4a4a35; font-weight: 900; font-family: inherit;">ڈرائیور دوست - گاڑی حساب و لیجر (Driver Dost)</h1>
+            <div style="margin: 0; font-size: 26px; color: #4a4a35; font-weight: 900; font-family: inherit;">ڈرائیور دوست - گاڑی حساب و لیجر (Driver Dost)</div>
             <p style="margin: 4px 0 0 0; font-size: 14px; color: #8b9d77; font-weight: bold;">گاڑی کے سفر کا تفصیلی حساب، آمدن، اخراجات و خالص بچت رپورٹ</p>
             
             <div style="margin-top: 10px; background: #fafaf5; border: 1.5px solid #e0e0d0; padding: 8px 14px; border-radius: 10px; font-size: 12px; line-height: 1.6; display: inline-block;">
@@ -507,7 +507,9 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             <div className="w-12 h-12 rounded-2xl bg-white border border-[#ecece0] p-1 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
               <PublicImage
                 fileName="gari-hisaab-icon.png"
-                alt="Vehicle Account"
+                alt="Vehicle Trip Account, Ledger and Income Calculator"
+                width={48}
+                height={48}
                 className="w-full h-full object-cover rounded-xl"
                 fallbackIcon={<Calculator className="w-6 h-6 text-[#8b9d77]" />}
               />

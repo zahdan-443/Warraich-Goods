@@ -97,21 +97,25 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
           <div className="w-16 h-16 rounded-3xl bg-white p-2 mx-auto mb-3 shadow-lg border-2 border-[#b58b28] flex items-center justify-center overflow-hidden">
             <PublicImage
               fileName="icon-192.png"
-              alt="Driver Dost"
+              alt="Driver Dost Mobile App Icon"
+              width={64}
+              height={64}
               className="w-full h-full object-contain"
               fallbackIcon={
                 <PublicImage
                   fileName="logo.png"
-                  alt="Driver Dost Logo"
+                  alt="Driver Dost Official App Logo"
+                  width={64}
+                  height={64}
                   className="w-full h-full object-contain"
                 />
               }
             />
           </div>
 
-          <h3 className="font-serif font-bold text-lg text-white tracking-tight">
+          <h2 className="font-serif font-bold text-lg text-white tracking-tight">
             {lang === 'ur' ? 'ڈرائیور دوست ایپ انسٹال کریں' : 'Install Driver Dost App'}
-          </h3>
+          </h2>
           <p className="text-xs text-amber-200 font-sans mt-1">
             {lang === 'ur' ? 'آف لائن رسائی، سفر ڈائری اور تیز رفتار فلیٹ کنٹرول' : 'Fast offline trip logger & road logistics toolkit'}
           </p>

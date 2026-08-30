@@ -230,7 +230,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       const fmt = (n: number) => 'Rs ' + n.toLocaleString('en-US');
 
       const logoHtml = logoDataUrl
-        ? `<img src="${logoDataUrl}" alt="Driver Dost Logo" style="width: 76px; height: 76px; object-fit: contain; border-radius: 50%; border: 3px solid #c59b27; padding: 2px; background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.08);" />`
+        ? `<img src="${logoDataUrl}" alt="Driver Dost Logistics Official Emblem" width="76" height="76" style="width: 76px; height: 76px; object-fit: contain; border-radius: 50%; border: 3px solid #c59b27; padding: 2px; background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.08);" />`
         : `<div style="width: 76px; height: 76px; border-radius: 50%; border: 3px solid #c59b27; background: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.08); text-align: center;">
             <span style="font-size: 24px; line-height: 1;">🚚</span>
             <span style="font-size: 8px; font-weight: 900; color: #4a4a35; font-family: sans-serif; letter-spacing: 0.5px; margin-top: 2px;">DRIVER DOST</span>
@@ -248,7 +248,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       container.innerHTML = sanitizeHtml(`
         <div style="border-bottom: 3px solid #8b9d77; padding-bottom: 16px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: flex-start; direction: rtl;">
           <div style="flex: 1; text-align: right;">
-            <h1 style="margin: 0; font-size: 26px; color: #4a4a35; font-weight: 900; font-family: inherit;">ڈرائیور دوست - ٹرانسپورٹ و سفر ڈائری (Driver Dost)</h1>
+            <div style="margin: 0; font-size: 26px; color: #4a4a35; font-weight: 900; font-family: inherit;">ڈرائیور دوست - ٹرانسپورٹ و سفر ڈائری (Driver Dost)</div>
             <p style="margin: 4px 0 0 0; font-size: 14px; color: #8b9d77; font-weight: bold;">سفری کرایہ، فیول کھپت اور اخراجات کا تفصیلی تخمینہ (Trip Cost Summary)</p>
             
             <div style="margin-top: 10px; background: #fafaf5; border: 1.5px solid #e0e0d0; padding: 8px 14px; border-radius: 10px; font-size: 12px; line-height: 1.6; display: inline-block;">
@@ -430,15 +430,17 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
             <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
               <PublicImage
                 fileName="trip-icon.png"
-                alt="Trip Calculator"
+                alt="Trip Expense and Freight Calculation Tool"
+                width={40}
+                height={40}
                 className="w-full h-full object-cover rounded-xl"
                 fallbackIcon={<Calculator className="w-5 h-5 text-[#8b9d77]" />}
               />
             </div>
             <div>
-              <h2 className="text-sm sm:text-base font-bold text-[#4a4a35] leading-tight">
+              <h1 className="text-sm sm:text-base font-bold text-[#4a4a35] leading-tight">
                 {isUrdu ? 'سفر اخراجات کیلکولیٹر' : 'Trip Expense Calculator'}
-              </h2>
+              </h1>
               <p className="text-[10px] text-[#8e8e75]">
                 {isUrdu ? 'کرایہ، ڈیزل و منافع کا تخمینہ' : 'Freight, Fuel & Profit Estimate'}
               </p>
@@ -657,15 +659,17 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
           <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
             <PublicImage
               fileName="trip-icon.png"
-              alt="Trip Calculator"
+              alt="Trip Expense and Freight Cost Summary"
+              width={40}
+              height={40}
               className="w-full h-full object-cover rounded-xl"
               fallbackIcon={<Calculator className="w-5 h-5 text-[#8b9d77]" />}
             />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-bold text-[#4a4a35] leading-tight">
+            <h1 className="text-base sm:text-lg font-bold text-[#4a4a35] leading-tight">
               {isUrdu ? 'سفری لاگت اور اخراجات کا نتیجہ' : 'Trip Cost Result Breakdown'}
-            </h2>
+            </h1>
             <p className="text-[11px] text-[#8e8e75]">
               {lastCalc?.origin} ➔ {lastCalc?.dest}
             </p>

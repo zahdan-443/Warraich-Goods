@@ -33,12 +33,17 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, onSelectTab, 
       {navItems.map((item) => {
         const isActive = activeTab === item.id;
         return (
-          <button
+          <a
             key={item.id}
-            onClick={() => onSelectTab(item.id)}
+            href={`#${item.id}`}
+            onClick={(e) => {
+              e.preventDefault();
+              onSelectTab(item.id);
+            }}
             aria-current={isActive ? 'page' : undefined}
-            aria-label={item.label}
-            className={`flex items-center gap-2 text-xs uppercase tracking-widest font-medium whitespace-nowrap py-1.5 md:py-2 transition-all cursor-pointer shrink-0 ${
+            aria-label={`${item.label} - Driver Dost`}
+            title={item.label}
+            className={`flex items-center gap-2 text-xs uppercase tracking-widest font-medium whitespace-nowrap py-1.5 md:py-2 transition-all cursor-pointer shrink-0 no-underline ${
               isActive
                 ? 'text-[#8b9d77] border-b-2 border-[#8b9d77] font-bold'
                 : 'text-[#5a5a40] hover:text-[#2d2d20]'
@@ -46,7 +51,7 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, onSelectTab, 
           >
             <span className={isActive ? 'text-[#8b9d77]' : 'text-[#5a5a40]'}>{item.icon}</span>
             <span>{item.label}</span>
-          </button>
+          </a>
         );
       })}
     </nav>

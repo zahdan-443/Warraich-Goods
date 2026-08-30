@@ -77,9 +77,9 @@ export const VerifyView: React.FC<VerifyViewProps> = ({ lang }) => {
                       <span className="inline-block px-3 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#8b9d77]/15 text-[#5a5a40] mb-1.5 font-mono">
                         🏛️ {t.officialBadge}
                       </span>
-                      <h3 className="font-serif font-bold text-2xl text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
+                      <h2 className="font-serif font-bold text-2xl text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
                         {p.title}
-                      </h3>
+                      </h2>
                       <p className="text-xs text-[#8e8e75] font-sans font-medium">{p.sub}</p>
                     </div>
                   </div>

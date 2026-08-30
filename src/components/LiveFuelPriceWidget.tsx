@@ -165,9 +165,9 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
               <Fuel className="w-4 h-4 text-[#8b9d77]" />
             </div>
             <div>
-              <h4 className="font-serif font-bold text-sm text-[#4a4a35]">
+              <div className="font-serif font-bold text-sm text-[#4a4a35]">
                 {lang === 'ur' ? 'پی ایس او (PSO) پول ریٹ مانیٹر' : 'PSO POL Official Rates'}
-              </h4>
+              </div>
               <a 
                 href="https://psopk.com/fuel-prices/pol/archives" 
                 target="_blank" 
@@ -251,9 +251,9 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>
-          <h2 className="text-2xl md:text-3xl font-serif font-bold text-[#4a4a35] mt-1">
+          <div className="text-2xl md:text-3xl font-serif font-bold text-[#4a4a35] mt-1">
             {lang === 'ur' ? 'پی ایس او (PSO) پاکستان فیول نرخ' : 'Official PSO Retail POL Rates'}
-          </h2>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button

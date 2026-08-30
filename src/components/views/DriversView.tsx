@@ -92,9 +92,9 @@ export const DriversView: React.FC<DriversViewProps> = ({
                         {d.lictype} Class
                       </span>
                     </div>
-                    <h3 className="font-serif font-bold text-xl text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors truncate">
+                    <h2 className="font-serif font-bold text-xl text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors truncate">
                       {d.name}
-                    </h3>
+                    </h2>
                     
                     <div className="space-y-1 pt-2 text-xs text-[#8e8e75] font-sans">
                       <div className="flex items-center gap-2 font-mono">
@@ -144,7 +144,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
               <div className="w-10 h-10 rounded-full bg-[#8b9d77] text-white flex items-center justify-center font-serif italic text-xl">
                 YM
               </div>
-              <h3 className="font-serif font-bold text-xl text-[#4a4a35]">{t.addBtn}</h3>
+              <h2 className="font-serif font-bold text-xl text-[#4a4a35]">{t.addBtn}</h2>
             </div>
 
             <div>

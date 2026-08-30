@@ -179,7 +179,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
             {!logoFailed ? (
               <img
                 src={resolvedLogo || logoIconData}
-                alt="وڑائچ گڈز لوگو"
+                alt="Warraich Goods Transport Company Official Logo"
                 width={64}
                 height={64}
                 onError={(e) => {
@@ -745,7 +745,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
             {activeQrUrl ? (
               <img
                 src={activeQrUrl}
-                alt="QR Verification"
+                alt="Bilty Consignment Verification and Tracking QR Code"
                 width={54}
                 height={54}
                 style={{

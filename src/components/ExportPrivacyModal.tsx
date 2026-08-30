@@ -70,9 +70,9 @@ export const ExportPrivacyModal: React.FC<ExportPrivacyModalProps> = ({ isOpen, 
               <Shield className="w-5 h-5 text-[#c59b27]" />
             </div>
             <div>
-              <h3 className="font-serif font-bold text-base text-[#4a4a35]">
+              <h2 className="font-serif font-bold text-base text-[#4a4a35]">
                 {lang === 'ur' ? 'ڈیٹا ایکسپورٹ اور پرائیویسی کنٹرولز' : 'Export & Privacy Controls'}
-              </h3>
+              </h2>
               <p className="text-xs text-[#8e8e75]">
                 {lang === 'ur' ? 'شخصی معلومات اور شناختی کارڈ نمبر محفوظ بنائیں' : 'Sanitize sensitive details before export'}
               </p>

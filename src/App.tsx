@@ -112,6 +112,30 @@ export default function App() {
   const [exitToast, setExitToast] = useState(false);
 
   useEffect(() => {
+    const rawHash = window.location.hash.replace(/^#\/?/, '').trim();
+    if (rawHash) {
+      const map: Record<string, ActiveTab> = {
+        calculator: 'calculator',
+        trip: 'calculator',
+        'trip-calculator': 'calculator',
+        vehicleaccount: 'vehicleAccount',
+        'vehicle-account': 'vehicleAccount',
+        vehicle: 'vehicle',
+        vehicles: 'vehicle',
+        drivers: 'drivers',
+        routes: 'routes',
+        fuel: 'fuel',
+        verify: 'verify',
+        bilty: 'bilty',
+        home: 'home',
+      };
+      const resolved = map[rawHash.toLowerCase()];
+      if (resolved) {
+        setActiveTab(resolved);
+        window.history.replaceState({ tab: resolved }, '');
+        return;
+      }
+    }
     window.history.replaceState({ tab: 'home' }, '');
     window.history.pushState({ tab: 'home' }, '');
   }, []);
@@ -119,7 +143,7 @@ export default function App() {
   const handleNavigate = (newTab: ActiveTab | string) => {
     const target = (newTab === 'vehicles' ? 'vehicle' : newTab) as ActiveTab;
     if (target !== activeTab) {
-      window.history.pushState({ tab: target }, '');
+      window.history.pushState({ tab: target }, '', `#${target}`);
       setActiveTab(target);
     }
   };
@@ -731,7 +755,13 @@ export default function App() {
         </React.Suspense>
       </main>
 
-      {activeTab !== 'calculator' && <Footer />}
+      {activeTab !== 'calculator' && (
+        <Footer
+          lang={lang}
+          onNavigate={handleNavigate}
+          isBiltyAuthorized={isBiltyAuthorized}
+        />
+      )}
 
       <React.Suspense fallback={null}>
         <AuthModal

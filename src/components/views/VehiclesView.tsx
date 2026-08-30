@@ -86,9 +86,9 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
                       <span className="text-xs uppercase tracking-widest font-mono font-bold bg-[#8b9d77]/15 text-[#5a5a40] px-3 py-1 rounded-full border border-[#8b9d77]/30">
                         {v.reg}
                       </span>
-                      <h3 className="text-xl font-serif font-bold text-[#4a4a35] mt-3 group-hover:text-[#8b9d77] transition-colors">
+                      <h2 className="text-xl font-serif font-bold text-[#4a4a35] mt-3 group-hover:text-[#8b9d77] transition-colors">
                         {v.model}
-                      </h3>
+                      </h2>
                     </div>
                     <div className="w-10 h-10 bg-white rounded-full border border-[#ecece0] flex items-center justify-center text-lg shadow-2xs">
                       🚛
@@ -150,7 +150,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
               <div className="w-10 h-10 rounded-full bg-[#8b9d77] text-white flex items-center justify-center font-serif italic text-xl">
                 YM
               </div>
-              <h3 className="font-serif font-bold text-xl text-[#4a4a35]">{t.addBtn}</h3>
+              <h2 className="font-serif font-bold text-xl text-[#4a4a35]">{t.addBtn}</h2>
             </div>
 
             <div>

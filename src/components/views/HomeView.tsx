@@ -80,23 +80,55 @@ const QuickActionButton: React.FC<{
   fullName: string;
   subtitle?: string;
   highlight?: boolean;
-}> = ({ onClick, imgSrc, fullName, highlight }) => {
+  href?: string;
+  external?: boolean;
+}> = ({ onClick, imgSrc, fullName, highlight, href, external }) => {
+  const commonClasses = `p-1.5 sm:p-2 bg-white border ${
+    highlight ? 'border-2 border-[#8b9d77] shadow-sm' : 'border-[#ecece0]'
+  } hover:border-[#8b9d77] hover:shadow-md rounded-2xl sm:rounded-3xl transition-all active:scale-95 cursor-pointer flex items-center justify-center text-center group w-full aspect-square min-h-[110px] sm:min-h-[135px] no-underline`;
+
+  const innerContent = (
+    <div className="w-full h-full bg-[#fdfbf7] rounded-xl sm:rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs flex items-center justify-center transition-transform group-hover:scale-105 overflow-hidden">
+      <PublicImage
+        fileName={imgSrc}
+        alt={`Driver Dost Transport Tool: ${fullName}`}
+        width={140}
+        height={140}
+        className="w-full h-full object-cover rounded-xl"
+      />
+    </div>
+  );
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        onClick={(e) => {
+          if (!external) {
+            e.preventDefault();
+          }
+          onClick();
+        }}
+        target={external ? "_blank" : undefined}
+        rel={external ? "noopener noreferrer" : undefined}
+        title={fullName}
+        aria-label={fullName}
+        className={commonClasses}
+      >
+        {innerContent}
+      </a>
+    );
+  }
+
   return (
     <button
+      type="button"
       onClick={onClick}
       title={fullName}
       aria-label={fullName}
-      className={`p-1.5 sm:p-2 bg-white border ${
-        highlight ? 'border-2 border-[#8b9d77] shadow-sm' : 'border-[#ecece0]'
-      } hover:border-[#8b9d77] hover:shadow-md rounded-2xl sm:rounded-3xl transition-all active:scale-95 cursor-pointer flex items-center justify-center text-center group w-full aspect-square min-h-[110px] sm:min-h-[135px]`}
+      className={commonClasses}
     >
-      <div className="w-full h-full bg-[#fdfbf7] rounded-xl sm:rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs flex items-center justify-center transition-transform group-hover:scale-105 overflow-hidden">
-        <PublicImage
-          fileName={imgSrc}
-          alt={fullName}
-          className="w-full h-full object-cover rounded-xl"
-        />
-      </div>
+      {innerContent}
     </button>
   );
 };
@@ -438,6 +470,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 sm:gap-4">
             {/* Row 1, Button 1: Trip Calculator */}
             <QuickActionButton
+              href="#calculator"
               onClick={() => onNavigate('calculator')}
               imgSrc={tripIconData}
               fallbackIcon={<Calculator className="w-7 h-7 text-[#8b9d77]" />}
@@ -448,6 +481,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
             {/* Row 1, Button 2: Vehicle Account (گاڑی کا حساب) */}
             <QuickActionButton
+              href="#vehicleAccount"
               onClick={() => onNavigate('vehicleAccount')}
               imgSrc={gariHisaabIconData}
               fallbackIcon={<Calculator className="w-7 h-7 text-[#8b9d77]" />}
@@ -458,6 +492,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
             {/* Row 1, Button 3: Motorway Toll Tax Calculator */}
             <QuickActionButton
+              href="#toll"
               onClick={() => openModalWithHistory(setShowTollCalculatorModal)}
               imgSrc={tollIconData}
               fallbackIcon={<Milestone className="w-7 h-7 text-[#8b9d77]" />}
@@ -468,6 +503,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
             {/* Row 2, Button 1: Vehicles Verification */}
             <QuickActionButton
+              href="https://mtmis.excise.punjab.gov.pk/"
+              external={true}
               onClick={() => window.open('https://mtmis.excise.punjab.gov.pk/', '_blank', 'noopener,noreferrer')}
               imgSrc={vehicleIconData}
               fallbackIcon={<Truck className="w-7 h-7 text-[#8b9d77]" />}
@@ -477,6 +514,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
             {/* Row 2, Button 2: License Verification */}
             <QuickActionButton
+              href="https://dlims.punjab.gov.pk/verify"
+              external={true}
               onClick={() => window.open('https://dlims.punjab.gov.pk/verify', '_blank', 'noopener,noreferrer')}
               imgSrc={licenseIconData}
               fallbackIcon={<ShieldCheck className="w-7 h-7 text-[#8b9d77]" />}
@@ -486,6 +525,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
             {/* Row 2, Button 3: E-Challan Check */}
             <QuickActionButton
+              href="https://echallan.psca.gop.pk/"
+              external={true}
               onClick={() => window.open('https://echallan.psca.gop.pk/', '_blank', 'noopener,noreferrer')}
               imgSrc={echallanIconData}
               fallbackIcon={<AlertTriangle className="w-7 h-7 text-[#8b9d77]" />}
@@ -496,6 +537,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Row 3, Button 1: Bilty Form & Generator (ONLY visible when authorized) */}
             {isBiltyAuthorized && (
               <QuickActionButton
+                href="#bilty"
                 onClick={() => onNavigate('bilty')}
                 imgSrc={biltyIconData}
                 fallbackIcon={<Receipt className="w-7 h-7 text-[#8b9d77]" />}
@@ -507,6 +549,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
             {/* Row 3, Button 2 (End Button): Safar Diary */}
             <QuickActionButton
+              href="#diary"
               onClick={() => openModalWithHistory(setShowSafarDiaryModal)}
               imgSrc={safarDiaryIconData}
               fallbackIcon={<BookOpen className="w-7 h-7 text-[#8b9d77]" />}
@@ -517,6 +560,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
             {/* Row 3, Button 3 (End Button): Mazeed Sahulatain / Quick Operations */}
             <QuickActionButton
+              href="#quickops"
               onClick={() => openModalWithHistory(setShowQuickOpsModal)}
               imgSrc={quickOpsIconData}
               fallbackIcon={<Wrench className="w-7 h-7 text-[#8b9d77]" />}
@@ -530,10 +574,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* Live Fuel Prices Monitor Card */}
         <div className="bg-white p-8 md:p-10 rounded-[40px] shadow-sm border border-[#ecece0]">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-serif font-bold text-lg text-[#4a4a35] flex items-center gap-2">
+            <h2 className="font-serif font-bold text-lg text-[#4a4a35] flex items-center gap-2">
               <Fuel className="w-5 h-5 text-[#8b9d77]" />
               <span>{lang === 'ur' ? 'پاکستان پول ریٹ مانیٹر' : 'Live POL Rates Monitor'}</span>
-            </h3>
+            </h2>
             <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#10B981]/15 text-[#10B981] uppercase tracking-wider">
               {lang === 'ur' ? 'لائیو اپڈیٹ' : 'Live Updated'}
             </span>
@@ -570,9 +614,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <h3 className="font-serif font-bold text-sm text-[#4a4a35] uppercase tracking-wider text-center">
+            <h2 className="font-serif font-bold text-sm text-[#4a4a35] uppercase tracking-wider text-center">
               {currentMonthName} {currentYear}
-            </h3>
+            </h2>
             <button 
               onClick={handleNextMonth}
               aria-label={lang === 'ur' ? 'اگلا مہینہ' : 'Next Month'}
@@ -628,14 +672,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
           {/* Schedule Events List for Selected Day */}
           <div className="mt-4 pt-4 border-t border-[#ecece0] flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-xs uppercase tracking-wider font-bold text-[#5a5a40] flex items-center gap-1.5">
+              <h3 className="text-xs uppercase tracking-wider font-bold text-[#5a5a40] flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-[#8b9d77]" />
                 <span>
                   {lang === 'ur' 
                     ? `${selectedDate.getDate()} ${monthNamesUR[selectedDate.getMonth()]} کے شیڈول`
                     : `Schedule for ${selectedDate.getDate()} ${monthNamesEN[selectedDate.getMonth()]}`}
                 </span>
-              </h4>
+              </h3>
               <button 
                 onClick={() => setShowAddEvent(!showAddEvent)}
                 className="p-1 rounded-full bg-[#f0f0e4] text-[#8b9d77] hover:bg-[#8b9d77] hover:text-white transition-all cursor-pointer"
@@ -803,9 +847,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Add Trip Action Banner */}
             <div className="p-5 bg-[#fdfbf7] rounded-3xl border border-[#8b9d77]/40 flex items-center justify-between gap-4">
               <div>
-                <h4 className="font-serif font-bold text-sm text-[#4a4a35]">
+                <h3 className="font-serif font-bold text-sm text-[#4a4a35]">
                   {lang === 'ur' ? 'نیا سفری اخراجات لاگ شامل کریں' : 'Log New Trip & Calculate Expenses'}
-                </h4>
+                </h3>
                 <p className="text-xs text-[#8e8e75]">
                   {lang === 'ur' ? 'ڈیزل، ٹول ٹیکس اور روٹ خرچ کا حساب لگائیں' : 'Calculate fuel, toll tax, and route consumption'}
                 </p>
@@ -937,13 +981,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </button>
 
               {/* Drivers */}
-              <button
-                type="button"
-                onClick={() => {
+              <a
+                href="#drivers"
+                onClick={(e) => {
+                  e.preventDefault();
                   setShowQuickOpsModal(false);
                   onNavigate('drivers');
                 }}
-                className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95"
+                title={lang === 'ur' ? 'ڈرائیورز ڈائریکٹری' : 'Drivers List'}
+                className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95 no-underline"
               >
                 <div className="p-3 bg-white rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs shrink-0">
                   <Users className="w-6 h-6 text-[#8b9d77]" />
@@ -951,16 +997,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <span className="font-serif font-bold text-xs text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
                   {lang === 'ur' ? 'ڈرائیورز ڈائریکٹری' : 'Drivers List'}
                 </span>
-              </button>
+              </a>
 
               {/* Routes */}
-              <button
-                type="button"
-                onClick={() => {
+              <a
+                href="#routes"
+                onClick={(e) => {
+                  e.preventDefault();
                   setShowQuickOpsModal(false);
                   onNavigate('routes');
                 }}
-                className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95"
+                title={lang === 'ur' ? 'روٹس اور ٹول ٹیکس' : 'Routes & Tolls'}
+                className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95 no-underline"
               >
                 <div className="p-3 bg-white rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs shrink-0">
                   <MapPin className="w-6 h-6 text-[#8b9d77]" />
@@ -968,16 +1016,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <span className="font-serif font-bold text-xs text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
                   {lang === 'ur' ? 'روٹس اور ٹول ٹیکس' : 'Routes & Tolls'}
                 </span>
-              </button>
+              </a>
 
               {/* Fuel Log */}
-              <button
-                type="button"
-                onClick={() => {
+              <a
+                href="#fuel"
+                onClick={(e) => {
+                  e.preventDefault();
                   setShowQuickOpsModal(false);
                   onNavigate('fuel');
                 }}
-                className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95"
+                title={lang === 'ur' ? 'فیول لاگ ریکارڈ' : 'Fuel Consumption'}
+                className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95 no-underline"
               >
                 <div className="p-3 bg-white rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs shrink-0">
                   <Fuel className="w-6 h-6 text-[#8b9d77]" />
@@ -985,17 +1035,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <span className="font-serif font-bold text-xs text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
                   {lang === 'ur' ? 'فیول لاگ ریکارڈ' : 'Fuel Consumption'}
                 </span>
-              </button>
+              </a>
 
               {/* Bilty Generator (ONLY visible IF authorized) */}
               {isBiltyAuthorized && (
-                <button
-                  type="button"
-                  onClick={() => {
+                <a
+                  href="#bilty"
+                  onClick={(e) => {
+                    e.preventDefault();
                     setShowQuickOpsModal(false);
                     onNavigate('bilty');
                   }}
-                  className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95"
+                  title={lang === 'ur' ? 'بلٹی جنریٹر' : 'Bilty Generator'}
+                  className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95 no-underline"
                 >
                   <div className="p-3 bg-white rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs shrink-0">
                     <Receipt className="w-6 h-6 text-[#8b9d77]" />
@@ -1003,7 +1055,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   <span className="font-serif font-bold text-xs text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
                     {lang === 'ur' ? 'بلٹی جنریٹر' : 'Bilty Generator'}
                   </span>
-                </button>
+                </a>
               )}
 
             </div>

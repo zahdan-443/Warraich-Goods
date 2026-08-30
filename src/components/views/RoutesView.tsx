@@ -96,13 +96,11 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
                   </div>
 
                   <div className="flex items-center gap-3 mt-4">
-                    <h3 className="font-serif font-bold text-xl text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
-                      {r.from}
-                    </h3>
-                    <ArrowRight className="w-4 h-4 text-[#8b9d77] shrink-0" />
-                    <h3 className="font-serif font-bold text-xl text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
-                      {r.to}
-                    </h3>
+                    <h2 className="font-serif font-bold text-xl text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors flex items-center gap-2">
+                      <span>{r.from}</span>
+                      <ArrowRight className="w-4 h-4 text-[#8b9d77] shrink-0" />
+                      <span>{r.to}</span>
+                    </h2>
                   </div>
                 </div>
 
@@ -131,7 +129,7 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
               <div className="w-10 h-10 rounded-full bg-[#8b9d77] text-white flex items-center justify-center font-serif italic text-xl">
                 YM
               </div>
-              <h3 className="font-serif font-bold text-xl text-[#4a4a35]">{t.addBtn}</h3>
+              <h2 className="font-serif font-bold text-xl text-[#4a4a35]">{t.addBtn}</h2>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

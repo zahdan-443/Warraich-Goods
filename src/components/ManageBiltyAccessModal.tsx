@@ -375,7 +375,7 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
             <div className="space-y-4">
               <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-xs text-emerald-950 flex items-center justify-between">
                 <div>
-                  <h4 className="font-bold">{lang === 'ur' ? 'گوگل اکاؤنٹس اور بلٹی رسائی کا کنٹرول' : 'Bilty Creation Permission Control'}</h4>
+                  <h3 className="font-bold">{lang === 'ur' ? 'گوگل اکاؤنٹس اور بلٹی رسائی کا کنٹرول' : 'Bilty Creation Permission Control'}</h3>
                   <p className="text-[11px] text-emerald-800 mt-0.5">
                     {lang === 'ur' 
                       ? 'جن صارفین نے جی میل سے سائن ان کیا ہے وہ نیچے نظر آ رہے ہیں۔ آپ 1-کلک سے کسی بھی اکاؤنٹ کو بلٹی بنانے کی اجازت دے سکتے ہیں یا واپس لے سکتے ہیں۔'
@@ -576,9 +576,9 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
               {/* Monthly Bilties Table */}
               <div className="bg-white border border-[#ecece0] rounded-2xl overflow-hidden shadow-2xs">
                 <div className="p-3 bg-[#fdfbf7] border-b border-[#ecece0] flex items-center justify-between">
-                  <h4 className="font-serif font-bold text-xs text-[#4a4a35]">
+                  <h3 className="font-serif font-bold text-xs text-[#4a4a35]">
                     {lang === 'ur' ? 'اس مہینے کی تمام بلٹیوں کی تفصیل' : 'Monthly Bilties Ledger'}
-                  </h4>
+                  </h3>
                   <span className="text-[10px] font-mono text-[#8e8e75]">
                     {filteredBilties.length} {lang === 'ur' ? 'ریکارڈز' : 'records'}
                   </span>
@@ -627,7 +627,7 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
             <form onSubmit={handleSaveTollRates} className="space-y-4">
               <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-xs text-emerald-950 flex items-center justify-between">
                 <div>
-                  <h4 className="font-bold">{lang === 'ur' ? 'این ایچ اے موٹروے و ہائی وے ٹول ریٹس شیڈول' : 'NHA Motorway & Highway Toll Schedule'}</h4>
+                  <h3 className="font-bold">{lang === 'ur' ? 'این ایچ اے موٹروے و ہائی وے ٹول ریٹس شیڈول' : 'NHA Motorway & Highway Toll Schedule'}</h3>
                   <p className="text-[11px] text-emerald-800 mt-0.5">
                     {lang === 'ur'
                       ? 'یہ ریٹس ڈیش بورڈ ٹول کیلکولیٹر میں خودکار طور پر لاگو ہوں گے اور آف لائن بھی کام کریں گے۔'
