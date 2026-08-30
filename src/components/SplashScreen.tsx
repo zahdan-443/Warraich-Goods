@@ -14,15 +14,17 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
   const cleanBase = base.endsWith('/') ? base : base + '/';
 
   const candidates = [
+    '/splash.png',
     `${cleanBase}splash.png`,
-    `./splash.png`,
+    './splash.png',
+    'splash.png',
+    '/splash-screen.png',
     `${cleanBase}splash-screen.png`,
-    `./splash-screen.png`,
   ];
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    // Show splash briefly (600ms) then smoothly fade out
+    // Show splash screen (1.5s) then smoothly fade out
     const timer = setTimeout(() => {
       setFadeOut(true);
       setTimeout(() => {
@@ -32,8 +34,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
           // ignore
         }
         onDismiss();
-      }, 250);
-    }, 600);
+      }, 300);
+    }, 1500);
     return () => clearTimeout(timer);
   }, [onDismiss]);
 
@@ -50,19 +52,20 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
     } catch {
       // ignore
     }
-    setTimeout(onDismiss, 200);
+    setTimeout(onDismiss, 250);
   };
 
   return (
     <div
+      id="app-splash-screen"
       onClick={dismiss}
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 9999,
+        zIndex: 99999,
         backgroundColor: '#162a4d',
         opacity: fadeOut ? 0 : 1,
-        transition: 'opacity 0.25s ease-in-out',
+        transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -72,22 +75,22 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
     >
       <img
         src={candidates[idx]}
-        alt="Driver Dost Transport Logistics Welcome Screen"
-        width={1080}
-        height={1920}
+        alt="Driver Dost Welcome Splash Screen"
         onError={handleError}
         decoding="async"
         loading="eager"
         style={{
           width: '100%',
           height: '100%',
-          objectFit: 'cover',
-          objectPosition: 'center',
+          objectFit: 'contain',
+          maxWidth: '100vw',
+          maxHeight: '100vh',
           display: 'block',
         }}
       />
     </div>
   );
 };
+
 
 

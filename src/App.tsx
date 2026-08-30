@@ -56,7 +56,7 @@ export default function App() {
 
   const [lang, setLang] = useState<Language>('en');
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
-  const [showSplash, setShowSplash] = useState<boolean>(false);
+  const [showSplash, setShowSplash] = useState<boolean>(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showBiltyAccessModal, setShowBiltyAccessModal] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);
