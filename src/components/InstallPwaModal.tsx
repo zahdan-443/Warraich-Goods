@@ -10,17 +10,40 @@ interface InstallPwaModalProps {
 export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showModal, setShowModal] = useState<boolean>(false);
-  const [isInstalled, setIsInstalled] = useState<boolean>(false);
-
-  useEffect(() => {
-    // Check if already in standalone PWA mode
+  const [isInstalled, setIsInstalled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
     const isStandalone = 
       window.matchMedia('(display-mode: standalone)').matches || 
+      window.matchMedia('(display-mode: fullscreen)').matches || 
+      window.matchMedia('(display-mode: minimal-ui)').matches || 
       (window.navigator as any).standalone === true ||
-      document.referrer.includes('android-app://');
+      document.referrer.includes('android-app://') ||
+      localStorage.getItem('wg_pwa_installed') === 'true' ||
+      localStorage.getItem('app_installed_status') === 'installed';
+    return Boolean(isStandalone);
+  });
 
-    if (isStandalone) {
-      setIsInstalled(true);
+  useEffect(() => {
+    // Check if already in standalone PWA mode or previously recorded as installed
+    const checkInstalled = () => {
+      const isStandalone = 
+        window.matchMedia('(display-mode: standalone)').matches || 
+        window.matchMedia('(display-mode: fullscreen)').matches || 
+        window.matchMedia('(display-mode: minimal-ui)').matches || 
+        (window.navigator as any).standalone === true ||
+        document.referrer.includes('android-app://') ||
+        localStorage.getItem('wg_pwa_installed') === 'true' ||
+        localStorage.getItem('app_installed_status') === 'installed';
+
+      if (isStandalone) {
+        setIsInstalled(true);
+        setShowModal(false);
+        return true;
+      }
+      return false;
+    };
+
+    if (checkInstalled()) {
       return;
     }
 
@@ -30,27 +53,44 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
       (window as any).__wg_pwa_deferred_prompt = e;
     };
 
+    const handleAppInstalled = () => {
+      localStorage.setItem('wg_pwa_installed', 'true');
+      localStorage.setItem('app_installed_status', 'installed');
+      setIsInstalled(true);
+      setShowModal(false);
+    };
+
     const handleOpenRequest = () => {
-      setShowModal(true);
+      // If user explicitly clicks install from menu, open modal unless already installed
+      if (!checkInstalled()) {
+        setShowModal(true);
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
     window.addEventListener('wg_open_install_modal', handleOpenRequest);
 
-    // Auto-prompt after 2.5 seconds on app start if not in standalone
+    // Auto-prompt after 3 seconds on app start ONLY IF never installed and not dismissed recently
     const timer = setTimeout(() => {
-      const sessionDismissed = sessionStorage.getItem('wg_install_session_dismissed');
-      if (!isStandalone && !sessionDismissed) {
-        setShowModal(true);
+      if (!checkInstalled()) {
+        const sessionDismissed = sessionStorage.getItem('wg_install_session_dismissed');
+        const lastDismissedTime = localStorage.getItem('wg_install_last_dismissed');
+        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+        
+        if (!sessionDismissed && (!lastDismissedTime || parseInt(lastDismissedTime, 10) < oneDayAgo)) {
+          setShowModal(true);
+        }
       }
-    }, 2500);
+    }, 3000);
 
     return () => {
       clearTimeout(timer);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
       window.removeEventListener('wg_open_install_modal', handleOpenRequest);
     };
-  }, [isInstalled]);
+  }, []);
 
   const [showManualGuide, setShowManualGuide] = useState<boolean>(false);
 
@@ -61,6 +101,8 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
         promptEvent.prompt();
         const choiceResult = await promptEvent.userChoice;
         if (choiceResult && choiceResult.outcome === 'accepted') {
+          localStorage.setItem('wg_pwa_installed', 'true');
+          localStorage.setItem('app_installed_status', 'installed');
           setIsInstalled(true);
           setShowModal(false);
           return;
@@ -77,12 +119,13 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
   const handleClose = () => {
     setShowModal(false);
     sessionStorage.setItem('wg_install_session_dismissed', 'true');
+    localStorage.setItem('wg_install_last_dismissed', Date.now().toString());
   };
 
   if (!showModal || isInstalled) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 pt-[max(env(safe-area-inset-top,0px),1rem)] pb-[max(env(safe-area-inset-bottom,0px),1rem)] animate-in fade-in duration-300">
       <div className="bg-white w-full max-w-sm rounded-[32px] shadow-2xl border border-[#ecece0] overflow-hidden text-right relative animate-in zoom-in-95 duration-200">
         
         {/* Header decoration */}

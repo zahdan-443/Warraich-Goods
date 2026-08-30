@@ -26,7 +26,7 @@ export const Footer: React.FC<FooterProps> = ({
   return (
     <footer 
       aria-label={isUrdu ? 'فوٹر اور اندرونی لنکس' : 'Footer & Internal Links'}
-      className="bg-[#f0f0e4] border-t border-[#e2e2d5] text-[#4a4a35] font-sans pt-8 pb-6 px-4 md:px-12 mt-auto"
+      className="bg-[#f0f0e4] border-t border-[#e2e2d5] text-[#4a4a35] font-sans pt-8 pb-[max(env(safe-area-inset-bottom,0px),1.5rem)] px-4 md:px-12 mt-auto"
     >
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
         

@@ -500,7 +500,108 @@ export const ROUTING_MATRIX: Record<string, RouteDefinition> = {
     ]
   },
 
-  // Faisalabad Corridors
+  'Samundri-Lahore': {
+    nameEn: 'Samundri – Lahore (M-3 Motorway 145 km)',
+    nameUr: 'سمندری تا لاہور (ایم 3 موٹروے 145 کلومیٹر)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M3', nameEn: 'Samundri Interchange – Lahore (M-3)', nameUr: 'سمندری انٹرچینج تا لاہور (ایم 3)', km: 145 }
+    ]
+  },
+  'Samundri-Islamabad': {
+    nameEn: 'Samundri – Islamabad (M-4 + M-2 Motorway)',
+    nameUr: 'سمندری تا اسلام آباد (ایم 4 + ایم 2 موٹروے)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M4', nameEn: 'Samundri – Pindi Bhattian (M-4)', nameUr: 'سمندری تا پنڈی بھٹیاں (ایم 4)', km: 130 },
+      { code: 'M2', nameEn: 'Pindi Bhattian – Islamabad (M-2)', nameUr: 'پنڈی بھٹیاں تا اسلام آباد (ایم 2)', km: 220 }
+    ]
+  },
+  'Samundri-Rawalpindi': {
+    nameEn: 'Samundri – Rawalpindi (M-4 + M-2 Motorway)',
+    nameUr: 'سمندری تا راولپنڈی (ایم 4 + ایم 2 موٹروے)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M4', nameEn: 'Samundri – Pindi Bhattian (M-4)', nameUr: 'سمندری تا پنڈی بھٹیاں (ایم 4)', km: 130 },
+      { code: 'M2', nameEn: 'Pindi Bhattian – Rawalpindi (M-2)', nameUr: 'پنڈی بھٹیاں تا راولپنڈی (ایم 2)', km: 220 }
+    ]
+  },
+  'Samundri-Multan': {
+    nameEn: 'Samundri – Multan (M-4 Motorway)',
+    nameUr: 'سمندری تا ملتان (ایم 4 موٹروے)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M4', nameEn: 'Samundri – Multan (M-4)', nameUr: 'سمندری تا ملتان (ایم 4)', km: 179 }
+    ]
+  },
+  'Samundri-Faisalabad': {
+    nameEn: 'Samundri – Faisalabad (M-4 Section)',
+    nameUr: 'سمندری تا فیصل آباد (ایم 4 سیکشن)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M4', nameEn: 'Samundri – Faisalabad (M-4)', nameUr: 'سمندری تا فیصل آباد (ایم 4)', km: 45 }
+    ]
+  },
+  'Samundri-Karachi': {
+    nameEn: 'Samundri – Karachi (M-4 + M-5 + N-5 + M-9 Motorway Corridor)',
+    nameUr: 'سمندری تا کراچی (ایم 4 + ایم 5 + این 5 + ایم 9)',
+    routeType: 'mixed',
+    plazas: 4,
+    highwayCode: 'N5',
+    segments: [
+      { code: 'M4', nameEn: 'Samundri – Multan (M-4)', nameUr: 'سمندری تا ملتان (ایم 4)', km: 179 },
+      { code: 'M5', nameEn: 'Multan – Sukkur (M-5 Full)', nameUr: 'ملتان تا سکھر (ایم 5)', km: 392 },
+      { code: 'M9', nameEn: 'Hyderabad – Karachi (M-9 Full)', nameUr: 'حیدرآباد تا کراچی (ایم 9)', km: 136 }
+    ]
+  },
+  'Samundri-Peshawar': {
+    nameEn: 'Samundri – Peshawar (M-4 + M-2 + M-1 Motorway)',
+    nameUr: 'سمندری تا پشاور (ایم 4 + ایم 2 + ایم 1 موٹروے)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M4', nameEn: 'Samundri – Pindi Bhattian (M-4)', nameUr: 'سمندری تا پنڈی بھٹیاں (ایم 4)', km: 130 },
+      { code: 'M2', nameEn: 'Pindi Bhattian – Islamabad (M-2)', nameUr: 'پنڈی بھٹیاں تا اسلام آباد (ایم 2)', km: 220 },
+      { code: 'M1', nameEn: 'Islamabad – Peshawar (M-1)', nameUr: 'اسلام آباد تا پشاور (ایم 1)', km: 155 }
+    ]
+  },
+  'Sahiwal-Lahore': {
+    nameEn: 'Sahiwal – Lahore (M-3 Samundri Link / N-5 GT Road)',
+    nameUr: 'ساہیوال تا لاہور (ایم 3 / این 5 شاہراہ)',
+    routeType: 'mixed',
+    plazas: 2,
+    highwayCode: 'N5',
+    segments: [
+      { code: 'M3', nameEn: 'Samundri / Sahiwal Link – Lahore (M-3)', nameUr: 'سمندری لنک تا لاہور (ایم 3)', km: 145 }
+    ]
+  },
+  'Sahiwal-Islamabad': {
+    nameEn: 'Sahiwal – Islamabad (M-3 + M-4 + M-2)',
+    nameUr: 'ساہیوال تا اسلام آباد (ایم 3 + ایم 4 + ایم 2)',
+    routeType: 'motorway',
+    segments: [
+      { code: 'M3', nameEn: 'Samundri / Sahiwal – M-4 Link (M-3)', nameUr: 'ساہیوال لنک تا ایم 4', km: 45 },
+      { code: 'M4', nameEn: 'M-4 – Pindi Bhattian (M-4)', nameUr: 'ایم 4 تا پنڈی بھٹیاں', km: 130 },
+      { code: 'M2', nameEn: 'Pindi Bhattian – Islamabad (M-2)', nameUr: 'پنڈی بھٹیاں تا اسلام آباد (ایم 2)', km: 220 }
+    ]
+  },
+  'Sahiwal-Multan': {
+    nameEn: 'Sahiwal – Multan (N-5 GT Road / M-4 Link)',
+    nameUr: 'ساہیوال تا ملتان (این 5 جی ٹی روڈ / ایم 4)',
+    routeType: 'highway',
+    plazas: 2,
+    highwayCode: 'N5'
+  },
+  'Sahiwal-Karachi': {
+    nameEn: 'Sahiwal – Karachi (N-5 + M-5 + M-9)',
+    nameUr: 'ساہیوال تا کراچی (این 5 + ایم 5 + ایم 9)',
+    routeType: 'mixed',
+    plazas: 4,
+    highwayCode: 'N5',
+    segments: [
+      { code: 'M5', nameEn: 'Multan – Sukkur (M-5)', nameUr: 'ملتان تا سکھر (ایم 5)', km: 392 },
+      { code: 'M9', nameEn: 'Hyderabad – Karachi (M-9)', nameUr: 'حیدرآباد تا کراچی (ایم 9)', km: 136 }
+    ]
+  },
   'Faisalabad-Lahore': {
     nameEn: 'Faisalabad – Lahore (M-4 + M-3 / M-2)',
     nameUr: 'فیصل آباد تا لاہور (ایم 4 + ایم 3 / ایم 2)',
@@ -1372,3 +1473,289 @@ export function calculateToll(params: {
     isMotorwayRestricted
   };
 }
+
+// -------------------------------------------------------------
+// Detailed Motorways & Highways Tariff Directory
+// -------------------------------------------------------------
+export interface MotorwayDirectoryItem {
+  code: string;
+  nameEn: string;
+  nameUr: string;
+  routeEn: string;
+  routeUr: string;
+  totalKm: number;
+  type: 'motorway' | 'highway';
+  interchanges: string[];
+  interchangesUr: string[];
+  rates: Record<TollVehicleClass, number>;
+  descriptionUr: string;
+  descriptionEn: string;
+}
+
+export const MOTORWAYS_DIRECTORY: MotorwayDirectoryItem[] = [
+  {
+    code: 'M1',
+    nameEn: 'M-1 Motorway',
+    nameUr: 'ایم 1 موٹروے',
+    routeEn: 'Islamabad – Peshawar',
+    routeUr: 'اسلام آباد تا پشاور',
+    totalKm: 155,
+    type: 'motorway',
+    interchanges: ['Islamabad Toll Plaza', 'Fateh Jang', 'Brahma Bahtar', 'Burhan', 'Hazro', 'Chachh', 'Sawabi', 'Rashakai', 'Charsadda', 'Peshawar Toll Plaza'],
+    interchangesUr: ['اسلام آباد ٹول پلازہ', 'فتح جنگ', 'براہما باہتر', 'برہان', 'ہزرو', 'چھچھ', 'صوابی', 'رشاکئی', 'چارسدہ', 'پشاور ٹول پلازہ'],
+    rates: {
+      bike: 0,
+      car: 700,
+      wagon: 1100,
+      coaster: 1450,
+      bus: 2100,
+      truck: 2700,
+      articulated: 3350
+    },
+    descriptionUr: 'اسلام آباد تا پشاور مصدقہ این ایچ اے ایم ٹیگ ریٹس (155 کلومیٹر)',
+    descriptionEn: 'Official NHA M-Tag approved tariff for Islamabad to Peshawar corridor'
+  },
+  {
+    code: 'M2',
+    nameEn: 'M-2 Motorway',
+    nameUr: 'ایم 2 موٹروے',
+    routeEn: 'Lahore – Islamabad / Rawalpindi',
+    routeUr: 'لاہور تا اسلام آباد / راولپنڈی',
+    totalKm: 367,
+    type: 'motorway',
+    interchanges: ['Babu Sabu (Lahore)', 'Kala Shah Kaku', 'Sheikhupura', 'Khanqah Dogran', 'Sukheke', 'Pindi Bhattian', 'Salem / Bhalwal', 'Kot Momin', 'Kallar Kahar', 'Balkassar', 'Chakri', 'Islamabad'],
+    interchangesUr: ['بابو صابو (لاہور)', 'کالا شاہ کاکو', 'شیخوپورہ', 'خانقاہ ڈوگراں', 'سکھیکی', 'پنڈی بھٹیاں', 'سالم / بھلوال', 'کوٹ مومن', 'کلر کہار', 'بلکسر', 'چکری', 'اسلام آباد ٹول پلازہ'],
+    rates: {
+      bike: 0,
+      car: 1430, // 367 * 3.90
+      wagon: 2390,
+      coaster: 3350,
+      bus: 4770,
+      truck: 6210,
+      articulated: 7980
+    },
+    descriptionUr: 'لاہور تا اسلام آباد مکمل فاصلہ 367 کلومیٹر (پر کلومیٹر مصدقہ ریٹ لاگو)',
+    descriptionEn: 'Lahore to Islamabad complete 367 km stretch with per-km NHA rates'
+  },
+  {
+    code: 'M3',
+    nameEn: 'M-3 Motorway',
+    nameUr: 'ایم 3 موٹروے',
+    routeEn: 'Lahore – Abdul Hakeem',
+    routeUr: 'لاہور تا عبدالحکیم',
+    totalKm: 230,
+    type: 'motorway',
+    interchanges: ['Faizpur (Lahore)', 'Sharqpur', 'Nankana Sahib', 'Jaranwala', 'Samundri', 'Rajana', 'Pir Mahal', 'Abdul Hakeem'],
+    interchangesUr: ['فیض پور (لاہور)', 'شرقپور', 'ننکانہ صاحب', 'جڑانوالہ', 'سمندری', 'رجانہ', 'پیر محل', 'عبدالحکیم جنکشن'],
+    rates: {
+      bike: 0,
+      car: 1000,
+      wagon: 1500,
+      coaster: 2200,
+      bus: 3150,
+      truck: 4050,
+      articulated: 5000
+    },
+    descriptionUr: 'لاہور فیض پور تا عبدالحکیم موٹروے کوریڈور (230 کلومیٹر)',
+    descriptionEn: 'Lahore Faizpur to Abdul Hakeem connection (230 km)'
+  },
+  {
+    code: 'M4',
+    nameEn: 'M-4 Motorway',
+    nameUr: 'ایم 4 موٹروے',
+    routeEn: 'Pindi Bhattian – Faisalabad – Multan',
+    routeUr: 'پنڈی بھٹیاں تا فیصل آباد تا ملتان',
+    totalKm: 309,
+    type: 'motorway',
+    interchanges: ['Pindi Bhattian', 'Sangla Hill', 'Faisalabad (Sahianwala)', 'Aminpur', 'Gojra', 'Toba Tek Singh', 'Shorkot', 'Abdul Hakeem', 'Khanewal', 'Shamkot (Multan)'],
+    interchangesUr: ['پنڈی بھٹیاں', 'سانگلہ ہل', 'فیصل آباد (سہیانوالہ)', 'امین پور', 'گوجرہ', 'ٹوبہ ٹیک سنگھ', 'شورکوٹ', 'عبدالحکیم', 'خانیوال', 'شام کوٹ (ملتان)'],
+    rates: {
+      bike: 0,
+      car: 1350,
+      wagon: 1950,
+      coaster: 2900,
+      bus: 4050,
+      truck: 5300,
+      articulated: 6500
+    },
+    descriptionUr: 'پنڈی بھٹیاں تا فیصل آباد تا ملتان کوریڈور (309 کلومیٹر)',
+    descriptionEn: 'Pindi Bhattian through Faisalabad to Multan (309 km)'
+  },
+  {
+    code: 'M5',
+    nameEn: 'M-5 Motorway (Sukkur – Multan)',
+    nameUr: 'ایم 5 موٹروے (ملتان تا سکھر)',
+    routeEn: 'Multan – Sukkur (CPEC Corridor)',
+    routeUr: 'ملتان تا سکھر (سی پیک کوریڈور)',
+    totalKm: 392,
+    type: 'motorway',
+    interchanges: ['Multan Toll Plaza', 'Shujabad', 'Jalalpur Pirwala', 'Uch Sharif', 'Tarinda Muhammad Panah', 'Zahir Pir', 'Rahim Yar Khan', 'Sadiqabad', 'Ghotki', 'Pano Aqil', 'Rohri / Sukkur'],
+    interchangesUr: ['ملتان ٹول پلازہ', 'شجاع آباد', 'جلالپور پیروالا', 'اوچ شریف', 'ترنڈہ محمد پناہ', 'ظاہر پیر', 'رحیم یار خان', 'صادق آباد', 'گھوٹکی', 'پنو عاقل', 'روہڑی / سکھر ٹول پلازہ'],
+    rates: {
+      bike: 0,
+      car: 1500,
+      wagon: 2200,
+      coaster: 3250,
+      bus: 4600,
+      truck: 5950,
+      articulated: 7250
+    },
+    descriptionUr: 'ملتان تا سکھر سی پیک 6 لین موٹروے (392 کلومیٹر)',
+    descriptionEn: 'Multan to Sukkur 6-lane CPEC Motorway (392 km)'
+  },
+  {
+    code: 'M9',
+    nameEn: 'M-9 Motorway',
+    nameUr: 'ایم 9 موٹروے',
+    routeEn: 'Karachi – Hyderabad',
+    routeUr: 'کراچی تا حیدرآباد',
+    totalKm: 136,
+    type: 'motorway',
+    interchanges: ['Sohrab Goth (Karachi)', 'Bahria Town', 'Dumba', 'Nooriabad', 'Thana Bula Khan', 'Kotri', 'Jamshoro (Hyderabad)'],
+    interchangesUr: ['سہراب گوٹھ (کراچی)', 'بحریہ ٹاؤن', 'ڈمبا', 'نوری آباد', 'تھانہ بولا خان', 'کوٹری', 'جامشورو (حیدرآباد)'],
+    rates: {
+      bike: 0,
+      car: 550,
+      wagon: 950,
+      coaster: 1350,
+      bus: 1850,
+      truck: 2700,
+      articulated: 3500
+    },
+    descriptionUr: 'کراچی تا حیدرآباد 6 لین سپر ہائی وے موٹروے (136 کلومیٹر)',
+    descriptionEn: 'Karachi to Hyderabad 6-lane Super Highway corridor (136 km)'
+  },
+  {
+    code: 'M11',
+    nameEn: 'M-11 Motorway (Lahore – Sialkot)',
+    nameUr: 'ایم 11 موٹروے (لاہور تا سیالکوٹ)',
+    routeEn: 'Lahore – Sialkot',
+    routeUr: 'لاہور تا سیالکوٹ',
+    totalKm: 103,
+    type: 'motorway',
+    interchanges: ['Kala Shah Kaku (Lahore)', 'Muridke', 'Narowal Road', 'Kamoke Link', 'Gujranwala East', 'Daska', 'Sambrial / Sialkot'],
+    interchangesUr: ['کالا شاہ کاکو (لاہور)', 'مریدکے', 'نارووال روڈ', 'کامونکی لنک', 'گوجرانوالہ ایسٹ', 'ڈسکہ', 'سمبڑیال / سیالکوٹ'],
+    rates: {
+      bike: 0,
+      car: 350,
+      wagon: 500,
+      coaster: 750,
+      bus: 950,
+      truck: 1300,
+      articulated: 1700
+    },
+    descriptionUr: 'لاہور تا سیالکوٹ ایکسپریس وے و موٹروے (103 کلومیٹر)',
+    descriptionEn: 'Lahore to Sialkot 4-lane Motorway (103 km)'
+  },
+  {
+    code: 'M14',
+    nameEn: 'M-14 Motorway (Hakla – D.I. Khan)',
+    nameUr: 'ایم 14 موٹروے (ہکلہ تا ڈیرہ اسماعیل خان)',
+    routeEn: 'Hakla / Islamabad – D.I. Khan',
+    routeUr: 'ہکلہ / اسلام آباد تا ڈیرہ اسماعیل خان',
+    totalKm: 292,
+    type: 'motorway',
+    interchanges: ['Hakla (Islamabad)', 'Fateh Jang', 'Pindi Gheb', 'Tarap', 'Kharpa', 'Kallurkot', 'Darya Khan', 'Yarik (D.I. Khan)'],
+    interchangesUr: ['ہکلہ (اسلام آباد)', 'فتح جنگ', 'پنڈی گھیب', 'تراپ', 'کھرپا', 'کلور کوٹ', 'دریا خان', 'یارک (ڈیرہ اسماعیل خان)'],
+    rates: {
+      bike: 0,
+      car: 1100,
+      wagon: 1600,
+      coaster: 2300,
+      bus: 3100,
+      truck: 4200,
+      articulated: 5300
+    },
+    descriptionUr: 'اسلام آباد ہکلہ تا ڈی آئی خان مغربی سی پیک روٹ (292 کلومیٹر)',
+    descriptionEn: 'Islamabad Hakla to D.I. Khan Western CPEC Route (292 km)'
+  },
+  {
+    code: 'M15',
+    nameEn: 'M-15 Hazara Motorway',
+    nameUr: 'ایم 15 ہزارہ موٹروے',
+    routeEn: 'Burhan – Abbottabad – Thakot',
+    routeUr: 'برہان تا ایبٹ آباد تا تھاکوٹ',
+    totalKm: 180,
+    type: 'motorway',
+    interchanges: ['Burhan Interchange', 'Jharikas', 'Havelian', 'Abbottabad (Shimla)', 'Mansehra', 'Shinkiari', 'Battal', 'Thakot'],
+    interchangesUr: ['برہان جنکشن', 'جھاریکس', 'حویلیاں', 'ایبٹ آباد (شملہ)', 'مانسہرہ', 'شنکیاری', 'بٹل', 'تھاکوٹ ٹول پلازہ'],
+    rates: {
+      bike: 0,
+      car: 650,
+      wagon: 900,
+      coaster: 1300,
+      bus: 1800,
+      truck: 2400,
+      articulated: 3000
+    },
+    descriptionUr: 'برہان تا ایبٹ آباد، مانسہرہ اور تھاکوٹ شاہراہ (180 کلومیٹر)',
+    descriptionEn: 'Burhan to Abbottabad, Mansehra & Thakot Scenic Motorway (180 km)'
+  },
+  {
+    code: 'M16',
+    nameEn: 'M-16 Swat Motorway',
+    nameUr: 'ایم 16 سوات موٹروے',
+    routeEn: 'Karnal Sher Khan – Chakdara / Swat',
+    routeUr: 'کرنل شیر خان تا چکدرہ / سوات',
+    totalKm: 160,
+    type: 'motorway',
+    interchanges: ['Karnal Sher Khan (M-1)', 'Swabi Link', 'Katlang', 'Bakshali', 'Palai', 'Zulm Kot (Tunnel)', 'Chakdara (Swat)'],
+    interchangesUr: ['کرنل شیر خان (ایم 1)', 'صوابی لنک', 'کاٹلنگ', 'بخشالی', 'پلئی', 'ظلم کوٹ (ٹنل)', 'چکدرہ (سوات)'],
+    rates: {
+      bike: 0,
+      car: 600,
+      wagon: 850,
+      coaster: 1200,
+      bus: 1700,
+      truck: 2200,
+      articulated: 2800
+    },
+    descriptionUr: 'کرنل شیر خان تا چکدرہ و سوات ٹنل موٹروے (160 کلومیٹر)',
+    descriptionEn: 'Karnal Sher Khan interchange through tunnels to Chakdara Swat (160 km)'
+  },
+  {
+    code: 'N5',
+    nameEn: 'N-5 National Highway & GT Road',
+    nameUr: 'این 5 قومی شاہراہ و جی ٹی روڈ',
+    routeEn: 'Karachi – Lahore – Rawalpindi – Peshawar',
+    routeUr: 'کراچی تا لاہور تا راولپنڈی تا پشاور (جی ٹی روڈ)',
+    totalKm: 1819,
+    type: 'highway',
+    interchanges: ['Hyderabad Plaza', 'Moro Plaza', 'Ranipur Plaza', 'Kot Sabzal', 'Rahim Yar Khan', 'Bahawalpur', 'Harappa (Sahiwal)', 'Okara', 'Gujranwala', 'Jhelum Toll', 'Rawalpindi', 'Nowshera'],
+    interchangesUr: ['حیدرآباد پلازہ', 'مورو پلازہ', 'رانی پور', 'کوٹ سبزل', 'رحیم یار خان', 'بہاولپور پل', 'ہڑپہ ساہیوال', 'اوکاڑہ', 'گوجرانوالہ', 'جہلم ٹول پلازہ', 'راولپنڈی مندرہ', 'نوشہرہ'],
+    rates: {
+      bike: 20,
+      car: 60,
+      wagon: 110,
+      coaster: 160,
+      bus: 220,
+      truck: 280,
+      articulated: 400
+    },
+    descriptionUr: 'این 5 جی ٹی روڈ پر ہر ٹول پلازہ پر فی پلازہ فکس ریٹ وصول کیا جاتا ہے',
+    descriptionEn: 'Per-toll plaza flat fee on National Highway N-5 / GT Road'
+  },
+  {
+    code: 'N55',
+    nameEn: 'N-55 Indus Highway',
+    nameUr: 'این 55 انڈس ہائی وے',
+    routeEn: 'Kotri – D.G. Khan – D.I. Khan – Kohat – Peshawar',
+    routeUr: 'کوٹری تا ڈی جی خان تا ڈی آئی خان تا کوہاٹ تا پشاور',
+    totalKm: 1264,
+    type: 'highway',
+    interchanges: ['Sehwan Sharif', 'Larkana', 'Shikarpur', 'Kashmore', 'Rajanpur', 'D.G. Khan', 'D.I. Khan', 'Kohat Tunnel', 'Peshawar'],
+    interchangesUr: ['سیہون شریف', 'لاڑکانہ', 'شکارپور', 'کشمور', 'راجن پور', 'ڈی جی خان', 'ڈی آئی خان', 'کوہاٹ ٹنل ٹول', 'پشاور'],
+    rates: {
+      bike: 20,
+      car: 60,
+      wagon: 110,
+      coaster: 160,
+      bus: 220,
+      truck: 280,
+      articulated: 400
+    },
+    descriptionUr: 'انڈس ہائی وے این 55 اور کوہاٹ ٹنل ٹول پلازہ ریٹس',
+    descriptionEn: 'Indus Highway N-55 and Kohat Tunnel toll schedule'
+  }
+];
+

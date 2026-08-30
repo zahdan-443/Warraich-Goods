@@ -150,7 +150,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
       {/* CLEAN SINGLE LINE TOP HEADER: Logo, Brand Name & Notification Bell Icon ONLY */}
-      <header className="sticky top-0 z-50 bg-[#fdfbf7] border-b border-[#e2e2d5] shadow-2xs transition-all">
+      <header className="sticky top-0 z-50 bg-[#fdfbf7] border-b border-[#e2e2d5] shadow-2xs transition-all pt-[env(safe-area-inset-top,0px)]">
         <div className="py-2.5 px-3 sm:px-6 md:px-10 flex items-center justify-between">
           {/* Left: Side Menu Trigger & Brand Title */}
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -205,7 +205,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Scrollable Container for Desktop & Mobile */}
             <div className="flex-1 overflow-y-auto min-h-0">
               {/* Drawer Header */}
-              <div className="p-5 bg-[#fdfbf7] border-b border-[#ecece0] flex items-center justify-between sticky top-0 z-10">
+              <div className="p-5 pt-[max(env(safe-area-inset-top,0px),1.25rem)] bg-[#fdfbf7] border-b border-[#ecece0] flex items-center justify-between sticky top-0 z-10">
                 <div className="flex items-center gap-3">
                   <AlHadiLogo className="w-10 h-10" />
                   <div>
@@ -565,7 +565,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Firebase Notifications Drawer / Modal */}
       {showNotifs && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-start justify-end p-4 sm:p-6 pt-24">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-start justify-end p-4 sm:p-6 pt-[max(env(safe-area-inset-top,0px),5rem)] pb-[max(env(safe-area-inset-bottom,0px),1.5rem)]">
           <div className="bg-white w-full max-w-sm rounded-[32px] shadow-2xl border border-[#ecece0] overflow-hidden animate-in fade-in slide-in-from-top-5">
             <div className="p-5 bg-[#363626] text-white flex items-center justify-between">
               <div className="flex items-center gap-2">

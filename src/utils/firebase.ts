@@ -1,11 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getAuth,
-  initializeAuth,
-  browserLocalPersistence,
-  browserSessionPersistence,
-  browserPopupRedirectResolver,
-  inMemoryPersistence,
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
@@ -47,17 +42,7 @@ const firebaseConfig = {
 
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// Use browserLocalPersistence & inMemory fallback
-export const auth = (() => {
-  try {
-    return initializeAuth(app, {
-      persistence: [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence],
-      popupRedirectResolver: browserPopupRedirectResolver
-    });
-  } catch {
-    return getAuth(app);
-  }
-})();
+export const auth = getAuth(app);
 
 // Initialize Firestore with memory cache to prevent IndexedDB "database is closing/hidden" issues in iframe/preview
 export const db = (() => {
