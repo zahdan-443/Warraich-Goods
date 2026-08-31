@@ -9,7 +9,7 @@
    - Bi-Directional Message Channel & Skip Waiting Support
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v11';
+const CACHE_NAME = 'driver-dost-v12';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -32,7 +32,8 @@ const STATIC_ASSETS = [
   './scan-me-qr.png',
   './splash.png',
   './splash-screen.png',
-  './toll-icon.png'
+  './toll-icon.png',
+  './map-icon.png'
 ];
 
 // Custom Urdu/English Offline Fallback Page

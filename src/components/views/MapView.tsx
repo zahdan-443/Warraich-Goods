@@ -32,6 +32,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 interface MapViewProps {
   lang: Language;
@@ -519,31 +520,66 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    // Create map instance once
-    if (!leafletMapRef.current) {
-      const map = L.map(mapContainerRef.current, {
-        center: [30.3753, 69.3451], // Center of Pakistan
-        zoom: 6,
-        minZoom: 4,
-        maxZoom: 18,
-        zoomControl: false
-      });
+    // Clean up any stale map instance
+    if (leafletMapRef.current) {
+      try {
+        leafletMapRef.current.remove();
+      } catch {
+        // ignore
+      }
+      leafletMapRef.current = null;
+    }
 
-      L.control.zoom({ position: 'bottomright' }).addTo(map);
+    const map = L.map(mapContainerRef.current, {
+      center: [30.3753, 69.3451], // Center of Pakistan
+      zoom: 6,
+      minZoom: 4,
+      maxZoom: 18,
+      zoomControl: false
+    });
 
-      const tileConfig = getTileUrl(activeMapLayer);
-      const tiles = L.tileLayer(tileConfig.url, {
-        maxZoom: 19,
-        attribution: tileConfig.attribution
-      }).addTo(map);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-      tileLayerRef.current = tiles;
-      markersLayerGroupRef.current = L.layerGroup().addTo(map);
-      leafletMapRef.current = map;
+    const tileConfig = getTileUrl(activeMapLayer);
+    const tiles = L.tileLayer(tileConfig.url, {
+      maxZoom: 19,
+      attribution: tileConfig.attribution
+    }).addTo(map);
+
+    tileLayerRef.current = tiles;
+    markersLayerGroupRef.current = L.layerGroup().addTo(map);
+    leafletMapRef.current = map;
+
+    // Trigger invalidateSize after slight delay for proper container rendering
+    const timer1 = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+    const timer2 = setTimeout(() => {
+      map.invalidateSize();
+    }, 400);
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.invalidateSize();
+      }
+    });
+
+    if (mapContainerRef.current) {
+      resizeObserver.observe(mapContainerRef.current);
     }
 
     return () => {
-      // Keep map alive for fast switching, only cleanup on unmount
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      resizeObserver.disconnect();
+      if (leafletMapRef.current) {
+        try {
+          leafletMapRef.current.remove();
+        } catch {
+          // ignore
+        }
+        leafletMapRef.current = null;
+      }
     };
   }, []);
 

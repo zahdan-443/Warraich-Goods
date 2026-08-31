@@ -145,7 +145,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
-  const isOwnerUser = userEmail?.toLowerCase() === 'warraichgoods43@gmail.com';
+  const isOwnerUser = userEmail?.toLowerCase() === 'warraichgoods43@gmail.com' || userEmail?.toLowerCase() === 'alhadigoods786@gmail.com';
 
   return (
     <>
@@ -264,7 +264,7 @@ export const Header: React.FC<HeaderProps> = ({
                         </div>
                       </div>
 
-                      {onOpenBiltyAccess && userEmail?.toLowerCase() === 'warraichgoods43@gmail.com' && (
+                      {onOpenBiltyAccess && isOwnerUser && (
                         <button
                           onClick={() => {
                             handleCloseMenu();

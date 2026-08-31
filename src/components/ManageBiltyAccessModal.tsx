@@ -428,7 +428,7 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
                   </div>
                 ) : (
                   filteredUsers.map(user => {
-                    const isOwnerRole = user.email?.toLowerCase().trim() === 'warraichgoods43@gmail.com' || user.role === 'owner';
+                    const isOwnerRole = user.email?.toLowerCase().trim() === 'warraichgoods43@gmail.com' || user.email?.toLowerCase().trim() === 'alhadigoods786@gmail.com' || user.role === 'owner';
                     const isAuthorized = isOwnerRole || 
                       (user.uid && allowedUIDs.includes(user.uid)) || 
                       (user.email && allowedEmails.map(e => e.toLowerCase().trim()).includes(user.email.toLowerCase().trim()));

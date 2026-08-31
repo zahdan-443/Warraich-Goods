@@ -54,6 +54,7 @@ import { InstallPwaModal } from './components/InstallPwaModal';
 
 export default function App() {
   const OWNER_EMAIL = 'warraichgoods43@gmail.com';
+  const MASTER_EMAILS = ['warraichgoods43@gmail.com', 'alhadigoods786@gmail.com'];
 
   const [lang, setLang] = useState<Language>('en');
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
@@ -76,9 +77,10 @@ export default function App() {
   const [biltyAllowedEmails, setBiltyAllowedEmails] = useState<string[]>(() => {
     try {
       const cached = localStorage.getItem('wg_global_bilty_allowed_emails') || localStorage.getItem('ah-bilty-allowed-emails');
-      return cached ? JSON.parse(cached).map((e: string) => String(e).toLowerCase().trim()) : [];
+      const parsed = cached ? JSON.parse(cached).map((e: string) => String(e).toLowerCase().trim()) : [];
+      return Array.from(new Set([...MASTER_EMAILS, ...parsed]));
     } catch {
-      return [];
+      return [...MASTER_EMAILS];
     }
   });
   const [role, setRole] = useState<UserRole>('driver');
@@ -87,16 +89,19 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(false);
   const [showTopMenu, setShowTopMenu] = useState(false);
 
-  // Authorization check for Bilty Generator — accepts Owner OR any authorized Gmail/UID
+  // Authorization check for Bilty Generator — accepts Owner, Master Accounts, or any authorized Gmail/UID
   const cleanEmail = userEmail ? userEmail.toLowerCase().trim() : null;
+  const isMaster = Boolean(
+    cleanEmail && MASTER_EMAILS.some(e => e.toLowerCase().trim() === cleanEmail)
+  );
   const isOwner = Boolean(
-    cleanEmail && cleanEmail === OWNER_EMAIL.toLowerCase().trim()
+    cleanEmail && (cleanEmail === OWNER_EMAIL.toLowerCase().trim() || isMaster)
   );
   const isAllowedUID = Boolean(currentUid && biltyAllowedUIDs.includes(currentUid));
   const isAllowedEmail = Boolean(
-    cleanEmail && biltyAllowedEmails.some(e => e.toLowerCase().trim() === cleanEmail)
+    cleanEmail && (isMaster || biltyAllowedEmails.some(e => e.toLowerCase().trim() === cleanEmail))
   );
-  const isBiltyAuthorized = Boolean(isOwner || isAllowedUID || isAllowedEmail);
+  const isBiltyAuthorized = Boolean(isMaster || isOwner || isAllowedUID || isAllowedEmail);
 
   // Stored state
   const [trips, setTrips] = useState<Trip[]>([]);

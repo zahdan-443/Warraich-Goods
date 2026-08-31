@@ -517,15 +517,28 @@ export async function saveUserProfileInFirestore(profile: UserProfile) {
   }
 }
 
+export const DEFAULT_AUTHORIZED_EMAILS = [
+  'warraichgoods43@gmail.com',
+  'alhadigoods786@gmail.com'
+];
+
 export async function getAllRegisteredUsers(): Promise<UserProfile[]> {
   const localUsers = getLocalRegisteredUsers();
   const userMap = new Map<string, UserProfile>();
 
-  // Add default owner
+  // Add default owners / master accounts
   userMap.set('warraichgoods43@gmail.com', {
-    uid: 'owner_uid',
+    uid: 'owner_uid_warraich',
     name: 'زاہدان نصر وڑائچ (آنر)',
     email: 'warraichgoods43@gmail.com',
+    role: 'owner',
+    lastLogin: new Date().toISOString()
+  });
+
+  userMap.set('alhadigoods786@gmail.com', {
+    uid: 'owner_uid_alhadi',
+    name: 'الہادی گڈز ٹرانسپورٹ (ایڈمن)',
+    email: 'alhadigoods786@gmail.com',
     role: 'owner',
     lastLogin: new Date().toISOString()
   });
@@ -603,7 +616,8 @@ export function normalizeBiltyConfig(data: any): BiltyAccessConfigData {
     ? data.allowedUIDs.filter((id: unknown): id is string => typeof id === 'string' && id.trim().length > 0)
     : [];
   const rawEmails = Array.isArray(data?.allowedEmails) ? data.allowedEmails.filter(Boolean) : [];
-  const allowedEmails: string[] = Array.from(new Set(rawEmails.map((e: unknown) => String(e).toLowerCase().trim())));
+  const mergedEmails = [...DEFAULT_AUTHORIZED_EMAILS, ...rawEmails];
+  const allowedEmails: string[] = Array.from(new Set(mergedEmails.map((e: unknown) => String(e).toLowerCase().trim())));
   return { allowedUIDs, allowedEmails };
 }
 
@@ -629,12 +643,15 @@ export async function getBiltyAccessConfig(): Promise<BiltyAccessConfigData> {
   try {
     const cachedUIDs = safeStorage.getItem('wg_global_bilty_allowed_uids') || safeStorage.getItem('ah-bilty-allowed-uids') || getScopedItem('bilty-allowed-uids');
     const cachedEmails = safeStorage.getItem('wg_global_bilty_allowed_emails') || safeStorage.getItem('ah-bilty-allowed-emails') || getScopedItem('bilty-allowed-emails');
+    const parsedUIDs = cachedUIDs ? JSON.parse(cachedUIDs) : [];
+    const parsedEmails = cachedEmails ? JSON.parse(cachedEmails) : [];
+    const mergedEmails = Array.from(new Set([...DEFAULT_AUTHORIZED_EMAILS, ...parsedEmails].map((e: string) => String(e).toLowerCase().trim())));
     return {
-      allowedUIDs: cachedUIDs ? JSON.parse(cachedUIDs) : [],
-      allowedEmails: cachedEmails ? JSON.parse(cachedEmails).map((e: string) => e.toLowerCase().trim()) : []
+      allowedUIDs: parsedUIDs,
+      allowedEmails: mergedEmails
     };
   } catch {
-    return { allowedUIDs: [], allowedEmails: [] };
+    return { allowedUIDs: [], allowedEmails: [...DEFAULT_AUTHORIZED_EMAILS] };
   }
 }
 
