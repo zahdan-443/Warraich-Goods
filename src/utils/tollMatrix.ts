@@ -29,12 +29,13 @@ export const CITIES_LIST: { id: TollCity; nameEn: string; nameUr: string; provin
   { id: 'Gilgit', nameEn: 'Gilgit', nameUr: 'گلگت', province: 'Gilgit-Baltistan' }
 ];
 
-export const VEHICLE_CLASSES: { id: TollVehicleClass; nameEn: string; nameUr: string; descEn: string; nhaCode: string }[] = [
+export const VEHICLE_CLASSES: { id: TollVehicleClass; nameEn: string; nameUr: string; descEn: string; descUr: string; nhaCode: string }[] = [
   { 
     id: 'bike', 
     nameEn: 'Motorcycle / Bike', 
     nameUr: 'موٹر سائیکل / بائیک', 
     descEn: '2-Wheeler (Allowed on designated bridges & national highways; restricted on closed motorways)',
+    descUr: '2 ویلر موٹرسائیکل (قومی شاہراہوں اور پلوں پر مجاز)',
     nhaCode: 'Cat-0'
   },
   { 
@@ -42,6 +43,7 @@ export const VEHICLE_CLASSES: { id: TollVehicleClass; nameEn: string; nameUr: st
     nameEn: 'Car / Jeep / Taxi', 
     nameUr: 'کار / جیپ / ٹیکسی', 
     descEn: '2-Axle Light Motor Vehicle (LMV)',
+    descUr: '2 ایکسل لائٹ موٹر وہیکل (پرائیویٹ کار، جیپ، ٹیکسی)',
     nhaCode: 'Cat-1'
   },
   { 
@@ -49,6 +51,7 @@ export const VEHICLE_CLASSES: { id: TollVehicleClass; nameEn: string; nameUr: st
     nameEn: 'Wagon / Hiace / Van', 
     nameUr: 'ویگن / ہائی ایس / وین', 
     descEn: 'Up to 15-seater Commercial Passenger / Cargo Van',
+    descUr: '15 سیٹوں تک کمرشل مسافر و کارگو وین',
     nhaCode: 'Cat-2'
   },
   { 
@@ -56,6 +59,7 @@ export const VEHICLE_CLASSES: { id: TollVehicleClass; nameEn: string; nameUr: st
     nameEn: 'Coaster / Mini Bus', 
     nameUr: 'کوسٹر / منی بس', 
     descEn: '16-24 Seater Mini Passenger Bus / Medium Vehicle',
+    descUr: '16 تا 24 سیٹوں والی منی مسافر بس',
     nhaCode: 'Cat-3'
   },
   { 
@@ -63,6 +67,7 @@ export const VEHICLE_CLASSES: { id: TollVehicleClass; nameEn: string; nameUr: st
     nameEn: 'Passenger Bus (Heavy)', 
     nameUr: 'بڑی مسافر بس (ہیوی)', 
     descEn: 'Commercial Heavy Passenger Bus (Inter-city Coach)',
+    descUr: 'کمرشل ہیوی مسافر بس اور انٹرسٹی کوچز',
     nhaCode: 'Cat-4'
   },
   { 
@@ -70,6 +75,7 @@ export const VEHICLE_CLASSES: { id: TollVehicleClass; nameEn: string; nameUr: st
     nameEn: 'Truck (2-3 Axle Rigid / 6-10 Wheeler)', 
     nameUr: '2-3 ایکسل ٹرک (سادہ / 6 تا 10 ویلر)', 
     descEn: 'Bedford / Hino / Isuzu Rigid Cargo Trucks',
+    descUr: 'بیڈفورڈ / ہینو / اسوزو ریجڈ 6 تا 10 ویلر مال بردار ٹرک',
     nhaCode: 'Cat-5'
   },
   { 
@@ -77,6 +83,7 @@ export const VEHICLE_CLASSES: { id: TollVehicleClass; nameEn: string; nameUr: st
     nameEn: 'Articulated Truck / Trailer (10-22 Wheeler)', 
     nameUr: 'آرٹیکولیٹڈ ٹریلر (10 تا 22 ویلر ہیوی)', 
     descEn: 'Multi-axle Heavy Prime Mover & Container Trailer',
+    descUr: 'ملٹی ایکسل ہیوی پرائم موور اور کنٹینر ٹریلر (10 تا 22 ویلر)',
     nhaCode: 'Cat-6'
   },
 ];

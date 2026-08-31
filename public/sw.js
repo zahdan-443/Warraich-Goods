@@ -1,15 +1,18 @@
 /* ==========================================================================
-   Driver Dost - Production Progressive Web App Service Worker (v3.1)
+   Driver Dost - Production Progressive Web App Service Worker (v3.2)
    Features:
-   - App Shell Caching & Version Cleanup
-   - Network-First with Cache Fallback & Custom Offline Page
-   - Background Sync for Offline Bilty & Transport Logs
+   - App Shell & Asset Pre-caching (Up to 100MB+ storage quota)
+   - High-performance Cache-First for static assets, tiles, and base64 assets
+   - Stale-While-Revalidate with Fast Fallbacks
+   - Dedicated OSRM & OpenStreetMap Tile Caching with LRU eviction
+   - Network-First with Cache Fallback for navigation requests
+   - Background Sync for Offline Bilty, Ledger & Transport Logs
    - Periodic Background Sync for Rate & Tariff Updates
    - Native Web Push Alerts & Notification Management
-   - Bi-Directional Message Channel & Skip Waiting Support
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v12';
+const CACHE_NAME = 'driver-dost-v14';
+const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -82,19 +85,40 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== CACHE_NAME)
+          .filter((name) => name !== CACHE_NAME && name !== TILE_CACHE_NAME)
           .map((name) => caches.delete(name))
       );
     }).then(() => self.clients.claim())
   );
 });
 
-// 3. Fetch Event: Network-First with Cache Fallback for documents, Cache-First for static assets
+// 3. Fetch Event: Network-First for Navigation, Stale-While-Revalidate / Cache-First for static & map tiles
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
   if (url.protocol.startsWith('chrome-extension')) return;
+
+  // Handle OpenStreetMap / CartoDB / Tile Server requests
+  if (url.hostname.includes('tile.openstreetmap.org') || url.hostname.includes('basemaps.cartocdn.com') || url.pathname.endsWith('.png') && url.pathname.includes('/tiles/')) {
+    event.respondWith(
+      caches.open(TILE_CACHE_NAME).then(async (tileCache) => {
+        const cachedTile = await tileCache.match(event.request);
+        if (cachedTile) return cachedTile;
+
+        try {
+          const networkResponse = await fetch(event.request);
+          if (networkResponse && networkResponse.status === 200) {
+            tileCache.put(event.request, networkResponse.clone());
+          }
+          return networkResponse;
+        } catch (e) {
+          return cachedTile || new Response('', { status: 408, headers: { 'Content-Type': 'image/png' } });
+        }
+      })
+    );
+    return;
+  }
 
   // For navigation/HTML requests: Network first, fall back to cache, then offline page
   if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
@@ -122,7 +146,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Fetch in background to revalidate cache
+        // Background revalidation
         fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));

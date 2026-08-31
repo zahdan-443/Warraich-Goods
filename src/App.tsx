@@ -56,7 +56,10 @@ export default function App() {
   const OWNER_EMAIL = 'warraichgoods43@gmail.com';
   const MASTER_EMAILS = ['warraichgoods43@gmail.com', 'alhadigoods786@gmail.com'];
 
-  const [lang, setLang] = useState<Language>('en');
+  const [lang, setLang] = useState<Language>(() => {
+    const saved = localStorage.getItem('ah-lang');
+    return (saved === 'en' || saved === 'ur') ? saved : 'ur';
+  });
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [showSplash, setShowSplash] = useState<boolean>(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -197,21 +200,20 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [activeTab, showTopMenu, showAuthModal]);
 
-  // Load from storage on mount
+  const handleToggleLang = () => {
+    const nextLang: Language = lang === 'en' ? 'ur' : 'en';
+    setLang(nextLang);
+    try {
+      localStorage.setItem('ah-lang', nextLang);
+    } catch {}
+    document.documentElement.lang = nextLang;
+    document.documentElement.dir = nextLang === 'ur' ? 'rtl' : 'ltr';
+  };
+
   useEffect(() => {
-    const savedLang = localStorage.getItem('ah-lang') as Language;
-    if (savedLang === 'en' || savedLang === 'ur') {
-      setLang(savedLang);
-    }
-    setOfflineQueue(getStoredOfflineQueue());
-    setNotifications(getStoredNotifications());
-    setTrips(getStoredTrips());
-    setVehicles(getStoredVehicles());
-    setDrivers(getStoredDrivers());
-    setRoutes(getStoredRoutes());
-    setFuelLogs(getStoredFuelLog());
-    setBilties(getStoredBilties());
-  }, []);
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ur' ? 'rtl' : 'ltr';
+  }, [lang]);
 
   // Update notification warning for Guest Mode (Local Storage only) vs Signed In (Cloud Sync)
   useEffect(() => {
@@ -626,7 +628,7 @@ export default function App() {
       {activeTab !== 'calculator' && (
         <Header
           lang={lang}
-          onToggleLang={() => setLang(lang === 'en' ? 'ur' : 'en')}
+          onToggleLang={handleToggleLang}
           userEmail={userEmail}
           onSignIn={handleSignIn}
           onSignOut={handleSignOut}

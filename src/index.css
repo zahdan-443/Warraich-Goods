@@ -33,6 +33,11 @@
   border: none !important;
 }
 
+.custom-nav-vehicle-pin {
+  background: transparent !important;
+  border: none !important;
+}
+
 @theme {
   --font-sans: "Plus Jakarta Sans", "Inter", "Noto Sans Arabic", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", ui-serif, Georgia, serif;
