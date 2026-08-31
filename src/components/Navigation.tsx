@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActiveTab, DICTIONARY, Language } from '../types';
-import { LayoutDashboard, Calculator, Truck, Users, MapPin, Fuel, ShieldCheck, Receipt } from 'lucide-react';
+import { LayoutDashboard, Calculator, Truck, Users, MapPin, Fuel, ShieldCheck, Receipt, Map as MapIcon } from 'lucide-react';
 
 interface NavigationProps {
   activeTab: ActiveTab;
@@ -13,10 +13,11 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, onSelectTab, 
   const t = DICTIONARY[lang].nav;
 
   const rawNavItems: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'home', label: t.home, icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'calculator', label: t.calculator, icon: <Calculator className="w-4 h-4" /> },
+    { id: 'map', label: t.map || (lang === 'ur' ? 'نقشہ' : 'Map'), icon: <MapIcon className="w-4 h-4" /> },
     { id: 'bilty', label: t.bilty, icon: <Receipt className="w-4 h-4" /> },
     { id: 'verify', label: t.verify, icon: <ShieldCheck className="w-4 h-4" /> },
-    { id: 'home', label: t.home, icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'vehicle', label: t.vehicle, icon: <Truck className="w-4 h-4" /> },
     { id: 'drivers', label: t.drivers, icon: <Users className="w-4 h-4" /> },
     { id: 'routes', label: t.routes, icon: <MapPin className="w-4 h-4" /> },

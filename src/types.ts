@@ -1,6 +1,6 @@
 export type Language = 'en' | 'ur';
 export type FuelType = 'diesel' | 'petrol' | 'cng';
-export type ActiveTab = 'home' | 'calculator' | 'vehicle' | 'drivers' | 'routes' | 'fuel' | 'verify' | 'bilty' | 'vehicleAccount';
+export type ActiveTab = 'home' | 'calculator' | 'vehicle' | 'drivers' | 'routes' | 'fuel' | 'verify' | 'bilty' | 'vehicleAccount' | 'map';
 export type CalcSubTab = 'calc' | 'history' | 'summary';
 
 export interface CustomExpense {
@@ -300,6 +300,7 @@ export const DICTIONARY = {
     nav: {
       home: "Dashboard",
       calculator: "Trip Cost",
+      map: "Map",
       vehicle: "Vehicles",
       drivers: "Drivers",
       routes: "Routes",
@@ -518,6 +519,7 @@ export const DICTIONARY = {
     nav: {
       home: "ڈیش بورڈ",
       calculator: "سفر خرچ",
+      map: "نقشہ و روٹ موسم",
       vehicle: "گاڑیاں",
       drivers: "ڈرائیور",
       routes: "راستے",

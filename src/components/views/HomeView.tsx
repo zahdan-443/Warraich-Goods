@@ -28,7 +28,8 @@ import {
   Copy,
   Check,
   Milestone,
-  Crown
+  Crown,
+  Compass
 } from 'lucide-react';
 import { AlHadiLogo } from '../AlHadiLogo';
 import { LiveFuelPriceWidget } from '../LiveFuelPriceWidget';
@@ -45,6 +46,7 @@ import {
   safarDiaryIconData,
   tollIconData,
   quickOpsIconData,
+  mapIconData,
   biltyIconData
 } from '../../assets/dashboardIcons';
 
@@ -390,6 +392,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   const quickItems: { id: string; title: string; desc: string; icon: React.ReactNode }[] = [
     { 
+      id: 'map', 
+      title: lang === 'ur' ? 'نقشہ و روٹ موسم' : 'Map & Route Weather', 
+      desc: lang === 'ur' ? 'موٹروے روٹ نقشہ، حدِ نگاہ اور لائیو موسم' : 'Highway corridors, visibility & live weather', 
+      icon: <MapPin className="w-5 h-5 text-[#8b9d77]" /> 
+    },
+    { 
+      id: 'safarDiary', 
+      title: lang === 'ur' ? 'سفر ڈائری لاگز' : 'Safar Diary Logs', 
+      desc: lang === 'ur' ? 'روزانہ ٹرپ اور اخراجات کا ریکارڈ' : 'Daily trip & expense records', 
+      icon: <BookOpen className="w-5 h-5 text-[#8b9d77]" /> 
+    },
+    { 
       id: 'vehicle', 
       title: t.nav.vehicle, 
       desc: lang === 'ur' ? "اپنے ٹرکوں، ٹریلرز اور مائلیج کا ریکارڈ رکھیں" : "Manage fleet trucks, trailers & mileage", 
@@ -547,14 +561,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
               />
             )}
 
-            {/* Row 3, Button 2 (End Button): Safar Diary */}
+            {/* Row 3, Button 2: Map & Route Weather */}
             <QuickActionButton
-              href="#diary"
-              onClick={() => openModalWithHistory(setShowSafarDiaryModal)}
-              imgSrc={safarDiaryIconData}
-              fallbackIcon={<BookOpen className="w-7 h-7 text-[#8b9d77]" />}
-              fullName={lang === 'ur' ? 'سفر ڈائری لاگز' : 'Safar Diary Logs'}
-              subtitle={lang === 'ur' ? 'روزانہ ٹرپ اور اخراجات کا ریکارڈ' : 'Daily trip & expense logs'}
+              href="#map"
+              onClick={() => onNavigate('map')}
+              imgSrc={mapIconData}
+              fallbackIcon={<MapPin className="w-7 h-7 text-[#8b9d77]" />}
+              fullName={lang === 'ur' ? 'نقشہ و روٹ موسم' : 'Map & Route Weather'}
+              subtitle={lang === 'ur' ? 'لائیو موٹروے میپ، دھند و موسم' : 'Highway map & live weather'}
               highlight={true}
             />
 
@@ -963,6 +977,40 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Quick Operations Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               
+              {/* Safar Diary (Shifted to Quick Operations as requested) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickOpsModal(false);
+                  openModalWithHistory(setShowSafarDiaryModal);
+                }}
+                className="p-5 rounded-3xl bg-amber-500/10 border border-amber-300/80 hover:border-amber-500 hover:bg-amber-500/20 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95"
+              >
+                <div className="p-3 bg-white rounded-2xl border border-amber-300 group-hover:border-amber-500 shadow-2xs shrink-0 text-amber-800">
+                  <BookOpen className="w-6 h-6 text-amber-700" />
+                </div>
+                <span className="font-serif font-bold text-xs text-amber-950 group-hover:text-amber-800 transition-colors">
+                  {lang === 'ur' ? 'سفر ڈائری لاگز' : 'Safar Diary'}
+                </span>
+              </button>
+
+              {/* Map & Live Route Weather */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickOpsModal(false);
+                  onNavigate('map');
+                }}
+                className="p-5 rounded-3xl bg-emerald-500/10 border border-emerald-300/80 hover:border-emerald-500 hover:bg-emerald-500/20 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95"
+              >
+                <div className="p-3 bg-white rounded-2xl border border-emerald-300 group-hover:border-emerald-500 shadow-2xs shrink-0 text-emerald-800">
+                  <MapPin className="w-6 h-6 text-emerald-700" />
+                </div>
+                <span className="font-serif font-bold text-xs text-emerald-950 group-hover:text-emerald-800 transition-colors">
+                  {lang === 'ur' ? 'نقشہ و روٹ موسم' : 'Route & Weather Map'}
+                </span>
+              </button>
+
               {/* Vehicles */}
               <button
                 type="button"
@@ -999,7 +1047,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </span>
               </a>
 
-              {/* Routes */}
+              {/* Routes & Tolls */}
               <a
                 href="#routes"
                 onClick={(e) => {
@@ -1011,7 +1059,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95 no-underline"
               >
                 <div className="p-3 bg-white rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs shrink-0">
-                  <MapPin className="w-6 h-6 text-[#8b9d77]" />
+                  <Compass className="w-6 h-6 text-[#8b9d77]" />
                 </div>
                 <span className="font-serif font-bold text-xs text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
                   {lang === 'ur' ? 'روٹس اور ٹول ٹیکس' : 'Routes & Tolls'}
@@ -1037,6 +1085,25 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </span>
               </a>
 
+              {/* Verification Portals */}
+              <a
+                href="#verify"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowQuickOpsModal(false);
+                  onNavigate('verify');
+                }}
+                title={lang === 'ur' ? 'سرکاری تصدیق' : 'Gov Verification'}
+                className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95 no-underline"
+              >
+                <div className="p-3 bg-white rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs shrink-0">
+                  <ShieldCheck className="w-6 h-6 text-[#8b9d77]" />
+                </div>
+                <span className="font-serif font-bold text-xs text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
+                  {lang === 'ur' ? 'سرکاری تصدیق' : 'Gov Verification'}
+                </span>
+              </a>
+
               {/* Bilty Generator (ONLY visible IF authorized) */}
               {isBiltyAuthorized && (
                 <a
@@ -1047,12 +1114,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     onNavigate('bilty');
                   }}
                   title={lang === 'ur' ? 'بلٹی جنریٹر' : 'Bilty Generator'}
-                  className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95 no-underline"
+                  className="p-5 rounded-3xl bg-amber-500/10 border border-amber-300 hover:border-amber-500 hover:bg-amber-500/20 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95 no-underline"
                 >
-                  <div className="p-3 bg-white rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs shrink-0">
-                    <Receipt className="w-6 h-6 text-[#8b9d77]" />
+                  <div className="p-3 bg-white rounded-2xl border border-amber-300 group-hover:border-amber-500 shadow-2xs shrink-0 text-amber-700">
+                    <Receipt className="w-6 h-6" />
                   </div>
-                  <span className="font-serif font-bold text-xs text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
+                  <span className="font-serif font-bold text-xs text-amber-950 group-hover:text-amber-800 transition-colors">
                     {lang === 'ur' ? 'بلٹی جنریٹر' : 'Bilty Generator'}
                   </span>
                 </a>

@@ -20,6 +20,7 @@ export const licenseIconData: string = './license-icon.png';
 export const echallanIconData: string = './echallan-icon.png';
 export const safarDiaryIconData: string = './safar-diary-icon.png';
 export const quickOpsIconData: string = './quick-ops-icon.png';
+export const mapIconData: string = './map-icon.png';
 export const biltyIconData: string = './bilty-icon.png';
 export const logoIconData: string = './logo.png';
 export const appIconData: string = './app-icon.png';
