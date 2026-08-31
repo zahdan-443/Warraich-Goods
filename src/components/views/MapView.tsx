@@ -218,8 +218,31 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
   const [destCityId, setDestCityId] = useState<string>('karachi');
   const [activeMapLayer, setActiveMapLayer] = useState<'streets' | 'satellite' | 'terrain' | 'dark'>('streets');
   
-  const [weatherMap, setWeatherMap] = useState<Record<string, LiveWeatherData>>({});
-  const [loadingWeather, setLoadingWeather] = useState<boolean>(false);
+  const CACHE_KEY_WEATHER = 'wg_cached_highway_weather';
+  const CACHE_TTL_MS = 20 * 60 * 1000; // 20 mins
+
+  const [weatherMap, setWeatherMap] = useState<Record<string, LiveWeatherData>>(() => {
+    try {
+      const cachedStr = localStorage.getItem(CACHE_KEY_WEATHER);
+      if (cachedStr) {
+        const parsed = JSON.parse(cachedStr);
+        if (parsed && parsed.data) {
+          return parsed.data;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return {};
+  });
+  const [loadingWeather, setLoadingWeather] = useState<boolean>(() => {
+    try {
+      const cachedStr = localStorage.getItem(CACHE_KEY_WEATHER);
+      return !cachedStr;
+    } catch {
+      return true;
+    }
+  });
   const [selectedCityForDetail, setSelectedCityForDetail] = useState<TransitCity | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locatingUser, setLocatingUser] = useState<boolean>(false);
@@ -425,6 +448,14 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
 
       await Promise.all(requests);
       setWeatherMap(results);
+      try {
+        localStorage.setItem(CACHE_KEY_WEATHER, JSON.stringify({
+          data: results,
+          timestamp: Date.now()
+        }));
+      } catch {
+        // ignore
+      }
     } catch (e) {
       console.error('Weather fetch error:', e);
     } finally {
@@ -432,11 +463,27 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
     }
   };
 
-  // Initial load
+  // Initial load: Check if cache is fresh before fetching
   useEffect(() => {
-    fetchAllCitiesWeather();
+    let shouldFetch = true;
+    try {
+      const cachedStr = localStorage.getItem(CACHE_KEY_WEATHER);
+      if (cachedStr) {
+        const parsed = JSON.parse(cachedStr);
+        if (parsed && parsed.timestamp && (Date.now() - parsed.timestamp < CACHE_TTL_MS)) {
+          shouldFetch = false;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    if (shouldFetch) {
+      fetchAllCitiesWeather();
+    }
+
     if (autoRefreshInterval) {
-      const interval = setInterval(fetchAllCitiesWeather, 60000 * 5); // 5 min auto refresh
+      const interval = setInterval(fetchAllCitiesWeather, 60000 * 10); // 10 min auto refresh
       return () => clearInterval(interval);
     }
   }, [autoRefreshInterval]);

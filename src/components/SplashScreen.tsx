@@ -9,17 +9,16 @@ interface SplashScreenProps {
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
   const [fadeOut, setFadeOut] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   const base = import.meta.env.BASE_URL ?? './';
   const cleanBase = base.endsWith('/') ? base : base + '/';
 
   const candidates = [
-    '/splash.png',
-    `${cleanBase}splash.png`,
     './splash.png',
+    `${cleanBase}splash.png`,
+    '/splash.png',
     'splash.png',
-    '/splash-screen.png',
-    `${cleanBase}splash-screen.png`,
   ];
   const [idx, setIdx] = useState(0);
 
@@ -76,6 +75,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
       <img
         src={candidates[idx]}
         alt="Driver Dost Welcome Splash Screen"
+        onLoad={() => setImgLoaded(true)}
         onError={handleError}
         decoding="async"
         loading="eager"
@@ -86,11 +86,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
           maxWidth: '100vw',
           maxHeight: '100vh',
           display: 'block',
+          opacity: imgLoaded ? 1 : 0,
+          transition: 'opacity 0.2s ease-in',
         }}
       />
     </div>
   );
 };
+
 
 
 

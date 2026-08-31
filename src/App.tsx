@@ -47,6 +47,7 @@ import { FuelLogView } from './components/views/FuelLogView';
 import { VerifyView } from './components/views/VerifyView';
 import { BiltyView } from './components/views/BiltyView';
 import { VehicleAccountView } from './components/views/VehicleAccountView';
+import { MapView } from './components/views/MapView';
 import { AuthModal } from './components/AuthModal';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
@@ -734,6 +735,13 @@ export default function App() {
 
           {activeTab === 'verify' && (
             <VerifyView lang={lang} />
+          )}
+
+          {activeTab === 'map' && (
+            <MapView
+              lang={lang}
+              onNavigate={handleNavigate}
+            />
           )}
 
           {activeTab === 'bilty' && isBiltyAuthorized && (
