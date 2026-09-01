@@ -515,7 +515,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
               highlight={true}
             />
 
-            {/* Row 2, Button 1: Vehicles Verification */}
+            {/* Row 2, Button 1 (4th position): Map & Route Weather */}
+            <QuickActionButton
+              href="#map"
+              onClick={() => onNavigate('map')}
+              imgSrc={mapIconData}
+              fallbackIcon={<MapPin className="w-7 h-7 text-[#8b9d77]" />}
+              fullName={lang === 'ur' ? 'نقشہ و روٹ موسم' : 'Map & Route Weather'}
+              subtitle={lang === 'ur' ? 'لائیو موٹروے میپ، دھند و موسم' : 'Highway map & live weather'}
+              highlight={true}
+            />
+
+            {/* Row 2, Button 2 (5th position): Vehicles Verification */}
             <QuickActionButton
               href="https://mtmis.excise.punjab.gov.pk/"
               external={true}
@@ -526,7 +537,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               subtitle={lang === 'ur' ? 'MTMIS پنجاب و ایکسائز ریکارڈ' : 'MTMIS Punjab & Excise portal'}
             />
 
-            {/* Row 2, Button 2: License Verification */}
+            {/* Row 2, Button 3 (6th position): License Verification */}
             <QuickActionButton
               href="https://dlims.punjab.gov.pk/verify"
               external={true}
@@ -537,7 +548,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               subtitle={lang === 'ur' ? 'DLIMS پنجاب و موٹروے پولیس' : 'DLIMS Punjab Highway checks'}
             />
 
-            {/* Row 2, Button 3: E-Challan Check */}
+            {/* Row 3, Button 1: E-Challan Check */}
             <QuickActionButton
               href="https://echallan.psca.gop.pk/"
               external={true}
@@ -548,7 +559,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               subtitle={lang === 'ur' ? 'PSCA سیف سٹی چالان ریکارڈ' : 'PSCA Safe City traffic records'}
             />
 
-            {/* Row 3, Button 1: Bilty Form & Generator (ONLY visible when authorized) */}
+            {/* Row 3, Button 2: Bilty Form & Generator (ONLY visible when authorized) */}
             {isBiltyAuthorized && (
               <QuickActionButton
                 href="#bilty"
@@ -561,18 +572,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               />
             )}
 
-            {/* Row 3, Button 2: Map & Route Weather */}
-            <QuickActionButton
-              href="#map"
-              onClick={() => onNavigate('map')}
-              imgSrc={mapIconData}
-              fallbackIcon={<MapPin className="w-7 h-7 text-[#8b9d77]" />}
-              fullName={lang === 'ur' ? 'نقشہ و روٹ موسم' : 'Map & Route Weather'}
-              subtitle={lang === 'ur' ? 'لائیو موٹروے میپ، دھند و موسم' : 'Highway map & live weather'}
-              highlight={true}
-            />
-
-            {/* Row 3, Button 3 (End Button): Mazeed Sahulatain / Quick Operations */}
+            {/* End Button: Mazeed Sahulatain / Quick Operations */}
             <QuickActionButton
               href="#quickops"
               onClick={() => openModalWithHistory(setShowQuickOpsModal)}

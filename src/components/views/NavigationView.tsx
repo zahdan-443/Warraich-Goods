@@ -6,9 +6,6 @@ import {
   Volume2, 
   VolumeX, 
   ExternalLink, 
-  Square, 
-  Play, 
-  Pause, 
   PhoneCall, 
   ShieldAlert, 
   Fuel, 
@@ -16,22 +13,21 @@ import {
   Milestone, 
   MapPin, 
   Share2, 
-  Sparkles, 
   Compass, 
   RotateCcw,
   Clock,
   Layers,
   ChevronRight,
   AlertTriangle,
-  Sun,
-  CloudFog,
-  CloudRain,
   CheckCircle2,
-  Gauge
+  Gauge,
+  Crosshair,
+  Radio,
+  Navigation2
 } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { PAKISTAN_CITIES, TransitCity, POPULAR_ROUTES } from './MapView';
+import { PAKISTAN_CITIES } from './MapView';
 
 interface NavigationViewProps {
   lang: Language;
@@ -41,15 +37,19 @@ interface NavigationViewProps {
   onOpenTollCalc?: (fromCity?: string, toCity?: string) => void;
 }
 
-export interface NavigationStep {
-  id: number;
-  instructionUr: string;
-  instructionEn: string;
-  roadName: string;
-  distanceKm: number;
-  iconType: 'straight' | 'right' | 'left' | 'merge' | 'toll' | 'rest' | 'dest';
-  tollAmount?: number;
-  facility?: string;
+// Calculate Haversine distance between two coordinates in kilometers
+function calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
 }
 
 export const NavigationView: React.FC<NavigationViewProps> = ({
@@ -62,9 +62,9 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
   const isUrdu = lang === 'ur';
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
-  const vehicleMarkerRef = useRef<L.Marker | null>(null);
+  const userGpsMarkerRef = useRef<L.Marker | null>(null);
   const routePolylineRef = useRef<L.Polyline | null>(null);
-  const simIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const gpsWatchIdRef = useRef<number | null>(null);
 
   const [originId, setOriginId] = useState<string>(originCityId);
   const [destId, setDestId] = useState<string>(destCityId);
@@ -72,125 +72,174 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
   const originCity = PAKISTAN_CITIES.find(c => c.id === originId) || PAKISTAN_CITIES[0];
   const destCity = PAKISTAN_CITIES.find(c => c.id === destId) || PAKISTAN_CITIES[53]; // Karachi default
 
-  // Navigation Simulation & Status
-  const [isPlaying, setIsPlaying] = useState<boolean>(true);
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true);
-  const [currentSpeed, setCurrentSpeed] = useState<number>(72); // km/h
-  const [progressPct, setProgressPct] = useState<number>(14);
-  const [stepIndex, setStepIndex] = useState<number>(0);
-  const [activeTabMode, setActiveTabMode] = useState<'map' | 'turnByTurn' | 'restStops'>('map');
-  const [selectedMapStyle, setSelectedMapStyle] = useState<'navDark' | 'streets' | 'satellite'>('navDark');
+  // Real GPS States (No Fake Simulation)
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [realGpsSpeed, setRealGpsSpeed] = useState<number>(0); // Real speed in km/h
+  const [gpsHeading, setGpsHeading] = useState<number | null>(null);
+  const [gpsStatus, setGpsStatus] = useState<'seeking' | 'active' | 'denied' | 'unsupported'>('seeking');
+  const [selectedMapStyle, setSelectedMapStyle] = useState<'streets' | 'satellite' | 'dark'>('streets');
   const [copiedShare, setCopiedShare] = useState<boolean>(false);
-  const [speechActive, setSpeechActive] = useState<boolean>(false);
+  const [activeTabMode, setActiveTabMode] = useState<'realGps' | 'roadSteps' | 'services'>('realGps');
+  const [realRouteDistanceKm, setRealRouteDistanceKm] = useState<number>(() => {
+    return Math.round(calculateHaversineDistance(originCity.lat, originCity.lng, destCity.lat, destCity.lng) * 1.25);
+  });
+  const [loadingRealRoute, setLoadingRealRoute] = useState<boolean>(false);
 
-  // Generate intermediate waypoint cities along corridor
-  const corridorRoute = [originCity, destCity];
+  // Calculate real remaining distance from actual user location to destination
+  const remainingRealKm = userLocation 
+    ? calculateHaversineDistance(userLocation.lat, userLocation.lng, destCity.lat, destCity.lng)
+    : realRouteDistanceKm;
 
-  // Calculate approximate total distance
-  const latDiff = destCity.lat - originCity.lat;
-  const lngDiff = destCity.lng - originCity.lng;
-  const directDistanceKm = Math.round(Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) * 111 * 1.25);
-  const remainingDistKm = Math.max(0, Math.round(directDistanceKm * (1 - progressPct / 100)));
-
-  // ETA Calculation
-  const remainingHours = remainingDistKm / (currentSpeed || 65);
-  const totalMinutes = Math.round(remainingHours * 60);
-  const etaHours = Math.floor(totalMinutes / 60);
-  const etaMins = totalMinutes % 60;
-  const etaString = isUrdu 
+  // Real ETA based on current speed or average highway truck speed (65 km/h)
+  const effectiveSpeed = realGpsSpeed > 10 ? realGpsSpeed : 65;
+  const etaTotalMinutes = Math.round((remainingRealKm / effectiveSpeed) * 60);
+  const etaHours = Math.floor(etaTotalMinutes / 60);
+  const etaMins = etaTotalMinutes % 60;
+  const etaDisplay = isUrdu 
     ? `${etaHours > 0 ? `${etaHours} گھنٹے ` : ''}${etaMins} منٹ`
     : `${etaHours > 0 ? `${etaHours}h ` : ''}${etaMins}m`;
 
-  // Dynamic Turn-by-Turn Steps for Route
-  const navigationSteps: NavigationStep[] = [
-    {
-      id: 1,
-      instructionUr: `${originCity.nameUr} سے روانہ ہوں اور قریبی موٹروے انٹرچینج پر چڑھیں`,
-      instructionEn: `Depart ${originCity.nameEn} and enter Motorway Interchange`,
-      roadName: `${originCity.highways[0] || 'Motorway Link'}`,
-      distanceKm: 8,
-      iconType: 'merge',
-      facility: 'پیٹرول پمپ و ٹائر شاپ'
-    },
-    {
-      id: 2,
-      instructionUr: `موٹروے مین کیریج وے پر سیدھے چلیں (حد رفتار 100 تا 120 کلومیٹر)`,
-      instructionEn: `Proceed straight on Motorway main carriageway (Speed 100-120 km/h)`,
-      roadName: 'M-4 / M-3 Motorway Corridor',
-      distanceKm: Math.round(directDistanceKm * 0.25),
-      iconType: 'straight'
-    },
-    {
-      id: 3,
-      instructionUr: `ٹول پلازہ: ایم ٹیگ لین (M-Tag Lane) استعمال کریں`,
-      instructionEn: `Toll Plaza: Use dedicated M-Tag Fast Lane`,
-      roadName: 'Main Toll Plaza',
-      distanceKm: Math.round(directDistanceKm * 0.35),
-      iconType: 'toll',
-      tollAmount: 650
-    },
-    {
-      id: 4,
-      instructionUr: `موٹروے سروس ایریا: مسجد، ریسٹورنٹ اور واش روم سہولیات دستیاب ہیں`,
-      instructionEn: `Service Area Rest Stop: Mosque, Food & Fuel available`,
-      roadName: 'NHA Service Area',
-      distanceKm: Math.round(directDistanceKm * 0.55),
-      iconType: 'rest',
-      facility: 'مسجد، ہوٹل، پیٹرول، واش روم'
-    },
-    {
-      id: 5,
-      instructionUr: `موٹروے جنکشن پر دائیں طرف ایگزٹ لیں`,
-      instructionEn: `Take right exit at major Motorway junction`,
-      roadName: 'Corridor Interchange',
-      distanceKm: Math.round(directDistanceKm * 0.75),
-      iconType: 'right'
-    },
-    {
-      id: 6,
-      instructionUr: `${destCity.nameUr} انٹرچینج پر ایگزٹ لیں اور شہر کی طرف داخل ہوں`,
-      instructionEn: `Exit at ${destCity.nameEn} Interchange and enter city limits`,
-      roadName: `${destCity.highways[0] || 'City Express Bypass'}`,
-      distanceKm: Math.round(directDistanceKm * 0.95),
-      iconType: 'dest'
-    },
-    {
-      id: 7,
-      instructionUr: `مبارک ہو! آپ اپنی منزل (${destCity.nameUr}) بخیریت پہنچ گئے ہیں۔`,
-      instructionEn: `Arrived safely at destination: ${destCity.nameEn}!`,
-      roadName: `${destCity.nameEn} City Center`,
-      distanceKm: directDistanceKm,
-      iconType: 'dest'
-    }
-  ];
-
-  const currentStep = navigationSteps[stepIndex] || navigationSteps[0];
-
-  // Text-to-Speech announcement helper
-  const speakInstruction = (text: string) => {
-    if (!voiceEnabled || !('speechSynthesis' in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = isUrdu ? 'ur-PK' : 'en-US';
-      utterance.rate = 0.95;
-      utterance.onstart = () => setSpeechActive(true);
-      utterance.onend = () => setSpeechActive(false);
-      utterance.onerror = () => setSpeechActive(false);
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      // Speech failed silently
-    }
-  };
-
-  // Trigger speech when step changes
+  // Start Real Device GPS Tracking via navigator.geolocation
   useEffect(() => {
-    if (voiceEnabled) {
-      speakInstruction(isUrdu ? currentStep.instructionUr : currentStep.instructionEn);
+    if (!('geolocation' in navigator)) {
+      setGpsStatus('unsupported');
+      return;
     }
-  }, [stepIndex, voiceEnabled, isUrdu]);
 
-  // Leaflet Map Initialization
+    setGpsStatus('seeking');
+
+    const onSuccess = (pos: GeolocationPosition) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const accuracy = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
+      const speedKmH = pos.coords.speed && pos.coords.speed > 0 ? Math.round(pos.coords.speed * 3.6) : 0;
+      const heading = pos.coords.heading || null;
+
+      setUserLocation({ lat, lng });
+      setGpsAccuracy(accuracy);
+      setRealGpsSpeed(speedKmH);
+      setGpsHeading(heading);
+      setGpsStatus('active');
+
+      // Update Map Marker with Real User Location
+      if (leafletMapRef.current) {
+        if (!userGpsMarkerRef.current) {
+          const liveIcon = L.divIcon({
+            className: 'real-gps-marker',
+            html: `
+              <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                <div style="position: absolute; width: 100%; height: 100%; border-radius: 50%; background: rgba(37, 99, 235, 0.35); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+                <div style="width: 22px; height: 22px; border-radius: 50%; background: #2563eb; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: white; font-size: 10px;">
+                  📍
+                </div>
+              </div>
+            `,
+            iconSize: [36, 36],
+            iconAnchor: [18, 18]
+          });
+          userGpsMarkerRef.current = L.marker([lat, lng], { icon: liveIcon, zIndexOffset: 2000 }).addTo(leafletMapRef.current);
+        } else {
+          userGpsMarkerRef.current.setLatLng([lat, lng]);
+        }
+      }
+    };
+
+    const onError = (err: GeolocationPositionError) => {
+      if (err.code === err.PERMISSION_DENIED) {
+        setGpsStatus('denied');
+      } else {
+        setGpsStatus('seeking');
+      }
+    };
+
+    const watchId = navigator.geolocation.watchPosition(onSuccess, onError, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 3000
+    });
+    gpsWatchIdRef.current = watchId;
+
+    return () => {
+      if (gpsWatchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(gpsWatchIdRef.current);
+      }
+    };
+  }, []);
+
+  // Fetch REAL road routing geometry from Open Source Routing Machine (OSRM)
+  useEffect(() => {
+    let isCancelled = false;
+
+    const fetchRealRoute = async () => {
+      setLoadingRealRoute(true);
+      const startCoord = userLocation 
+        ? `${userLocation.lng},${userLocation.lat}` 
+        : `${originCity.lng},${originCity.lat}`;
+      const destCoord = `${destCity.lng},${destCity.lat}`;
+
+      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startCoord};${destCoord}?overview=full&geometries=geojson`;
+
+      try {
+        const res = await fetch(osrmUrl);
+        if (!res.ok) throw new Error('OSRM network response error');
+        const data = await res.json();
+
+        if (!isCancelled && data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          const distKm = Math.round(route.distance / 1000);
+          setRealRouteDistanceKm(distKm);
+
+          // Render Real GeoJSON Polyline
+          if (route.geometry && route.geometry.coordinates && leafletMapRef.current) {
+            const coords = route.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]] as [number, number]);
+
+            if (routePolylineRef.current) {
+              leafletMapRef.current.removeLayer(routePolylineRef.current);
+            }
+
+            const polyline = L.polyline(coords, {
+              color: '#2563eb',
+              weight: 6,
+              opacity: 0.85,
+              lineCap: 'round',
+              lineJoin: 'round'
+            }).addTo(leafletMapRef.current);
+            routePolylineRef.current = polyline;
+
+            leafletMapRef.current.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+          }
+        }
+      } catch {
+        // Fallback: Straight direct polyline if offline
+        if (!isCancelled && leafletMapRef.current) {
+          const fallbackLatlngs: [number, number][] = [
+            [originCity.lat, originCity.lng],
+            [destCity.lat, destCity.lng]
+          ];
+          if (routePolylineRef.current) {
+            leafletMapRef.current.removeLayer(routePolylineRef.current);
+          }
+          const polyline = L.polyline(fallbackLatlngs, {
+            color: '#2563eb',
+            weight: 5,
+            dashArray: '5, 10'
+          }).addTo(leafletMapRef.current);
+          routePolylineRef.current = polyline;
+        }
+      } finally {
+        if (!isCancelled) setLoadingRealRoute(false);
+      }
+    };
+
+    fetchRealRoute();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [originId, destId, userLocation]);
+
+  // Leaflet Map Container Setup
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -205,91 +254,55 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
 
     const map = L.map(mapContainerRef.current, {
       center: [originCity.lat, originCity.lng],
-      zoom: 10,
+      zoom: 7,
       minZoom: 5,
       maxZoom: 18,
       zoomControl: false
     });
 
-    // Dark Navigation Tile layer for high-contrast driver view
-    let tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-    let attribution = '&copy; CARTO &copy; OpenStreetMap';
-    if (selectedMapStyle === 'streets') {
-      tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-      attribution = '&copy; OpenStreetMap contributors';
-    } else if (selectedMapStyle === 'satellite') {
+    let tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    let attribution = '&copy; OpenStreetMap contributors';
+
+    if (selectedMapStyle === 'satellite') {
       tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
       attribution = 'Tiles &copy; Esri';
+    } else if (selectedMapStyle === 'dark') {
+      tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+      attribution = '&copy; CARTO &copy; OpenStreetMap';
     }
 
     L.tileLayer(tileUrl, { attribution, maxZoom: 18 }).addTo(map);
 
-    // Route Polyline
-    const latlngs: [number, number][] = [
-      [originCity.lat, originCity.lng],
-      [(originCity.lat * 2 + destCity.lat) / 3, (originCity.lng * 2 + destCity.lng) / 3],
-      [(originCity.lat + destCity.lat * 2) / 3, (originCity.lng + destCity.lng * 2) / 3],
-      [destCity.lat, destCity.lng]
-    ];
-
-    const polyline = L.polyline(latlngs, {
-      color: '#34d399',
-      weight: 6,
-      opacity: 0.9,
-      lineCap: 'round',
-      lineJoin: 'round',
-      dashArray: '1, 10',
-      dashSpeed: 20
-    } as any).addTo(map);
-    routePolylineRef.current = polyline;
-
-    // Origin Marker (Green Pulse)
+    // Origin Marker (Green)
     const originIcon = L.divIcon({
       className: 'origin-marker',
       html: `
-        <div style="background-color: #10b981; width: 34px; height: 34px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
+        <div style="background-color: #10b981; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
           🟢
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    });
+    L.marker([originCity.lat, originCity.lng], { icon: originIcon })
+      .bindPopup(`<b>${originCity.nameUr} (${originCity.nameEn})</b><br>${isUrdu ? 'روانگی پوائنٹ' : 'Origin'}`)
+      .addTo(map);
+
+    // Destination Marker (Red Flag)
+    const destIcon = L.divIcon({
+      className: 'dest-marker',
+      html: `
+        <div style="background-color: #ef4444; width: 34px; height: 34px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
+          🏁
         </div>
       `,
       iconSize: [34, 34],
       iconAnchor: [17, 17]
     });
-    L.marker([originCity.lat, originCity.lng], { icon: originIcon }).addTo(map);
+    L.marker([destCity.lat, destCity.lng], { icon: destIcon })
+      .bindPopup(`<b>${destCity.nameUr} (${destCity.nameEn})</b><br>${isUrdu ? 'منزل پوائنٹ' : 'Destination'}`)
+      .addTo(map);
 
-    // Destination Marker (Red Checkered)
-    const destIcon = L.divIcon({
-      className: 'dest-marker',
-      html: `
-        <div style="background-color: #ef4444; width: 36px; height: 36px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px;">
-          🏁
-        </div>
-      `,
-      iconSize: [36, 36],
-      iconAnchor: [18, 18]
-    });
-    L.marker([destCity.lat, destCity.lng], { icon: destIcon }).addTo(map);
-
-    // Moving Vehicle Marker (Truck GPS Icon)
-    const vehicleIcon = L.divIcon({
-      className: 'vehicle-marker',
-      html: `
-        <div style="background: linear-gradient(135deg, #1e3a68, #10b981); width: 44px; height: 44px; border-radius: 50%; border: 3px solid #facc15; box-shadow: 0 0 20px rgba(250, 204, 21, 0.8); display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; animation: pulse 2s infinite;">
-          🚚
-        </div>
-      `,
-      iconSize: [44, 44],
-      iconAnchor: [22, 22]
-    });
-
-    const initialPos: [number, number] = [
-      originCity.lat + (destCity.lat - originCity.lat) * (progressPct / 100),
-      originCity.lng + (destCity.lng - originCity.lng) * (progressPct / 100)
-    ];
-
-    const vMarker = L.marker(initialPos, { icon: vehicleIcon, zIndexOffset: 1000 }).addTo(map);
-    vehicleMarkerRef.current = vMarker;
-
-    map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
     leafletMapRef.current = map;
 
     return () => {
@@ -300,60 +313,43 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
       }
       leafletMapRef.current = null;
     };
-  }, [originId, destId, selectedMapStyle]);
+  }, [selectedMapStyle]);
 
-  // Live GPS / Navigation Simulation Loop
-  useEffect(() => {
-    if (!isPlaying) {
-      if (simIntervalRef.current) clearInterval(simIntervalRef.current);
-      return;
+  // Center map on user's real GPS position
+  const handleRecenterGps = () => {
+    if (!leafletMapRef.current) return;
+    if (userLocation) {
+      leafletMapRef.current.flyTo([userLocation.lat, userLocation.lng], 14, { animate: true });
+    } else {
+      leafletMapRef.current.flyTo([originCity.lat, originCity.lng], 9, { animate: true });
     }
+  };
 
-    simIntervalRef.current = setInterval(() => {
-      setProgressPct((prev) => {
-        const next = prev >= 99 ? 0 : prev + 1;
-        
-        // Update Step Index based on progress
-        const targetStep = Math.min(
-          navigationSteps.length - 1,
-          Math.floor((next / 100) * navigationSteps.length)
-        );
-        if (targetStep !== stepIndex) {
-          setStepIndex(targetStep);
-        }
-
-        // Slight speed oscillation for realistic truck feel
-        setCurrentSpeed(68 + Math.floor(Math.sin(next * 0.2) * 8));
-
-        // Update Vehicle Marker on Map
-        if (vehicleMarkerRef.current && leafletMapRef.current) {
-          const newLat = originCity.lat + (destCity.lat - originCity.lat) * (next / 100);
-          const newLng = originCity.lng + (destCity.lng - originCity.lng) * (next / 100);
-          vehicleMarkerRef.current.setLatLng([newLat, newLng]);
-        }
-
-        return next;
-      });
-    }, 2500);
-
-    return () => {
-      if (simIntervalRef.current) clearInterval(simIntervalRef.current);
-    };
-  }, [isPlaying, originCity, destCity, stepIndex, navigationSteps.length]);
-
-  // External Google Maps GPS Launch
-  const handleOpenGoogleMapsNav = () => {
-    const originStr = `${originCity.lat},${originCity.lng}`;
-    const destStr = `${destCity.lat},${destCity.lng}`;
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}&travelmode=driving`;
+  // 1-Click Launch into Real Google Maps Live Driving Turn-by-Turn GPS
+  const handleLaunchGoogleMapsLive = () => {
+    const originParam = userLocation ? `${userLocation.lat},${userLocation.lng}` : `${originCity.lat},${originCity.lng}`;
+    const destParam = `${destCity.lat},${destCity.lng}`;
+    // Official Google Maps Directions & Live Navigation Intent URL
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${destParam}&travelmode=driving&dir_action=navigate`;
     window.open(url, '_blank');
   };
 
-  // WhatsApp Share Live Tracking
-  const handleShareWhatsApp = () => {
-    const shareText = `🚚 *Driver Dost - لائیو ٹرک روٹ نیویگیشن*\n📍 *روٹ*: ${originCity.nameUr} (${originCity.nameEn}) ➔ ${destCity.nameUr} (${destCity.nameEn})\n⚡ *رفتار*: ${currentSpeed} km/h\n⏱️ *باقی وقت (ETA)*: ${etaString}\n📏 *باقی فاصلہ*: ${remainingDistKm} km\n🛣️ *اگلا موڑ*: ${isUrdu ? currentStep.instructionUr : currentStep.instructionEn}\n🔗 *گوگل میپس پر دیکھیں*: https://www.google.com/maps/dir/?api=1&origin=${originCity.lat},${originCity.lng}&destination=${destCity.lat},${destCity.lng}`;
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+  // Launch Waze Navigation
+  const handleLaunchWazeLive = () => {
+    const url = `https://waze.com/ul?ll=${destCity.lat},${destCity.lng}&navigate=yes`;
     window.open(url, '_blank');
+  };
+
+  // WhatsApp Share Real GPS Location & Corridor Info
+  const handleShareWhatsApp = () => {
+    const locUrl = userLocation 
+      ? `https://maps.google.com/?q=${userLocation.lat},${userLocation.lng}`
+      : `https://maps.google.com/?q=${originCity.lat},${originCity.lng}`;
+    
+    const text = `🚚 *Driver Dost - حقیقی GPS لوکیشن و روٹ رپورٹ*\n📍 *روٹ*: ${originCity.nameUr} ➔ ${destCity.nameUr}\n📏 *کل فاصلہ*: ${realRouteDistanceKm} کلومیٹر\n⚡ *موجودہ رفتار*: ${realGpsSpeed} km/h\n⏱️ *تخمینی وقت (ETA)*: ${etaDisplay}\n🛰️ *لائیو لوکیشن لنک*: ${locUrl}\n🔗 *گوگل میپس نیویگیشن*: https://www.google.com/maps/dir/?api=1&destination=${destCity.lat},${destCity.lng}&travelmode=driving`;
+    
+    const shareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(shareUrl, '_blank');
     setCopiedShare(true);
     setTimeout(() => setCopiedShare(false), 2500);
   };
@@ -363,32 +359,31 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
       className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col justify-between select-none overflow-hidden font-sans"
       dir={isUrdu ? 'rtl' : 'ltr'}
     >
-      {/* 1. TOP NATIVE HUD HEADER - HIGH VISIBILITY FOR DRIVERS */}
+      {/* 1. TOP NATIVE HEADER */}
       <div className="shrink-0 bg-[#1e293b]/95 backdrop-blur-md px-3 sm:px-5 py-2.5 border-b border-slate-700/80 shadow-md flex items-center justify-between gap-2 z-20">
         
-        {/* Back / Exit Button */}
+        {/* Back to Map / Dashboard Button */}
         <button
           type="button"
           onClick={() => onNavigate('map')}
-          className="p-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+          className="p-2 sm:px-3 sm:py-2 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
           title={isUrdu ? 'میپ پر واپس جائیں' : 'Back to Map'}
         >
-          <ArrowLeft className={`w-5 h-5 ${isUrdu ? 'rotate-180' : ''}`} />
-          <span className="hidden sm:inline text-xs font-bold font-serif">
-            {isUrdu ? 'میپ' : 'Map'}
+          <ArrowLeft className={`w-4 h-4 ${isUrdu ? 'rotate-180' : ''}`} />
+          <span className="text-xs font-bold font-serif">
+            {isUrdu ? 'واپس' : 'Back'}
           </span>
         </button>
 
-        {/* Corridor Badge & Live Indicator */}
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-9 h-9 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 shrink-0 animate-pulse">
-            <Navigation className="w-5 h-5" />
-          </div>
+        {/* Route Title & GPS Live Status */}
+        <div className="flex items-center gap-2 min-w-0 text-center">
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
-                {isUrdu ? 'لائیو GPS رہنمائی' : 'Live GPS Guidance'}
+            <div className="flex items-center justify-center gap-1.5">
+              <span className={`inline-block w-2 h-2 rounded-full ${gpsStatus === 'active' ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`}></span>
+              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+                {gpsStatus === 'active' 
+                  ? (isUrdu ? `حقیقی GPS فعال (±${gpsAccuracy || 10}m)` : `Hardware GPS (±${gpsAccuracy || 10}m)`)
+                  : (isUrdu ? 'GPS تلاش جاری...' : 'Seeking GPS...')}
               </span>
             </div>
             <h1 className="font-serif font-black text-sm sm:text-base text-white truncate">
@@ -397,246 +392,195 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
           </div>
         </div>
 
-        {/* Quick Voice & Google Maps Actions */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => setVoiceEnabled(!voiceEnabled)}
-            className={`p-2.5 rounded-2xl border transition-all cursor-pointer active:scale-95 ${
-              voiceEnabled 
-                ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300' 
-                : 'bg-slate-800 border-slate-700 text-slate-400'
-            }`}
-            title={voiceEnabled ? (isUrdu ? 'آواز بند کریں' : 'Mute Voice') : (isUrdu ? 'آواز آن کریں' : 'Enable Voice')}
-          >
-            {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleOpenGoogleMapsNav}
-            className="px-3 py-2 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
-            title={isUrdu ? 'گوگل میپس ایپ میں کھولیں' : 'Open in Google Maps'}
-          >
-            <ExternalLink className="w-4 h-4" />
-            <span className="hidden sm:inline">{isUrdu ? 'گوگل میپس' : 'Google Maps'}</span>
-          </button>
-        </div>
+        {/* Back to Dashboard shortcut */}
+        <button
+          type="button"
+          onClick={() => onNavigate('home')}
+          className="p-2 sm:px-3 sm:py-2 rounded-2xl bg-slate-800 hover:bg-[#8b9d77] border border-slate-600 text-white font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1 font-serif"
+          title={isUrdu ? 'ڈیش بورڈ پر جائیں' : 'Go to Dashboard'}
+        >
+          <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
+        </button>
       </div>
 
-      {/* 2. PROMINENT DRIVER TURN-BY-TURN HUD BANNER (Large & High-Contrast for illiterate/tired drivers) */}
-      <div className="shrink-0 bg-gradient-to-r from-[#0284c7] via-[#0369a1] to-[#0f766e] px-3 sm:px-6 py-3 border-b-2 border-amber-400/80 shadow-lg z-20">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+      {/* 2. REAL GPS HUD DASHBOARD (High Visibility for Drivers) */}
+      <div className="shrink-0 bg-gradient-to-r from-[#1e3a68] via-[#162a4d] to-[#0f172a] px-3 sm:px-6 py-2.5 border-b border-amber-400/50 shadow-lg z-20">
+        <div className="max-w-3xl mx-auto grid grid-cols-3 gap-2 text-center">
           
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Big Direction Icon */}
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white text-[#0369a1] flex items-center justify-center font-black text-2xl sm:text-3xl shrink-0 shadow-md">
-              {currentStep.iconType === 'toll' ? '💳' :
-               currentStep.iconType === 'rest' ? '☕' :
-               currentStep.iconType === 'right' ? '↱' :
-               currentStep.iconType === 'left' ? '↰' :
-               currentStep.iconType === 'dest' ? '🏁' : '⬆️'}
-            </div>
-
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-amber-400 text-slate-900 font-mono font-black text-xs">
-                  {isUrdu ? 'اگلا موڑ' : 'Next Move'}
-                </span>
-                <span className="text-xs text-amber-200 font-mono font-bold">
-                  {currentStep.roadName}
-                </span>
-              </div>
-              <h2 className="font-serif font-black text-sm sm:text-lg text-white leading-tight mt-0.5 line-clamp-2">
-                {isUrdu ? currentStep.instructionUr : currentStep.instructionEn}
-              </h2>
+          {/* Real Speed from GPS Hardware */}
+          <div className="bg-slate-800/80 p-2 sm:p-2.5 rounded-2xl border border-slate-700">
+            <span className="text-[10px] text-slate-400 font-bold block">
+              {isUrdu ? 'رفتار (GPS)' : 'Live Speed'}
+            </span>
+            <div className="font-mono font-black text-lg sm:text-2xl text-amber-300">
+              {realGpsSpeed} <span className="text-xs font-normal text-slate-300">km/h</span>
             </div>
           </div>
 
-          {/* Voice Prompt Play Button */}
-          <button
-            type="button"
-            onClick={() => speakInstruction(isUrdu ? currentStep.instructionUr : currentStep.instructionEn)}
-            className="p-2.5 rounded-2xl bg-white/20 hover:bg-white/30 text-amber-300 border border-white/30 cursor-pointer active:scale-95 transition-all shrink-0 flex items-center justify-center"
-            title={isUrdu ? 'دوبارہ بولیں' : 'Repeat voice'}
-          >
-            <Volume2 className="w-5 h-5" />
-          </button>
+          {/* Real Distance to Destination */}
+          <div className="bg-slate-800/80 p-2 sm:p-2.5 rounded-2xl border border-slate-700">
+            <span className="text-[10px] text-slate-400 font-bold block">
+              {isUrdu ? 'باقی فاصلہ' : 'Remaining'}
+            </span>
+            <div className="font-mono font-black text-lg sm:text-2xl text-emerald-400">
+              {remainingRealKm} <span className="text-xs font-normal text-slate-300">km</span>
+            </div>
+          </div>
+
+          {/* Estimated Arrival Time */}
+          <div className="bg-slate-800/80 p-2 sm:p-2.5 rounded-2xl border border-slate-700">
+            <span className="text-[10px] text-slate-400 font-bold block">
+              {isUrdu ? 'تخمینی وقت (ETA)' : 'ETA'}
+            </span>
+            <div className="font-serif font-black text-sm sm:text-lg text-white truncate mt-0.5">
+              {etaDisplay}
+            </div>
+          </div>
+
         </div>
       </div>
 
-      {/* 3. MAIN INTERACTIVE CONTENT AREA (MAP / TURN LIST / REST STOPS) */}
+      {/* 3. MAIN CONTENT: REAL MAP & ROAD DIRECTORY */}
       <div className="flex-1 relative overflow-hidden flex flex-col">
         
-        {/* Floating Mode Selector Pill (Map / Turn List / Rest Stops) */}
+        {/* Floating Pill: View Modes */}
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[400] bg-slate-900/90 backdrop-blur-md p-1 rounded-2xl border border-slate-700 shadow-xl flex items-center gap-1 text-xs font-bold">
           <button
             type="button"
-            onClick={() => setActiveTabMode('map')}
+            onClick={() => setActiveTabMode('realGps')}
             className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-              activeTabMode === 'map' ? 'bg-emerald-500 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+              activeTabMode === 'realGps' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
             }`}
           >
-            🗺️ {isUrdu ? 'لائیو میپ' : 'Live Map'}
+            🗺️ {isUrdu ? 'نقشہ و روٹ' : 'Route Map'}
           </button>
           <button
             type="button"
-            onClick={() => setActiveTabMode('turnByTurn')}
+            onClick={() => setActiveTabMode('roadSteps')}
             className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-              activeTabMode === 'turnByTurn' ? 'bg-emerald-500 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+              activeTabMode === 'roadSteps' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
             }`}
           >
-            🛣️ {isUrdu ? 'موڑ تفصیل' : 'Turn List'}
+            🛣️ {isUrdu ? 'انٹرچینجز' : 'Interchanges'}
           </button>
           <button
             type="button"
-            onClick={() => setActiveTabMode('restStops')}
+            onClick={() => setActiveTabMode('services')}
             className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-              activeTabMode === 'restStops' ? 'bg-emerald-500 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+              activeTabMode === 'services' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
             }`}
           >
-            ⛽ {isUrdu ? 'سروس ایریاز' : 'Rest Stops'}
+            ⛽ {isUrdu ? 'سروس و ہیلپ' : 'Services & Help'}
           </button>
         </div>
 
-        {/* View 1: Live Interactive Map */}
-        <div className={`w-full h-full relative ${activeTabMode === 'map' ? 'block' : 'hidden'}`}>
+        {/* View 1: Real Map Canvas */}
+        <div className={`w-full h-full relative ${activeTabMode === 'realGps' ? 'block' : 'hidden'}`}>
           
-          {/* Map Layer Switcher (Top Right) */}
-          <div className="absolute top-3 right-3 z-[400] flex flex-col gap-1.5">
+          {/* Map Controls (Recenter & Style) */}
+          <div className="absolute top-3 right-3 z-[400] flex flex-col gap-2">
             <button
               type="button"
-              onClick={() => setSelectedMapStyle(selectedMapStyle === 'navDark' ? 'satellite' : selectedMapStyle === 'satellite' ? 'streets' : 'navDark')}
-              className="p-2 rounded-xl bg-slate-900/90 border border-slate-700 text-white text-xs font-bold shadow-md cursor-pointer hover:bg-slate-800"
-              title={isUrdu ? 'میپ اسٹائل بدلیں' : 'Switch Map Style'}
+              onClick={handleRecenterGps}
+              className="p-2.5 rounded-2xl bg-slate-900/90 border border-slate-700 text-blue-400 shadow-lg cursor-pointer hover:bg-slate-800 active:scale-95"
+              title={isUrdu ? 'میری لوکیشن پر فوکس کریں' : 'Center on My GPS'}
             >
-              <Layers className="w-4 h-4 text-emerald-400" />
+              <Crosshair className="w-5 h-5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedMapStyle(selectedMapStyle === 'streets' ? 'satellite' : selectedMapStyle === 'satellite' ? 'dark' : 'streets')}
+              className="p-2.5 rounded-2xl bg-slate-900/90 border border-slate-700 text-emerald-400 shadow-lg cursor-pointer hover:bg-slate-800 active:scale-95"
+              title={isUrdu ? 'میپ اسٹائل بدلیں' : 'Switch Map Layer'}
+            >
+              <Layers className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Floating Speedometer & ETA Overlay on Map */}
-          <div className="absolute bottom-4 left-3 right-3 z-[400] max-w-lg mx-auto">
-            <div className="bg-slate-900/95 backdrop-blur-md p-3.5 rounded-3xl border border-slate-700 shadow-2xl space-y-2">
-              
-              <div className="grid grid-cols-3 gap-2 text-center">
-                {/* Speed */}
-                <div className="bg-slate-800/80 p-2 rounded-2xl border border-slate-700">
-                  <span className="text-[10px] text-slate-400 font-bold block">
-                    {isUrdu ? 'گاڑی کی رفتار' : 'Speed'}
-                  </span>
-                  <div className="font-mono font-black text-xl sm:text-2xl text-amber-300">
-                    {currentSpeed} <span className="text-xs font-normal text-slate-300">km/h</span>
-                  </div>
-                </div>
-
-                {/* Remaining Distance */}
-                <div className="bg-slate-800/80 p-2 rounded-2xl border border-slate-700">
-                  <span className="text-[10px] text-slate-400 font-bold block">
-                    {isUrdu ? 'باقی فاصلہ' : 'Remaining'}
-                  </span>
-                  <div className="font-mono font-black text-xl sm:text-2xl text-emerald-400">
-                    {remainingDistKm} <span className="text-xs font-normal text-slate-300">km</span>
-                  </div>
-                </div>
-
-                {/* ETA */}
-                <div className="bg-slate-800/80 p-2 rounded-2xl border border-slate-700">
-                  <span className="text-[10px] text-slate-400 font-bold block">
-                    {isUrdu ? 'پہنچنے کا وقت' : 'ETA'}
-                  </span>
-                  <div className="font-serif font-black text-base sm:text-lg text-white truncate mt-0.5">
-                    {etaString}
-                  </div>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
-                <div 
-                  className="bg-emerald-400 h-full rounded-full transition-all duration-700"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Leaflet Canvas */}
+          {/* Leaflet Map DOM Element */}
           <div ref={mapContainerRef} className="w-full h-full" />
         </div>
 
-        {/* View 2: Turn-by-Turn Step List */}
-        {activeTabMode === 'turnByTurn' && (
-          <div className="flex-1 overflow-y-auto p-4 max-w-xl mx-auto w-full space-y-2 pt-14 pb-20">
-            <h3 className="font-serif font-bold text-sm text-slate-300 flex items-center gap-1.5 mb-2">
-              <Milestone className="w-4 h-4 text-emerald-400" />
-              <span>{isUrdu ? 'روٹ کے تمام موڑ و انٹرچینجز:' : 'Corridor Turns & Interchanges:'}</span>
-            </h3>
+        {/* View 2: Real Interchanges & Toll Information */}
+        {activeTabMode === 'roadSteps' && (
+          <div className="flex-1 overflow-y-auto p-4 max-w-xl mx-auto w-full space-y-3 pt-14 pb-20">
+            <div className="bg-slate-800/90 p-4 rounded-3xl border border-slate-700 space-y-3">
+              <h3 className="font-serif font-bold text-sm text-amber-300 flex items-center gap-2">
+                <Milestone className="w-4 h-4" />
+                <span>{isUrdu ? 'روٹ پر اہم موٹروے انٹرچینجز و ہائی ویز:' : 'Highway Corridors & Interchanges:'}</span>
+              </h3>
 
-            {navigationSteps.map((step, idx) => {
-              const isCurrent = idx === stepIndex;
-              const isPassed = idx < stepIndex;
-              return (
-                <div 
-                  key={step.id}
-                  onClick={() => setStepIndex(idx)}
-                  className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                    isCurrent 
-                      ? 'bg-emerald-950/80 border-emerald-400 shadow-md scale-[1.02]' 
-                      : isPassed 
-                        ? 'bg-slate-800/40 border-slate-700/50 opacity-60' 
-                        : 'bg-slate-800/80 border-slate-700 hover:border-slate-500'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm ${
-                      isCurrent ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300'
-                    }`}>
-                      {idx + 1}
-                    </span>
+              <div className="space-y-2 text-xs">
+                <div className="p-3 bg-slate-900/60 rounded-2xl border border-slate-700 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold font-mono">01</span>
                     <div>
-                      <div className="text-xs font-bold text-white">
-                        {isUrdu ? step.instructionUr : step.instructionEn}
-                      </div>
-                      <div className="text-[10px] text-slate-400 font-mono">
-                        {step.roadName} {step.facility && `• ℹ️ ${step.facility}`}
-                      </div>
+                      <strong className="text-white block">{originCity.nameUr} ({originCity.nameEn})</strong>
+                      <span className="text-slate-400 text-[11px]">{originCity.highways.join(' • ')}</span>
                     </div>
                   </div>
-
-                  <span className="font-mono text-xs font-bold text-amber-300 shrink-0">
-                    {step.distanceKm} km
-                  </span>
+                  <span className="text-emerald-400 font-mono font-bold">0 KM</span>
                 </div>
-              );
-            })}
+
+                <div className="p-3 bg-slate-900/60 rounded-2xl border border-slate-700 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 rounded-xl bg-blue-500/20 text-blue-400 font-bold font-mono">02</span>
+                    <div>
+                      <strong className="text-white block">{isUrdu ? 'موٹروے مین ٹول پلازہ (M-Tag)' : 'Main Motorway Toll Plaza'}</strong>
+                      <span className="text-slate-400 text-[11px]">{isUrdu ? 'ایم ٹیگ لین استعمال کریں' : 'Use Dedicated M-Tag Fast Lane'}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onOpenTollCalc) onOpenTollCalc(originCity.nameEn, destCity.nameEn);
+                      onNavigate('toll');
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-300 font-serif cursor-pointer hover:bg-amber-500/30"
+                  >
+                    {isUrdu ? 'ٹول ریٹس' : 'View Toll'}
+                  </button>
+                </div>
+
+                <div className="p-3 bg-slate-900/60 rounded-2xl border border-slate-700 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 rounded-xl bg-rose-500/20 text-rose-400 font-bold font-mono">03</span>
+                    <div>
+                      <strong className="text-white block">{destCity.nameUr} ({destCity.nameEn})</strong>
+                      <span className="text-slate-400 text-[11px]">{destCity.highways.join(' • ')}</span>
+                    </div>
+                  </div>
+                  <span className="text-amber-400 font-mono font-bold">{realRouteDistanceKm} KM</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* View 3: Highway Rest Stops & Emergency Facilities */}
-        {activeTabMode === 'restStops' && (
+        {/* View 3: Emergency & Rest Services */}
+        {activeTabMode === 'services' && (
           <div className="flex-1 overflow-y-auto p-4 max-w-xl mx-auto w-full space-y-3 pt-14 pb-20">
             {/* Helpline Emergency Box */}
-            <div className="bg-rose-950/80 border-2 border-rose-500 p-3.5 rounded-2xl shadow-md space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ShieldAlert className="w-5 h-5 text-rose-400" />
-                  <span className="font-serif font-black text-sm text-white">
-                    {isUrdu ? 'ایمرجنسی و موٹروے پولیس ہیلپ لائن' : 'Emergency & Highway Police'}
-                  </span>
-                </div>
+            <div className="bg-rose-950/80 border-2 border-rose-500 p-4 rounded-3xl shadow-md space-y-2.5">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-rose-400" />
+                <span className="font-serif font-black text-sm text-white">
+                  {isUrdu ? 'موٹروے پولیس و ایمرجنسی ہیلپ لائن' : 'Highway Police & Emergency Helpline'}
+                </span>
               </div>
               
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <a
                   href="tel:130"
-                  className="py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all"
+                  className="py-3 px-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all"
                 >
                   <PhoneCall className="w-4 h-4" />
-                  <span>{isUrdu ? 'موٹروے پولیس: 130' : 'Police: 130'}</span>
+                  <span>{isUrdu ? 'موٹروے پولیس: 130' : 'NHMP: 130'}</span>
                 </a>
                 <a
                   href="tel:1122"
-                  className="py-2.5 px-3 rounded-xl bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all"
+                  className="py-3 px-3 rounded-2xl bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all"
                 >
                   <PhoneCall className="w-4 h-4" />
                   <span>{isUrdu ? 'ریسکیو: 1122' : 'Rescue: 1122'}</span>
@@ -644,67 +588,44 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
               </div>
             </div>
 
-            {/* Rest Stops List */}
-            <div className="space-y-2">
+            {/* Fuel & Rest Stops */}
+            <div className="bg-slate-800/90 p-4 rounded-3xl border border-slate-700 space-y-2.5">
               <span className="text-xs font-bold text-slate-300 block">
-                {isUrdu ? 'موٹروے سروس ایریاز و پٹرول پمپس:' : 'Service Areas & Fuel Stops:'}
+                {isUrdu ? 'سہولیات و سروس ایریاز:' : 'Service Areas & Facilities:'}
               </span>
 
-              <div className="p-3 bg-slate-800 rounded-2xl border border-slate-700 flex items-center justify-between">
+              <div className="p-3 bg-slate-900/60 rounded-2xl border border-slate-700 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
                     <Fuel className="w-4 h-4" />
                   </div>
                   <div>
                     <strong className="text-xs text-white block">
-                      {isUrdu ? 'پیٹرول پمپ و ڈیزل اسٹیشن' : 'PSO & Shell Fuel Stations'}
+                      {isUrdu ? 'پیٹرول پمپس و ڈیزل اسٹیشنز' : 'PSO & Shell Fuel Stations'}
                     </strong>
                     <span className="text-[10px] text-slate-400">
-                      {isUrdu ? 'ہر 50 کلومیٹر بعد سروس ایریا میں دستیاب' : 'Available every 50km'}
+                      {isUrdu ? 'موٹروے پر ہر 50 کلومیٹر بعد 24 گھنٹے دستیاب' : 'Available every 50km on Motorways'}
                     </span>
                   </div>
                 </div>
-                <span className="text-emerald-400 text-xs font-bold">24/7 کھلی ہے</span>
+                <span className="text-emerald-400 text-xs font-bold">24/7</span>
               </div>
 
-              <div className="p-3 bg-slate-800 rounded-2xl border border-slate-700 flex items-center justify-between">
+              <div className="p-3 bg-slate-900/60 rounded-2xl border border-slate-700 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
                     <Coffee className="w-4 h-4" />
                   </div>
                   <div>
                     <strong className="text-xs text-white block">
-                      {isUrdu ? 'ریسٹورنٹ، مسجد و واش روم' : 'Mosque, Food & Washrooms'}
+                      {isUrdu ? 'مسجد، ہوٹل و ریسٹورنٹ' : 'Mosque, Food & Rest Area'}
                     </strong>
                     <span className="text-[10px] text-slate-400">
-                      {isUrdu ? 'فیملی و ڈرائیور ریسٹ ایریا' : 'Family & Driver Rest Area'}
+                      {isUrdu ? 'صاف ستھری فیملی و ڈرائیور سہولیات' : 'Clean driver and family facilities'}
                     </span>
                   </div>
                 </div>
-                <span className="text-emerald-400 text-xs font-bold">صاف ستھرا</span>
-              </div>
-
-              <div 
-                onClick={() => {
-                  if (onOpenTollCalc) onOpenTollCalc(originCity.nameEn, destCity.nameEn);
-                  onNavigate('toll');
-                }}
-                className="p-3 bg-slate-800 hover:bg-slate-700 rounded-2xl border border-slate-700 flex items-center justify-between cursor-pointer transition-all"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
-                    <Milestone className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <strong className="text-xs text-white block">
-                      {isUrdu ? 'موٹروے ٹول پلازہ ریٹس چیک کریں' : 'Check Motorway Toll Rates'}
-                    </strong>
-                    <span className="text-[10px] text-slate-400">
-                      {isUrdu ? '2026 این ایچ اے ریٹس دیکھیں' : 'View 2026 NHA Toll'}
-                    </span>
-                  </div>
-                </div>
-                <ChevronRight className={`w-4 h-4 text-slate-400 ${isUrdu ? 'rotate-180' : ''}`} />
+                <span className="text-emerald-400 text-xs font-bold">صاف</span>
               </div>
             </div>
           </div>
@@ -712,48 +633,39 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
 
       </div>
 
-      {/* 4. BOTTOM NATIVE ACTION DOCK */}
+      {/* 4. BOTTOM ACTION DOCK */}
       <div className="shrink-0 bg-[#1e293b]/95 backdrop-blur-md px-3 sm:px-5 py-3 border-t border-slate-700 shadow-2xl z-20">
-        <div className="max-w-xl mx-auto flex items-center justify-between gap-2">
+        <div className="max-w-xl mx-auto flex items-center justify-between gap-2.5">
           
-          {/* Pause / Play Simulation */}
-          <button
-            type="button"
-            onClick={() => setIsPlaying(!isPlaying)}
-            className="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white transition-all cursor-pointer active:scale-95 shadow-xs"
-            title={isPlaying ? (isUrdu ? 'پاز کریں' : 'Pause') : (isUrdu ? 'جاری رکھیں' : 'Resume')}
-          >
-            {isPlaying ? <Pause className="w-5 h-5 text-amber-300" /> : <Play className="w-5 h-5 text-emerald-400 fill-emerald-400" />}
-          </button>
-
           {/* WhatsApp Share Live Location */}
           <button
             type="button"
             onClick={handleShareWhatsApp}
-            className="flex-1 py-3 px-3 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
+            className="py-3 px-3.5 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
+            title={isUrdu ? 'واٹس ایپ پر لوکیشن بھیجیں' : 'Share on WhatsApp'}
           >
             <Share2 className="w-4 h-4" />
-            <span>{copiedShare ? (isUrdu ? 'شیئر ہو گیا!' : 'Shared!') : (isUrdu ? 'واٹس ایپ لوکیشن' : 'Share Location')}</span>
+            <span>{copiedShare ? (isUrdu ? 'شیئر ہو گیا!' : 'Shared!') : (isUrdu ? 'واٹس ایپ' : 'WhatsApp')}</span>
           </button>
 
-          {/* Emergency 130 Police Call */}
-          <a
-            href="tel:130"
-            className="py-3 px-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1"
-            title={isUrdu ? 'موٹروے پولیس ہیلپ لائن' : 'Call Police 130'}
+          {/* Real Google Maps Turn-by-Turn GPS Voice (Main Big Action) */}
+          <button
+            type="button"
+            onClick={handleLaunchGoogleMapsLive}
+            className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-serif font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 shadow-lg flex items-center justify-center gap-2"
           >
-            <PhoneCall className="w-4 h-4" />
-            <span>{isUrdu ? '130 پولیس' : '130 Help'}</span>
-          </a>
+            <Navigation2 className="w-4 h-4 fill-white" />
+            <span>{isUrdu ? 'اصلی گوگل میپس وائس GPS' : 'Start Google Voice GPS'}</span>
+          </button>
 
-          {/* Stop / Exit Navigation */}
+          {/* Exit Button */}
           <button
             type="button"
             onClick={() => onNavigate('map')}
-            className="py-3 px-4 rounded-2xl bg-slate-800 hover:bg-rose-800 border border-slate-600 text-white font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 shadow-xs"
+            className="py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 shadow-xs"
+            title={isUrdu ? 'بند کریں' : 'Exit Navigation'}
           >
-            <Square className="w-4 h-4 inline mr-1 text-rose-400" />
-            <span>{isUrdu ? 'ختم' : 'Exit'}</span>
+            <span>{isUrdu ? 'بند کریں' : 'Exit'}</span>
           </button>
 
         </div>

@@ -287,7 +287,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {syncStatusMsg && (
             <span className="hidden sm:inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">
               ✓ {syncStatusMsg}
@@ -296,10 +296,11 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
           <button
             type="button"
             onClick={() => onNavigate('home')}
-            className="p-2 rounded-xl bg-white border border-[#ecece0] text-[#5a5a40] hover:bg-[#5a5a40] hover:text-white transition-all cursor-pointer active:scale-95 shadow-2xs"
-            title={isUrdu ? 'ہوم پر جائیں' : 'Go Home'}
+            className="px-2.5 py-1.5 rounded-xl bg-white border border-[#ecece0] text-[#5a5a40] hover:bg-[#8b9d77] hover:text-white transition-all cursor-pointer active:scale-95 shadow-2xs flex items-center gap-1 text-xs font-bold font-serif"
+            title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
           >
-            <RotateCcw className="w-4 h-4" />
+            <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
+            <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
           </button>
         </div>
       </div>
