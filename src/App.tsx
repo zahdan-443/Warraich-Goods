@@ -59,7 +59,13 @@ export default function App() {
     return (saved === 'en' || saved === 'ur') ? saved : 'ur';
   });
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
-  const [showSplash, setShowSplash] = useState<boolean>(true);
+  const [showSplash, setShowSplash] = useState<boolean>(() => {
+    try {
+      return !sessionStorage.getItem('ah_splash_shown');
+    } catch {
+      return false;
+    }
+  });
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showBiltyAccessModal, setShowBiltyAccessModal] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);

@@ -23,7 +23,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    // Show splash screen (1.5s) then smoothly fade out
+    // Show splash screen for quick snappy intro (700ms) then smoothly fade out
     const timer = setTimeout(() => {
       setFadeOut(true);
       setTimeout(() => {
@@ -33,8 +33,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
           // ignore
         }
         onDismiss();
-      }, 300);
-    }, 1500);
+      }, 200);
+    }, 700);
     return () => clearTimeout(timer);
   }, [onDismiss]);
 
