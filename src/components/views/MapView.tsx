@@ -15,7 +15,6 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   ArrowRightLeft, 
-  ArrowLeft,
   Layers, 
   RefreshCw, 
   Share2, 
@@ -1003,34 +1002,20 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
           </p>
         </div>
 
-        {/* Header Right Actions: Selected Route Glance & Back to Dashboard */}
-        <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
-          {/* Back to Dashboard Button */}
-          <button
-            type="button"
-            onClick={() => onNavigate('home')}
-            className="px-3.5 py-2.5 rounded-2xl bg-white border border-[#ecece0] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35] transition-all flex items-center gap-1.5 text-xs font-bold font-serif shadow-2xs cursor-pointer active:scale-95"
-            title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
-          >
-            <ArrowLeft className={`w-4 h-4 ${isUrdu ? 'rotate-180' : ''}`} />
-            <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
-          </button>
-
-          {/* Selected Route Quick Glance Badge */}
-          <div className="bg-[#fdfbf7] p-3 rounded-2xl border border-[#ecece0] flex items-center gap-3">
-            <div className="text-center">
-              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'منتخب روٹ' : 'Route'}</span>
-              <span className="font-serif font-bold text-xs text-[#4a4a35]">
-                {isUrdu ? `${originCity.nameUr} ➔ ${destCity.nameUr}` : `${originCity.nameEn} ➔ ${destCity.nameEn}`}
-              </span>
-            </div>
-            <div className="h-7 w-[1px] bg-[#ecece0]"></div>
-            <div className="text-center">
-              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'کل فاصلہ' : 'Distance'}</span>
-              <span className="font-mono font-bold text-xs text-[#8b9d77]">
-                {routeMetrics.distanceKm} km
-              </span>
-            </div>
+        {/* Selected Route Quick Glance Badge */}
+        <div className="bg-[#fdfbf7] p-3 rounded-2xl border border-[#ecece0] flex items-center gap-3 shrink-0">
+          <div className="text-center">
+            <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'منتخب روٹ' : 'Route'}</span>
+            <span className="font-serif font-bold text-xs text-[#4a4a35]">
+              {isUrdu ? `${originCity.nameUr} ➔ ${destCity.nameUr}` : `${originCity.nameEn} ➔ ${destCity.nameEn}`}
+            </span>
+          </div>
+          <div className="h-7 w-[1px] bg-[#ecece0]"></div>
+          <div className="text-center">
+            <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'کل فاصلہ' : 'Distance'}</span>
+            <span className="font-mono font-bold text-xs text-[#8b9d77]">
+              {routeMetrics.distanceKm} km
+            </span>
           </div>
         </div>
       </header>
