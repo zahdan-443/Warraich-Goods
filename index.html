@@ -34,26 +34,6 @@
     <noscript>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Noto+Nastaliq+Urdu:wght@600;700&family=Noto+Sans+Arabic:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap">
     </noscript>
-    <style>
-      #app-pre-splash {
-        position: fixed;
-        inset: 0;
-        z-index: 99998;
-        background-color: #162a4d;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-      }
-      #app-pre-splash img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        object-position: center;
-        max-width: 100vw;
-        max-height: 100vh;
-      }
-    </style>
     <script>
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
@@ -68,9 +48,6 @@
     </script>
   </head>
   <body class="bg-[#fdfbf7] text-[#4a4a35] font-sans antialiased min-h-full selection:bg-[#8b9d77] selection:text-white">
-    <div id="app-pre-splash">
-      <img src="./splash.png" alt="Driver Dost" decoding="async" fetchpriority="high" />
-    </div>
     <div id="root" class="min-h-screen flex flex-col"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

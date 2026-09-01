@@ -23,21 +23,32 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    // Show splash screen for quick snappy intro (700ms) then smoothly fade out
+    // Lock page scrolling while splash is active to prevent scrollbars
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    // Show splash screen for quick snappy intro (800ms) then smoothly fade out
     const timer = setTimeout(() => {
       setFadeOut(true);
       setTimeout(() => {
         try {
           sessionStorage.setItem('ah_splash_shown', '1');
-          const preSplash = document.getElementById('app-pre-splash');
-          if (preSplash) preSplash.remove();
         } catch {
           // ignore
         }
+        document.body.style.overflow = prevBodyOverflow;
+        document.documentElement.style.overflow = prevHtmlOverflow;
         onDismiss();
-      }, 200);
-    }, 700);
-    return () => clearTimeout(timer);
+      }, 250);
+    }, 800);
+
+    return () => {
+      clearTimeout(timer);
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
   }, [onDismiss]);
 
   const handleError = () => {
@@ -50,12 +61,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
     setFadeOut(true);
     try {
       sessionStorage.setItem('ah_splash_shown', '1');
-      const preSplash = document.getElementById('app-pre-splash');
-      if (preSplash) preSplash.remove();
     } catch {
       // ignore
     }
-    setTimeout(onDismiss, 250);
+    setTimeout(() => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      onDismiss();
+    }, 200);
   };
 
   return (
@@ -65,15 +78,18 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
       style={{
         position: 'fixed',
         inset: 0,
+        width: '100vw',
+        height: '100vh',
         zIndex: 99999,
         backgroundColor: '#162a4d',
         opacity: fadeOut ? 0 : 1,
-        transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'opacity 0.25s ease-out',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
+        touchAction: 'none',
       }}
     >
       <img
@@ -91,7 +107,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
           maxWidth: '100vw',
           maxHeight: '100vh',
           display: 'block',
-          opacity: imgLoaded ? 1 : 0,
+          opacity: imgLoaded ? 1 : 0.95,
           transition: 'opacity 0.2s ease-in',
         }}
       />
