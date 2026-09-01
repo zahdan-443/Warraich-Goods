@@ -29,6 +29,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
       setTimeout(() => {
         try {
           sessionStorage.setItem('ah_splash_shown', '1');
+          const preSplash = document.getElementById('app-pre-splash');
+          if (preSplash) preSplash.remove();
         } catch {
           // ignore
         }
@@ -48,6 +50,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
     setFadeOut(true);
     try {
       sessionStorage.setItem('ah_splash_shown', '1');
+      const preSplash = document.getElementById('app-pre-splash');
+      if (preSplash) preSplash.remove();
     } catch {
       // ignore
     }
@@ -82,7 +86,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
         style={{
           width: '100%',
           height: '100%',
-          objectFit: 'contain',
+          objectFit: 'cover',
+          objectPosition: 'center',
           maxWidth: '100vw',
           maxHeight: '100vh',
           display: 'block',

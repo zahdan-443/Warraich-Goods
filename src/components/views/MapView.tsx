@@ -883,92 +883,15 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
     }
   };
 
-  // Start Real-Time Live Navigation
+  // Start Real-Time Live Navigation (Opens Dedicated Navigation Page)
   const handleStartNavigation = () => {
-    if (routeCities.length < 2) return;
-
-    setIsNavigating(true);
-    setIsNavPaused(false);
-    setNavStepIndex(0);
-    setNavProgressPct(0);
-    setNavCurrentSpeed(65);
-
-    const firstCity = routeCities[0];
-    const initialPos = { lat: firstCity.lat, lng: firstCity.lng };
-    setNavCurrentPos(initialPos);
-    setNavRemainingDistKm(routeMetrics.distanceKm);
-
-    // Calculate initial ETA
-    const now = new Date();
-    now.setMinutes(now.getMinutes() + Math.round(routeMetrics.truckTime * 60));
-    const etaStr = now.toLocaleTimeString('ur-PK', { hour: '2-digit', minute: '2-digit' });
-    setNavEtaText(etaStr);
-
-    if (leafletMapRef.current) {
-      leafletMapRef.current.flyTo([firstCity.lat, firstCity.lng], 12, { animate: true });
+    try {
+      localStorage.setItem('wg_nav_origin', originCityId);
+      localStorage.setItem('wg_nav_dest', destCityId);
+    } catch {
+      // ignore
     }
-
-    const startMsg = `ڈرائیور دوست لائیو نیویگیشن شروع ہو گئی ہے۔ ${originCity.nameUr} سے ${destCity.nameUr} تک کل فاصلہ ${routeMetrics.distanceKm} کلومیٹر ہے۔ محفوظ ڈرائیونگ کریں۔`;
-    speakUrduAlert(startMsg);
-
-    // Watch position if GPS is available
-    if (navigator.geolocation) {
-      try {
-        const watchId = navigator.geolocation.watchPosition(
-          (pos) => {
-            const gpsPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            setUserLocation(gpsPos);
-            setNavCurrentPos(gpsPos);
-            if (pos.coords.speed && pos.coords.speed > 0) {
-              setNavCurrentSpeed(Math.round(pos.coords.speed * 3.6));
-            }
-          },
-          () => {
-            // fallback to simulation
-          },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
-        );
-        watchPositionIdRef.current = watchId;
-      } catch {
-        // ignore
-      }
-    }
-
-    // Dynamic Simulation Step Progress along Route Waypoints
-    if (navIntervalRef.current) clearInterval(navIntervalRef.current);
-    let progress = 0;
-    navIntervalRef.current = setInterval(() => {
-      progress += 1;
-      if (progress > 100) {
-        progress = 100;
-        if (navIntervalRef.current) clearInterval(navIntervalRef.current);
-        speakUrduAlert(`مبارک ہو! آپ اپنی منزل ${destCity.nameUr} پہنچ چکے ہیں۔`);
-      }
-      setNavProgressPct(progress);
-
-      const remain = Math.max(0, Math.round(routeMetrics.distanceKm * (1 - progress / 100)));
-      setNavRemainingDistKm(remain);
-
-      // Interpolate position along route waypoints
-      if (routeCities.length >= 2) {
-        const totalSegments = routeCities.length - 1;
-        const currentSegmentIndex = Math.min(totalSegments - 1, Math.floor((progress / 100) * totalSegments));
-        setNavStepIndex(currentSegmentIndex);
-
-        const segmentProgress = ((progress / 100) * totalSegments) - currentSegmentIndex;
-        const p1 = routeCities[currentSegmentIndex];
-        const p2 = routeCities[currentSegmentIndex + 1];
-
-        const currentLat = p1.lat + (p2.lat - p1.lat) * segmentProgress;
-        const currentLng = p1.lng + (p2.lng - p1.lng) * segmentProgress;
-        const newPos = { lat: currentLat, lng: currentLng };
-        setNavCurrentPos(newPos);
-
-        if (leafletMapRef.current) {
-          leafletMapRef.current.panTo([currentLat, currentLng], { animate: true });
-        }
-      }
-    }, 3000);
+    onNavigate('navigation');
   };
 
   // Stop / Exit Navigation
@@ -1057,7 +980,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
     <div className={`flex-1 flex flex-col max-w-7xl mx-auto w-full p-3 sm:p-6 lg:p-8 gap-5 sm:gap-6 animate-in fade-in ${isUrdu ? 'text-right' : 'text-left'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
       
       {/* Top Header Banner */}
-      <header className="bg-white p-5 sm:p-7 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] flex flex-col md:flex-row md:items-center justify-between gap-5">
+      <header className="bg-white p-5 sm:p-7 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[#8b9d77]/15 text-[#5a5a40]">
@@ -1070,48 +993,30 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#4a4a35]">
-            {isUrdu ? 'ہائی وے میپ، موسم و لائیو نیویگیشن' : 'Highway Map, Weather & Navigation'}
+            {isUrdu ? 'ہائی وے میپ و روٹ گائیڈ' : 'Highway Route Map & Guide'}
           </h1>
           <p className="text-[#8e8e75] text-xs sm:text-sm mt-1 max-w-2xl">
             {isUrdu
-              ? 'شہر تلاش کریں، مکمل روٹ کا لائیو موسم دیکھیں اور ڈرائیونگ کے لیے لائیو نیویگیشن شروع کریں۔'
-              : 'Search cities, view real-time corridor weather updates, and launch turn-by-turn navigation.'}
+              ? 'شہر منتخب کریں، مکمل راستے کا موسم دیکھیں اور نیچے دیے گئے بٹن سے فل سکرین لائیو نیویگیشن شروع کریں۔'
+              : 'Pick cities, view corridor weather, and launch full-screen live turn-by-turn navigation.'}
           </p>
         </div>
 
-        {/* Action Button Group */}
-        <div className="flex items-center flex-wrap gap-2.5 shrink-0">
-          <button
-            type="button"
-            onClick={fetchAllCitiesWeather}
-            disabled={loadingWeather}
-            aria-label={isUrdu ? 'موسم اپڈیٹ کریں' : 'Refresh Weather'}
-            className="px-4 py-2.5 rounded-2xl bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35] text-xs font-bold font-serif transition-all flex items-center gap-2 cursor-pointer shadow-2xs active:scale-95"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loadingWeather ? 'animate-spin' : ''}`} />
-            <span>{loadingWeather ? (isUrdu ? 'اپڈیٹ ہو رہا ہے...' : 'Updating...') : (isUrdu ? 'موسم ریفریش' : 'Refresh Weather')}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleLocateMe}
-            disabled={locatingUser}
-            aria-label={isUrdu ? 'میری لوکیشن' : 'My Location'}
-            className="px-4 py-2.5 rounded-2xl bg-[#f0f0e4] hover:bg-[#2563eb] hover:text-white text-[#4a4a35] text-xs font-bold font-serif transition-all flex items-center gap-2 cursor-pointer shadow-2xs active:scale-95"
-          >
-            <Crosshair className={`w-3.5 h-3.5 ${locatingUser ? 'animate-spin text-blue-600' : ''}`} />
-            <span>{locatingUser ? (isUrdu ? 'تلاش جاری...' : 'Locating...') : (isUrdu ? 'میری لوکیشن' : 'My Location')}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleShareWeatherWhatsApp}
-            aria-label={isUrdu ? 'واٹس ایپ پر شیئر کریں' : 'Share on WhatsApp'}
-            className="px-4 py-2.5 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold font-serif transition-all flex items-center gap-2 cursor-pointer shadow-xs active:scale-95"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-            <span>{shareSuccess ? (isUrdu ? 'شیئر ہو گیا!' : 'Shared!') : (isUrdu ? 'واٹس ایپ شیئر' : 'Share Route')}</span>
-          </button>
+        {/* Selected Route Quick Glance Badge */}
+        <div className="bg-[#fdfbf7] p-3 rounded-2xl border border-[#ecece0] flex items-center gap-3 shrink-0">
+          <div className="text-center">
+            <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'منتخب روٹ' : 'Route'}</span>
+            <span className="font-serif font-bold text-xs text-[#4a4a35]">
+              {isUrdu ? `${originCity.nameUr} ➔ ${destCity.nameUr}` : `${originCity.nameEn} ➔ ${destCity.nameEn}`}
+            </span>
+          </div>
+          <div className="h-7 w-[1px] bg-[#ecece0]"></div>
+          <div className="text-center">
+            <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'کل فاصلہ' : 'Distance'}</span>
+            <span className="font-mono font-bold text-xs text-[#8b9d77]">
+              {routeMetrics.distanceKm} km
+            </span>
+          </div>
         </div>
       </header>
 
@@ -1604,37 +1509,79 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
           </div>
 
           {/* DEDICATED NAVIGATION ACTION BAR UNDER WEATHER DISPLAY */}
-          <div className="pt-4 border-t border-[#ecece0] flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div>
-              <h3 className="text-xs font-bold text-[#4a4a35]">
-                {isUrdu ? 'روٹ نیویگیشن اور ٹرن بائی ٹرن رہنمائی' : 'Route Navigation & Turn-by-Turn Guidance'}
-              </h3>
-              <p className="text-[11px] text-[#8e8e75]">
-                {isUrdu
-                  ? `${originCity.nameUr} سے ${destCity.nameUr} کے سفر کے لیے لائیو نیویگیشن چلائیں`
-                  : `Start live driving route and GPS navigation from ${originCity.nameEn} to ${destCity.nameEn}`}
-              </p>
+          <div className="pt-4 border-t border-[#ecece0] flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold font-serif text-[#4a4a35]">
+                  {isUrdu ? 'روٹ نیویگیشن اور ٹرن بائی ٹرن رہنمائی' : 'Route Navigation & Turn-by-Turn Guidance'}
+                </h3>
+                <p className="text-xs text-[#8e8e75] mt-0.5">
+                  {isUrdu
+                    ? `${originCity.nameUr} سے ${destCity.nameUr} کے سفر کے لیے فل سکرین لائیو نیویگیشن پیج کھولیں`
+                    : `Open dedicated full-screen live turn-by-turn driving page from ${originCity.nameEn} to ${destCity.nameEn}`}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={handleStartNavigation}
+                  className="flex-1 sm:flex-initial px-7 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-serif font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Play className="w-5 h-5 fill-white shrink-0" />
+                  <span>{isUrdu ? 'لائیو نیویگیشن شروع کریں' : 'Start Live Navigation'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleOpenGoogleMapsNav}
+                  title={isUrdu ? 'گوگل میپس میں نیویگیشن کھولیں' : 'Open in Google Maps'}
+                  className="px-4 py-3.5 rounded-2xl bg-[#1e3a68] hover:bg-[#162a4d] text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>{isUrdu ? 'گوگل میپس' : 'Google Maps'}</span>
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* THREE ESSENTIAL UTILITY BUTTONS BELOW NAVIGATION (WhatsApp Share, My Location, Refresh Weather) */}
+            <div className="pt-3 border-t border-dashed border-[#ecece0] grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              
+              {/* 1. WHATSAPP SHARE */}
               <button
                 type="button"
-                onClick={handleStartNavigation}
-                className="flex-1 sm:flex-initial px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-serif font-bold text-xs sm:text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                onClick={handleShareWeatherWhatsApp}
+                aria-label={isUrdu ? 'واٹس ایپ پر شیئر کریں' : 'Share on WhatsApp'}
+                className="w-full py-3 px-4 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold font-serif transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
               >
-                <Play className="w-4 h-4 fill-white shrink-0" />
-                <span>{isUrdu ? 'نیویگیشن شروع کریں' : 'Start Navigation'}</span>
+                <Share2 className="w-4 h-4 shrink-0" />
+                <span>{shareSuccess ? (isUrdu ? 'شیئر ہو گیا!' : 'Shared!') : (isUrdu ? 'واٹس ایپ شیئر' : 'WhatsApp Share')}</span>
               </button>
 
+              {/* 2. MY LOCATION */}
               <button
                 type="button"
-                onClick={handleOpenGoogleMapsNav}
-                title={isUrdu ? 'گوگل میپس میں نیویگیشن کھولیں' : 'Open in Google Maps'}
-                className="px-4 py-3 rounded-2xl bg-[#1e3a68] hover:bg-[#162a4d] text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                onClick={handleLocateMe}
+                disabled={locatingUser}
+                aria-label={isUrdu ? 'میری لوکیشن' : 'My Location'}
+                className="w-full py-3 px-4 rounded-2xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold font-serif transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95 disabled:opacity-75"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>{isUrdu ? 'گوگل میپس' : 'Google Maps'}</span>
+                <Crosshair className={`w-4 h-4 shrink-0 ${locatingUser ? 'animate-spin' : ''}`} />
+                <span>{locatingUser ? (isUrdu ? 'تلاش جاری...' : 'Locating...') : (isUrdu ? 'میری لوکیشن' : 'My Location')}</span>
               </button>
+
+              {/* 3. WEATHER REFRESH */}
+              <button
+                type="button"
+                onClick={fetchAllCitiesWeather}
+                disabled={loadingWeather}
+                aria-label={isUrdu ? 'موسم اپڈیٹ کریں' : 'Refresh Weather'}
+                className="w-full py-3 px-4 rounded-2xl bg-[#8b9d77] hover:bg-[#7a8c66] text-white text-xs font-bold font-serif transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95 disabled:opacity-75"
+              >
+                <RefreshCw className={`w-4 h-4 shrink-0 ${loadingWeather ? 'animate-spin' : ''}`} />
+                <span>{loadingWeather ? (isUrdu ? 'اپڈیٹ ہو رہا ہے...' : 'Updating...') : (isUrdu ? 'موسم ریفریش' : 'Refresh Weather')}</span>
+              </button>
+
             </div>
           </div>
 

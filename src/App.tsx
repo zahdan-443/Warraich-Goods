@@ -46,6 +46,8 @@ import { VerifyView } from './components/views/VerifyView';
 import { BiltyView } from './components/views/BiltyView';
 import { VehicleAccountView } from './components/views/VehicleAccountView';
 import { MapView } from './components/views/MapView';
+import { TollPlazaView } from './components/views/TollPlazaView';
+import { NavigationView } from './components/views/NavigationView';
 import { AuthModal } from './components/AuthModal';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
@@ -152,6 +154,11 @@ export default function App() {
         fuel: 'fuel',
         verify: 'verify',
         bilty: 'bilty',
+        toll: 'toll',
+        'toll-plaza': 'toll',
+        tollplaza: 'toll',
+        navigation: 'navigation',
+        nav: 'navigation',
         home: 'home',
       };
       const resolved = map[rawHash.toLowerCase()];
@@ -766,12 +773,34 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'toll' && (
+            <TollPlazaView
+              lang={lang}
+              onNavigate={handleNavigate}
+              onApplyToTrip={(amount, from, to) => {
+                // Pre-fill or notify when applied
+              }}
+            />
+          )}
+
           {activeTab === 'vehicleAccount' && (
             <VehicleAccountView
               lang={lang}
               vehicles={vehicles}
               onNavigate={handleNavigate}
               onSaveTrip={handleSaveTrip}
+            />
+          )}
+
+          {activeTab === 'navigation' && (
+            <NavigationView
+              lang={lang}
+              originCityId={localStorage.getItem('wg_nav_origin') || 'samundri'}
+              destCityId={localStorage.getItem('wg_nav_dest') || 'karachi'}
+              onNavigate={handleNavigate}
+              onOpenTollCalc={(from, to) => {
+                handleNavigate('toll');
+              }}
             />
           )}
         </React.Suspense>

@@ -11,7 +11,7 @@
    - Native Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v14';
+const CACHE_NAME = 'driver-dost-v15';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const STATIC_ASSETS = [
   './',

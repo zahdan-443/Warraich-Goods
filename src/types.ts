@@ -1,6 +1,6 @@
 export type Language = 'en' | 'ur';
 export type FuelType = 'diesel' | 'petrol' | 'cng';
-export type ActiveTab = 'home' | 'calculator' | 'vehicle' | 'drivers' | 'routes' | 'fuel' | 'verify' | 'bilty' | 'vehicleAccount' | 'map';
+export type ActiveTab = 'home' | 'calculator' | 'vehicle' | 'drivers' | 'routes' | 'fuel' | 'verify' | 'bilty' | 'vehicleAccount' | 'map' | 'toll' | 'navigation';
 export type CalcSubTab = 'calc' | 'history' | 'summary';
 
 export interface CustomExpense {

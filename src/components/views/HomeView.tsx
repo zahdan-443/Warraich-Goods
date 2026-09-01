@@ -507,7 +507,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Row 1, Button 3: Motorway Toll Tax Calculator */}
             <QuickActionButton
               href="#toll"
-              onClick={() => openModalWithHistory(setShowTollCalculatorModal)}
+              onClick={() => onNavigate('toll')}
               imgSrc={tollIconData}
               fallbackIcon={<Milestone className="w-7 h-7 text-[#8b9d77]" />}
               fullName={lang === 'ur' ? 'موٹروے ٹول ٹیکس' : 'Motorway Toll Tax'}
