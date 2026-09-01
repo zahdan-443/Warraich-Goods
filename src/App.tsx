@@ -28,8 +28,6 @@ import {
 } from './utils/storage';
 import { auth, onAuthStateChanged, logoutUser } from './utils/firebase';
 import { Header } from './components/Header';
-import { Navigation } from './components/Navigation';
-import { Footer } from './components/Footer';
 import { HomeView } from './components/views/HomeView';
 import { SplashScreen } from './components/SplashScreen';
 import { 
@@ -86,9 +84,9 @@ export default function App() {
       return [...MASTER_EMAILS];
     }
   });
-  const [role, setRole] = useState<UserRole>('driver');
-  const [offlineQueue, setOfflineQueue] = useState<OfflineAction[]>([]);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [role, setRole] = useState<UserRole>(() => getStoredRole());
+  const [offlineQueue, setOfflineQueue] = useState<OfflineAction[]>(() => getStoredOfflineQueue());
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => getStoredNotifications());
   const [isOffline, setIsOffline] = useState(false);
   const [showTopMenu, setShowTopMenu] = useState(false);
 
@@ -107,12 +105,24 @@ export default function App() {
   const isBiltyAuthorized = Boolean(isMaster || isOwner || isAllowedUID || isAllowedEmail);
 
   // Stored state
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [routes, setRoutes] = useState<RoutePreset[]>([]);
-  const [fuelLogs, setFuelLogs] = useState<FuelLogItem[]>([]);
-  const [bilties, setBilties] = useState<BiltyRecord[]>([]);
+  const [trips, setTrips] = useState<Trip[]>(() => getStoredTrips());
+  const [vehicles, setVehicles] = useState<Vehicle[]>(() => getStoredVehicles());
+  const [drivers, setDrivers] = useState<Driver[]>(() => getStoredDrivers());
+  const [routes, setRoutes] = useState<RoutePreset[]>(() => getStoredRoutes());
+  const [fuelLogs, setFuelLogs] = useState<FuelLogItem[]>(() => getStoredFuelLog());
+  const [bilties, setBilties] = useState<BiltyRecord[]>(() => getStoredBilties());
+
+  // Initial load from storage on mount
+  useEffect(() => {
+    setOfflineQueue(getStoredOfflineQueue());
+    setNotifications(getStoredNotifications());
+    setTrips(getStoredTrips());
+    setVehicles(getStoredVehicles());
+    setDrivers(getStoredDrivers());
+    setRoutes(getStoredRoutes());
+    setFuelLogs(getStoredFuelLog());
+    setBilties(getStoredBilties());
+  }, []);
 
   // Selected mileage passed from Vehicles to Trip Cost
   const [selectedMileage, setSelectedMileage] = useState<number | undefined>(undefined);
@@ -651,15 +661,6 @@ export default function App() {
         />
       )}
 
-      {activeTab !== 'home' && activeTab !== 'calculator' && (
-        <Navigation
-          activeTab={activeTab}
-          onSelectTab={handleNavigate}
-          lang={lang}
-          isBiltyAuthorized={isBiltyAuthorized}
-        />
-      )}
-
       <main className="flex-1 flex flex-col w-full">
         <React.Suspense
           fallback={
@@ -769,14 +770,6 @@ export default function App() {
           )}
         </React.Suspense>
       </main>
-
-      {activeTab !== 'calculator' && (
-        <Footer
-          lang={lang}
-          onNavigate={handleNavigate}
-          isBiltyAuthorized={isBiltyAuthorized}
-        />
-      )}
 
       <React.Suspense fallback={null}>
         <AuthModal

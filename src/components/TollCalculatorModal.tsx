@@ -55,8 +55,8 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
   
   // Route view states
   const [viewState, setViewState] = useState<'input' | 'result'>('input');
-  const [fromCity, setFromCity] = useState<TollCity>('Lahore');
-  const [toCity, setToCity] = useState<TollCity>('Rawalpindi');
+  const [fromCity, setFromCity] = useState<TollCity>('Samundri');
+  const [toCity, setToCity] = useState<TollCity>('Lahore');
   const [vehicleClass, setVehicleClass] = useState<TollVehicleClass>('truck');
   const [hasMtag, setHasMtag] = useState<boolean>(true);
   const [rates, setRates] = useState<TollRatesConfig>(getCachedTollRates());

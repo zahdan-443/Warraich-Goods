@@ -34,9 +34,9 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
   // Input States (Strict 1-box per line sequence)
-  const [originCity, setOriginCity] = useState<string>('لاہور (Lahore)');
-  const [destCity, setDestCity] = useState<string>('فیصل آباد (Faisalabad)');
-  const [distance, setDistance] = useState<string>('180');
+  const [originCity, setOriginCity] = useState<string>('سمندری (Samundri)');
+  const [destCity, setDestCity] = useState<string>('لاہور (Lahore)');
+  const [distance, setDistance] = useState<string>('195');
   const [fuelPrice, setFuelPrice] = useState<string>('311.47');
   const [mileage, setMileage] = useState<string>(initialMileage ? initialMileage.toString() : '7');
   const [combinedExpenses, setCombinedExpenses] = useState<string>('3200'); // Driver + Toll + Other
