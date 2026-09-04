@@ -11,7 +11,7 @@
    - Native Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v16';
+const CACHE_NAME = 'driver-dost-v17';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const STATIC_ASSETS = [
   './',
@@ -19,6 +19,8 @@ const STATIC_ASSETS = [
   './manifest.json',
   './manifest.webmanifest',
   './logo.png',
+  './bilty-official-icon.png',
+  './bilty-official-icon.jpg',
   './app-icon.png',
   './icon-192.png',
   './icon-512.png',
