@@ -124,11 +124,6 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
     setToCity(temp);
   };
 
-  const handleQuickSelectCorridor = (from: TollCity, to: TollCity) => {
-    setFromCity(from);
-    setToCity(to);
-  };
-
   const handleCopy = () => {
     if (!result) return;
     const fromName = CITIES_LIST.find(c => c.id === fromCity)?.[isUrdu ? 'nameUr' : 'nameEn'] || fromCity;
@@ -390,43 +385,6 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
                         </select>
                       </div>
 
-                    </div>
-
-                    {/* Quick Corridor Selection Pills */}
-                    <div className="pt-1.5 border-t border-[#ecece0]">
-                      <span className="text-[10px] font-bold text-[#8e8e75] block mb-1">
-                        {isUrdu ? '⚡ اہم روٹ کوریڈورز (فوری انتخاب):' : '⚡ Popular Corridors:'}
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleQuickSelectCorridor('Samundri', 'Lahore')}
-                          className="px-2 py-0.5 rounded-lg bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] text-[10px] font-bold text-[#5a5a40] transition-all cursor-pointer shadow-2xs"
-                        >
-                          {isUrdu ? 'سمندری ➔ لاہور' : 'Samundri ➔ Lahore'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickSelectCorridor('Samundri', 'Karachi')}
-                          className="px-2 py-0.5 rounded-lg bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] text-[10px] font-bold text-[#5a5a40] transition-all cursor-pointer shadow-2xs"
-                        >
-                          {isUrdu ? 'سمندری ➔ کراچی' : 'Samundri ➔ Karachi'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickSelectCorridor('Lahore', 'Rawalpindi')}
-                          className="px-2 py-0.5 rounded-lg bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] text-[10px] font-bold text-[#5a5a40] transition-all cursor-pointer shadow-2xs"
-                        >
-                          {isUrdu ? 'لاہور ➔ اسلام آباد (M-2)' : 'Lahore ➔ Islamabad (M-2)'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickSelectCorridor('Lahore', 'Multan')}
-                          className="px-2 py-0.5 rounded-lg bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] text-[10px] font-bold text-[#5a5a40] transition-all cursor-pointer shadow-2xs"
-                        >
-                          {isUrdu ? 'لاہور ➔ ملتان (M-3)' : 'Lahore ➔ Multan (M-3)'}
-                        </button>
-                      </div>
                     </div>
                   </div>
 

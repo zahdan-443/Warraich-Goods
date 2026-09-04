@@ -119,11 +119,6 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
     setToCity(temp);
   };
 
-  const handleQuickSelectCorridor = (from: TollCity, to: TollCity) => {
-    setFromCity(from);
-    setToCity(to);
-  };
-
   const handleReset = () => {
     setFromCity('Samundri');
     setToCity('Lahore');
@@ -232,11 +227,11 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-40 bg-[#fdfbf7] flex flex-col justify-between p-3 sm:p-4 max-w-xl mx-auto w-full font-sans select-none overflow-hidden"
+      className="flex-1 p-3 sm:p-5 max-w-2xl mx-auto w-full font-sans space-y-3 pb-16 animate-in fade-in select-none"
       dir={isUrdu ? 'rtl' : 'ltr'}
     >
-      {/* Top Header - Matching TripCostView Style & Placement */}
-      <div className="max-w-xl mx-auto w-full flex items-center justify-between pb-1 shrink-0">
+      {/* Top Header - Matching VehicleAccountView & MapView Style & Placement */}
+      <div className="w-full flex items-center justify-between pb-2 shrink-0 border-b border-[#ecece0]">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
             <PublicImage
@@ -252,22 +247,13 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
             <h1 className="text-sm sm:text-base font-bold text-[#4a4a35] leading-tight">
               {isUrdu ? 'موٹروے ٹول ٹیکس' : 'Motorway Toll Tax'}
             </h1>
-            <p className="text-[10px] text-[#8e8e75]">
-              {isUrdu ? 'تمام موٹرویز کے ایم ٹیگ و کیش ریٹس' : 'M-Tag & Cash Rates across Motorways'}
-            </p>
           </div>
         </div>
 
         {onNavigate && (
           <button
             type="button"
-            onClick={() => {
-              if (activeTab === 'route' && viewState === 'result') {
-                setViewState('input');
-              } else {
-                onNavigate('home');
-              }
-            }}
+            onClick={() => onNavigate('home')}
             className="p-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
             title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
           >
@@ -278,7 +264,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
       </div>
 
       {/* Mode Switcher Tabs */}
-      <div className="pt-2 pb-1 shrink-0">
+      <div className="pt-1 pb-1 shrink-0">
         <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#ebebe0] rounded-xl">
           <button
             type="button"
@@ -311,8 +297,8 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
         </div>
       </div>
 
-      {/* Scrollable Body Content - Fit-to-Screen */}
-      <div className="flex-1 overflow-y-auto pr-0.5 space-y-2 py-1">
+      {/* Body Content */}
+      <div className="space-y-3 py-1">
         
         {/* TAB 1: ROUTE CALCULATOR */}
         {activeTab === 'route' && (
@@ -372,43 +358,6 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
                       </select>
                     </div>
 
-                  </div>
-
-                  {/* Quick Corridor Selection Pills */}
-                  <div className="pt-1.5 border-t border-[#ecece0]">
-                    <span className="text-[10px] font-bold text-[#8e8e75] block mb-1">
-                      {isUrdu ? '⚡ اہم روٹ کوریڈورز (فوری انتخاب):' : '⚡ Popular Corridors:'}
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleQuickSelectCorridor('Samundri', 'Lahore')}
-                        className="px-2 py-1 rounded-lg bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] text-[10px] font-bold text-[#5a5a40] transition-all cursor-pointer shadow-2xs"
-                      >
-                        {isUrdu ? 'سمندری ➔ لاہور' : 'Samundri ➔ Lahore'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleQuickSelectCorridor('Samundri', 'Karachi')}
-                        className="px-2 py-1 rounded-lg bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] text-[10px] font-bold text-[#5a5a40] transition-all cursor-pointer shadow-2xs"
-                      >
-                        {isUrdu ? 'سمندری ➔ کراچی' : 'Samundri ➔ Karachi'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleQuickSelectCorridor('Lahore', 'Rawalpindi')}
-                        className="px-2 py-1 rounded-lg bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] text-[10px] font-bold text-[#5a5a40] transition-all cursor-pointer shadow-2xs"
-                      >
-                        {isUrdu ? 'لاہور ➔ اسلام آباد (M-2)' : 'Lahore ➔ Islamabad (M-2)'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleQuickSelectCorridor('Lahore', 'Multan')}
-                        className="px-2 py-1 rounded-lg bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] text-[10px] font-bold text-[#5a5a40] transition-all cursor-pointer shadow-2xs"
-                      >
-                        {isUrdu ? 'لاہور ➔ ملتان (M-3)' : 'Lahore ➔ Multan (M-3)'}
-                      </button>
-                    </div>
                   </div>
                 </div>
 
