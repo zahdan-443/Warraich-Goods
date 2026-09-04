@@ -52,16 +52,18 @@ export async function getLogoBase64(): Promise<string> {
   const cleanBase = base.endsWith('/') ? base : base + '/';
 
   const candidates = [
+    `${cleanBase}bilty-official-icon.png`,
+    './bilty-official-icon.png',
+    '/bilty-official-icon.png',
+    `${origin}/bilty-official-icon.png`,
+    `${cleanBase}bilty-official-icon.jpg`,
+    './bilty-official-icon.jpg',
     `${cleanBase}logo.png`,
     './logo.png',
     '/logo.png',
     `${origin}/logo.png`,
-    `${cleanBase}app-icon.png`,
-    './app-icon.png',
-    '/app-icon.png',
-    `${origin}/app-icon.png`,
-    `${cleanBase}icon-192.png`,
-    './icon-192.png'
+    `${cleanBase}bilty-icon.png`,
+    './bilty-icon.png'
   ];
 
   for (const url of candidates) {

@@ -602,9 +602,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           {/* Bilty Form (ONLY visible when authenticated owner) */}
           {isBiltyAuthorized && (
-            <div className="pt-2 border-t border-[#ecece0] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Crown className="w-4 h-4 text-amber-500" />
+            <div className="pt-2.5 border-t border-[#ecece0] flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <img
+                  src="./bilty-official-icon.png"
+                  alt="Official Bilty Seal"
+                  className="w-6 h-6 rounded-lg object-contain border border-amber-400/40 p-0.5 bg-white shadow-2xs"
+                />
                 <span className="text-xs font-bold text-[#4a4a35]">
                   {lang === 'ur' ? 'آفیشل بلٹی جنریٹر (آنر پینل):' : 'Official Bilty Generator (Owner):'}
                 </span>
@@ -612,7 +616,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('bilty')}
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-[#b58b28] hover:from-amber-600 hover:to-[#96721f] text-white font-serif font-bold text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-[#b58b28] hover:from-amber-600 hover:to-[#96721f] text-white font-serif font-bold text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
               >
                 <Receipt className="w-3.5 h-3.5" />
                 <span>{lang === 'ur' ? 'بلٹی فارم کھولیں' : 'Open Bilty Form'}</span>

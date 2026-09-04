@@ -16,7 +16,17 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, onSelectTab, 
     { id: 'home', label: t.home, icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'calculator', label: t.calculator, icon: <Calculator className="w-4 h-4" /> },
     { id: 'map', label: t.map || (lang === 'ur' ? 'نقشہ' : 'Map'), icon: <MapIcon className="w-4 h-4" /> },
-    { id: 'bilty', label: t.bilty, icon: <Receipt className="w-4 h-4" /> },
+    { 
+      id: 'bilty', 
+      label: t.bilty, 
+      icon: (
+        <img 
+          src="./bilty-official-icon.png" 
+          alt="" 
+          className="w-4 h-4 object-contain rounded-xs"
+        />
+      ) 
+    },
     { id: 'verify', label: t.verify, icon: <ShieldCheck className="w-4 h-4" /> },
     { id: 'vehicle', label: t.vehicle, icon: <Truck className="w-4 h-4" /> },
     { id: 'drivers', label: t.drivers, icon: <Users className="w-4 h-4" /> },

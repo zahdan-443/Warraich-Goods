@@ -9,6 +9,7 @@ import { PrintableBilty } from '../PrintableBilty';
 import { exportContactsCSV, getContactList, allocateNextBiltyNumber } from '../../utils/storage';
 import { validateBiltyFreight } from '../../utils/calculator';
 import { generatePdfFromElement, shareBiltyPdfOrWhatsApp } from '../../utils/pdfHelper';
+import { PublicImage } from '../PublicImage';
 
 const getQrDataUrl = async (record: BiltyRecord): Promise<string> => {
   const currentOrigin = typeof window !== 'undefined' && window.location && window.location.origin
@@ -319,24 +320,34 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
     <div className="flex-1 p-3 sm:p-6 md:p-10 max-w-5xl mx-auto w-full space-y-6 sm:space-y-8">
       <div className="bg-white p-4 sm:p-8 md:p-10 rounded-2xl sm:rounded-[40px] shadow-sm border border-[#ecece0] space-y-6 sm:space-y-8">
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 sm:pb-6 border-b border-[#ecece0]">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-[#4a4a35]">
-                {t.title}
-              </h1>
-              <button
-                type="button"
-                onClick={() => exportContactsCSV()}
-                title="Download Customer & Driver Contacts CSV"
-                className="px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-100 transition-all cursor-pointer shadow-2xs"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{lang === 'ur' ? 'کسٹمر لسٹ (CSV)' : 'Export CSV'}</span>
-              </button>
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white border-2 border-[#0f2942]/20 p-1 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+              <PublicImage
+                fileName="bilty-official-icon.png"
+                src="./bilty-official-icon.png"
+                alt="Official Bilty Seal"
+                className="w-full h-full object-contain rounded-xl"
+              />
             </div>
-            <p className="text-xs sm:text-sm text-[#8e8e75] font-sans mt-1">
-              {t.subtitle}
-            </p>
+            <div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-[#4a4a35]">
+                  {t.title}
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => exportContactsCSV()}
+                  title="Download Customer & Driver Contacts CSV"
+                  className="px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-100 transition-all cursor-pointer shadow-2xs"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{lang === 'ur' ? 'کسٹمر لسٹ (CSV)' : 'Export CSV'}</span>
+                </button>
+              </div>
+              <p className="text-xs sm:text-sm text-[#8e8e75] font-sans mt-0.5">
+                {t.subtitle}
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 self-start sm:self-auto">

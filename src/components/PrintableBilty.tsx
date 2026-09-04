@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { BiltyRecord } from '../types';
 import { getCachedCompanyProfile } from '../utils/storage';
-import { logoIconData } from '../assets/dashboardIcons';
+import { logoIconData, biltyOfficialIconData } from '../assets/dashboardIcons';
 import { getLogoBase64 } from '../utils/pdfHelper';
 import { AlHadiLogo } from './AlHadiLogo';
 
@@ -170,41 +170,66 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
         }
       `}</style>
 
+      {/* Subtle Official Bilty Background Security Watermark */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '52%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          opacity: 0.04,
+          pointerEvents: 'none',
+          zIndex: 0,
+          width: '360px',
+          height: '360px'
+        }}
+      >
+        <img
+          src="./bilty-official-icon.png"
+          alt=""
+          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+        />
+      </div>
+
       {/* 1. TOP HEADER (BRANDING & CONSIGNMENT NOTE CARD) */}
-      <div style={{ paddingBottom: '10px', marginBottom: '8px', borderBottom: '2px solid #0f2942' }}>
+      <div style={{ paddingBottom: '10px', marginBottom: '8px', borderBottom: '2px solid #0f2942', position: 'relative', zIndex: 1 }}>
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch', justifyContent: 'space-between', gap: '12px', textAlign: 'right' }}>
           
           {/* Left / Main Branding Block */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 0%' }}>
             {!logoFailed ? (
               <img
-                src={resolvedLogo || logoIconData}
-                alt="Warraich Goods Transport Company Official Logo"
-                width={64}
-                height={64}
+                src={resolvedLogo || biltyOfficialIconData || './bilty-official-icon.png'}
+                alt="Warraich Goods Transport Company Official Bilty Seal"
+                width={74}
+                height={74}
                 onError={(e) => {
                   const target = e.currentTarget;
-                  if (!target.dataset.triedBackup) {
-                    target.dataset.triedBackup = '1';
-                    target.src = './logo.png';
-                  } else if (!target.dataset.triedIcon) {
-                    target.dataset.triedIcon = '1';
-                    target.src = './app-icon.png';
+                  if (!target.dataset.triedOfficialPng) {
+                    target.dataset.triedOfficialPng = '1';
+                    target.src = './bilty-official-icon.png';
+                  } else if (!target.dataset.triedOfficialJpg) {
+                    target.dataset.triedOfficialJpg = '1';
+                    target.src = './bilty-official-icon.jpg';
+                  } else if (!target.dataset.triedBilty) {
+                    target.dataset.triedBilty = '1';
+                    target.src = './bilty-icon.png';
                   } else {
                     setLogoFailed(true);
                   }
                 }}
                 style={{
-                  width: '68px',
-                  height: '68px',
-                  minWidth: '68px',
-                  minHeight: '68px',
-                  maxWidth: '68px',
-                  maxHeight: '68px',
+                  width: '74px',
+                  height: '74px',
+                  minWidth: '74px',
+                  minHeight: '74px',
+                  maxWidth: '74px',
+                  maxHeight: '74px',
                   borderRadius: '50%',
                   padding: '2px',
                   backgroundColor: '#ffffff',
-                  border: '2px solid #8b9d77',
+                  border: '2.5px solid #0f2942',
+                  boxShadow: '0 2px 8px rgba(15, 41, 66, 0.18)',
                   objectFit: 'contain',
                   flexShrink: 0
                 }}
@@ -212,14 +237,14 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
             ) : (
               <div
                 style={{
-                  width: '68px',
-                  height: '68px',
-                  minWidth: '68px',
-                  minHeight: '68px',
+                  width: '74px',
+                  height: '74px',
+                  minWidth: '74px',
+                  minHeight: '74px',
                   borderRadius: '50%',
                   padding: '4px',
                   backgroundColor: '#ffffff',
-                  border: '2px solid #8b9d77',
+                  border: '2.5px solid #0f2942',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -230,14 +255,14 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'right' }}>
-              {/* Urdu Big Title */}
+              {/* Urdu Big Title with Authentic Nastaliq Typography */}
               <h1
                 style={{
-                  fontFamily: "'Noto Sans Arabic', 'Noto Nastaliq Urdu', Arial, sans-serif",
-                  fontSize: '22px',
-                  fontWeight: 900,
-                  letterSpacing: '-0.02em',
-                  lineHeight: '1.2',
+                  fontFamily: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Typesetting', 'Noto Sans Arabic', serif",
+                  fontSize: '25px',
+                  fontWeight: 700,
+                  letterSpacing: '0',
+                  lineHeight: '1.7',
                   color: '#0f2942',
                   margin: '0 0 2px 0',
                   padding: '0'
@@ -247,29 +272,29 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
               </h1>
 
               {/* English Subtitle */}
-              <div style={{ fontSize: '11.5px', fontWeight: 800, letterSpacing: '0.05em', color: '#334155', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', Arial, sans-serif" }}>
+              <div style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '0.08em', color: '#1e293b', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', Arial, sans-serif" }}>
                 {company.nameEn || 'WARRAICH GOODS TRANSPORT CO.'}
               </div>
 
               {/* Tagline / Sub-description */}
               <p
                 style={{
-                  fontSize: '10px',
-                  fontWeight: 700,
+                  fontSize: '10.5px',
+                  fontWeight: 600,
                   color: '#475569',
-                  marginTop: '2px',
+                  marginTop: '1px',
                   marginBottom: '0',
-                  fontFamily: "'Noto Sans Arabic', Arial, sans-serif"
+                  fontFamily: "'Noto Sans Arabic', 'Plus Jakarta Sans', Arial, sans-serif"
                 }}
               >
                 {company.taglineUr || 'ملک بھر میں مال برداری و لاجسٹکس سروس | آل پاکستان روڈ فریٹ'}
               </p>
 
               {/* Head Office & Phone Helpline */}
-              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '4px', fontSize: '10px', fontWeight: 700, color: '#1e293b' }}>
+              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '3px', fontSize: '10.5px', fontWeight: 600, color: '#1e293b', fontFamily: "'Noto Sans Arabic', Arial, sans-serif" }}>
                 <span>📍 <strong>ہیڈ آفس:</strong> {company.headOfficeUr || 'سمندری، فیصل آباد'}</span>
                 <span style={{ color: '#cbd5e1' }}>|</span>
-                <span>📞 <strong>ہیلپ لائن:</strong> <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', display: 'inline-block' }}>0300-5370443, 0339-5370443</span></span>
+                <span>📞 <strong>ہیلپ لائن:</strong> <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', display: 'inline-block', fontWeight: 700 }}>0300-5370443, 0339-5370443</span></span>
               </div>
             </div>
           </div>
@@ -296,16 +321,16 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
                 textAlign: 'center'
               }}
             >
-              <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', Arial, sans-serif" }}>
+              <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', Arial, sans-serif" }}>
                 CONSIGNMENT NOTE / BILTY
               </div>
-              <div style={{ fontSize: '10.5px', fontWeight: 800, fontFamily: "'Noto Sans Arabic', Arial, sans-serif" }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, fontFamily: "'Noto Nastaliq Urdu', 'Noto Sans Arabic', Arial, sans-serif", marginTop: '2px' }}>
                 با ضابطہ فریٹ بلٹی رسید
               </div>
             </div>
 
             {/* Meta Table Details */}
-            <div style={{ padding: '6px 8px', fontSize: '11px', fontWeight: 700, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ padding: '6px 8px', fontSize: '11px', fontWeight: 700, display: 'flex', flexDirection: 'column', gap: '4px', fontFamily: "'Noto Sans Arabic', 'Plus Jakarta Sans', sans-serif" }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px' }}>
                 <span style={{ color: '#64748b', fontWeight: 600 }}>بلٹی نمبر (Bilty No):</span>
                 <span style={{ fontWeight: 900, fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', direction: 'ltr', color: '#0f172a' }}>{record.biltyNo}</span>
@@ -621,9 +646,9 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
               <span style={{ fontSize: '9px', fontWeight: 700, color: '#be123c', backgroundColor: '#ffe4e6', padding: '1px 6px', borderRadius: '3px' }}>اہم ہدایات</span>
             </div>
 
-            <ol style={{ paddingRight: '14px', margin: '0', display: 'flex', flexDirection: 'column', gap: '2px', fontWeight: 600, fontSize: '9.5px', lineHeight: '1.25', textAlign: 'justify', color: '#1e293b' }}>
+            <ol style={{ paddingRight: '14px', margin: '0', display: 'flex', flexDirection: 'column', gap: '2.5px', fontFamily: "'Noto Sans Arabic', Arial, sans-serif", fontWeight: 600, fontSize: '9.5px', lineHeight: '1.32', textAlign: 'justify', color: '#1e293b' }}>
               {termsList.map((term, idx) => (
-                <li key={idx} style={{ lineHeight: '1.25' }}>{term}</li>
+                <li key={idx} style={{ lineHeight: '1.32' }}>{term}</li>
               ))}
             </ol>
           </div>
