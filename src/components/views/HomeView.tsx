@@ -479,10 +479,22 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         )}
 
-        {/* First Section: Grid of Operational & Portal Buttons */}
-        <div className="bg-white p-4 sm:p-7 rounded-[36px] shadow-sm border border-[#ecece0]">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 sm:gap-4">
-            {/* Row 1, Button 1: Trip Calculator */}
+        {/* SECTION 1: Primary Transport, Route & Trip Calculation Tools (4 Core Buttons) */}
+        <div className="bg-white p-4 sm:p-6 md:p-7 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-[#ecece0]">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#8b9d77] animate-pulse"></span>
+              <h2 className="font-serif font-bold text-sm sm:text-base text-[#4a4a35]">
+                {lang === 'ur' ? '🚛 ٹرانسپورٹ روٹ و حساب ٹولز' : '🚛 Transport, Route & Trip Tools'}
+              </h2>
+            </div>
+            <span className="text-[10px] font-bold text-[#8b9d77] bg-[#8b9d77]/10 px-2 py-0.5 rounded-full border border-[#8b9d77]/20">
+              {lang === 'ur' ? '4 اہم ٹولز' : '4 Core Tools'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-3.5">
+            {/* 1. Trip Expense Calculator */}
             <QuickActionButton
               href="#calculator"
               onClick={() => onNavigate('calculator')}
@@ -493,7 +505,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               highlight={true}
             />
 
-            {/* Row 1, Button 2: Vehicle Account (گاڑی کا حساب) */}
+            {/* 2. Vehicle Account / Ledger */}
             <QuickActionButton
               href="#vehicleAccount"
               onClick={() => onNavigate('vehicleAccount')}
@@ -504,7 +516,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               highlight={true}
             />
 
-            {/* Row 1, Button 3: Motorway Toll Tax Calculator */}
+            {/* 3. Motorway Toll Tax Calculator */}
             <QuickActionButton
               href="#toll"
               onClick={() => onNavigate('toll')}
@@ -515,7 +527,35 @@ export const HomeView: React.FC<HomeViewProps> = ({
               highlight={true}
             />
 
-            {/* Row 2, Button 1: Vehicles Verification */}
+            {/* 4. Map & Route Weather */}
+            <QuickActionButton
+              href="#map"
+              onClick={() => onNavigate('map')}
+              imgSrc={mapIconData}
+              fallbackIcon={<MapPin className="w-7 h-7 text-[#8b9d77]" />}
+              fullName={lang === 'ur' ? 'نقشہ و روٹ موسم' : 'Map & Route Weather'}
+              subtitle={lang === 'ur' ? 'لائیو موٹروے میپ، دھند و موسم' : 'Highway map & live weather'}
+              highlight={true}
+            />
+          </div>
+        </div>
+
+        {/* SECTION 2: Official Portals, Verifications & Quick Ops (4 Buttons) */}
+        <div className="bg-white p-4 sm:p-6 md:p-7 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-[#ecece0]">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#5a5a40]"></span>
+              <h2 className="font-serif font-bold text-sm sm:text-base text-[#4a4a35]">
+                {lang === 'ur' ? '🏛️ سرکاری ریکارڈ، تصدیقات و مزید سروسز' : '🏛️ Govt Portals, Checks & Quick Ops'}
+              </h2>
+            </div>
+            <span className="text-[10px] font-bold text-[#5a5a40] bg-[#ecece0] px-2 py-0.5 rounded-full border border-[#d8d8c0]">
+              {lang === 'ur' ? 'آن لائن ریکارڈ' : 'Online Portals'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-3.5">
+            {/* 5. Vehicles Verification */}
             <QuickActionButton
               href="https://mtmis.excise.punjab.gov.pk/"
               external={true}
@@ -526,7 +566,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               subtitle={lang === 'ur' ? 'MTMIS پنجاب و ایکسائز ریکارڈ' : 'MTMIS Punjab & Excise portal'}
             />
 
-            {/* Row 2, Button 2: License Verification */}
+            {/* 6. License Verification */}
             <QuickActionButton
               href="https://dlims.punjab.gov.pk/verify"
               external={true}
@@ -537,7 +577,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               subtitle={lang === 'ur' ? 'DLIMS پنجاب و موٹروے پولیس' : 'DLIMS Punjab Highway checks'}
             />
 
-            {/* Row 2, Button 3: E-Challan Check */}
+            {/* 7. E-Challan Check */}
             <QuickActionButton
               href="https://echallan.psca.gop.pk/"
               external={true}
@@ -548,31 +588,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               subtitle={lang === 'ur' ? 'PSCA سیف سٹی چالان ریکارڈ' : 'PSCA Safe City traffic records'}
             />
 
-            {/* Row 3, Button 1: Bilty Form & Generator (ONLY visible when authorized) */}
-            {isBiltyAuthorized && (
-              <QuickActionButton
-                href="#bilty"
-                onClick={() => onNavigate('bilty')}
-                imgSrc={biltyIconData}
-                fallbackIcon={<Receipt className="w-7 h-7 text-[#8b9d77]" />}
-                fullName={lang === 'ur' ? 'بلٹی فارم اور پرنٹ' : 'Bilty Generator'}
-                subtitle={lang === 'ur' ? 'آفیشل وڑائچ گڈز بلٹی' : 'Official consignment receipt'}
-                highlight={true}
-              />
-            )}
-
-            {/* Row 3, Button 2: Map & Route Weather */}
-            <QuickActionButton
-              href="#map"
-              onClick={() => onNavigate('map')}
-              imgSrc={mapIconData}
-              fallbackIcon={<MapPin className="w-7 h-7 text-[#8b9d77]" />}
-              fullName={lang === 'ur' ? 'نقشہ و روٹ موسم' : 'Map & Route Weather'}
-              subtitle={lang === 'ur' ? 'لائیو موٹروے میپ، دھند و موسم' : 'Highway map & live weather'}
-              highlight={true}
-            />
-
-            {/* Row 3, Button 3 (End Button): Mazeed Sahulatain / Quick Operations */}
+            {/* 8. End Button: Mazeed Sahulatain / Quick Operations */}
             <QuickActionButton
               href="#quickops"
               onClick={() => openModalWithHistory(setShowQuickOpsModal)}
@@ -583,6 +599,26 @@ export const HomeView: React.FC<HomeViewProps> = ({
               highlight={true}
             />
           </div>
+
+          {/* Bilty Form (ONLY visible when authenticated owner) */}
+          {isBiltyAuthorized && (
+            <div className="pt-2 border-t border-[#ecece0] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Crown className="w-4 h-4 text-amber-500" />
+                <span className="text-xs font-bold text-[#4a4a35]">
+                  {lang === 'ur' ? 'آفیشل بلٹی جنریٹر (آنر پینل):' : 'Official Bilty Generator (Owner):'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigate('bilty')}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-[#b58b28] hover:from-amber-600 hover:to-[#96721f] text-white font-serif font-bold text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <Receipt className="w-3.5 h-3.5" />
+                <span>{lang === 'ur' ? 'بلٹی فارم کھولیں' : 'Open Bilty Form'}</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Live Fuel Prices Monitor Card */}

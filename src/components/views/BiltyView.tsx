@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BiltyRecord, ContactItem, DICTIONARY, Language } from '../../types';
-import { Receipt, Search, Download, FileText, MapPin, Share2, Phone, FileSpreadsheet, Printer, Loader2 } from 'lucide-react';
+import { Receipt, Search, Download, FileText, MapPin, Share2, Phone, FileSpreadsheet, Printer, Loader2, ArrowLeft } from 'lucide-react';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import { VoiceInputButton } from '../VoiceInputButton';
@@ -65,9 +65,11 @@ interface BiltyViewProps {
   lang: Language;
   bilties: BiltyRecord[];
   onAddBilty: (record: Omit<BiltyRecord, 'id'>) => void;
+  onNavigate?: (tab: string) => void;
 }
 
-export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty }) => {
+export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty, onNavigate }) => {
+  const isUrdu = lang === 'ur';
   const t = DICTIONARY[lang].bilty;
   const bu = DICTIONARY.ur.bilty; // Urdu dictionary for Bilty document content
 
@@ -337,25 +339,39 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty 
             </p>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 bg-[#fdfbf7] p-1.5 rounded-full border border-[#ecece0] self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setSubTab('create')}
-              className={`px-4 sm:px-5 py-2.5 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center ${
-                subTab === 'create' ? 'bg-[#5a5a40] text-white shadow-xs' : 'text-[#8e8e75] hover:text-[#4a4a35]'
-              }`}
-            >
-              {t.createTab}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSubTab('search')}
-              className={`px-4 sm:px-5 py-2.5 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center ${
-                subTab === 'search' ? 'bg-[#5a5a40] text-white shadow-xs' : 'text-[#8e8e75] hover:text-[#4a4a35]'
-              }`}
-            >
-              {t.searchTab}
-            </button>
+          <div className="flex items-center gap-3 self-start sm:self-auto">
+            {onNavigate && (
+              <button
+                type="button"
+                onClick={() => onNavigate('home')}
+                className="p-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
+              >
+                <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
+                <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
+              </button>
+            )}
+
+            <div className="flex items-center gap-1.5 sm:gap-2 bg-[#fdfbf7] p-1.5 rounded-full border border-[#ecece0]">
+              <button
+                type="button"
+                onClick={() => setSubTab('create')}
+                className={`px-4 sm:px-5 py-2.5 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center ${
+                  subTab === 'create' ? 'bg-[#5a5a40] text-white shadow-xs' : 'text-[#8e8e75] hover:text-[#4a4a35]'
+                }`}
+              >
+                {t.createTab}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubTab('search')}
+                className={`px-4 sm:px-5 py-2.5 min-h-[44px] rounded-full text-xs font-bold uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center ${
+                  subTab === 'search' ? 'bg-[#5a5a40] text-white shadow-xs' : 'text-[#8e8e75] hover:text-[#4a4a35]'
+                }`}
+              >
+                {t.searchTab}
+              </button>
+            </div>
           </div>
         </header>
 

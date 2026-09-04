@@ -724,6 +724,7 @@ export default function App() {
               onAddVehicle={handleAddVehicle}
               onDeleteVehicle={handleDeleteVehicle}
               onSelectMileage={handleSelectMileage}
+              onNavigate={handleNavigate}
             />
           )}
 
@@ -733,6 +734,7 @@ export default function App() {
               drivers={drivers}
               onAddDriver={handleAddDriver}
               onDeleteDriver={handleDeleteDriver}
+              onNavigate={handleNavigate}
             />
           )}
 
@@ -743,6 +745,7 @@ export default function App() {
               onAddRoute={handleAddRoute}
               onDeleteRoute={handleDeleteRoute}
               onApplyRoute={handleApplyRoute}
+              onNavigate={handleNavigate}
             />
           )}
 
@@ -751,11 +754,15 @@ export default function App() {
               lang={lang}
               fuelLogs={fuelLogs}
               onLogFuelPrice={handleLogFuelPrice}
+              onNavigate={handleNavigate}
             />
           )}
 
           {activeTab === 'verify' && (
-            <VerifyView lang={lang} />
+            <VerifyView
+              lang={lang}
+              onNavigate={handleNavigate}
+            />
           )}
 
           {activeTab === 'map' && (
@@ -770,6 +777,7 @@ export default function App() {
               lang={lang}
               bilties={bilties}
               onAddBilty={handleAddBilty}
+              onNavigate={handleNavigate}
             />
           )}
 

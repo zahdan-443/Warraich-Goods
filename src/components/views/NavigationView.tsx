@@ -362,31 +362,28 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
       {/* 1. TOP NATIVE HEADER */}
       <div className="shrink-0 bg-[#1e293b]/95 backdrop-blur-md px-3 sm:px-5 py-2.5 border-b border-slate-700/80 shadow-md flex items-center justify-between gap-2 z-20">
         
-        {/* Back to Map Button */}
+        {/* Back to Map / Dashboard Button */}
         <button
           type="button"
           onClick={() => onNavigate('map')}
-          className="p-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+          className="p-2 sm:px-3 sm:py-2 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
           title={isUrdu ? 'میپ پر واپس جائیں' : 'Back to Map'}
         >
-          <ArrowLeft className={`w-5 h-5 ${isUrdu ? 'rotate-180' : ''}`} />
-          <span className="hidden sm:inline text-xs font-bold font-serif">
-            {isUrdu ? 'واپس میپ' : 'Back to Map'}
+          <ArrowLeft className={`w-4 h-4 ${isUrdu ? 'rotate-180' : ''}`} />
+          <span className="text-xs font-bold font-serif">
+            {isUrdu ? 'واپس' : 'Back'}
           </span>
         </button>
 
         {/* Route Title & GPS Live Status */}
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-9 h-9 rounded-2xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-400 shrink-0">
-            <Radio className={`w-5 h-5 ${gpsStatus === 'active' ? 'animate-pulse text-emerald-400' : ''}`} />
-          </div>
+        <div className="flex items-center gap-2 min-w-0 text-center">
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-center gap-1.5">
               <span className={`inline-block w-2 h-2 rounded-full ${gpsStatus === 'active' ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`}></span>
               <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">
                 {gpsStatus === 'active' 
-                  ? (isUrdu ? `حقیقی GPS آن ہے (درستگی ±${gpsAccuracy || 10}m)` : `Real GPS Active (±${gpsAccuracy || 10}m)`)
-                  : (isUrdu ? 'GPS سگنل تلاش جاری ہے...' : 'Seeking Device GPS...')}
+                  ? (isUrdu ? `حقیقی GPS فعال (±${gpsAccuracy || 10}m)` : `Hardware GPS (±${gpsAccuracy || 10}m)`)
+                  : (isUrdu ? 'GPS تلاش جاری...' : 'Seeking GPS...')}
               </span>
             </div>
             <h1 className="font-serif font-black text-sm sm:text-base text-white truncate">
@@ -395,69 +392,49 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
           </div>
         </div>
 
-        {/* Primary Action: Direct Google Maps Live GPS Turn-by-Turn */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={handleLaunchGoogleMapsLive}
-            className="px-3.5 py-2 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95"
-            title={isUrdu ? 'اصلی گوگل میپس میں وائس نیویگیشن کھولیں' : 'Launch Google Maps Live Driving'}
-          >
-            <Navigation2 className="w-4 h-4 fill-white" />
-            <span className="font-serif font-bold">{isUrdu ? 'گوگل میپس وائس' : 'Google Maps GPS'}</span>
-          </button>
-        </div>
+        {/* Back to Dashboard shortcut */}
+        <button
+          type="button"
+          onClick={() => onNavigate('home')}
+          className="p-2 sm:px-3 sm:py-2 rounded-2xl bg-slate-800 hover:bg-[#8b9d77] border border-slate-600 text-white font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1 font-serif"
+          title={isUrdu ? 'ڈیش بورڈ پر جائیں' : 'Go to Dashboard'}
+        >
+          <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
+        </button>
       </div>
 
       {/* 2. REAL GPS HUD DASHBOARD (High Visibility for Drivers) */}
-      <div className="shrink-0 bg-gradient-to-r from-[#1e3a68] via-[#162a4d] to-[#0f172a] px-3 sm:px-6 py-3 border-b-2 border-amber-400/70 shadow-lg z-20">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="shrink-0 bg-gradient-to-r from-[#1e3a68] via-[#162a4d] to-[#0f172a] px-3 sm:px-6 py-2.5 border-b border-amber-400/50 shadow-lg z-20">
+        <div className="max-w-3xl mx-auto grid grid-cols-3 gap-2 text-center">
           
-          {/* Real Speed & Distance Stats */}
-          <div className="grid grid-cols-3 gap-2 w-full sm:w-auto text-center flex-1">
-            
-            {/* Real Speed from GPS Hardware */}
-            <div className="bg-slate-800/80 p-2.5 rounded-2xl border border-slate-700">
-              <span className="text-[10px] text-slate-400 font-bold block">
-                {isUrdu ? 'حقیقی رفتار (GPS)' : 'Real Speed'}
-              </span>
-              <div className="font-mono font-black text-xl sm:text-2xl text-amber-300">
-                {realGpsSpeed} <span className="text-xs font-normal text-slate-300">km/h</span>
-              </div>
+          {/* Real Speed from GPS Hardware */}
+          <div className="bg-slate-800/80 p-2 sm:p-2.5 rounded-2xl border border-slate-700">
+            <span className="text-[10px] text-slate-400 font-bold block">
+              {isUrdu ? 'رفتار (GPS)' : 'Live Speed'}
+            </span>
+            <div className="font-mono font-black text-lg sm:text-2xl text-amber-300">
+              {realGpsSpeed} <span className="text-xs font-normal text-slate-300">km/h</span>
             </div>
-
-            {/* Real Distance to Destination */}
-            <div className="bg-slate-800/80 p-2.5 rounded-2xl border border-slate-700">
-              <span className="text-[10px] text-slate-400 font-bold block">
-                {isUrdu ? 'باقی فاصلہ' : 'Remaining Distance'}
-              </span>
-              <div className="font-mono font-black text-xl sm:text-2xl text-emerald-400">
-                {remainingRealKm} <span className="text-xs font-normal text-slate-300">km</span>
-              </div>
-            </div>
-
-            {/* Estimated Arrival Time */}
-            <div className="bg-slate-800/80 p-2.5 rounded-2xl border border-slate-700">
-              <span className="text-[10px] text-slate-400 font-bold block">
-                {isUrdu ? 'پہنچنے کا وقت (ETA)' : 'Estimated Time'}
-              </span>
-              <div className="font-serif font-black text-base sm:text-lg text-white truncate mt-0.5">
-                {etaDisplay}
-              </div>
-            </div>
-
           </div>
 
-          {/* Quick Real Navigation Trigger */}
-          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-            <button
-              type="button"
-              onClick={handleLaunchGoogleMapsLive}
-              className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-serif font-bold text-xs sm:text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span>{isUrdu ? 'اصلی وائس نیویگیشن شروع کریں' : 'Start Real Voice GPS'}</span>
-            </button>
+          {/* Real Distance to Destination */}
+          <div className="bg-slate-800/80 p-2 sm:p-2.5 rounded-2xl border border-slate-700">
+            <span className="text-[10px] text-slate-400 font-bold block">
+              {isUrdu ? 'باقی فاصلہ' : 'Remaining'}
+            </span>
+            <div className="font-mono font-black text-lg sm:text-2xl text-emerald-400">
+              {remainingRealKm} <span className="text-xs font-normal text-slate-300">km</span>
+            </div>
+          </div>
+
+          {/* Estimated Arrival Time */}
+          <div className="bg-slate-800/80 p-2 sm:p-2.5 rounded-2xl border border-slate-700">
+            <span className="text-[10px] text-slate-400 font-bold block">
+              {isUrdu ? 'تخمینی وقت (ETA)' : 'ETA'}
+            </span>
+            <div className="font-serif font-black text-sm sm:text-lg text-white truncate mt-0.5">
+              {etaDisplay}
+            </div>
           </div>
 
         </div>
@@ -471,29 +448,29 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveTabMode('realGps')}
-            className={`px-3.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
               activeTabMode === 'realGps' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
             }`}
           >
-            🗺️ {isUrdu ? 'حقیقی میپ و GPS' : 'Real GPS Map'}
+            🗺️ {isUrdu ? 'نقشہ و روٹ' : 'Route Map'}
           </button>
           <button
             type="button"
             onClick={() => setActiveTabMode('roadSteps')}
-            className={`px-3.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
               activeTabMode === 'roadSteps' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
             }`}
           >
-            🛣️ {isUrdu ? 'موٹروے انٹرچینجز' : 'Interchanges'}
+            🛣️ {isUrdu ? 'انٹرچینجز' : 'Interchanges'}
           </button>
           <button
             type="button"
             onClick={() => setActiveTabMode('services')}
-            className={`px-3.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
               activeTabMode === 'services' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
             }`}
           >
-            ⛽ {isUrdu ? 'سروس ایریاز و ہیلپ' : 'Services & Help'}
+            ⛽ {isUrdu ? 'سروس و ہیلپ' : 'Services & Help'}
           </button>
         </div>
 
@@ -505,7 +482,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
             <button
               type="button"
               onClick={handleRecenterGps}
-              className="p-3 rounded-2xl bg-slate-900/90 border border-slate-700 text-blue-400 shadow-lg cursor-pointer hover:bg-slate-800 active:scale-95"
+              className="p-2.5 rounded-2xl bg-slate-900/90 border border-slate-700 text-blue-400 shadow-lg cursor-pointer hover:bg-slate-800 active:scale-95"
               title={isUrdu ? 'میری لوکیشن پر فوکس کریں' : 'Center on My GPS'}
             >
               <Crosshair className="w-5 h-5" />
@@ -514,43 +491,11 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
             <button
               type="button"
               onClick={() => setSelectedMapStyle(selectedMapStyle === 'streets' ? 'satellite' : selectedMapStyle === 'satellite' ? 'dark' : 'streets')}
-              className="p-3 rounded-2xl bg-slate-900/90 border border-slate-700 text-emerald-400 shadow-lg cursor-pointer hover:bg-slate-800 active:scale-95"
+              className="p-2.5 rounded-2xl bg-slate-900/90 border border-slate-700 text-emerald-400 shadow-lg cursor-pointer hover:bg-slate-800 active:scale-95"
               title={isUrdu ? 'میپ اسٹائل بدلیں' : 'Switch Map Layer'}
             >
               <Layers className="w-5 h-5" />
             </button>
-          </div>
-
-          {/* Real GPS Info Overlay at Bottom */}
-          <div className="absolute bottom-4 left-3 right-3 z-[400] max-w-lg mx-auto">
-            <div className="bg-slate-900/95 backdrop-blur-md p-3.5 rounded-3xl border border-slate-700 shadow-2xl space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-300 font-serif font-bold">
-                  {isUrdu ? 'روٹ راستہ: سڑکوں کے حقیقی نیٹ ورک پر مبنی' : 'Routing: Real Highway Network'}
-                </span>
-                <span className="font-mono text-emerald-400 font-bold">
-                  {loadingRealRoute ? (isUrdu ? 'روٹ لوڈ ہو رہا ہے...' : 'Loading Route...') : `${realRouteDistanceKm} KM`}
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleLaunchGoogleMapsLive}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
-                >
-                  <Navigation2 className="w-4 h-4 fill-white" />
-                  <span>{isUrdu ? 'گوگل میپس لائیو نیویگیشن' : 'Google Maps GPS'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLaunchWazeLive}
-                  className="py-2.5 px-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
-                >
-                  <span>Waze</span>
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* Leaflet Map DOM Element */}
@@ -592,9 +537,9 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
                       if (onOpenTollCalc) onOpenTollCalc(originCity.nameEn, destCity.nameEn);
                       onNavigate('toll');
                     }}
-                    className="text-xs text-amber-400 underline font-serif cursor-pointer hover:text-amber-300"
+                    className="px-2.5 py-1 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-300 font-serif cursor-pointer hover:bg-amber-500/30"
                   >
-                    {isUrdu ? 'ٹول ریٹ دیکھیں' : 'View Toll'}
+                    {isUrdu ? 'ٹول ریٹس' : 'View Toll'}
                   </button>
                 </div>
 
@@ -690,43 +635,35 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
 
       {/* 4. BOTTOM ACTION DOCK */}
       <div className="shrink-0 bg-[#1e293b]/95 backdrop-blur-md px-3 sm:px-5 py-3 border-t border-slate-700 shadow-2xl z-20">
-        <div className="max-w-xl mx-auto flex items-center justify-between gap-2">
+        <div className="max-w-xl mx-auto flex items-center justify-between gap-2.5">
           
-          {/* Center GPS */}
-          <button
-            type="button"
-            onClick={handleRecenterGps}
-            className="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-blue-400 transition-all cursor-pointer active:scale-95 shadow-xs"
-            title={isUrdu ? 'میری لوکیشن' : 'My Location'}
-          >
-            <Crosshair className="w-5 h-5" />
-          </button>
-
           {/* WhatsApp Share Live Location */}
           <button
             type="button"
             onClick={handleShareWhatsApp}
-            className="flex-1 py-3 px-3 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
+            className="py-3 px-3.5 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
+            title={isUrdu ? 'واٹس ایپ پر لوکیشن بھیجیں' : 'Share on WhatsApp'}
           >
             <Share2 className="w-4 h-4" />
-            <span>{copiedShare ? (isUrdu ? 'شیئر ہو گیا!' : 'Shared!') : (isUrdu ? 'واٹس ایپ رپورٹ' : 'Share WhatsApp')}</span>
+            <span>{copiedShare ? (isUrdu ? 'شیئر ہو گیا!' : 'Shared!') : (isUrdu ? 'واٹس ایپ' : 'WhatsApp')}</span>
           </button>
 
-          {/* Real Google Maps Turn-by-Turn */}
+          {/* Real Google Maps Turn-by-Turn GPS Voice (Main Big Action) */}
           <button
             type="button"
             onClick={handleLaunchGoogleMapsLive}
-            className="flex-1 py-3 px-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-1.5"
+            className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-serif font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 shadow-lg flex items-center justify-center gap-2"
           >
             <Navigation2 className="w-4 h-4 fill-white" />
-            <span>{isUrdu ? 'گوگل میپس وائس' : 'Google Voice GPS'}</span>
+            <span>{isUrdu ? 'اصلی گوگل میپس وائس GPS' : 'Start Google Voice GPS'}</span>
           </button>
 
           {/* Exit Button */}
           <button
             type="button"
             onClick={() => onNavigate('map')}
-            className="py-3 px-4 rounded-2xl bg-slate-800 hover:bg-rose-800 border border-slate-600 text-white font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 shadow-xs"
+            className="py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 shadow-xs"
+            title={isUrdu ? 'بند کریں' : 'Exit Navigation'}
           >
             <span>{isUrdu ? 'بند کریں' : 'Exit'}</span>
           </button>

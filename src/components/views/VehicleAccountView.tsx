@@ -475,16 +475,39 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
 
   return (
     <div className="flex-1 p-3 sm:p-6 md:p-8 max-w-4xl mx-auto w-full font-sans" dir="rtl">
-      {/* Back button */}
-      <div className="mb-4">
-        <button
-          type="button"
-          onClick={() => onNavigate('home')}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#4a4a35] hover:bg-[#383827] text-white rounded-2xl font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4 rotate-180" />
-          <span>ڈیش بورڈ پر واپس جائیں</span>
-        </button>
+      {/* Top Header with Back to Dashboard Button */}
+      <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-[#ecece0]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+            <PublicImage
+              fileName="gari-hisaab-icon.png"
+              alt="Vehicle Trip Account, Ledger and Income Calculator"
+              width={40}
+              height={40}
+              className="w-full h-full object-cover rounded-xl"
+              fallbackIcon={<Calculator className="w-5 h-5 text-[#8b9d77]" />}
+            />
+          </div>
+          <div>
+            <h1 className="text-sm sm:text-base font-bold text-[#4a4a35] leading-tight">
+              گاڑی کا مکمل حساب و منافع لیجر
+            </h1>
+            <p className="text-[10px] text-[#8e8e75]">
+              تمام کرایہ جات اور سفری اخراجات کا تفصیلی کھاتہ
+            </p>
+          </div>
+        </div>
+        {onNavigate && (
+          <button
+            type="button"
+            onClick={() => onNavigate('home')}
+            className="p-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+            title="ڈیش بورڈ پر واپس جائیں"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
+            <span>ڈیش بورڈ</span>
+          </button>
+        )}
       </div>
 
       {/* Main Container Card */}
@@ -492,25 +515,13 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
         
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#ecece0] pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white border border-[#ecece0] p-1 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
-              <PublicImage
-                fileName="gari-hisaab-icon.png"
-                alt="Vehicle Trip Account, Ledger and Income Calculator"
-                width={48}
-                height={48}
-                className="w-full h-full object-cover rounded-xl"
-                fallbackIcon={<Calculator className="w-6 h-6 text-[#8b9d77]" />}
-              />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-[#4a4a35]">
-                گاڑی کا مکمل حساب، آمدن و منافع لیجر
-              </h1>
-              <p className="text-xs text-[#8e8e75] mt-0.5">
-                گاڑی کے تمام کرایہ جات (آمدن) اور تمام سفری اخراجات درج کر کے خالص بچت کا حساب لگائیں
-              </p>
-            </div>
+          <div>
+            <h2 className="text-lg sm:text-xl font-bold text-[#4a4a35]">
+              سفری کھاتہ و منافع کیلکولیشن
+            </h2>
+            <p className="text-xs text-[#8e8e75] mt-0.5">
+              گاڑی کے تمام کرایہ جات (آمدن) اور تمام سفری اخراجات درج کر کے خالص بچت کا حساب لگائیں
+            </p>
           </div>
 
           {/* Vehicle Selector */}
