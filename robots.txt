@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://zahdan-443.github.io/Warraich-Goods/sitemap.xml
