@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DICTIONARY, FuelLogItem, Language } from '../../types';
 import { Fuel, TrendingUp, CalendarDays, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { LiveFuelPriceWidget } from '../LiveFuelPriceWidget';
+import { getStoredFuelPrices, fetchLiveFuelPrices, FuelPricesData } from '../../utils/fuelPrice';
 
 interface FuelLogViewProps {
   lang: Language;
@@ -18,10 +19,29 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
 }) => {
   const isUrdu = lang === 'ur';
   const t = DICTIONARY[lang].fuel;
-  const [diesel, setDiesel] = useState('311.47');
-  const [petrol, setPetrol] = useState('298.50');
+  const initial = getStoredFuelPrices();
+  const [diesel, setDiesel] = useState(initial.diesel);
+  const [petrol, setPetrol] = useState(initial.petrol);
   const [cng, setCng] = useState('235.0');
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    fetchLiveFuelPrices(false).then((data) => {
+      setDiesel(data.diesel);
+      setPetrol(data.petrol);
+    });
+
+    const handleGlobalUpdate = (e: any) => {
+      if (e.detail) {
+        const d: FuelPricesData = e.detail;
+        setDiesel(d.diesel);
+        setPetrol(d.petrol);
+      }
+    };
+
+    window.addEventListener('fuelPricesUpdated', handleGlobalUpdate);
+    return () => window.removeEventListener('fuelPricesUpdated', handleGlobalUpdate);
+  }, []);
 
   const handleApplyRates = (d: string, p: string, c?: string) => {
     setDiesel(d);

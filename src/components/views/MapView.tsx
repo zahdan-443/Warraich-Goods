@@ -3,6 +3,7 @@ import {
   Language, 
   ActiveTab 
 } from '../../types';
+import { PublicImage } from '../../assets/dashboardIcons';
 import { 
   Map as MapIcon, 
   CloudRain, 
@@ -980,32 +981,30 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
   return (
     <div className={`flex-1 flex flex-col max-w-7xl mx-auto w-full p-3 sm:p-6 lg:p-8 gap-5 sm:gap-6 animate-in fade-in ${isUrdu ? 'text-right' : 'text-left'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
       
-      {/* Top Header Banner */}
-      <header className="bg-white p-5 sm:p-7 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[#8b9d77]/15 text-[#5a5a40]">
-              <MapIcon className="w-3.5 h-3.5 text-[#8b9d77]" />
-              <span>{isUrdu ? 'پاکستان روٹ میپ و لائیو نیویگیشن' : 'Pakistan Route Map & Live Navigation'}</span>
-            </span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-700">
-              <Sparkles className="w-3 h-3" />
-              <span>{isUrdu ? 'لائیو سڑک و موسم الرٹ' : 'Live Highway Weather Alerts'}</span>
-            </span>
+      {/* Top Header - Matching TripCostView Style & Placement */}
+      <div className="w-full flex items-center justify-between pb-1 shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+            <PublicImage
+              fileName="map-icon.png"
+              alt="Highway Route Map and Navigation"
+              width={40}
+              height={40}
+              className="w-full h-full object-cover rounded-xl"
+              fallbackIcon={<MapPin className="w-5 h-5 text-[#8b9d77]" />}
+            />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#4a4a35]">
-            {isUrdu ? 'ہائی وے میپ و روٹ گائیڈ' : 'Highway Route Map & Guide'}
-          </h1>
-          <p className="text-[#8e8e75] text-xs sm:text-sm mt-1 max-w-2xl">
-            {isUrdu
-              ? 'شہر منتخب کریں، مکمل راستے کا موسم دیکھیں اور نیچے دیے گئے بٹن سے فل سکرین لائیو نیویگیشن شروع کریں۔'
-              : 'Pick cities, view corridor weather, and launch full-screen live turn-by-turn navigation.'}
-          </p>
+          <div>
+            <h1 className="text-sm sm:text-base font-bold text-[#4a4a35] leading-tight">
+              {isUrdu ? 'نقشہ و روٹ موسم' : 'Map & Route Weather'}
+            </h1>
+            <p className="text-[10px] text-[#8e8e75]">
+              {isUrdu ? 'موٹروے روٹ نقشہ، حدِ نگاہ اور لائیو موسم' : 'Highway corridors, visibility & live weather'}
+            </p>
+          </div>
         </div>
 
-        {/* Header Right Actions: Selected Route Glance & Back to Dashboard */}
-        <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
-          {/* Back to Dashboard Button */}
+        {onNavigate && (
           <button
             type="button"
             onClick={() => onNavigate('home')}
@@ -1015,30 +1014,13 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
             <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
             <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
           </button>
-
-          {/* Selected Route Quick Glance Badge */}
-          <div className="bg-[#fdfbf7] p-3 rounded-2xl border border-[#ecece0] flex items-center gap-3">
-            <div className="text-center">
-              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'منتخب روٹ' : 'Route'}</span>
-              <span className="font-serif font-bold text-xs text-[#4a4a35]">
-                {isUrdu ? `${originCity.nameUr} ➔ ${destCity.nameUr}` : `${originCity.nameEn} ➔ ${destCity.nameEn}`}
-              </span>
-            </div>
-            <div className="h-7 w-[1px] bg-[#ecece0]"></div>
-            <div className="text-center">
-              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'کل فاصلہ' : 'Distance'}</span>
-              <span className="font-mono font-bold text-xs text-[#8b9d77]">
-                {routeMetrics.distanceKm} km
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
+        )}
+      </div>
 
       {/* SEARCHABLE CITY SELECTION BOX (From City & To City) */}
       <section className="bg-white p-5 sm:p-6 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] space-y-4">
         
-        <div className="flex items-center justify-between border-b border-[#ecece0] pb-3">
+        <div className="flex flex-wrap items-center justify-between border-b border-[#ecece0] pb-3 gap-2">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-xl bg-[#8b9d77]/15 text-[#8b9d77]">
               <Search className="w-4 h-4" />
@@ -1048,20 +1030,28 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
                 {isUrdu ? 'روٹ کا انتخاب کریں (شہر تلاش کریں)' : 'Select Route (Search Cities)'}
               </h2>
               <p className="text-[11px] text-[#8e8e75]">
-                {isUrdu ? 'پاکستان کا کوئی بھی شہر لکھ کر یا لسٹ سے منتخب کریں' : 'Search or pick any transit city across Pakistan'}
+                {isUrdu
+                  ? `${originCity.nameUr} ➔ ${destCity.nameUr} (${routeMetrics.distanceKm} کلومیٹر)`
+                  : `${originCity.nameEn} ➔ ${destCity.nameEn} (${routeMetrics.distanceKm} km)`}
               </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleSwapCities}
-            title={isUrdu ? 'روانگی اور منزل تبدیل کریں' : 'Swap Origin and Destination'}
-            className="px-3 py-1.5 rounded-xl bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35] transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer"
-          >
-            <ArrowRightLeft className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{isUrdu ? 'تبدیل کریں' : 'Swap'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="bg-[#fdfbf7] px-2.5 py-1 rounded-xl border border-[#ecece0] flex items-center gap-2 text-xs">
+              <span className="text-[10px] text-[#8e8e75]">{isUrdu ? 'فاصلہ:' : 'Dist:'}</span>
+              <span className="font-mono font-bold text-[#8b9d77]">{routeMetrics.distanceKm} km</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleSwapCities}
+              title={isUrdu ? 'روانگی اور منزل تبدیل کریں' : 'Swap Origin and Destination'}
+              className="px-3 py-1.5 rounded-xl bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35] transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{isUrdu ? 'تبدیل کریں' : 'Swap'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Dual Searchable City Selectors */}

@@ -235,74 +235,46 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
       className="fixed inset-0 z-40 bg-[#fdfbf7] flex flex-col justify-between p-3 sm:p-4 max-w-xl mx-auto w-full font-sans select-none overflow-hidden"
       dir={isUrdu ? 'rtl' : 'ltr'}
     >
-      {/* Top Header - Fixed & Compact */}
-      <div className="flex items-center justify-between gap-2 shrink-0 pb-2 border-b border-[#ecece0]">
-        <button
-          type="button"
-          onClick={() => {
-            if (activeTab === 'route' && viewState === 'result') {
-              setViewState('input');
-            } else {
-              onNavigate('home');
-            }
-          }}
-          className="p-2 rounded-xl bg-white border border-[#ecece0] text-[#4a4a35] hover:bg-[#f0f0e4] active:scale-95 transition-all cursor-pointer shadow-2xs flex items-center justify-center shrink-0"
-          title={isUrdu ? 'پیچھے جائیں' : 'Back'}
-        >
-          <ArrowLeft className={`w-5 h-5 ${isUrdu ? 'rotate-180' : ''}`} />
-        </button>
-
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-white border border-[#ecece0] p-1 flex items-center justify-center shrink-0 shadow-2xs">
+      {/* Top Header - Matching TripCostView Style & Placement */}
+      <div className="max-w-xl mx-auto w-full flex items-center justify-between pb-1 shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
             <PublicImage
-              fileName={tollIconData}
-              alt="Pakistan Motorway Toll Tax"
-              width={28}
-              height={28}
-              className="w-full h-full object-contain rounded-lg"
-              fallbackIcon={<Milestone className="w-4 h-4 text-[#8b9d77]" />}
+              fileName="toll-icon.png"
+              alt="Motorway Toll Tax and Rates Calculator"
+              width={40}
+              height={40}
+              className="w-full h-full object-cover rounded-xl"
+              fallbackIcon={<Milestone className="w-5 h-5 text-[#8b9d77]" />}
             />
           </div>
-          <div className="min-w-0">
-            <h1 className="font-serif font-black text-sm sm:text-base text-[#4a4a35] truncate leading-tight">
-              {isUrdu ? 'موٹروے ٹول پلازہ ریٹس' : 'Motorway Toll Plaza Rates'}
+          <div>
+            <h1 className="text-sm sm:text-base font-bold text-[#4a4a35] leading-tight">
+              {isUrdu ? 'موٹروے ٹول ٹیکس' : 'Motorway Toll Tax'}
             </h1>
-            <div className="flex items-center gap-1.5 text-[10px] text-[#8e8e75] font-sans">
-              <span className="inline-flex items-center gap-1 text-[#5a5a40] font-bold">
-                <Milestone className="w-2.5 h-2.5 text-[#8b9d77]" />
-                {isUrdu ? 'این ایچ اے 2026' : 'NHA 2026'}
-              </span>
-              <span>•</span>
-              <button
-                type="button"
-                onClick={handleManualSync}
-                disabled={isSyncing}
-                className="inline-flex items-center gap-1 text-[#8b9d77] hover:underline cursor-pointer"
-                title={isUrdu ? 'تازہ ترین ریٹس سنک کریں' : 'Sync latest rates'}
-              >
-                <RefreshCw className={`w-2.5 h-2.5 ${isSyncing ? 'animate-spin text-[#8b9d77]' : ''}`} />
-                <span>{isSyncing ? (isUrdu ? 'اپڈیٹ...' : 'Syncing...') : (isUrdu ? 'تازہ کریں' : 'Sync')}</span>
-              </button>
-            </div>
+            <p className="text-[10px] text-[#8e8e75]">
+              {isUrdu ? 'تمام موٹرویز کے ایم ٹیگ و کیش ریٹس' : 'M-Tag & Cash Rates across Motorways'}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          {syncStatusMsg && (
-            <span className="hidden sm:inline-block text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">
-              ✓ {syncStatusMsg}
-            </span>
-          )}
+        {onNavigate && (
           <button
             type="button"
-            onClick={() => onNavigate('home')}
+            onClick={() => {
+              if (activeTab === 'route' && viewState === 'result') {
+                setViewState('input');
+              } else {
+                onNavigate('home');
+              }
+            }}
             className="p-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
             title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
           >
             <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
             <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
           </button>
-        </div>
+        )}
       </div>
 
       {/* Mode Switcher Tabs */}

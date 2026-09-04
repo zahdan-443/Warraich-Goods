@@ -7,6 +7,7 @@ import html2canvas from 'html2canvas';
 import { fetchOSRMRouteDistance, PAKISTAN_CITIES } from '../../utils/mapRoutes';
 import { getLogoBase64, sharePdfFileOrWhatsApp, escapeHtml, sanitizeHtml } from '../../utils/pdfHelper';
 import { validateFinancialNumber, validateTripFinancials } from '../../utils/calculator';
+import { getStoredFuelPrices, fetchLiveFuelPrices, FuelPricesData } from '../../utils/fuelPrice';
 
 interface TripCostViewProps {
   lang: Language;
@@ -34,10 +35,12 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
   // Input States (Strict 1-box per line sequence)
+  const initialFuel = getStoredFuelPrices();
   const [originCity, setOriginCity] = useState<string>('سمندری (Samundri)');
   const [destCity, setDestCity] = useState<string>('لاہور (Lahore)');
   const [distance, setDistance] = useState<string>('195');
-  const [fuelPrice, setFuelPrice] = useState<string>('311.47');
+  const [liveDieselBenchmark, setLiveDieselBenchmark] = useState<string>(initialFuel.diesel);
+  const [fuelPrice, setFuelPrice] = useState<string>(initialFuel.diesel);
   const [mileage, setMileage] = useState<string>(initialMileage ? initialMileage.toString() : '7');
   const [combinedExpenses, setCombinedExpenses] = useState<string>('3200'); // Driver + Toll + Other
   const [isReturn, setIsReturn] = useState<boolean>(false);
@@ -55,19 +58,37 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
 
-  // Fetch fuel prices and toll calculator prefill from local cache if available
+  // Fetch fuel prices and toll calculator prefill
   useEffect(() => {
-    try {
-      const cachedStr = localStorage.getItem('ah_fuel_prices_cache');
-      if (cachedStr) {
-        const cached = JSON.parse(cachedStr);
-        if (cached && cached.diesel) {
-          setFuelPrice(String(cached.diesel));
+    fetchLiveFuelPrices(false).then((data) => {
+      setLiveDieselBenchmark(data.diesel);
+      setFuelPrice(prev => {
+        const pNum = parseFloat(prev);
+        if (!pNum || pNum < 340 || prev === '311.47') {
+          return data.diesel;
         }
+        return prev;
+      });
+    });
+
+    const handleGlobalUpdate = (e: any) => {
+      if (e.detail?.diesel) {
+        setLiveDieselBenchmark(e.detail.diesel);
+        setFuelPrice(prev => {
+          const pNum = parseFloat(prev);
+          if (!pNum || pNum < 340 || prev === '311.47') {
+            return e.detail.diesel;
+          }
+          return prev;
+        });
       }
-    } catch (e) {
-      // ignore
-    }
+    };
+
+    window.addEventListener('fuelPricesUpdated', handleGlobalUpdate);
+    return () => window.removeEventListener('fuelPricesUpdated', handleGlobalUpdate);
+  }, []);
+
+  useEffect(() => {
 
     try {
       const prefillStr = localStorage.getItem('ah-prefill-toll-calc');
@@ -190,7 +211,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     setOriginCity('لاہور (Lahore)');
     setDestCity('فیصل آباد (Faisalabad)');
     setDistance('180');
-    setFuelPrice('311.47');
+    setFuelPrice(liveDieselBenchmark);
     setMileage('7');
     setCombinedExpenses('3200');
     setIsReturn(false);
@@ -530,9 +551,19 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 
           {/* Field 4: Fuel Rate / ڈیزل ریٹ (روپے / لٹر) */}
           <div className="bg-white p-2.5 sm:p-3 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-            <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1">
-              {isUrdu ? 'ڈیزل ریٹ (روپے / لٹر)' : 'Diesel Rate (PKR / Liter)'}
-            </label>
+            <div className="flex items-center justify-between mb-1 gap-2">
+              <label className="block text-xs sm:text-sm font-black text-[#383827]">
+                {isUrdu ? 'ڈیزل ریٹ (روپے / لٹر)' : 'Diesel Rate (PKR / Liter)'}
+              </label>
+              <button
+                type="button"
+                onClick={() => setFuelPrice(liveDieselBenchmark)}
+                className="text-[10px] sm:text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg px-2 py-0.5 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                title={isUrdu ? 'سرکاری لائیو ریٹ لگائیں' : 'Apply Live Rate'}
+              >
+                <span>{isUrdu ? `سرکاری ریٹ: Rs. ${liveDieselBenchmark}` : `Live: Rs. ${liveDieselBenchmark}`}</span>
+              </button>
+            </div>
             <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1 focus-within:border-[#8b9d77] transition-all shadow-2xs">
               <input
                 type="number"
@@ -541,7 +572,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                 onChange={(e) => setFuelPrice(e.target.value)}
                 onFocus={(e) => e.target.select()}
                 onClick={(e) => (e.target as HTMLInputElement).select()}
-                placeholder="311.47"
+                placeholder={liveDieselBenchmark}
                 className="flex-1 bg-transparent text-left font-mono font-black text-sm sm:text-base text-[#2b2b1f] focus:outline-none dir-ltr pr-2 min-w-0"
               />
               <span className="text-xs font-mono font-black text-[#4a5a3a] bg-[#e6e6d8] px-2 py-0.5 rounded-lg shrink-0 select-none">

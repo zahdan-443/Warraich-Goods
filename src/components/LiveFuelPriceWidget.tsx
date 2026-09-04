@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Fuel, CheckCircle2, AlertCircle, ArrowRight, ExternalLink } from 'lucide-react';
+import { RefreshCw, Fuel, CheckCircle2, AlertCircle, ArrowRight, ExternalLink, Calendar } from 'lucide-react';
 import { Language } from '../types';
+import {
+  fetchLiveFuelPrices,
+  getStoredFuelPrices,
+  CURRENT_OFFICIAL_BENCHMARK,
+  FuelPricesData
+} from '../utils/fuelPrice';
 
 interface LiveFuelPriceWidgetProps {
   lang?: Language;
@@ -8,21 +14,20 @@ interface LiveFuelPriceWidgetProps {
   compact?: boolean;
 }
 
-const CACHE_KEY = 'ah_fuel_prices_cache';
-const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
-
 export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
   lang = 'en',
   onApplyRates,
   compact = false
 }) => {
-  const [dieselPrice, setDieselPrice] = useState("311.47"); // HSD - High Speed Diesel
-  const [petrolPrice, setPetrolPrice] = useState("298.50"); // PMG - Premier Motor Gasoline
-  const [hiOctanePrice, setHiOctanePrice] = useState("335.50"); // Altron X 97 Hi-Octane
-  const [ldoPrice, setLdoPrice] = useState("184.25"); // Light Diesel Oil
-  const [skoPrice, setSkoPrice] = useState("193.40"); // Kerosene Oil (SKO)
+  const initial = getStoredFuelPrices();
+  const [dieselPrice, setDieselPrice] = useState(initial.diesel);
+  const [petrolPrice, setPetrolPrice] = useState(initial.petrol);
+  const [hiOctanePrice, setHiOctanePrice] = useState(initial.hiOctane);
+  const [ldoPrice, setLdoPrice] = useState(initial.ldo);
+  const [skoPrice, setSkoPrice] = useState(initial.kerosene);
+  const [effectiveDate, setEffectiveDate] = useState(initial.effectiveDate);
   const [loading, setLoading] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string>("Official PSO POL Archives");
+  const [lastUpdated, setLastUpdated] = useState<string>(initial.lastUpdated);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [customApiUrl, setCustomApiUrl] = useState<string>("");
   const [showApiConfig, setShowApiConfig] = useState(false);
@@ -31,125 +36,63 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
     setLoading(true);
     setStatusMsg(null);
 
-    // 1. Check local cache first unless forceRefresh is true
-    if (!forceRefresh) {
-      try {
-        const cachedStr = localStorage.getItem(CACHE_KEY);
-        if (cachedStr) {
-          const cached = JSON.parse(cachedStr);
-          if (cached && cached.timestamp && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
-            if (cached.diesel) setDieselPrice(String(cached.diesel));
-            if (cached.petrol) setPetrolPrice(String(cached.petrol));
-            if (cached.lastUpdated) setLastUpdated(cached.lastUpdated);
-            if (onApplyRates && cached.diesel && cached.petrol) {
-              onApplyRates(String(cached.diesel), String(cached.petrol));
-            }
-            setLoading(false);
-            return;
-          }
-        }
-      } catch (e) {
-        // Ignore cache parse error
-      }
-    }
-
-    // 2. Live API fetch
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const data: FuelPricesData = await fetchLiveFuelPrices(forceRefresh);
+      setDieselPrice(data.diesel);
+      setPetrolPrice(data.petrol);
+      setHiOctanePrice(data.hiOctane);
+      setLdoPrice(data.ldo);
+      setSkoPrice(data.kerosene);
+      setEffectiveDate(data.effectiveDate);
+      setLastUpdated(data.lastUpdated);
 
-      const targetUrl = customApiUrl && customApiUrl.trim() !== ''
-        ? customApiUrl
-        : 'https://fuel.trackmate.page/api/prices';
+      setStatusMsg({
+        type: 'success',
+        text: lang === 'ur'
+          ? `لائیو ریٹس ہم آہنگ ہو گئے (نوٹیفکیشن: ${data.effectiveDate})`
+          : `Live fuel prices synced (Effective: ${data.effectiveDate})`
+      });
 
-      const response = await fetch(targetUrl, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      let fetchedDiesel: string | null = null;
-      let fetchedPetrol: string | null = null;
-
-      if (Array.isArray(data.prices)) {
-        // Trackmate API format
-        const hsdObj = data.prices.find((p: any) => p.product === 'hsd' || p.product === 'diesel');
-        const petrolObj = data.prices.find((p: any) => p.product === 'petrol');
-
-        if (hsdObj && hsdObj.price_pkr) fetchedDiesel = String(hsdObj.price_pkr);
-        if (petrolObj && petrolObj.price_pkr) fetchedPetrol = String(petrolObj.price_pkr);
-      } else if (data.price_pkr || data.diesel) {
-        fetchedDiesel = String(data.price_pkr || data.diesel);
-        fetchedPetrol = String(data.petrol_pkr || data.petrol);
-      }
-
-      if (fetchedDiesel || fetchedPetrol) {
-        const dVal = fetchedDiesel || dieselPrice;
-        const pVal = fetchedPetrol || petrolPrice;
-
-        setDieselPrice(dVal);
-        setPetrolPrice(pVal);
-
-        const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' (Live API)';
-        setLastUpdated(nowTime);
-
-        // Save to local cache
-        try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify({
-            diesel: dVal,
-            petrol: pVal,
-            timestamp: Date.now(),
-            lastUpdated: nowTime
-          }));
-        } catch (e) {
-          // ignore storage error
-        }
-
-        setStatusMsg({
-          type: 'success',
-          text: lang === 'ur' ? 'لائیو فیول ریٹس اپڈیٹ ہو گئے!' : 'Live fuel prices synced successfully!'
-        });
-
-        if (onApplyRates) {
-          onApplyRates(dVal, pVal);
-        }
-      } else {
-        throw new Error('No valid fuel prices in response');
+      if (onApplyRates) {
+        onApplyRates(data.diesel, data.petrol);
       }
     } catch (error) {
       console.warn('Fuel price fetch fallback:', error);
-      let dVal = dieselPrice;
-      let pVal = petrolPrice;
-      try {
-        const cachedStr = localStorage.getItem(CACHE_KEY);
-        if (cachedStr) {
-          const cached = JSON.parse(cachedStr);
-          if (cached.diesel) dVal = String(cached.diesel);
-          if (cached.petrol) pVal = String(cached.petrol);
-        }
-      } catch (e) {
-        // ignore
-      }
-
-      setDieselPrice(dVal);
-      setPetrolPrice(pVal);
+      const fallback = getStoredFuelPrices();
+      setDieselPrice(fallback.diesel);
+      setPetrolPrice(fallback.petrol);
+      setHiOctanePrice(fallback.hiOctane);
+      setLdoPrice(fallback.ldo);
+      setSkoPrice(fallback.kerosene);
+      setEffectiveDate(fallback.effectiveDate);
       setStatusMsg({
         type: 'success',
-        text: lang === 'ur' ? 'پی ایس او کے تصدیق شدہ نرخ ڈسپلے ہیں' : 'Showing latest available POL rates'
+        text: lang === 'ur' ? 'پی ایس او / اوگرا سرکاری ریٹس فعال ہیں' : 'Official PSO / OGRA benchmark active'
       });
-      if (onApplyRates) {
-        onApplyRates(dVal, pVal);
-      }
     } finally {
       setLoading(false);
     }
-  }, [customApiUrl, lang, onApplyRates, dieselPrice, petrolPrice]);
+  }, [lang, onApplyRates]);
 
   useEffect(() => {
     fetchLivePrices(false);
+
+    // Listen to global fuel price updates from any component
+    const handleGlobalUpdate = (e: any) => {
+      if (e.detail) {
+        const d: FuelPricesData = e.detail;
+        setDieselPrice(d.diesel);
+        setPetrolPrice(d.petrol);
+        setHiOctanePrice(d.hiOctane);
+        setLdoPrice(d.ldo);
+        setSkoPrice(d.kerosene);
+        setEffectiveDate(d.effectiveDate);
+        setLastUpdated(d.lastUpdated);
+      }
+    };
+
+    window.addEventListener('fuelPricesUpdated', handleGlobalUpdate);
+    return () => window.removeEventListener('fuelPricesUpdated', handleGlobalUpdate);
   }, [fetchLivePrices]);
 
   const handleUpdatePrices = () => {
