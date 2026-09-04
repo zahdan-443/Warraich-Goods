@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { BiltyRecord } from '../types';
 import { getCachedCompanyProfile } from '../utils/storage';
-import { logoIconData, biltyOfficialIconData } from '../assets/dashboardIcons';
-import { getLogoBase64 } from '../utils/pdfHelper';
+import { logoIconData, biltyOfficialIconData, companyCardData } from '../assets/dashboardIcons';
+import { getLogoBase64, getCompanyCardBase64 } from '../utils/pdfHelper';
 import { AlHadiLogo } from './AlHadiLogo';
 
 interface PrintableBiltyProps {
@@ -47,6 +47,7 @@ export const ZahdanSignatureSvg: React.FC<{ className?: string }> = ({ className
 export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUrl: propQrUrl }) => {
   const [internalQrUrl, setInternalQrUrl] = useState<string>('');
   const [resolvedLogo, setResolvedLogo] = useState<string>('');
+  const [resolvedCard, setResolvedCard] = useState<string>('');
   const [logoFailed, setLogoFailed] = useState<boolean>(false);
   const company = getCachedCompanyProfile();
 
@@ -55,6 +56,11 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
     getLogoBase64().then((b64) => {
       if (isMounted && b64) {
         setResolvedLogo(b64);
+      }
+    });
+    getCompanyCardBase64().then((b64) => {
+      if (isMounted && b64) {
+        setResolvedCard(b64);
       }
     });
     return () => { isMounted = false; };
@@ -170,24 +176,34 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
         }
       `}</style>
 
-      {/* Subtle Official Bilty Background Security Watermark */}
+      {/* Official Warraich Goods Transport Company Card Background Watermark ("بلٹی بیک گراؤنڈ میں ہمارا کارڈ") */}
       <div
         style={{
           position: 'absolute',
-          top: '52%',
+          top: '51%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          opacity: 0.04,
+          opacity: 0.08,
           pointerEvents: 'none',
           zIndex: 0,
-          width: '360px',
-          height: '360px'
+          width: '580px',
+          maxWidth: '85%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
         }}
       >
         <img
-          src="./bilty-official-icon.png"
-          alt=""
-          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+          src={resolvedCard || companyCardData || './warraich-card.png'}
+          alt="Warraich Goods Transport Company Card"
+          referrerPolicy="no-referrer"
+          style={{
+            width: '100%',
+            height: 'auto',
+            maxHeight: '400px',
+            objectFit: 'contain',
+            borderRadius: '12px'
+          }}
         />
       </div>
 

@@ -92,6 +92,58 @@ export async function getLogoBase64(): Promise<string> {
   return '';
 }
 
+let cachedCompanyCardBase64: string | null = null;
+
+/**
+ * Pre-converts the official company visiting card to a clean base64 data URL
+ * to avoid CORS / tainted-canvas issues during PDF and print rasterization.
+ */
+export async function getCompanyCardBase64(): Promise<string> {
+  if (cachedCompanyCardBase64) return cachedCompanyCardBase64;
+
+  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+  const base = typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL ? import.meta.env.BASE_URL : './';
+  const cleanBase = base.endsWith('/') ? base : base + '/';
+
+  const candidates = [
+    `${cleanBase}warraich-card.png`,
+    './warraich-card.png',
+    '/warraich-card.png',
+    `${cleanBase}company-card.png`,
+    './company-card.png',
+    '/company-card.png',
+    `${cleanBase}warraich-card.jpg`,
+    './warraich-card.jpg',
+    `${origin}/warraich-card.png`,
+    `${origin}/company-card.png`
+  ];
+
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const blob = await res.blob();
+        if (blob && blob.size > 0) {
+          const base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(blob);
+          });
+          if (base64 && base64.startsWith('data:image/')) {
+            cachedCompanyCardBase64 = base64;
+            return base64;
+          }
+        }
+      }
+    } catch {
+      // Continue to next candidate
+    }
+  }
+
+  return '';
+}
+
 /**
  * Generate A4 PDF from a DOM element with zero 'oklch' errors.
  * Uses html-to-image (primary) and html2canvas-pro (secondary fallback).
