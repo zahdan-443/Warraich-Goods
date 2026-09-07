@@ -51,6 +51,7 @@ import { NavigationView } from './components/views/NavigationView';
 import { AuthModal } from './components/AuthModal';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
+import { AiAdvisorChat } from './components/AiAdvisorChat';
 
 export default function App() {
   const OWNER_EMAIL = 'warraichgoods43@gmail.com';
@@ -834,6 +835,7 @@ export default function App() {
         />
 
         <InstallPwaModal lang={lang} />
+        <AiAdvisorChat lang={lang} userEmail={userEmail} />
       </React.Suspense>
 
       {exitToast && (
