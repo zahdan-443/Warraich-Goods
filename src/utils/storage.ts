@@ -913,8 +913,15 @@ export const DEFAULT_COMPANY_PROFILE: CompanyProfile = {
 };
 
 export async function getStoredCompanyProfile(): Promise<CompanyProfile> {
-  const cached = localStorage.getItem('ah-company-profile');
-  let profile = cached ? JSON.parse(cached) : DEFAULT_COMPANY_PROFILE;
+  let profile = DEFAULT_COMPANY_PROFILE;
+  try {
+    const cached = localStorage.getItem('ah-company-profile');
+    if (cached) {
+      profile = { ...DEFAULT_COMPANY_PROFILE, ...JSON.parse(cached) };
+    }
+  } catch {
+    profile = DEFAULT_COMPANY_PROFILE;
+  }
 
   if (typeof navigator === 'undefined' || navigator.onLine) {
     try {
@@ -1004,8 +1011,15 @@ export async function logActivity(
 }
 
 export async function getActivityLogs(): Promise<ActivityLogItem[]> {
-  const localLogsStr = localStorage.getItem('ah-activity-logs');
-  let logs: ActivityLogItem[] = localLogsStr ? JSON.parse(localLogsStr) : [];
+  let logs: ActivityLogItem[] = [];
+  try {
+    const localLogsStr = localStorage.getItem('ah-activity-logs');
+    if (localLogsStr) {
+      logs = JSON.parse(localLogsStr);
+    }
+  } catch {
+    logs = [];
+  }
 
   if (typeof navigator === 'undefined' || navigator.onLine) {
     try {

@@ -1276,8 +1276,15 @@ const withTimeout = <T>(promise: Promise<T>, ms: number = 2500): Promise<T> => {
 };
 
 export async function getStoredTollRates(): Promise<TollRatesConfig> {
-  const cached = localStorage.getItem('ah-toll-rates');
-  let rates: TollRatesConfig = cached ? JSON.parse(cached) : DEFAULT_TOLL_RATES;
+  let rates: TollRatesConfig = DEFAULT_TOLL_RATES;
+  try {
+    const cached = localStorage.getItem('ah-toll-rates');
+    if (cached) {
+      rates = { ...DEFAULT_TOLL_RATES, ...JSON.parse(cached) };
+    }
+  } catch {
+    rates = DEFAULT_TOLL_RATES;
+  }
 
   if (typeof navigator === 'undefined' || navigator.onLine) {
     try {
