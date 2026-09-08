@@ -49,6 +49,26 @@ function getGeminiClient() {
   }
   return geminiClient;
 }
+app.get(["/sitemap.xml", "/Warraich-Goods/sitemap.xml"], (_req, res) => {
+  const publicPath = import_path.default.join(process.cwd(), "public", "sitemap.xml");
+  const distPath = import_path.default.join(process.cwd(), "dist", "sitemap.xml");
+  res.header("Content-Type", "application/xml; charset=utf-8");
+  res.header("Cache-Control", "public, max-age=86400, s-maxage=86400");
+  res.header("X-CDN-Status", "Active");
+  res.sendFile(publicPath, (err) => {
+    if (err) res.sendFile(distPath);
+  });
+});
+app.get(["/robots.txt", "/Warraich-Goods/robots.txt"], (_req, res) => {
+  const publicPath = import_path.default.join(process.cwd(), "public", "robots.txt");
+  const distPath = import_path.default.join(process.cwd(), "dist", "robots.txt");
+  res.header("Content-Type", "text/plain; charset=utf-8");
+  res.header("Cache-Control", "public, max-age=86400, s-maxage=86400");
+  res.header("X-CDN-Status", "Active");
+  res.sendFile(publicPath, (err) => {
+    if (err) res.sendFile(distPath);
+  });
+});
 app.get("/api/health", (_req, res) => {
   res.json({
     status: "ok",
@@ -139,8 +159,15 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = import_path.default.join(process.cwd(), "dist");
-    app.use(import_express.default.static(distPath));
+    app.use(import_express.default.static(distPath, {
+      maxAge: "1y",
+      setHeaders: (res) => {
+        res.setHeader("X-CDN-Status", "Active");
+        res.setHeader("CDN-Cache-Control", "max-age=31536000");
+      }
+    }));
     app.get("*", (_req, res) => {
+      res.setHeader("X-CDN-Status", "Active");
       res.sendFile(import_path.default.join(distPath, "index.html"));
     });
   }
