@@ -592,6 +592,10 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
       leafletMapRef.current = null;
     }
 
+    if (mapContainerRef.current) {
+      (mapContainerRef.current as any)._leaflet_id = null;
+    }
+
     const map = L.map(mapContainerRef.current, {
       center: [30.3753, 69.3451], // Center of Pakistan
       zoom: 6,

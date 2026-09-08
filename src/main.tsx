@@ -1,9 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import ErrorBoundary from './components/ErrorBoundary.tsx';
 import './index.css';
 
-// Global safety handler for benign browser/IndexedDB lifecycle events
+// Global safety handler for unhandled promise rejections and browser lifecycle events
 if (typeof window !== 'undefined') {
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason?.message || String(event.reason || '');
@@ -14,13 +15,25 @@ if (typeof window !== 'undefined') {
       reason.includes('The database is closing')
     ) {
       event.preventDefault();
+      return;
     }
+    console.warn('Driver Dost caught global unhandledrejection:', reason);
+  });
+
+  window.addEventListener('error', (event) => {
+    if (event.message?.includes('ResizeObserver') || event.message?.includes('Script error')) {
+      // Ignore benign ResizeObserver loop limit errors
+      return;
+    }
+    console.warn('Driver Dost caught global window error:', event.error || event.message);
   });
 }
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 );
 
@@ -72,5 +85,3 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
     console.warn('SW ready handler notice:', err);
   });
 }
-
-

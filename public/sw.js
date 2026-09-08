@@ -36,7 +36,6 @@ const STATIC_ASSETS = [
   './quick-ops-icon.png',
   './scan-me-qr.png',
   './splash.png',
-  './splash-screen.png',
   './toll-icon.png',
   './map-icon.png'
 ];

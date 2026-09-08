@@ -203,37 +203,46 @@ export const HomeView: React.FC<HomeViewProps> = ({
   };
 
   useEffect(() => {
-    const stored = localStorage.getItem('ah-calendar-events');
-    if (stored) {
-      setEvents(JSON.parse(stored));
-    } else {
-      const y = new Date().getFullYear();
-      const m = new Date().getMonth();
-      const seed: CalendarEvent[] = [
-        {
-          id: 'seed-1',
-          dateStr: `${y}-${String(m + 1).padStart(2, '0')}-08`,
-          title: lang === 'ur' ? 'لاہور سے راولپنڈی گندم کی ڈیلیوری' : 'Lahore to Rawalpindi Wheat Delivery',
-          type: 'load',
-          status: 'active'
-        },
-        {
-          id: 'seed-2',
-          dateStr: `${y}-${String(m + 1).padStart(2, '0')}-15`,
-          title: lang === 'ur' ? 'گاڑی نمبر LHR-7860 ٹیوننگ اور آئل تبدیلی' : 'Vehicle LHR-7860 Tuning & Oil Change',
-          type: 'maintenance',
-          status: 'pending'
-        },
-        {
-          id: 'seed-3',
-          dateStr: `${y}-${String(m + 1).padStart(2, '0')}-22`,
-          title: lang === 'ur' ? 'ملتان سے کراچی چاول لوڈ روانگی' : 'Multan to Karachi Rice Load Dispatch',
-          type: 'dispatch',
-          status: 'pending'
-        }
-      ];
-      setEvents(seed);
+    try {
+      const stored = localStorage.getItem('ah-calendar-events');
+      if (stored) {
+        setEvents(JSON.parse(stored));
+        return;
+      }
+    } catch {
+      // Fall back to seed events if corrupted
+    }
+
+    const y = new Date().getFullYear();
+    const m = new Date().getMonth();
+    const seed: CalendarEvent[] = [
+      {
+        id: 'seed-1',
+        dateStr: `${y}-${String(m + 1).padStart(2, '0')}-08`,
+        title: lang === 'ur' ? 'لاہور سے راولپنڈی گندم کی ڈیلیوری' : 'Lahore to Rawalpindi Wheat Delivery',
+        type: 'load',
+        status: 'active'
+      },
+      {
+        id: 'seed-2',
+        dateStr: `${y}-${String(m + 1).padStart(2, '0')}-15`,
+        title: lang === 'ur' ? 'گاڑی نمبر LHR-7860 ٹیوننگ اور آئل تبدیلی' : 'Vehicle LHR-7860 Tuning & Oil Change',
+        type: 'maintenance',
+        status: 'pending'
+      },
+      {
+        id: 'seed-3',
+        dateStr: `${y}-${String(m + 1).padStart(2, '0')}-22`,
+        title: lang === 'ur' ? 'ملتان سے کراچی چاول لوڈ روانگی' : 'Multan to Karachi Rice Load Dispatch',
+        type: 'dispatch',
+        status: 'pending'
+      }
+    ];
+    setEvents(seed);
+    try {
       localStorage.setItem('ah-calendar-events', JSON.stringify(seed));
+    } catch {
+      // ignore storage write errors
     }
   }, [lang]);
 
