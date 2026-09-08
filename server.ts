@@ -32,6 +32,30 @@ function getGeminiClient(): GoogleGenAI | null {
   return geminiClient;
 }
 
+// Serve sitemap.xml explicitly
+app.get(['/sitemap.xml', '/Warraich-Goods/sitemap.xml'], (_req, res) => {
+  const publicPath = path.join(process.cwd(), 'public', 'sitemap.xml');
+  const distPath = path.join(process.cwd(), 'dist', 'sitemap.xml');
+  res.header('Content-Type', 'application/xml; charset=utf-8');
+  res.header('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+  res.header('X-CDN-Status', 'Active');
+  res.sendFile(publicPath, (err) => {
+    if (err) res.sendFile(distPath);
+  });
+});
+
+// Serve robots.txt explicitly
+app.get(['/robots.txt', '/Warraich-Goods/robots.txt'], (_req, res) => {
+  const publicPath = path.join(process.cwd(), 'public', 'robots.txt');
+  const distPath = path.join(process.cwd(), 'dist', 'robots.txt');
+  res.header('Content-Type', 'text/plain; charset=utf-8');
+  res.header('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+  res.header('X-CDN-Status', 'Active');
+  res.sendFile(publicPath, (err) => {
+    if (err) res.sendFile(distPath);
+  });
+});
+
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -144,8 +168,15 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, {
+      maxAge: '1y',
+      setHeaders: (res) => {
+        res.setHeader('X-CDN-Status', 'Active');
+        res.setHeader('CDN-Cache-Control', 'max-age=31536000');
+      }
+    }));
     app.get('*', (_req, res) => {
+      res.setHeader('X-CDN-Status', 'Active');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
