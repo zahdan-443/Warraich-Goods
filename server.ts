@@ -56,6 +56,18 @@ app.get(['/robots.txt', '/Warraich-Goods/robots.txt'], (_req, res) => {
   });
 });
 
+// Serve Digital Asset Links for Android TWA verification
+app.get(['/.well-known/assetlinks.json', '/Warraich-Goods/.well-known/assetlinks.json'], (_req, res) => {
+  const publicPath = path.join(process.cwd(), 'public', '.well-known', 'assetlinks.json');
+  const distPath = path.join(process.cwd(), 'dist', '.well-known', 'assetlinks.json');
+  res.header('Content-Type', 'application/json; charset=utf-8');
+  res.header('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+  res.header('X-CDN-Status', 'Active');
+  res.sendFile(publicPath, (err) => {
+    if (err) res.sendFile(distPath);
+  });
+});
+
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
   res.json({

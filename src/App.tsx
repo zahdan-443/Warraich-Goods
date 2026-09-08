@@ -52,6 +52,7 @@ import { AuthModal } from './components/AuthModal';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
 import { AiAdvisorChat } from './components/AiAdvisorChat';
+import { BottomNavBar } from './components/BottomNavBar';
 
 export default function App() {
   const OWNER_EMAIL = 'warraichgoods43@gmail.com';
@@ -675,7 +676,7 @@ export default function App() {
         />
       )}
 
-      <main className="flex-1 flex flex-col w-full">
+      <main className="flex-1 flex flex-col w-full pb-16 md:pb-0">
         <React.Suspense
           fallback={
             <div className="flex-1 flex items-center justify-center p-12 text-[#8e8e75] text-sm">
@@ -837,6 +838,13 @@ export default function App() {
         <InstallPwaModal lang={lang} />
         <AiAdvisorChat lang={lang} userEmail={userEmail} />
       </React.Suspense>
+
+      <BottomNavBar
+        activeTab={activeTab}
+        onNavigate={handleNavigate}
+        lang={lang}
+        isBiltyAuthorized={isBiltyAuthorized}
+      />
 
       {exitToast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-[#4a4a35] text-white rounded-full text-xs font-bold shadow-xl border border-[#8b9d77] animate-bounce">

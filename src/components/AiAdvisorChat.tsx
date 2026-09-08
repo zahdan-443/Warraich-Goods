@@ -157,9 +157,9 @@ export const AiAdvisorChat: React.FC<AiAdvisorChatProps> = ({ lang, userEmail })
 
   return (
     <>
-      {/* Floating Trigger Button (Bottom-Right, always visible across every screen) */}
+      {/* Floating Trigger Button (Bottom-Right, positioned above bottom navigation on mobile) */}
       {!isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center">
+        <div className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-30 flex items-center">
           <button
             type="button"
             id="driver-dost-ai-trigger"
@@ -167,7 +167,7 @@ export const AiAdvisorChat: React.FC<AiAdvisorChatProps> = ({ lang, userEmail })
               setIsOpen(true);
               setIsMinimized(false);
             }}
-            className="group relative flex items-center gap-2.5 px-4 py-3 bg-[#162a4d] text-white rounded-full shadow-2xl hover:bg-[#0f1f38] active:scale-95 transition-all border border-[#c59b27]/40 cursor-pointer"
+            className="group relative flex items-center gap-2.5 px-3.5 py-2.5 sm:px-4 sm:py-3 bg-[#162a4d] text-white rounded-full shadow-2xl hover:bg-[#0f1f38] active:scale-95 transition-all border border-[#c59b27]/40 cursor-pointer"
             aria-label={isUrdu ? 'ڈرائیور دوست AI چیٹ اسسٹنٹ کھولیں' : 'Open Driver Dost AI Advisor'}
           >
             {/* Pulsing indicator */}
@@ -178,8 +178,8 @@ export const AiAdvisorChat: React.FC<AiAdvisorChatProps> = ({ lang, userEmail })
               </span>
             )}
 
-            <div className="w-8 h-8 rounded-full bg-[#c59b27] flex items-center justify-center text-[#162a4d] shadow-sm">
-              <Sparkles className="w-4 h-4 fill-current animate-pulse" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#c59b27] flex items-center justify-center text-[#162a4d] shadow-sm">
+              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current animate-pulse" />
             </div>
 
             <div className="flex flex-col text-left">
@@ -201,7 +201,7 @@ export const AiAdvisorChat: React.FC<AiAdvisorChatProps> = ({ lang, userEmail })
           dir={isUrdu ? 'rtl' : 'ltr'}
           className={`fixed z-50 transition-all duration-300 ease-in-out shadow-2xl bg-white border border-[#c59b27]/30 flex flex-col ${
             isMinimized
-              ? 'bottom-4 right-4 sm:right-6 w-72 sm:w-80 h-14 rounded-2xl overflow-hidden'
+              ? 'bottom-20 md:bottom-4 right-4 sm:right-6 w-72 sm:w-80 h-14 rounded-2xl overflow-hidden'
               : 'bottom-0 right-0 sm:bottom-6 sm:right-6 w-full sm:w-[420px] h-[85vh] sm:h-[600px] max-h-[92vh] rounded-t-3xl sm:rounded-3xl overflow-hidden'
           }`}
         >

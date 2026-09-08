@@ -10,6 +10,22 @@ interface InstallPwaModalProps {
 export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showModal, setShowModal] = useState<boolean>(false);
+  const isAndroidAppOrTwa = () => {
+    if (typeof window === 'undefined') return false;
+    const ua = (navigator.userAgent || '').toLowerCase();
+    const search = window.location.search.toLowerCase();
+    return (
+      document.referrer.includes('android-app://') ||
+      search.includes('utm_source=twa') ||
+      search.includes('twa=') ||
+      ua.includes('; wv') ||
+      ua.includes('version/4.0 chrome/') ||
+      (window as any).isTWA === true ||
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches
+    );
+  };
+
   const [isInstalled, setIsInstalled] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     const isStandalone = 
@@ -18,6 +34,7 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
       window.matchMedia('(display-mode: minimal-ui)').matches || 
       (window.navigator as any).standalone === true ||
       document.referrer.includes('android-app://') ||
+      window.location.search.includes('utm_source=twa') ||
       localStorage.getItem('wg_pwa_installed') === 'true' ||
       localStorage.getItem('app_installed_status') === 'installed';
     return Boolean(isStandalone);
@@ -26,6 +43,12 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
   useEffect(() => {
     // Check if already in standalone PWA mode or previously recorded as installed
     const checkInstalled = () => {
+      if (isAndroidAppOrTwa()) {
+        setIsInstalled(true);
+        setShowModal(false);
+        return true;
+      }
+
       const isStandalone = 
         window.matchMedia('(display-mode: standalone)').matches || 
         window.matchMedia('(display-mode: fullscreen)').matches || 
@@ -71,18 +94,21 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
     window.addEventListener('appinstalled', handleAppInstalled);
     window.addEventListener('wg_open_install_modal', handleOpenRequest);
 
-    // Auto-prompt after 3 seconds on app start ONLY IF never installed and not dismissed recently
-    const timer = setTimeout(() => {
-      if (!checkInstalled()) {
-        const sessionDismissed = sessionStorage.getItem('wg_install_session_dismissed');
-        const lastDismissedTime = localStorage.getItem('wg_install_last_dismissed');
-        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-        
-        if (!sessionDismissed && (!lastDismissedTime || parseInt(lastDismissedTime, 10) < oneDayAgo)) {
-          setShowModal(true);
+    // Auto-prompt is STRICTLY suppressed in TWA / APK and only triggers for real browser users who haven't dismissed it
+    let timer: any = null;
+    if (!isAndroidAppOrTwa()) {
+      timer = setTimeout(() => {
+        if (!checkInstalled()) {
+          const sessionDismissed = sessionStorage.getItem('wg_install_session_dismissed');
+          const lastDismissedTime = localStorage.getItem('wg_install_last_dismissed');
+          const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+          
+          if (!sessionDismissed && (!lastDismissedTime || parseInt(lastDismissedTime, 10) < oneDayAgo)) {
+            setShowModal(true);
+          }
         }
-      }
-    }, 3000);
+      }, 5000);
+    }
 
     return () => {
       clearTimeout(timer);

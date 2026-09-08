@@ -444,7 +444,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   // ════════════════════════════════════════════════════════════
   if (viewMode === 'input') {
     return (
-      <div className={`fixed inset-0 z-50 h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#f6f5ee] flex flex-col justify-between p-2.5 sm:p-4 font-sans select-none ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
+      <div className={`fixed inset-0 z-30 h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#f6f5ee] flex flex-col justify-between p-2.5 sm:p-4 pb-20 md:pb-4 font-sans select-none ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
         {/* Top Header with Trip Icon */}
         <div className="max-w-xl mx-auto w-full flex items-center justify-between pb-1 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -683,7 +683,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   const fmt = (n: number) => 'Rs ' + n.toLocaleString('en-US');
 
   return (
-    <div className={`fixed inset-0 z-50 h-[100dvh] max-h-[100dvh] overflow-y-auto bg-[#f6f5ee] flex flex-col justify-between p-3 sm:p-5 font-sans select-none ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
+    <div className={`fixed inset-0 z-30 h-[100dvh] max-h-[100dvh] overflow-y-auto bg-[#f6f5ee] flex flex-col justify-between p-3 sm:p-5 pb-24 md:pb-5 font-sans select-none ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
       {/* Top Header */}
       <div className="max-w-xl mx-auto w-full flex items-center justify-between pb-2 shrink-0 border-b border-[#e0e0d2]">
         <div className="flex items-center gap-2">

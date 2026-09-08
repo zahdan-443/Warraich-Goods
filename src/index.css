@@ -312,5 +312,27 @@ html.theme-navy .text-\[\#8e8e75\] {
   }
 }
 
+/* ==========================================================================
+   Android TWA & Palm Store Native UX Compliance
+   Eliminate web-like behaviors (bounce, context menus, tap highlights)
+   ========================================================================== */
+html, body {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  overscroll-behavior-y: contain;
+  touch-action: manipulation;
+}
+
+button, nav, header, [role="button"], [role="tab"], .no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 
 
