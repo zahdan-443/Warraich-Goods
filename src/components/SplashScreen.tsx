@@ -23,12 +23,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
   const [idx, setIdx] = useState(0);
 
   useEffect(() => {
-    // Lock page scrolling while splash is active to prevent scrollbars
-    const prevBodyOverflow = document.body.style.overflow;
-    const prevHtmlOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-
     // Show splash screen for quick snappy intro (800ms) then smoothly fade out
     const timer = setTimeout(() => {
       setFadeOut(true);
@@ -38,16 +32,16 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
         } catch {
           // ignore
         }
-        document.body.style.overflow = prevBodyOverflow;
-        document.documentElement.style.overflow = prevHtmlOverflow;
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
         onDismiss();
       }, 250);
     }, 800);
 
     return () => {
       clearTimeout(timer);
-      document.body.style.overflow = prevBodyOverflow;
-      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     };
   }, [onDismiss]);
 

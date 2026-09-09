@@ -238,6 +238,9 @@ export default function App() {
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ur' ? 'rtl' : 'ltr';
+    // Ensure document is always freely scrollable
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
   }, [lang]);
 
   // Update notification warning for Guest Mode (Local Storage only) vs Signed In (Cloud Sync)
@@ -676,7 +679,7 @@ export default function App() {
         />
       )}
 
-      <main className="flex-1 flex flex-col w-full pb-16 md:pb-0">
+      <main className="flex-1 flex flex-col w-full pb-28 md:pb-12 min-h-0">
         <React.Suspense
           fallback={
             <div className="flex-1 flex items-center justify-center p-12 text-[#8e8e75] text-sm">
