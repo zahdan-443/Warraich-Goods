@@ -174,8 +174,13 @@ export default function App() {
     window.history.pushState({ tab: 'home' }, '');
   }, []);
 
-  const handleNavigate = (newTab: ActiveTab | string) => {
+  const [verifySubSection, setVerifySubSection] = useState<'vehicle' | 'license' | 'challan' | 'history'>('vehicle');
+
+  const handleNavigate = (newTab: ActiveTab | string, subSection?: string) => {
     const target = (newTab === 'vehicles' ? 'vehicle' : newTab) as ActiveTab;
+    if (subSection && ['vehicle', 'license', 'challan', 'history'].includes(subSection)) {
+      setVerifySubSection(subSection as any);
+    }
     if (target !== activeTab) {
       window.history.pushState({ tab: target }, '', `#${target}`);
       setActiveTab(target);
@@ -767,6 +772,9 @@ export default function App() {
             <VerifyView
               lang={lang}
               onNavigate={handleNavigate}
+              vehicles={vehicles}
+              drivers={drivers}
+              initialSection={verifySubSection}
             />
           )}
 

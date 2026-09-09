@@ -88,9 +88,37 @@ export const DriversView: React.FC<DriversViewProps> = ({
         </header>
 
         {drivers.length === 0 ? (
-          <div className="p-16 text-center bg-[#fdfbf7] rounded-3xl border border-[#ecece0]">
-            <Users className="w-12 h-12 mx-auto mb-4 opacity-30 text-[#8b9d77]" />
-            <p className="font-serif italic text-lg text-[#5a5a40]">{t.empty}</p>
+          <div className="p-10 md:p-14 text-center bg-[#fdfbf7] rounded-3xl border border-[#ecece0] space-y-4">
+            <Users className="w-12 h-12 mx-auto opacity-40 text-[#8b9d77]" />
+            <div>
+              <p className="font-serif italic text-lg text-[#5a5a40]">{t.empty}</p>
+              <p className="text-xs text-[#8e8e75] mt-1">
+                {isUrdu ? 'ٹرانسپورٹ ڈرائیورز، فون نمبرز اور HTV لائسنس کا ریکارڈ محفوظ رکھیں' : 'Keep full records of commercial transport drivers, phone numbers, and HTV licenses'}
+              </p>
+            </div>
+            <div className="pt-2 flex flex-wrap justify-center items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowModal(true)}
+                className="px-5 py-2.5 bg-[#4a5e38] hover:bg-[#394a2b] text-white rounded-2xl text-xs font-bold shadow-xs cursor-pointer transition-all active:scale-95 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t.addBtn}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onAddDriver({
+                  name: 'Muhammad Riaz',
+                  phone: '0300-4829102',
+                  license: 'LHR-48291-HTV',
+                  lictype: 'HTV Commercial',
+                  cnic: '35201-1849201-3'
+                })}
+                className="px-4 py-2.5 bg-white border border-[#ecece0] hover:border-[#8b9d77] text-[#4a4a35] rounded-2xl text-xs font-bold shadow-2xs cursor-pointer transition-all active:scale-95"
+              >
+                {isUrdu ? '+ نمونہ HTV ڈرائیور سیٹ کریں' : '+ Quick Add HTV Driver'}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

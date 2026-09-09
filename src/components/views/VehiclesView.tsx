@@ -86,9 +86,37 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
         </header>
 
         {vehicles.length === 0 ? (
-          <div className="p-16 text-center bg-[#fdfbf7] rounded-3xl border border-[#ecece0]">
-            <Truck className="w-12 h-12 mx-auto mb-4 opacity-30 text-[#8b9d77]" />
-            <p className="font-serif italic text-lg text-[#5a5a40]">{t.empty}</p>
+          <div className="p-10 md:p-14 text-center bg-[#fdfbf7] rounded-3xl border border-[#ecece0] space-y-4">
+            <Truck className="w-12 h-12 mx-auto opacity-40 text-[#8b9d77]" />
+            <div>
+              <p className="font-serif italic text-lg text-[#5a5a40]">{t.empty}</p>
+              <p className="text-xs text-[#8e8e75] mt-1">
+                {isUrdu ? 'اپنے ٹرک یا ٹریلر کا اندراج کریں تاکہ مائلیج اور اخراجات کا حساب خودکار ہو سکے' : 'Register your freight truck or trailer to automate fuel and trip calculations'}
+              </p>
+            </div>
+            <div className="pt-2 flex flex-wrap justify-center items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowModal(true)}
+                className="px-5 py-2.5 bg-[#4a5e38] hover:bg-[#394a2b] text-white rounded-2xl text-xs font-bold shadow-xs cursor-pointer transition-all active:scale-95 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t.addBtn}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onAddVehicle({
+                  reg: 'LES-20-4124',
+                  model: 'Hino 500 FG 1628 (6-Wheeler)',
+                  mileage: 4.2,
+                  owner: 'Warraich Goods Fleet',
+                  capacity: 16
+                })}
+                className="px-4 py-2.5 bg-white border border-[#ecece0] hover:border-[#8b9d77] text-[#4a4a35] rounded-2xl text-xs font-bold shadow-2xs cursor-pointer transition-all active:scale-95"
+              >
+                {isUrdu ? '+ نمونہ کمرشل ٹرک سیٹ کریں' : '+ Quick Add Sample Truck'}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

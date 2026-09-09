@@ -59,7 +59,7 @@ interface HomeViewProps {
   userRole?: UserRole;
   userEmail?: string | null;
   isBiltyAuthorized?: boolean;
-  onNavigate: (tab: ActiveTab) => void;
+  onNavigate: (tab: ActiveTab, subSection?: string) => void;
   onOpenMenu?: () => void;
   onOpenSignIn?: () => void;
   onOpenBiltyAccess?: () => void;
@@ -566,35 +566,32 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-3.5">
             {/* 5. Vehicles Verification */}
             <QuickActionButton
-              href="https://mtmis.excise.punjab.gov.pk/"
-              external={true}
-              onClick={() => window.open('https://mtmis.excise.punjab.gov.pk/', '_blank', 'noopener,noreferrer')}
+              href="#verify"
+              onClick={() => onNavigate('verify', 'vehicle')}
               imgSrc={vehicleIconData}
               fallbackIcon={<Truck className="w-7 h-7 text-[#8b9d77]" />}
               fullName={lang === 'ur' ? 'گاڑیوں کی تصدیق' : 'Vehicles Verification'}
-              subtitle={lang === 'ur' ? 'MTMIS پنجاب و ایکسائز ریکارڈ' : 'MTMIS Punjab & Excise portal'}
+              subtitle={lang === 'ur' ? 'رجسٹریشن، ٹوکن ٹیکس و ایکسائز' : 'MTMIS Punjab & Token Tax'}
             />
 
             {/* 6. License Verification */}
             <QuickActionButton
-              href="https://dlims.punjab.gov.pk/verify"
-              external={true}
-              onClick={() => window.open('https://dlims.punjab.gov.pk/verify', '_blank', 'noopener,noreferrer')}
+              href="#verify"
+              onClick={() => onNavigate('verify', 'license')}
               imgSrc={licenseIconData}
               fallbackIcon={<ShieldCheck className="w-7 h-7 text-[#8b9d77]" />}
               fullName={lang === 'ur' ? 'لائسنس کی تصدیق' : 'License Verification'}
-              subtitle={lang === 'ur' ? 'DLIMS پنجاب و موٹروے پولیس' : 'DLIMS Punjab Highway checks'}
+              subtitle={lang === 'ur' ? 'DLIMS لائسنس و موٹروے پولیس' : 'DLIMS Punjab License Checks'}
             />
 
             {/* 7. E-Challan Check */}
             <QuickActionButton
-              href="https://echallan.psca.gop.pk/"
-              external={true}
-              onClick={() => window.open('https://echallan.psca.gop.pk/', '_blank', 'noopener,noreferrer')}
+              href="#verify"
+              onClick={() => onNavigate('verify', 'challan')}
               imgSrc={echallanIconData}
               fallbackIcon={<AlertTriangle className="w-7 h-7 text-[#8b9d77]" />}
               fullName={lang === 'ur' ? 'ای چالان چیکنگ' : 'E-Challan Checking'}
-              subtitle={lang === 'ur' ? 'PSCA سیف سٹی چالان ریکارڈ' : 'PSCA Safe City traffic records'}
+              subtitle={lang === 'ur' ? 'PSCA سیف سٹی و جرمانہ آڈٹ' : 'PSCA Safe City Traffic Audits'}
             />
 
             {/* 8. End Button: Mazeed Sahulatain / Quick Operations */}

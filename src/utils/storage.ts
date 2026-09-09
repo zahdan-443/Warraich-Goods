@@ -80,7 +80,9 @@ const INITIAL_ROUTES: RoutePreset[] = [
 ];
 
 const INITIAL_FUEL: FuelLogItem[] = [
-  { id: 1, date: "Standard Rate", diesel: 290.0, petrol: 280.0, cng: 220.0 }
+  { id: 1, date: "09 Sep 2026", diesel: 290.0, petrol: 280.0, cng: 220.0 },
+  { id: 2, date: "01 Sep 2026", diesel: 288.5, petrol: 279.0, cng: 220.0 },
+  { id: 3, date: "15 Aug 2026", diesel: 285.0, petrol: 275.0, cng: 215.0 }
 ];
 
 const INITIAL_NOTIFICATIONS: AppNotification[] = [
