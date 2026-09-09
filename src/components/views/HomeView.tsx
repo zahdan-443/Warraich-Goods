@@ -29,11 +29,17 @@ import {
   Check,
   Milestone,
   Crown,
-  Compass
+  Compass,
+  Building2,
+  Shield,
+  Phone,
+  Mail
 } from 'lucide-react';
 import { AlHadiLogo } from '../AlHadiLogo';
 import { LiveFuelPriceWidget } from '../LiveFuelPriceWidget';
 import { TollCalculatorModal } from '../TollCalculatorModal';
+import { AboutUsModal } from '../AboutUsModal';
+import { PrivacyPolicyModal } from '../PrivacyPolicyModal';
 
 // Embedded high-resolution base64 images - 100% offline proof, zero 404s, works across all Android PWA & APK wrappers
 import {
@@ -156,6 +162,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const [showSafarDiaryModal, setShowSafarDiaryModal] = useState(false);
   const [showQuickOpsModal, setShowQuickOpsModal] = useState(false);
   const [showTollCalculatorModal, setShowTollCalculatorModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   const currentDate = new Date().toLocaleDateString(lang === 'en' ? 'en-US' : 'ur-PK', {
     weekday: 'long',
@@ -185,6 +193,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
       } else if (showQuickOpsModal) {
         setShowQuickOpsModal(false);
         e.preventDefault();
+      } else if (showAboutModal) {
+        setShowAboutModal(false);
+        e.preventDefault();
+      } else if (showPrivacyModal) {
+        setShowPrivacyModal(false);
+        e.preventDefault();
       } else if (showRecentLogs) {
         setShowRecentLogs(false);
         e.preventDefault();
@@ -195,7 +209,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     };
     window.addEventListener('app-back-button', handleBack);
     return () => window.removeEventListener('app-back-button', handleBack);
-  }, [showTollCalculatorModal, showSafarDiaryModal, showQuickOpsModal, showRecentLogs, showAddEvent]);
+  }, [showTollCalculatorModal, showSafarDiaryModal, showQuickOpsModal, showRecentLogs, showAddEvent, showAboutModal, showPrivacyModal]);
 
   const openModalWithHistory = (setter: React.Dispatch<React.SetStateAction<boolean>>) => {
     window.history.pushState({ modal: true }, '');
@@ -855,6 +869,61 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
       </div>
 
+      {/* Official Business Identity, Privacy & Verification Compliance Card */}
+      <div className="w-full bg-[#fdfbf7] rounded-[36px] p-6 md:p-8 border border-[#ecece0] shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="w-14 h-14 rounded-2xl bg-white p-1.5 shadow-md border-2 border-[#b58b28] flex items-center justify-center shrink-0">
+            <AlHadiLogo className="w-10 h-10" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-serif font-bold text-base md:text-lg text-[#1e3a68]">
+                {lang === 'ur' ? 'وڑائچ گڈز ٹرانسپورٹ کمپنی' : 'Warraich Goods Transport Co.'}
+              </h3>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                {lang === 'ur' ? 'تصدیق شدہ آفیشل ایپ' : 'Verified Official App'}
+              </span>
+            </div>
+            <p className="text-xs text-[#5a5a40] font-sans mt-0.5">
+              {lang === 'ur' ? 'سمندری، فیصل آباد، پنجاب • پاکستان بھر میں بااعتماد لاجسٹکس نیٹ ورک' : 'Samundri, Faisalabad, Punjab • Nationwide Road Freight Network'}
+            </p>
+            <div className="flex items-center gap-4 text-[11px] text-[#7a7a60] mt-2 flex-wrap">
+              <span className="flex items-center gap-1 font-sans">
+                <Phone className="w-3 h-3 text-emerald-600" />
+                <span className="dir-ltr font-bold text-[#1e3a68]">0300-5370443</span>
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1 font-sans">
+                <Mail className="w-3 h-3 text-blue-600" />
+                <span className="font-mono text-[#1e3a68]">warraichgoods43@gmail.com</span>
+              </span>
+              <span>•</span>
+              <span className="font-mono text-[#8e8e75]">v1.0.2</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons: Privacy Policy & About Us */}
+        <div className="flex items-center gap-3 w-full md:w-auto shrink-0 flex-wrap">
+          <button
+            onClick={() => setShowPrivacyModal(true)}
+            className="flex-1 sm:flex-initial px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-95"
+          >
+            <Shield className="w-4 h-4 text-emerald-700" />
+            <span>{lang === 'ur' ? 'پرائیویسی پالیسی' : 'Privacy Policy'}</span>
+          </button>
+          
+          <button
+            onClick={() => setShowAboutModal(true)}
+            className="flex-1 sm:flex-initial px-4 py-2.5 bg-white hover:bg-[#f0f0e4] text-[#1e3a68] border border-[#ecece0] rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-95"
+          >
+            <Building2 className="w-4 h-4 text-[#8b9d77]" />
+            <span>{lang === 'ur' ? 'ہمارے بارے میں' : 'About Company'}</span>
+          </button>
+        </div>
+      </div>
+
       {/* Safar Diary Modal */}
       {showSafarDiaryModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
@@ -1199,6 +1268,20 @@ export const HomeView: React.FC<HomeViewProps> = ({
           } catch (e) {}
           onNavigate('calculator');
         }}
+      />
+
+      {/* Official About Us & Contact Modal */}
+      <AboutUsModal
+        isOpen={showAboutModal}
+        onClose={() => setShowAboutModal(false)}
+        lang={lang}
+      />
+
+      {/* Official Privacy Policy & Security Compliance Modal */}
+      <PrivacyPolicyModal
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+        lang={lang}
       />
 
     </div>

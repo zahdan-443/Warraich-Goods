@@ -10,8 +10,18 @@ if (fs.existsSync(distDir) && fs.existsSync(androidAssetsDir)) {
     if (!fs.existsSync(androidPublicDir)) {
       fs.mkdirSync(androidPublicDir, { recursive: true });
     }
-    fs.cpSync(distDir, androidPublicDir, { recursive: true });
-    console.log('✅ Synchronized dist web assets to android/app/src/main/assets/public');
+    fs.cpSync(distDir, androidPublicDir, { 
+      recursive: true,
+      filter: (src) => !src.endsWith('server.cjs') && !src.endsWith('server.cjs.map')
+    });
+
+    // Ensure no node backend binaries linger in android assets
+    const serverCjs = path.join(androidPublicDir, 'server.cjs');
+    const serverMap = path.join(androidPublicDir, 'server.cjs.map');
+    if (fs.existsSync(serverCjs)) fs.unlinkSync(serverCjs);
+    if (fs.existsSync(serverMap)) fs.unlinkSync(serverMap);
+
+    console.log('✅ Synchronized client web assets to android/app/src/main/assets/public (excluding server files)');
 
     // Update capacitor.config.json
     const config = {

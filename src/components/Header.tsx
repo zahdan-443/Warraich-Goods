@@ -6,6 +6,7 @@ import { logoIconData } from '../assets/dashboardIcons';
 import { AboutUsModal } from './AboutUsModal';
 import { SyncStatusBadge } from './SyncStatusBadge';
 import { ExportPrivacyModal } from './ExportPrivacyModal';
+import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 import { isNativeApp } from '../utils/platform';
 import { 
   getNotificationPermission, 
@@ -60,6 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [showNotifs, setShowNotifs] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showExportPrivacyModal, setShowExportPrivacyModal] = useState(false);
+  const [showPrivacyPolicyModal, setShowPrivacyPolicyModal] = useState(false);
   const [internalShowTopMenu, setInternalShowTopMenu] = useState(false);
   const [themePref, setThemePref] = useState<'light' | 'dark' | 'system' | 'emerald' | 'desert' | 'navy'>('light');
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>('default');
@@ -518,6 +520,32 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 )}
 
+                {/* PRIVACY POLICY & COMPLIANCE BUTTON */}
+                <button
+                  onClick={() => {
+                    handleCloseMenu();
+                    setShowPrivacyPolicyModal(true);
+                  }}
+                  className="w-full p-3.5 rounded-3xl bg-emerald-50/80 hover:bg-emerald-100/80 border border-emerald-200/80 shadow-2xs text-left cursor-pointer transition-all group active:scale-[0.98]"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0 group-hover:scale-105 transition-transform">
+                        <Shield className="w-4 h-4 text-emerald-700" />
+                      </div>
+                      <div>
+                        <div className="font-serif font-bold text-xs text-emerald-950 group-hover:text-emerald-800 transition-colors">
+                          {lang === 'ur' ? 'پرائیویسی پالیسی و ڈیٹا سیکیورٹی' : 'Privacy Policy & Data Security'}
+                        </div>
+                        <p className="text-[10px] text-emerald-700 font-sans">
+                          {lang === 'ur' ? 'ڈیٹا کے تحفظ اور استعمال کے اصول' : 'User data protection, encryption & compliance'}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </button>
+
                 {/* LAST ITEM: ABOUT US & CONTACT INFORMATION BUTTON */}
                 <button
                   onClick={() => {
@@ -562,7 +590,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Drawer Footer */}
             <div className="p-4 bg-[#f0f0e4] border-t border-[#ecece0] text-center text-xs text-[#8e8e75]">
-              Driver Dost · Pakistan Logistics & Transport Manager v2.4 Pro
+              Driver Dost · Pakistan Logistics & Transport Manager v1.0.2
             </div>
           </div>
         </div>
@@ -572,6 +600,13 @@ export const Header: React.FC<HeaderProps> = ({
       <AboutUsModal
         isOpen={showAboutModal}
         onClose={() => setShowAboutModal(false)}
+        lang={lang}
+      />
+
+      {/* Official Privacy Policy & Security Compliance Modal */}
+      <PrivacyPolicyModal
+        isOpen={showPrivacyPolicyModal}
+        onClose={() => setShowPrivacyPolicyModal(false)}
         lang={lang}
       />
 

@@ -172,14 +172,13 @@ export const Footer: React.FC<FooterProps> = ({
             )}
             <li>
               <a
-                href="https://mtmis.excise.punjab.gov.pk/"
-                target="_blank"
-                rel="noopener noreferrer"
-                title={isUrdu ? 'پنجاب ایکسائز گاڑی ویریفکیشن پورٹل' : 'MTMIS Punjab Vehicle Verification Portal'}
+                href="#verify"
+                onClick={(e) => handleLinkClick(e, 'verify')}
+                title={isUrdu ? 'پنجاب، سندھ و اسلام آباد ایکسائز وہیکل ویریفکیشن' : 'Excise Vehicle Verification Portal'}
                 className="hover:text-[#8b9d77] flex items-center gap-2 transition-colors py-0.5"
               >
-                <ExternalLink className="w-3.5 h-3.5 text-[#5a5a40]" />
-                <span>{isUrdu ? 'MTMIS ایکسائز وہیکل ویریفکیشن' : 'MTMIS Punjab Vehicle Verification'}</span>
+                <ShieldCheck className="w-3.5 h-3.5 text-[#8b9d77]" />
+                <span>{isUrdu ? 'ایکسائز وہیکل ویریفکیشن' : 'Excise Vehicle Verification'}</span>
               </a>
             </li>
           </ul>
@@ -190,7 +189,7 @@ export const Footer: React.FC<FooterProps> = ({
       {/* Bottom Bar with Credits and Quick Anchors */}
       <div className="max-w-7xl mx-auto pt-4 border-t border-[#e2e2d5] flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#5a5a40] gap-3">
         <div className="flex items-center gap-2 flex-wrap text-center sm:text-left">
-          <span className="font-semibold text-[#4a4a35]">Driver Dost · Pakistan Road Freight Manager v2.4 Pro</span>
+          <span className="font-semibold text-[#4a4a35]">Driver Dost · Pakistan Road Freight Manager v1.0.2</span>
           <span>·</span>
           <span>© 2026 Warraich Goods Transport Company. All Rights Reserved.</span>
         </div>
