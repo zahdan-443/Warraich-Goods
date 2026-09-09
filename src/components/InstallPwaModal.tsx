@@ -2,16 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { Download, X, Smartphone, Sparkles, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { Language } from '../types';
 import { PublicImage } from '../assets/dashboardIcons';
+import { isNativeApp } from '../utils/platform';
 
 interface InstallPwaModalProps {
   lang: Language;
 }
 
 export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
+  // If running in native Android or Capacitor app, never show any PWA install modal
+  if (isNativeApp()) {
+    return null;
+  }
+
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showModal, setShowModal] = useState<boolean>(false);
   const isAndroidAppOrTwa = () => {
     if (typeof window === 'undefined') return false;
+    if (isNativeApp()) return true;
     const ua = (navigator.userAgent || '').toLowerCase();
     const search = window.location.search.toLowerCase();
     return (
@@ -28,6 +35,7 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
 
   const [isInstalled, setIsInstalled] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
+    if (isNativeApp()) return true;
     const isStandalone = 
       window.matchMedia('(display-mode: standalone)').matches || 
       window.matchMedia('(display-mode: fullscreen)').matches || 
@@ -43,7 +51,7 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
   useEffect(() => {
     // Check if already in standalone PWA mode or previously recorded as installed
     const checkInstalled = () => {
-      if (isAndroidAppOrTwa()) {
+      if (isNativeApp() || isAndroidAppOrTwa()) {
         setIsInstalled(true);
         setShowModal(false);
         return true;
@@ -94,24 +102,7 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
     window.addEventListener('appinstalled', handleAppInstalled);
     window.addEventListener('wg_open_install_modal', handleOpenRequest);
 
-    // Auto-prompt is STRICTLY suppressed in TWA / APK and only triggers for real browser users who haven't dismissed it
-    let timer: any = null;
-    if (!isAndroidAppOrTwa()) {
-      timer = setTimeout(() => {
-        if (!checkInstalled()) {
-          const sessionDismissed = sessionStorage.getItem('wg_install_session_dismissed');
-          const lastDismissedTime = localStorage.getItem('wg_install_last_dismissed');
-          const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-          
-          if (!sessionDismissed && (!lastDismissedTime || parseInt(lastDismissedTime, 10) < oneDayAgo)) {
-            setShowModal(true);
-          }
-        }
-      }, 5000);
-    }
-
     return () => {
-      clearTimeout(timer);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
       window.removeEventListener('wg_open_install_modal', handleOpenRequest);

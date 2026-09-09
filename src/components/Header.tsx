@@ -6,6 +6,7 @@ import { logoIconData } from '../assets/dashboardIcons';
 import { AboutUsModal } from './AboutUsModal';
 import { SyncStatusBadge } from './SyncStatusBadge';
 import { ExportPrivacyModal } from './ExportPrivacyModal';
+import { isNativeApp } from '../utils/platform';
 import { 
   getNotificationPermission, 
   requestNotificationPermission, 
@@ -472,32 +473,50 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 </div>
 
-                {/* INSTALL APP PROMINENT CARD */}
-                <div className="p-4 rounded-3xl bg-blue-50/90 border border-blue-200 space-y-2.5 shadow-2xs">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-white border border-blue-200 shadow-2xs text-[#1e3a68] shrink-0">
-                      <Download className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="font-serif font-bold text-sm text-[#1e3a68]">
-                        {lang === 'ur' ? 'ایپ انسٹال کریں (PWA)' : 'Install Official App'}
+                {/* NATIVE APP STATUS OR PWA INSTALL CARD */}
+                {isNativeApp() ? (
+                  <div className="p-4 rounded-3xl bg-emerald-50/90 border border-emerald-200 space-y-2 shadow-2xs">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-2xl bg-white border border-emerald-200 shadow-2xs text-emerald-800 shrink-0">
+                        <Shield className="w-5 h-5 text-emerald-600" />
                       </div>
-                      <div className="text-[11px] text-blue-700">
-                        {lang === 'ur' ? 'ہوم اسکرین پر آف لائن استعمال کے لیے انسٹال کریں' : 'Install on mobile home screen for quick offline access'}
+                      <div>
+                        <div className="font-serif font-bold text-sm text-emerald-950">
+                          {lang === 'ur' ? 'ڈرائیور دوست (آفیشل اینڈرائیڈ ایپ)' : 'Driver Dost (Official App)'}
+                        </div>
+                        <div className="text-[11px] text-emerald-700">
+                          {lang === 'ur' ? 'ورژن 1.0.2 • فعال و مستند' : 'Version 1.0.2 • Verified Native App'}
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      handleCloseMenu();
-                      window.dispatchEvent(new CustomEvent('wg_open_install_modal'));
-                    }}
-                    className="w-full py-2.5 px-3 bg-[#1e3a68] hover:bg-[#162a4d] text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-all active:scale-95"
-                  >
-                    <Download className="w-4 h-4 text-blue-200" />
-                    <span>{lang === 'ur' ? 'ایپ انسٹالیشن ونڈو کھولیں' : 'Install Driver Dost App'}</span>
-                  </button>
-                </div>
+                ) : (
+                  <div className="p-4 rounded-3xl bg-blue-50/90 border border-blue-200 space-y-2.5 shadow-2xs">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-2xl bg-white border border-blue-200 shadow-2xs text-[#1e3a68] shrink-0">
+                        <Download className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="font-serif font-bold text-sm text-[#1e3a68]">
+                          {lang === 'ur' ? 'ایپ انسٹال کریں (PWA)' : 'Install Official App'}
+                        </div>
+                        <div className="text-[11px] text-blue-700">
+                          {lang === 'ur' ? 'ہوم اسکرین پر آف لائن استعمال کے لیے انسٹال کریں' : 'Install on mobile home screen for quick offline access'}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        handleCloseMenu();
+                        window.dispatchEvent(new CustomEvent('wg_open_install_modal'));
+                      }}
+                      className="w-full py-2.5 px-3 bg-[#1e3a68] hover:bg-[#162a4d] text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-all active:scale-95"
+                    >
+                      <Download className="w-4 h-4 text-blue-200" />
+                      <span>{lang === 'ur' ? 'ایپ انسٹالیشن ونڈو کھولیں' : 'Install Driver Dost App'}</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* LAST ITEM: ABOUT US & CONTACT INFORMATION BUTTON */}
                 <button
