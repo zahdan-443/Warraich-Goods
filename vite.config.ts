@@ -27,10 +27,12 @@ export default defineConfig(() => {
               ) {
                 return 'vendor-pdf';
               }
-              if (id.includes('lucide-react')) {
-                return 'vendor-icons';
-              }
-              if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
+              if (
+                id.includes('react') ||
+                id.includes('react-dom') ||
+                id.includes('scheduler') ||
+                id.includes('lucide-react')
+              ) {
                 return 'vendor-react';
               }
             }
@@ -42,6 +44,11 @@ export default defineConfig(() => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+      dedupe: ['react', 'react-dom', 'lucide-react'],
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'lucide-react'],
+      force: true,
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

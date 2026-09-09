@@ -11,7 +11,7 @@
    - Native Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v17';
+const CACHE_NAME = 'driver-dost-v18';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const STATIC_ASSETS = [
   './',
@@ -99,6 +99,17 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
   if (url.protocol.startsWith('chrome-extension')) return;
+
+  // Never intercept or cache development modules, Vite internal, or HMR requests
+  if (
+    url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.includes('/node_modules/') ||
+    url.search.includes('v=') ||
+    url.search.includes('t=')
+  ) {
+    return;
+  }
 
   // Handle OpenStreetMap / CartoDB / Tile Server requests
   if (url.hostname.includes('tile.openstreetmap.org') || url.hostname.includes('basemaps.cartocdn.com') || url.pathname.endsWith('.png') && url.pathname.includes('/tiles/')) {
