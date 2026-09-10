@@ -36,6 +36,18 @@ if (fs.existsSync(distDir) && fs.existsSync(androidAssetsDir)) {
         allowMixedContent: false,
         captureInput: true,
         webContentsDebuggingEnabled: false
+      },
+      plugins: {
+        SplashScreen: {
+          launchShowDuration: 1200,
+          launchAutoHide: true,
+          backgroundColor: "#162A4D",
+          androidSplashResourceName: "splash",
+          androidScaleType: "CENTER_CROP",
+          showSpinner: false,
+          splashFullScreen: true,
+          splashImmersive: true
+        }
       }
     };
     fs.writeFileSync(
