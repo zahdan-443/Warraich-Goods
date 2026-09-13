@@ -520,27 +520,18 @@ export async function saveUserProfileInFirestore(profile: UserProfile) {
 }
 
 export const DEFAULT_AUTHORIZED_EMAILS = [
-  'warraichgoods43@gmail.com',
-  'alhadigoods786@gmail.com'
+  'warraichgoods43@gmail.com'
 ];
 
 export async function getAllRegisteredUsers(): Promise<UserProfile[]> {
   const localUsers = getLocalRegisteredUsers();
   const userMap = new Map<string, UserProfile>();
 
-  // Add default owners / master accounts
+  // Add default owner account
   userMap.set('warraichgoods43@gmail.com', {
     uid: 'owner_uid_warraich',
     name: 'زاہدان نصر وڑائچ (آنر)',
     email: 'warraichgoods43@gmail.com',
-    role: 'owner',
-    lastLogin: new Date().toISOString()
-  });
-
-  userMap.set('alhadigoods786@gmail.com', {
-    uid: 'owner_uid_alhadi',
-    name: 'الہادی گڈز ٹرانسپورٹ (ایڈمن)',
-    email: 'alhadigoods786@gmail.com',
     role: 'owner',
     lastLogin: new Date().toISOString()
   });

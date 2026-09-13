@@ -1,12 +1,12 @@
 import React from 'react';
 import { PublicImage } from '../assets/dashboardIcons';
 
-interface AlHadiLogoProps {
+interface CompanyLogoProps {
   className?: string;
   showText?: boolean;
 }
 
-export const AlHadiLogo: React.FC<AlHadiLogoProps> = ({ className = "w-32 h-32" }) => {
+export const CompanyLogo: React.FC<CompanyLogoProps> = ({ className = "w-32 h-32" }) => {
   return (
     <div className={`relative rounded-full overflow-hidden shadow-md border-2 border-[#c59b27] bg-white flex items-center justify-center shrink-0 ${className}`}>
       <PublicImage
@@ -37,5 +37,3 @@ export const AlHadiLogo: React.FC<AlHadiLogoProps> = ({ className = "w-32 h-32" 
     </div>
   );
 };
-
-

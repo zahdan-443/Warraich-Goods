@@ -7,9 +7,11 @@ const androidAssetsDir = path.resolve('android/app/src/main/assets');
 
 if (fs.existsSync(distDir) && fs.existsSync(androidAssetsDir)) {
   try {
-    if (!fs.existsSync(androidPublicDir)) {
-      fs.mkdirSync(androidPublicDir, { recursive: true });
+    if (fs.existsSync(androidPublicDir)) {
+      // Remove stale assets to prevent accumulation of outdated build chunks
+      fs.rmSync(androidPublicDir, { recursive: true, force: true });
     }
+    fs.mkdirSync(androidPublicDir, { recursive: true });
     fs.cpSync(distDir, androidPublicDir, { 
       recursive: true,
       filter: (src) => !src.endsWith('server.cjs') && !src.endsWith('server.cjs.map')

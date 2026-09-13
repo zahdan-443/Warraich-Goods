@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send, Download } from 'lucide-react';
 import { DICTIONARY, Language, AppNotification, UserRole } from '../types';
-import { AlHadiLogo } from './AlHadiLogo';
+import { CompanyLogo } from './CompanyLogo';
 import { logoIconData } from '../assets/dashboardIcons';
 import { AboutUsModal } from './AboutUsModal';
 import { SyncStatusBadge } from './SyncStatusBadge';
@@ -148,7 +148,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
-  const isOwnerUser = userEmail?.toLowerCase() === 'warraichgoods43@gmail.com' || userEmail?.toLowerCase() === 'alhadigoods786@gmail.com';
+  const isOwnerUser = userEmail?.toLowerCase() === 'warraichgoods43@gmail.com';
 
   return (
     <>
@@ -167,7 +167,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
 
             {/* Logo Image */}
-            <AlHadiLogo className="w-9 h-9 sm:w-10 sm:h-10" />
+            <CompanyLogo className="w-9 h-9 sm:w-10 sm:h-10" />
 
             <div className="flex flex-col justify-center min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2 leading-tight">
@@ -210,7 +210,7 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Drawer Header */}
               <div className="p-5 pt-[max(env(safe-area-inset-top,0px),1.25rem)] bg-[#fdfbf7] border-b border-[#ecece0] flex items-center justify-between sticky top-0 z-10">
                 <div className="flex items-center gap-3">
-                  <AlHadiLogo className="w-10 h-10" />
+                  <CompanyLogo className="w-10 h-10" />
                   <div>
                     <div className="font-serif font-bold text-base text-[#4a4a35]">{t.appTitle}</div>
                     <p className="text-[10px] text-[#8b9d77] font-sans uppercase tracking-wider">{lang === 'ur' ? 'سسٹم کنٹرول مینیو' : 'System Controls Menu'}</p>

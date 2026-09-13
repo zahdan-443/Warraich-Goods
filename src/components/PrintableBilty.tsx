@@ -4,7 +4,7 @@ import { BiltyRecord } from '../types';
 import { getCachedCompanyProfile } from '../utils/storage';
 import { logoIconData, biltyOfficialIconData, companyCardData } from '../assets/dashboardIcons';
 import { getLogoBase64, getCompanyCardBase64 } from '../utils/pdfHelper';
-import { AlHadiLogo } from './AlHadiLogo';
+import { CompanyLogo } from './CompanyLogo';
 
 interface PrintableBiltyProps {
   record: BiltyRecord;
@@ -224,9 +224,6 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
                   if (!target.dataset.triedOfficialPng) {
                     target.dataset.triedOfficialPng = '1';
                     target.src = './bilty-official-icon.png';
-                  } else if (!target.dataset.triedOfficialJpg) {
-                    target.dataset.triedOfficialJpg = '1';
-                    target.src = './bilty-official-icon.jpg';
                   } else if (!target.dataset.triedBilty) {
                     target.dataset.triedBilty = '1';
                     target.src = './bilty-icon.png';
@@ -267,7 +264,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
                   flexShrink: 0
                 }}
               >
-                <AlHadiLogo className="w-14 h-14" />
+                <CompanyLogo className="w-14 h-14" />
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'right' }}>

@@ -35,7 +35,7 @@ import {
   Phone,
   Mail
 } from 'lucide-react';
-import { AlHadiLogo } from '../AlHadiLogo';
+import { CompanyLogo } from '../CompanyLogo';
 import { LiveFuelPriceWidget } from '../LiveFuelPriceWidget';
 import { TollCalculatorModal } from '../TollCalculatorModal';
 import { AboutUsModal } from '../AboutUsModal';
@@ -471,7 +471,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <div className="lg:col-span-7 flex flex-col gap-6 sm:gap-8">
         
         {/* Authenticated App Owner Control Panel Quick Link */}
-        {(userEmail?.toLowerCase() === 'warraichgoods43@gmail.com' || userEmail?.toLowerCase() === 'alhadigoods786@gmail.com') && onOpenBiltyAccess && (
+        {(userEmail?.toLowerCase() === 'warraichgoods43@gmail.com') && onOpenBiltyAccess && (
           <div className="p-4 rounded-[28px] bg-gradient-to-r from-amber-500/15 via-[#fdfbf7] to-amber-500/15 border-2 border-amber-400/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-in fade-in">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-gradient-to-br from-amber-500 to-[#b58b28] rounded-2xl text-white shrink-0 shadow-xs">
@@ -873,7 +873,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <div className="w-full bg-[#fdfbf7] rounded-[36px] p-6 md:p-8 border border-[#ecece0] shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-4 w-full md:w-auto">
           <div className="w-14 h-14 rounded-2xl bg-white p-1.5 shadow-md border-2 border-[#b58b28] flex items-center justify-center shrink-0">
-            <AlHadiLogo className="w-10 h-10" />
+            <CompanyLogo className="w-10 h-10" />
           </div>
           <div>
             <div className="flex items-center gap-2">

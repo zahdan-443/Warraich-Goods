@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActiveTab, Language } from '../types';
 import { Truck, Calculator, Fuel, MapPin, Users, ShieldCheck, Receipt, ExternalLink, Heart } from 'lucide-react';
-import { AlHadiLogo } from './AlHadiLogo';
+import { CompanyLogo } from './CompanyLogo';
 
 interface FooterProps {
   lang?: Language;
@@ -33,7 +33,7 @@ export const Footer: React.FC<FooterProps> = ({
         {/* Col 1: Brand & Logistics Mission */}
         <div className="space-y-3 md:col-span-1">
           <div className="flex items-center gap-3">
-            <AlHadiLogo className="w-10 h-10" />
+            <CompanyLogo className="w-10 h-10" />
             <div>
               <span className="font-serif font-bold text-base text-[#4a4a35] block leading-tight">
                 {isUrdu ? 'ڈرائیور دوست' : 'Driver Dost'}

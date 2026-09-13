@@ -56,7 +56,7 @@ import { BottomNavBar } from './components/BottomNavBar';
 
 export default function App() {
   const OWNER_EMAIL = 'warraichgoods43@gmail.com';
-  const MASTER_EMAILS = ['warraichgoods43@gmail.com', 'alhadigoods786@gmail.com'];
+  const MASTER_EMAILS = ['warraichgoods43@gmail.com'];
 
   const [lang, setLang] = useState<Language>(() => {
     const saved = localStorage.getItem('ah-lang');
