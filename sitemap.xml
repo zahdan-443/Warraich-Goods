@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  
+  <!-- Main Home Page -->
   <url>
     <loc>https://zahdan-443.github.io/Warraich-Goods/</loc>
     <lastmod>2026-09-13</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
   </url>
+
+  <!-- Canonical Entry Page -->
   <url>
     <loc>https://zahdan-443.github.io/Warraich-Goods/index.html</loc>
     <lastmod>2026-09-13</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
   </url>
+
 </urlset>
