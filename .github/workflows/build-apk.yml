@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 20
           cache: 'npm'
 
       - name: Setup Java JDK 21
@@ -45,12 +45,20 @@ jobs:
           npm run test
 
       - name: Build Web Assets & Sync Capacitor
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
         run: |
           npm run build
           npx cap sync android
 
       - name: Decode Release Keystore (if provided in secrets)
-        if: ${{ inputs.build_type == 'release' && env.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: ${{ inputs.build_type == 'release' && secrets.ANDROID_KEYSTORE_BASE64 != '' }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
@@ -65,17 +73,19 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd android
-          chmod +x ./gradlew || true
-          if [ "${{ inputs.build_type }}" = "release" ] && [ -n "${{ env.ANDROID_KEYSTORE_PATH }}" ]; then
-            gradle assembleRelease
+          chmod +x ./gradlew
+          if [ "${{ inputs.build_type }}" = "release" ] && [ -f "app/release-keystore.jks" ]; then
+            echo "Building signed Release APK..."
+            ./gradlew assembleRelease
           else
-            gradle assembleDebug
+            echo "Building Debug APK (or unsigned release)..."
+            ./gradlew assembleDebug
           fi
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: driver-dost-apk-${{ inputs.build_type }}
+          name: warraich-goods-apk-${{ inputs.build_type }}
           path: |
             android/app/build/outputs/apk/release/*.apk
             android/app/build/outputs/apk/debug/*.apk
