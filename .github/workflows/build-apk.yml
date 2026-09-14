@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: 'npm'
 
       - name: Setup Java JDK 21
@@ -37,7 +37,6 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-          validate-wrappers: false
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -62,6 +61,8 @@ jobs:
         run: |
           npm run build
           npx cap sync android
+          # Safety cleanup: remove any corrupt/non-standard land-hdpi splash that can fail aapt2 compilation
+          rm -rf android/app/src/main/res/drawable-land-hdpi || true
 
       - name: Prepare Release Keystore (Secrets or Auto-Generate)
         if: ${{ inputs.build_type == 'release' }}
@@ -76,7 +77,7 @@ jobs:
             echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release-keystore.jks
             echo "ANDROID_KEYSTORE_PATH=release-keystore.jks" >> $GITHUB_ENV
           else
-            echo "Generating official persistent release key on the fly..."
+            echo "No custom Keystore provided. Generating official persistent release key on the fly..."
             KEY_PW="${ANDROID_KEYSTORE_PASSWORD:-DriverDostWarraich2026}"
             KEY_AL="${ANDROID_KEY_ALIAS:-driverdost}"
             keytool -genkeypair -v \
