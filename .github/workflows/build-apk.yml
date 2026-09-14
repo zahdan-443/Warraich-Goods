@@ -82,21 +82,13 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd android
-          chmod +x ./gradlew
-          
-          # If gradlew fails due to corrupted jarfile on checkout, regenerate wrapper via installed gradle
-          if ! ./gradlew --version >/dev/null 2>&1; then
-            echo "Gradle wrapper jar issue detected, regenerating wrapper with Gradle 8.10.2..."
-            gradle wrapper --gradle-version 8.10.2
-            chmod +x ./gradlew
-          fi
-
+          # Run directly via the official Gradle installed in runner
           if [ "${{ inputs.build_type }}" = "release" ] && [ -f "app/release-keystore.jks" ]; then
             echo "Building signed Release APK..."
-            ./gradlew assembleRelease
+            gradle assembleRelease --no-daemon
           else
             echo "Building Debug APK (or unsigned release)..."
-            ./gradlew assembleDebug
+            gradle assembleDebug --no-daemon
           fi
 
       - name: Upload APK Artifact
