@@ -34,9 +34,10 @@ jobs:
           java-version: '21'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.10.2'
+          validate-wrappers: false
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -89,7 +90,7 @@ jobs:
               -storepass "$KEY_PW" \
               -keypass "$KEY_PW" \
               -dname "CN=Driver Dost, OU=Warraich Goods Transport Company, O=Warraich Goods, L=Gujranwala, ST=Punjab, C=PK"
-            
+
             echo "ANDROID_KEYSTORE_PATH=release-keystore.jks" >> $GITHUB_ENV
             echo "ANDROID_KEYSTORE_PASSWORD=$KEY_PW" >> $GITHUB_ENV
             echo "ANDROID_KEY_ALIAS=$KEY_AL" >> $GITHUB_ENV
