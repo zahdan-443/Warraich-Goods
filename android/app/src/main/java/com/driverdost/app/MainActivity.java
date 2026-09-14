@@ -1,4 +1,4 @@
-package com.punjabfreighthub.app;
+package com.driverdost.app;
 
 import com.getcapacitor.BridgeActivity;
 

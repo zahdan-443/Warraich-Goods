@@ -36,4 +36,4 @@
 -dontwarn com.google.android.gms.**
 
 # 6. Keep native activity entry point
--keep class com.punjabfreighthub.app.MainActivity { *; }
+-keep class com.driverdost.app.MainActivity { *; }

@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.punjabfreighthub.app',
+  appId: 'com.driverdost.app',
   appName: 'Driver Dost',
   webDir: 'dist',
   server: {
