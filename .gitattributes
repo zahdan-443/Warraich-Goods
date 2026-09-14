@@ -8,3 +8,4 @@
 *.svg text
 *.jks binary
 *.keystore binary
+*.jar binary
