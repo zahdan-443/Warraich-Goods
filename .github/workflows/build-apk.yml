@@ -65,11 +65,11 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd android
-          chmod +x ./gradlew || true
+          chmod +x ./gradlew
           if [ "${{ inputs.build_type }}" = "release" ] && [ -n "${{ env.ANDROID_KEYSTORE_PATH }}" ]; then
-            gradle assembleRelease
+            ./gradlew assembleRelease
           else
-            gradle assembleDebug
+            ./gradlew assembleDebug
           fi
 
       - name: Upload APK Artifact

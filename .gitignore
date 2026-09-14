@@ -5,6 +5,9 @@ coverage/
 .DS_Store
 *.log
 .env*
+# Whitelist essential repo configuration
+!.github/
+!.github/**
 !.env.example
 firebase-applet-config.json
 !firebase-applet-config.example.json
