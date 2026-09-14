@@ -151,6 +151,17 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
                 <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span><strong>{isUrdu ? 'ہیلپ لائن / فون:' : 'Phone / Contact:'}</strong> <span className="dir-ltr font-bold text-[#1e3a68]">0300-5370443</span></span>
               </div>
+              <div className="pt-2 border-t border-[#ecece0] flex items-center justify-between">
+                <span className="text-[11px] text-[#7a7a60]">{isUrdu ? 'آن لائن پالیسی لنک:' : 'Web Policy URL:'}</span>
+                <a 
+                  href="./privacy.html" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[11px] font-bold text-[#1e3a68] hover:underline flex items-center gap-1"
+                >
+                  <span>{isUrdu ? 'مکمل ویب پرائیویسی پیج' : 'Open Web Page'}</span>
+                </a>
+              </div>
             </div>
           </div>
 
@@ -159,7 +170,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
         {/* Footer */}
         <div className="p-4 bg-[#f0f0e4] border-t border-[#ecece0] flex items-center justify-between shrink-0">
           <span className="text-[11px] text-[#7a7a60] font-medium">
-            {isUrdu ? 'ڈرائیور دوست • ورژن 1.0.2 • مستند و محفوظ' : 'Driver Dost • Version 1.0.2 • Verified & Compliant'}
+            {isUrdu ? 'ڈرائیور دوست • ورژن 1.0.3 • مستند و محفوظ' : 'Driver Dost • Version 1.0.3 • Verified & Compliant'}
           </span>
           <button
             onClick={onClose}

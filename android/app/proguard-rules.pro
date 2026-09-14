@@ -1,21 +1,39 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Project specific ProGuard & R8 configuration rules
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# 1. Line numbers & debugging attributes
+-keepattributes SourceFile,LineNumberTable
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# 2. Capacitor Core & Plugins
+-keep class com.getcapacitor.** { *; }
+-keep interface com.getcapacitor.** { *; }
+-keep class * extends com.getcapacitor.Plugin { *; }
+-keepclassmembers class * extends com.getcapacitor.Plugin {
+    public <methods>;
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# 3. WebView JavaScript Interfaces & Reflection
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-keepclassmembers class fqcn.of.javascript.interface.for.webview {
+    public *;
+}
+-keep class android.webkit.** { *; }
+-dontwarn android.webkit.**
+
+# 4. AndroidX & Support Libraries
+-keep class androidx.appcompat.** { *; }
+-keep class androidx.coordinatorlayout.** { *; }
+-keep class androidx.core.content.FileProvider { *; }
+-dontwarn androidx.**
+
+# 5. Firebase & Google Services (safe reflection for cloud auth & firestore)
+-keepattributes *Annotation*
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.android.gms.**
+
+# 6. Keep native activity entry point
+-keep class com.punjabfreighthub.app.MainActivity { *; }
