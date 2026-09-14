@@ -65,17 +65,17 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd android
-          chmod +x ./gradlew
+          chmod +x ./gradlew || true
           if [ "${{ inputs.build_type }}" = "release" ] && [ -n "${{ env.ANDROID_KEYSTORE_PATH }}" ]; then
-            ./gradlew assembleRelease
+            gradle assembleRelease
           else
-            ./gradlew assembleDebug
+            gradle assembleDebug
           fi
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: warraich-goods-apk-${{ inputs.build_type }}
+          name: driver-dost-apk-${{ inputs.build_type }}
           path: |
             android/app/build/outputs/apk/release/*.apk
             android/app/build/outputs/apk/debug/*.apk
