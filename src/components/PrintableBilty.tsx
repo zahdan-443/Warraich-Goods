@@ -5,6 +5,7 @@ import { getCachedCompanyProfile } from '../utils/storage';
 import { logoIconData, biltyOfficialIconData, companyCardData } from '../assets/dashboardIcons';
 import { getLogoBase64, getCompanyCardBase64 } from '../utils/pdfHelper';
 import { CompanyLogo } from './CompanyLogo';
+import { sanitizeContactOrCnic, generateBiltyVerificationQrDataUrl, getBiltyVerificationUrl } from '../utils/biltyHelpers';
 
 interface PrintableBiltyProps {
   record: BiltyRecord;
@@ -68,42 +69,21 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
 
   useEffect(() => {
     let isMounted = true;
-    if (!propQrUrl && record) {
-      const currentOrigin = typeof window !== 'undefined' && window.location && window.location.origin
-        ? window.location.origin
-        : '';
-
-      const qrText = [
-        company.nameUr || `ورائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)`,
-        company.nameEn || `WARRAICH GOODS TRANSPORT CO.`,
-        `بلٹی نمبر: ${record.biltyNo}`,
-        `تاریخ: ${record.date || '-'}`,
-        `گاڑی نمبر: ${record.vehicleNo}`,
-        `روٹ: ${record.sendingCity || '-'} تا ${record.receivingCity || '-'}`,
-        `مال بھیجنے والا: ${record.senderName || record.consignor || '-'} (${record.senderMobile || '-'})`,
-        `مال وصول کرنے والا: ${record.receiverName || record.consignee || '-'} (${record.receiverMobile || '-'})`,
-        `تفصیل مال: ${record.itemDescription || '-'} (${record.qty || '-'} نگ)`,
-        `وزن: ${record.weight || '-'} کلوگرام`,
-        `کل کرایہ: Rs ${record.total ? record.total.toLocaleString('en-US') : '0'}`,
-        `پیشگی: Rs ${record.advance ? record.advance.toLocaleString('en-US') : '0'}`,
-        `بقایا: Rs ${record.payable ? record.payable.toLocaleString('en-US') : '0'}`,
-        `ہیلپ لائن: ${company.phoneNumbers || '0300-5370443 | 0339-5370443'}`,
-        currentOrigin ? `Verify: ${currentOrigin}` : ''
-      ].filter(Boolean).join('\n');
-
-      QRCode.toDataURL(qrText, {
-        width: 350,
-        margin: 2,
-        errorCorrectionLevel: 'H',
-        color: { dark: '#000000', light: '#ffffff' }
-      })
-        .then(url => {
+    if (!propQrUrl && record?.biltyNo) {
+      generateBiltyVerificationQrDataUrl(record.biltyNo)
+        .then((url) => {
           if (isMounted) setInternalQrUrl(url);
         })
-        .catch((err) => console.error('QR generation error:', err));
+        .catch((err) => {
+          console.error('QR generation error:', err);
+          if (isMounted) {
+            const fallback = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(getBiltyVerificationUrl(record.biltyNo))}&size=150x150`;
+            setInternalQrUrl(fallback);
+          }
+        });
     }
     return () => { isMounted = false; };
-  }, [propQrUrl, record]);
+  }, [propQrUrl, record?.biltyNo]);
 
   const activeQrUrl = propQrUrl || internalQrUrl;
   const fmt = (n?: number) => (n !== undefined && n !== null ? n.toLocaleString('en-US') : '0');
@@ -410,19 +390,19 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontWeight: 700, fontSize: '11px', color: '#1e293b' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <span style={{ color: '#64748b', fontWeight: 500 }}>نام (Name):</span>
-              <span style={{ fontWeight: 900, color: '#0f172a', textAlign: 'right' }}>{record.senderName || record.consignor || '-'}</span>
+              <span style={{ fontWeight: 900, color: '#0f172a', textAlign: 'right' }}>{record.senderName || record.consignor || 'N/A'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: '#64748b', fontWeight: 500 }}>فون نمبر (Phone):</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', fontWeight: 900, color: '#0f172a' }}>{record.senderMobile || '-'}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', fontWeight: 900, color: '#0f172a' }}>{sanitizeContactOrCnic(record.senderMobile)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: '#64748b', fontWeight: 500 }}>شناختی کارڈ (CNIC):</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', color: '#334155' }}>{record.senderCnic || '-'}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', color: '#334155' }}>{sanitizeContactOrCnic(record.senderCnic)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '3px', borderTop: '1px solid #f1f5f9' }}>
               <span style={{ color: '#64748b', fontWeight: 500 }}>روانگی مقام (Dispatch From):</span>
-              <span style={{ fontWeight: 900, color: '#0f172a', backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '3px', fontSize: '11px' }}>{record.sendingCity || '-'}</span>
+              <span style={{ fontWeight: 900, color: '#0f172a', backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '3px', fontSize: '11px' }}>{record.sendingCity || 'N/A'}</span>
             </div>
           </div>
         </div>
@@ -457,19 +437,19 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontWeight: 700, fontSize: '11px', color: '#1e293b' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <span style={{ color: '#64748b', fontWeight: 500 }}>نام (Name):</span>
-              <span style={{ fontWeight: 900, color: '#0f172a', textAlign: 'right' }}>{record.receiverName || record.consignee || '-'}</span>
+              <span style={{ fontWeight: 900, color: '#0f172a', textAlign: 'right' }}>{record.receiverName || record.consignee || 'N/A'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: '#64748b', fontWeight: 500 }}>فون نمبر (Phone):</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', fontWeight: 900, color: '#0f172a' }}>{record.receiverMobile || '-'}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', fontWeight: 900, color: '#0f172a' }}>{sanitizeContactOrCnic(record.receiverMobile)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: '#64748b', fontWeight: 500 }}>شناختی کارڈ (CNIC / NTN):</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', color: '#334155' }}>-</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', color: '#334155' }}>N/A</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '3px', borderTop: '1px solid #f1f5f9' }}>
               <span style={{ color: '#64748b', fontWeight: 500 }}>منزل مقام (Destination Depot):</span>
-              <span style={{ fontWeight: 900, color: '#0f172a', backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '3px', fontSize: '11px' }}>{record.receivingCity || '-'}</span>
+              <span style={{ fontWeight: 900, color: '#0f172a', backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '3px', fontSize: '11px' }}>{record.receivingCity || 'N/A'}</span>
             </div>
           </div>
         </div>
@@ -489,11 +469,11 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
             </tr>
           </thead>
           <tbody style={{ backgroundColor: '#ffffff' }}>
-            {/* Primary Cargo Row */}
+            {/* Primary Cargo Row (rendered only if itemDescription, qty or weight exists) */}
             <tr style={{ fontWeight: 700, fontSize: '11.5px', color: '#0f172a', borderBottom: '1px solid #cbd5e1' }}>
               <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #cbd5e1', fontFamily: "'JetBrains Mono', monospace" }}>1</td>
               <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #cbd5e1', fontFamily: "'JetBrains Mono', monospace", fontWeight: 900 }}>
-                {record.qty || '-'} {record.qty ? 'Pkgs' : ''}
+                {record.qty || 'N/A'} {record.qty ? 'Pkgs' : ''}
               </td>
               <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #cbd5e1', color: '#334155' }}>
                 بوری / کارٹن / مال
@@ -502,44 +482,24 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
                 {record.itemDescription || 'جنرل کارگو ٹرانسپورٹ'}
               </td>
               <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #cbd5e1', fontFamily: "'JetBrains Mono', monospace", fontWeight: 900 }}>
-                {record.weight || '-'} {record.weight ? 'kg' : ''}
+                {record.weight || 'N/A'} {record.weight ? 'kg' : ''}
               </td>
               <td style={{ padding: '7px 8px', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", color: '#334155' }}>
                 {record.total && record.qty ? `Rs ${(record.total / (parseFloat(record.qty) || 1)).toFixed(0)}` : '-'}
               </td>
             </tr>
 
-            {/* Row 2 Placeholder */}
-            <tr style={{ fontSize: '11px', color: '#94a3b8', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
-              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0', fontFamily: "'JetBrains Mono', monospace" }}>2</td>
-              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>-</td>
-              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>-</td>
-              <td style={{ padding: '5px 8px', borderLeft: '1px solid #e2e8f0' }}>-</td>
-              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>-</td>
-              <td style={{ padding: '5px 8px', textAlign: 'center' }}>-</td>
-            </tr>
-
-            {/* Row 3 Placeholder */}
-            <tr style={{ fontSize: '11px', color: '#94a3b8', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
-              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0', fontFamily: "'JetBrains Mono', monospace" }}>3</td>
-              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>-</td>
-              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>-</td>
-              <td style={{ padding: '5px 8px', borderLeft: '1px solid #e2e8f0' }}>-</td>
-              <td style={{ padding: '5px 8px', textAlign: 'center', borderLeft: '1px solid #e2e8f0' }}>-</td>
-              <td style={{ padding: '5px 8px', textAlign: 'center' }}>-</td>
-            </tr>
-
             {/* Summary Row */}
             <tr style={{ fontWeight: 900, fontSize: '12px', backgroundColor: '#f1f5f9', color: '#0f172a', borderTop: '2px solid #0f2942' }}>
               <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #cbd5e1', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', Arial, sans-serif" }}>TOTAL (ٹوٹل)</td>
               <td style={{ padding: '7px 8px', textAlign: 'center', borderLeft: '1px solid #cbd5e1', fontFamily: "'JetBrains Mono', monospace", fontWeight: 900 }}>
-                {record.qty || '-'} {record.qty ? 'Pkgs' : ''}
+                {record.qty || 'N/A'} {record.qty ? 'Pkgs' : ''}
               </td>
               <td colSpan={2} style={{ padding: '7px 8px', borderLeft: '1px solid #cbd5e1', textAlign: 'right', fontSize: '11px' }}>
                 Total Actual Weight / Chargeable Weight (کل چارج ایبل وزن):
               </td>
               <td colSpan={2} style={{ padding: '7px 8px', textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontWeight: 900, color: '#0f172a' }}>
-                {record.weight || '-'} {record.weight ? 'kg' : ''}
+                {record.weight || 'N/A'} {record.weight ? 'kg' : ''}
               </td>
             </tr>
           </tbody>
@@ -691,15 +651,15 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
       >
         <div>
           <span style={{ color: '#64748b', fontWeight: 500 }}>ڈرائیور کا نام (Driver Name):</span>{' '}
-          <span style={{ fontWeight: 900, color: '#0f172a' }}>{record.driverName || '-'}</span>
+          <span style={{ fontWeight: 900, color: '#0f172a' }}>{record.driverName || 'N/A'}</span>
         </div>
         <div style={{ borderRight: '1px solid #cbd5e1', paddingRight: '8px' }}>
           <span style={{ color: '#64748b', fontWeight: 500 }}>موبائل نمبر (Cell):</span>{' '}
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', fontWeight: 900, color: '#0f172a' }}>{record.mobileNo || '-'}</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', fontWeight: 900, color: '#0f172a' }}>{sanitizeContactOrCnic(record.mobileNo)}</span>
         </div>
         <div style={{ borderRight: '1px solid #cbd5e1', paddingRight: '8px' }}>
           <span style={{ color: '#64748b', fontWeight: 500 }}>لائسنس نمبر (License):</span>{' '}
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', color: '#334155' }}>-</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', color: '#334155' }}>N/A</span>
         </div>
         <div style={{ borderRight: '1px solid #cbd5e1', paddingRight: '8px' }}>
           <span style={{ color: '#64748b', fontWeight: 500 }}>گیٹ پاس / ٹوکن:</span>{' '}

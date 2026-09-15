@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DICTIONARY, Language, Vehicle, Driver } from '../../types';
+import { DICTIONARY, Language, Vehicle, Driver, BiltyRecord } from '../../types';
 import {
   ShieldCheck,
   ExternalLink,
@@ -18,15 +18,21 @@ import {
   Truck,
   Users,
   Info,
-  CalendarCheck
+  CalendarCheck,
+  QrCode,
+  Share2
 } from 'lucide-react';
+import { BiltyVerificationCard } from './BiltyVerificationCard';
+import { getStoredBilties } from '../../utils/storage';
+import { getBiltyVerificationUrl } from '../../utils/biltyHelpers';
 
 interface VerifyViewProps {
   lang: Language;
   onNavigate?: (tab: string, subSection?: string) => void;
   vehicles?: Vehicle[];
   drivers?: Driver[];
-  initialSection?: 'vehicle' | 'license' | 'challan' | 'history';
+  initialSection?: 'vehicle' | 'license' | 'challan' | 'history' | 'bilty';
+  initialBiltyNo?: string;
 }
 
 interface VerificationAuditRecord {
@@ -78,18 +84,59 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
   onNavigate,
   vehicles = [],
   drivers = [],
-  initialSection = 'vehicle'
+  initialSection = 'vehicle',
+  initialBiltyNo = ''
 }) => {
   const isUrdu = lang === 'ur';
   const t = DICTIONARY[lang].verify;
 
-  const [activeSubTab, setActiveSubTab] = useState<'vehicle' | 'license' | 'challan' | 'history'>(initialSection);
+  const [activeSubTab, setActiveSubTab] = useState<'vehicle' | 'license' | 'challan' | 'history' | 'bilty'>(
+    initialBiltyNo ? 'bilty' : initialSection
+  );
+
+  // Bilty Verification State
+  const [biltyQuery, setBiltyQuery] = useState(initialBiltyNo || '');
+  const [verifiedBilty, setVerifiedBilty] = useState<BiltyRecord | null>(null);
+  const [biltySearchAttempted, setBiltySearchAttempted] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const handleVerifyBilty = (q?: string) => {
+    const term = (q !== undefined ? q : biltyQuery).trim().toLowerCase();
+    if (!term) return;
+
+    setBiltySearchAttempted(true);
+    const allBilties = getStoredBilties();
+
+    const normalizedTerm = term.replace(/[^a-z0-9]/g, '');
+
+    const match = allBilties.find((b) => {
+      const bNo = String(b.biltyNo || '').toLowerCase();
+      const bId = String(b.id ?? '').toLowerCase();
+      const vNo = String(b.vehicleNo || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      return (
+        bNo === term ||
+        bNo.replace(/[^a-z0-9]/g, '') === normalizedTerm ||
+        bId === term ||
+        (normalizedTerm.length > 3 && vNo === normalizedTerm)
+      );
+    });
+
+    if (match) {
+      setVerifiedBilty(match);
+    } else {
+      setVerifiedBilty(null);
+    }
+  };
 
   useEffect(() => {
-    if (initialSection) {
+    if (initialBiltyNo) {
+      setActiveSubTab('bilty');
+      setBiltyQuery(initialBiltyNo);
+      handleVerifyBilty(initialBiltyNo);
+    } else if (initialSection) {
       setActiveSubTab(initialSection);
     }
-  }, [initialSection]);
+  }, [initialSection, initialBiltyNo]);
 
   // Vehicle Tab State
   const [vehicleReg, setVehicleReg] = useState('LES-20-4124');
@@ -368,6 +415,19 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
           >
             <CalendarCheck className="w-4 h-4" />
             <span>{isUrdu ? `محفوظ ریکارڈز (${auditRecords.length})` : `Saved Audits (${auditRecords.length})`}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('bilty')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 border ${
+              activeSubTab === 'bilty'
+                ? 'bg-[#4a5e38] text-white border-[#4a5e38] shadow-xs'
+                : 'bg-[#fdfbf7] text-[#5a5a40] border-[#ecece0] hover:border-[#8b9d77]'
+            }`}
+          >
+            <QrCode className="w-4 h-4" />
+            <span>{isUrdu ? 'بلٹی تصدیق (QR و لوڈ ٹریکر)' : 'Bilty Verification (QR & Load)'}</span>
           </button>
         </div>
 
@@ -917,6 +977,216 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 5: BILTY VERIFICATION & LOAD TRACKER */}
+        {activeSubTab === 'bilty' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* If a Bilty is verified, display the official BiltyVerificationCard */}
+            {verifiedBilty ? (
+              <div className="space-y-4">
+                <BiltyVerificationCard
+                  bilty={verifiedBilty}
+                  lang={lang}
+                  onBack={() => {
+                    setVerifiedBilty(null);
+                    setBiltySearchAttempted(false);
+                  }}
+                />
+
+                {/* Actions row: Copy Link, Share WhatsApp */}
+                <div className="max-w-2xl mx-auto flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-[#fdfbf7] border border-[#ecece0]">
+                  <div className="text-xs text-[#5a5a40]">
+                    <span className="font-bold">{isUrdu ? 'آفیشل تصدیقی لنک:' : 'Official Verification Link:'}</span>
+                    <div className="font-mono text-[11px] text-[#8b9d77] truncate max-w-xs sm:max-w-md mt-0.5">
+                      {getBiltyVerificationUrl(verifiedBilty.biltyNo)}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = getBiltyVerificationUrl(verifiedBilty.biltyNo);
+                        navigator.clipboard.writeText(url);
+                        setCopiedLink(true);
+                        setTimeout(() => setCopiedLink(false), 2000);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-white border border-[#ecece0] hover:border-[#8b9d77] text-xs font-bold text-[#4a4a35] flex items-center gap-1.5 cursor-pointer transition-all"
+                    >
+                      {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedLink ? (isUrdu ? 'کاپی ہوگیا' : 'Copied!') : (isUrdu ? 'لنک کاپی' : 'Copy Link')}</span>
+                    </button>
+
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent(
+                        (isUrdu ? 'ورائچ گڈز ٹرانسپورٹ کمپنی - تصدیق شدہ بلٹی نمبر ' : 'Warraich Goods Transport Co. - Verified Bilty #') +
+                        verifiedBilty.biltyNo + '\n' +
+                        (isUrdu ? 'گاڑی نمبر: ' : 'Vehicle: ') + (verifiedBilty.vehicleNo || 'N/A') + '\n' +
+                        (isUrdu ? 'روٹ: ' : 'Route: ') + verifiedBilty.sendingCity + ' ta ' + verifiedBilty.receivingCity + '\n' +
+                        (isUrdu ? 'تصدیقی پورٹل: ' : 'Verification Link: ') + getBiltyVerificationUrl(verifiedBilty.biltyNo)
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>{isUrdu ? 'واٹس ایپ شیئر' : 'WhatsApp'}</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Search Form Card */}
+                <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ecece0] space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35] flex items-center gap-2">
+                        <QrCode className="w-5 h-5 text-[#8b9d77]" />
+                        <span>{isUrdu ? 'آفیشل بلٹی تصدیق و لوڈ ٹریکر' : 'Official Bilty & Consignment Verification'}</span>
+                      </h2>
+                      <p className="text-xs text-[#8e8e75] mt-1">
+                        {isUrdu
+                          ? 'بلٹی پر موجود کیو آر کوڈ اسکین کریں یا بلٹی نمبر درج کر کے سامان، کرایہ و روٹ کی فوری آفیشل تصدیق حاصل کریں۔'
+                          : 'Verify genuine consignments, freight balance, consignor/consignee, and vehicle dispatch details in real-time.'}
+                      </p>
+                    </div>
+
+                    <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 self-start sm:self-auto font-mono">
+                      {isUrdu ? 'مستند تصدیق' : 'VERIFIED PORTAL'}
+                    </span>
+                  </div>
+
+                  {/* Input form */}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleVerifyBilty();
+                    }}
+                    className="space-y-3"
+                  >
+                    <label className="block text-xs font-bold text-[#4a4a35]">
+                      {isUrdu ? 'بلٹی نمبر یا گاڑی نمبر درج کریں:' : 'Enter Bilty Number or Vehicle Registration:'}
+                    </label>
+
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={biltyQuery}
+                          onChange={(e) => setBiltyQuery(e.target.value)}
+                          placeholder={isUrdu ? 'مثال: WGT-2026-001 یا LES-20-4124' : 'e.g. WGT-2026-001 or LES-20-4124'}
+                          className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-[#ecece0] focus:border-[#8b9d77] focus:ring-1 focus:ring-[#8b9d77] outline-hidden text-sm font-mono font-bold text-[#4a4a35] transition-all"
+                        />
+                        <Search className="w-4 h-4 text-[#8e8e75] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="px-6 py-3 rounded-2xl bg-[#4a5e38] text-white hover:bg-[#3d4e2e] text-xs sm:text-sm font-bold shadow-xs cursor-pointer transition-all flex items-center justify-center gap-2 shrink-0"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>{isUrdu ? 'فوری تصدیق کریں' : 'Verify Consignment'}</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Search not found message */}
+                {biltySearchAttempted && !verifiedBilty && (
+                  <div className="p-5 sm:p-6 rounded-3xl bg-amber-50/80 border border-amber-200 text-amber-950 space-y-3 animate-in fade-in">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5">
+                        <AlertTriangle className="w-5 h-5" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-serif font-bold text-sm text-amber-900">
+                          {isUrdu ? 'بلٹی نمبر رجسٹرڈ نہیں ملا' : 'Bilty Record Not Found'}
+                        </h4>
+                        <p className="text-xs text-amber-800 leading-relaxed">
+                          {isUrdu
+                            ? `نمبر "${biltyQuery}" کے تحت کوئی بلٹی ریکارڈ نہیں ملا۔ براہ کرم بلٹی نمبر کی درستگی چیک کریں یا لوڈ ٹریکر شیٹ سے تصدیق کریں۔`
+                            : `No local dispatch record matched "${biltyQuery}". Please double check the Bilty number or verify directly via Warraich Goods Google Sheets Load Tracker.`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-white/80 rounded-2xl border border-amber-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                      <span className="text-[#5a5a40]">
+                        {isUrdu ? 'ورائچ گڈز 24/7 ہیلپ لائن رابطہ:' : 'Warraich Goods 24/7 Helpline:'}
+                      </span>
+                      <div className="font-mono font-bold text-[#4a5e38] flex items-center gap-3">
+                        <a href="tel:03005370443" className="hover:underline">0300-5370443</a>
+                        <span>•</span>
+                        <a href="tel:03395370443" className="hover:underline">0339-5370443</a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Quick Selection of Registered Bilties */}
+                {(() => {
+                  const stored = getStoredBilties();
+                  if (stored.length === 0) return null;
+                  return (
+                    <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ecece0] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#4a4a35] flex items-center gap-1.5">
+                          <Truck className="w-3.5 h-3.5 text-[#8b9d77]" />
+                          {isUrdu ? 'حالیہ رجسٹرڈ بلٹیاں (فوری تصدیق کیلئے کلک کریں):' : 'Recent Registered Bilties (Click to verify):'}
+                        </span>
+                        <span className="text-[11px] font-mono text-[#8e8e75]">
+                          {stored.length} {isUrdu ? 'کل بلٹیاں' : 'total'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                        {stored.slice(0, 6).map((b) => (
+                          <button
+                            key={b.id || b.biltyNo}
+                            type="button"
+                            onClick={() => {
+                              setBiltyQuery(b.biltyNo);
+                              handleVerifyBilty(b.biltyNo);
+                            }}
+                            className="p-3 rounded-2xl bg-white border border-[#ecece0] hover:border-[#8b9d77] hover:shadow-2xs text-left cursor-pointer transition-all flex items-center justify-between gap-2 group"
+                          >
+                            <div className="overflow-hidden">
+                              <span className="font-mono font-bold text-xs text-[#4a5e38] block group-hover:text-[#3d4e2e]">
+                                {b.biltyNo}
+                              </span>
+                              <span className="text-[11px] text-[#8e8e75] truncate block">
+                                {b.sendingCity} → {b.receivingCity}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                              Rs {(b.total || 0).toLocaleString()}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Google Sheets Load Tracker & Apps Script Banner */}
+                <div className="p-4 sm:p-5 rounded-3xl bg-white border border-[#ecece0] space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-[#8b9d77]" />
+                    <h4 className="font-serif font-bold text-xs sm:text-sm text-[#4a4a35]">
+                      {isUrdu ? 'گوگل شیٹس لوڈ ٹریکر سسٹم انٹیگریشن' : 'Google Sheets Load Tracker Integration'}
+                    </h4>
+                  </div>
+                  <p className="text-xs text-[#5a5a40] leading-relaxed">
+                    {isUrdu
+                      ? 'تمام تیار کردہ بلٹیوں پر متحرک کیو آر کوڈ پرنٹ ہوتا ہے جو براہ راست ورائچ گڈز کے لوڈ ٹریکر سسٹم اور آن لائن تصدیق سے منسلک ہے۔ کسی بھی کیمرہ یا اسکینر سے فوری طور پر مالکانہ تفصیلات کی تصدیق کی جا سکتی ہے۔'
+                      : 'Every generated Bilty carries an official dynamic QR code linked to Warraich Goods online verification portal and Load Tracker. Consignors, drivers, and consignees can verify cargo authenticity from any smartphone.'}
+                  </p>
+                </div>
               </div>
             )}
           </div>

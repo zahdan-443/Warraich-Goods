@@ -9,6 +9,7 @@ import jsPDF from 'jspdf';
 import DOMPurify from 'dompurify';
 import { BiltyRecord } from '../types';
 import { getCachedCompanyProfile } from './storage';
+import { getBiltyVerificationUrl } from './biltyHelpers';
 
 /**
  * Escapes unsafe characters for HTML injection prevention.
@@ -206,8 +207,7 @@ export function formatBiltyWhatsAppSummary(record: BiltyRecord): string {
   const company = getCachedCompanyProfile();
   const fmt = (n?: number) => (n !== undefined && n !== null ? n.toLocaleString('en-US') : '0');
 
-  const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
-  const verifyLink = origin ? `${origin}?view=verify&biltyNo=${encodeURIComponent(record.biltyNo)}` : '';
+  const verifyLink = getBiltyVerificationUrl(record.biltyNo);
 
   const lines = [
     `🚚 *${company.nameUr || 'ورائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)'}*`,

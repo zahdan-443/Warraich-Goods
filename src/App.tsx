@@ -140,7 +140,26 @@ export default function App() {
   const lastBackPressTime = useRef(0);
   const [exitToast, setExitToast] = useState(false);
 
+  const [verifySubSection, setVerifySubSection] = useState<'vehicle' | 'license' | 'challan' | 'history' | 'bilty'>('vehicle');
+  const [initialBiltySearch, setInitialBiltySearch] = useState<string>('');
+
   useEffect(() => {
+    // Check URL parameters first for direct Bilty verification links (from QR code scan or WhatsApp link)
+    // E.g. ?page=verify&bilty=WGT-2026-001 or ?view=verify&biltyNo=... or ?bilty=...
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramPage = urlParams.get('page') || urlParams.get('view') || urlParams.get('tab');
+    const paramBilty = urlParams.get('bilty') || urlParams.get('biltyNo') || urlParams.get('id');
+
+    if (paramPage === 'verify' || paramBilty) {
+      setActiveTab('verify');
+      setVerifySubSection('bilty');
+      if (paramBilty) {
+        setInitialBiltySearch(paramBilty.trim());
+      }
+      window.history.replaceState({ tab: 'verify' }, '');
+      return;
+    }
+
     const rawHash = window.location.hash.replace(/^#\/?/, '').trim();
     if (rawHash) {
       const map: Record<string, ActiveTab> = {
@@ -174,11 +193,9 @@ export default function App() {
     window.history.pushState({ tab: 'home' }, '');
   }, []);
 
-  const [verifySubSection, setVerifySubSection] = useState<'vehicle' | 'license' | 'challan' | 'history'>('vehicle');
-
   const handleNavigate = (newTab: ActiveTab | string, subSection?: string) => {
     const target = (newTab === 'vehicles' ? 'vehicle' : newTab) as ActiveTab;
-    if (subSection && ['vehicle', 'license', 'challan', 'history'].includes(subSection)) {
+    if (subSection && ['vehicle', 'license', 'challan', 'history', 'bilty'].includes(subSection)) {
       setVerifySubSection(subSection as any);
     }
     if (target !== activeTab) {
@@ -775,6 +792,7 @@ export default function App() {
               vehicles={vehicles}
               drivers={drivers}
               initialSection={verifySubSection}
+              initialBiltyNo={initialBiltySearch}
             />
           )}
 

@@ -10,39 +10,11 @@ import { exportContactsCSV, getContactList, allocateNextBiltyNumber } from '../.
 import { validateBiltyFreight } from '../../utils/calculator';
 import { generatePdfFromElement, shareBiltyPdfOrWhatsApp } from '../../utils/pdfHelper';
 import { PublicImage } from '../PublicImage';
+import { generateBiltyVerificationQrDataUrl, getBiltyVerificationUrl } from '../../utils/biltyHelpers';
 
 const getQrDataUrl = async (record: BiltyRecord): Promise<string> => {
-  const currentOrigin = typeof window !== 'undefined' && window.location && window.location.origin
-    ? window.location.origin
-    : '';
-
-  const qrText = [
-    `WARRAICH GOODS TRANSPORT CO.`,
-    `Bilty No: ${record.biltyNo}`,
-    `Date: ${record.date || '-'}`,
-    `Vehicle: ${record.vehicleNo}`,
-    `Route: ${record.sendingCity || '-'} to ${record.receivingCity || '-'}`,
-    `Sender: ${record.senderName || record.consignor || '-'} (${record.senderMobile || '-'})`,
-    `Receiver: ${record.receiverName || record.consignee || '-'} (${record.receiverMobile || '-'})`,
-    `Goods: ${record.itemDescription || '-'} (${record.qty || '-'} Pcs)`,
-    `Weight: ${record.weight || '-'} KG`,
-    `Freight: Rs ${record.total ? record.total.toLocaleString('en-US') : '0'}`,
-    `Payable: Rs ${record.payable ? record.payable.toLocaleString('en-US') : '0'}`,
-    `Helpline: 0300-5370443 | 0339-5370443`,
-    currentOrigin ? `Verify: ${currentOrigin}` : ''
-  ].filter(Boolean).join('\n');
-
-  try {
-    return await QRCode.toDataURL(qrText, {
-      width: 350,
-      margin: 2,
-      errorCorrectionLevel: 'H',
-      color: { dark: '#000000', light: '#ffffff' }
-    });
-  } catch (e) {
-    console.error('Failed to generate QR code:', e);
-    return '';
-  }
+  if (!record?.biltyNo) return '';
+  return await generateBiltyVerificationQrDataUrl(record.biltyNo);
 };
 
 const BiltyQrCode: React.FC<{ record: BiltyRecord; className?: string }> = ({ record, className }) => {
@@ -56,7 +28,7 @@ const BiltyQrCode: React.FC<{ record: BiltyRecord; className?: string }> = ({ re
     return () => {
       active = false;
     };
-  }, [record.biltyNo, record.vehicleNo, record.sendingCity, record.receivingCity]);
+  }, [record.biltyNo]);
 
   if (!qrUrl) return <div className={`animate-pulse bg-gray-100 rounded-lg ${className}`} />;
   return <img src={qrUrl} alt="Bilty Tracking and Verification QR Code" width={100} height={100} className={className} />;
