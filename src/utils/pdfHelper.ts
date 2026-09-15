@@ -110,13 +110,13 @@ export async function getCompanyCardBase64(): Promise<string> {
     `${cleanBase}warraich-card.png`,
     './warraich-card.png',
     '/warraich-card.png',
+    'warraich-card.png',
+    `${origin}/Warraich-Goods/warraich-card.png`,
+    'https://zahdan-443.github.io/Warraich-Goods/warraich-card.png',
+    `${origin}/warraich-card.png`,
     `${cleanBase}company-card.png`,
     './company-card.png',
-    '/company-card.png',
-    `${cleanBase}warraich-card.jpg`,
-    './warraich-card.jpg',
-    `${origin}/warraich-card.png`,
-    `${origin}/company-card.png`
+    '/company-card.png'
   ];
 
   for (const url of candidates) {

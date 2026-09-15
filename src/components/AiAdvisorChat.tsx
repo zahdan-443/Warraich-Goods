@@ -9,10 +9,20 @@ import {
   User,
   ShieldCheck,
   ChevronDown,
-  AlertCircle
+  AlertCircle,
+  Settings,
+  Globe,
+  Check,
+  Cloud
 } from 'lucide-react';
 import { Language } from '../types';
-import { ChatMessage, sendAiChatMessage } from '../utils/aiAdvisor';
+import {
+  ChatMessage,
+  sendAiChatMessage,
+  getAiChatEndpoint,
+  setAiChatEndpoint,
+  isStaticGithubPages
+} from '../utils/aiAdvisor';
 
 interface AiAdvisorChatProps {
   lang: Language;
@@ -26,10 +36,14 @@ export const AiAdvisorChat: React.FC<AiAdvisorChatProps> = ({ lang, userEmail })
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasUnread, setHasUnread] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [endpointInput, setEndpointInput] = useState(getAiChatEndpoint());
+  const [savedSuccess, setSavedSuccess] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isUrdu = lang === 'ur';
+  const isGh = isStaticGithubPages();
 
   // Initial welcome greeting
   useEffect(() => {
@@ -232,6 +246,17 @@ export const AiAdvisorChat: React.FC<AiAdvisorChatProps> = ({ lang, userEmail })
             <div className="flex items-center gap-1 text-slate-300">
               <button
                 type="button"
+                onClick={() => setShowSettings(!showSettings)}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  showSettings ? 'text-amber-300 bg-white/20' : 'hover:text-white hover:bg-white/10'
+                }`}
+                title={isUrdu ? 'سرورلیس اینڈ پوائنٹ سیٹنگز' : 'Serverless Endpoint Settings'}
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
                 onClick={clearChat}
                 className="p-1.5 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
                 title={isUrdu ? 'چیٹ صاف کریں' : 'Clear chat'}
@@ -262,8 +287,101 @@ export const AiAdvisorChat: React.FC<AiAdvisorChatProps> = ({ lang, userEmail })
           {/* Body when not minimized */}
           {!isMinimized && (
             <>
-              {/* Message List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#fdfbf7]">
+              {/* Settings Screen */}
+              {showSettings ? (
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#fdfbf7] text-slate-800 text-xs">
+                  <div className="flex items-center justify-between pb-3 border-b border-[#ecece0]">
+                    <div className="flex items-center gap-2">
+                      <Cloud className="w-4 h-4 text-[#c59b27]" />
+                      <span className="font-serif font-bold text-sm text-[#162a4d]">
+                        {isUrdu ? 'AI سرورلیس کنکشن سیٹنگز' : 'AI Serverless Connection'}
+                      </span>
+                    </div>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono ${
+                        isGh
+                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                          : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                      }`}
+                    >
+                      {isGh ? 'GitHub Pages (Static)' : 'Full-Stack Server'}
+                    </span>
+                  </div>
+
+                  {/* Explanation card */}
+                  <div className="p-3 rounded-2xl bg-white border border-[#ecece0] space-y-2">
+                    <div className="font-bold text-[#162a4d] flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-[#c59b27]" />
+                      <span>{isUrdu ? 'ہوسٹنگ اور کلاؤڈ فنکشن گائیڈ:' : 'Production Hosting Guide:'}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      {isUrdu
+                        ? 'گٹ ہب پیجز (GitHub Pages) جامد ہوسٹنگ ہے جہاں Node سرور نہیں چلتا۔ ایپ میں Vercel (/api/ai-chat.ts) اور Firebase (/functions/index.js) کے لیے سرورلیس فنکشنز پہلے سے تیار ہیں۔ تعیناتی کے بعد اپنا یو آر ایل یہاں محفوظ کریں۔'
+                        : 'GitHub Pages is static-only. For live AI in production, deploy the pre-built serverless function to Vercel (/api/ai-chat.ts) or Firebase Cloud Functions (/functions/index.js), then paste your endpoint below.'}
+                    </p>
+                  </div>
+
+                  {/* Endpoint Input */}
+                  <div className="space-y-2 bg-white p-3.5 rounded-2xl border border-[#ecece0]">
+                    <label className="block text-[11px] font-bold text-slate-700">
+                      {isUrdu ? 'سرورلیس اینڈ پوائنٹ یو آر ایل (Endpoint URL):' : 'Custom Serverless Endpoint URL:'}
+                    </label>
+                    <input
+                      type="url"
+                      value={endpointInput}
+                      onChange={(e) => {
+                        setEndpointInput(e.target.value);
+                        setSavedSuccess(false);
+                      }}
+                      placeholder="e.g. https://your-app.vercel.app/api/ai-chat"
+                      className="w-full px-3 py-2 text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl focus:border-[#c59b27] outline-none"
+                    />
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      {isUrdu ? 'ڈیفالٹ: /api/ai-chat' : 'Default: /api/ai-chat'}
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAiChatEndpoint(endpointInput);
+                          setSavedSuccess(true);
+                          setTimeout(() => setSavedSuccess(false), 2500);
+                        }}
+                        className="px-4 py-2 rounded-xl bg-[#162a4d] text-white hover:bg-[#0f1f38] text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-xs"
+                      >
+                        {savedSuccess ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Cloud className="w-3.5 h-3.5" />}
+                        <span>{savedSuccess ? (isUrdu ? 'محفوظ ہوگیا!' : 'Saved!') : (isUrdu ? 'اینڈ پوائنٹ محفوظ کریں' : 'Save Endpoint')}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEndpointInput('/api/ai-chat');
+                          setAiChatEndpoint('');
+                          setSavedSuccess(false);
+                        }}
+                        className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer transition-all"
+                      >
+                        {isUrdu ? 'ری سیٹ ڈیفالٹ' : 'Reset Default'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowSettings(false)}
+                      className="w-full py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold cursor-pointer transition-all text-center"
+                    >
+                      {isUrdu ? 'چیٹ پر واپس جائیں' : 'Back to Chat'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Message List */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#fdfbf7]">
                 {messages.map((msg) => {
                   const isUser = msg.role === 'user';
                   return (
@@ -388,8 +506,10 @@ export const AiAdvisorChat: React.FC<AiAdvisorChatProps> = ({ lang, userEmail })
               </div>
             </>
           )}
-        </div>
+        </>
       )}
-    </>
-  );
+    </div>
+  )}
+</>
+);
 };

@@ -25,16 +25,48 @@ export function sanitizeContactOrCnic(val?: string | null): string {
 }
 
 /**
+ * Official canonical base URL for the Warraich Goods live deployment on GitHub Pages
+ */
+export const OFFICIAL_APP_BASE_URL = 'https://zahdan-443.github.io/Warraich-Goods/';
+
+/**
  * Generates dynamic verification URL in the standard format:
  * https://[app-url]?page=verify&bilty=[BiltyNo]
+ * 
+ * Accurately includes the repo path (/Warraich-Goods/) on GitHub Pages
+ * so scanned QR codes always navigate to the exact verification portal.
  */
 export function getBiltyVerificationUrl(biltyNo: string): string {
   const cleanBilty = (biltyNo || '').trim();
-  const origin = typeof window !== 'undefined' && window.location?.origin
-    ? window.location.origin
-    : 'https://driver-dost.web.app';
-  
-  return `${origin}?page=verify&bilty=${encodeURIComponent(cleanBilty)}`;
+  let baseUrl = OFFICIAL_APP_BASE_URL;
+
+  if (typeof window !== 'undefined' && window.location) {
+    const { origin, pathname, hostname } = window.location;
+
+    if (hostname.includes('github.io')) {
+      // GitHub Pages hosting: ensure repository slug is retained
+      const segments = pathname.split('/').filter(Boolean);
+      const repoSlug = segments.length > 0 ? segments[0] : 'Warraich-Goods';
+      baseUrl = `${origin}/${repoSlug}/`;
+    } else if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname.includes('run.app') ||
+      hostname.includes('web.app')
+    ) {
+      // Local dev server or Cloud Run / Firebase preview container
+      const basePath = pathname.endsWith('/')
+        ? pathname
+        : pathname.substring(0, pathname.lastIndexOf('/') + 1);
+      baseUrl = `${origin}${basePath || '/'}`;
+    } else {
+      // Default to official production base
+      baseUrl = OFFICIAL_APP_BASE_URL;
+    }
+  }
+
+  const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  return `${normalizedBase}?page=verify&bilty=${encodeURIComponent(cleanBilty)}`;
 }
 
 /**

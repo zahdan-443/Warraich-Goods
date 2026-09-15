@@ -16,28 +16,15 @@ try {
   // ignore
 }
 
-// Safely load firebase-applet-config.json if available via import.meta.glob (won't fail build if gitignored)
-const appletConfigs = import.meta.glob<{ default: Record<string, string> }>('../../firebase-applet-config.json', { eager: true });
-const appletConfig = Object.values(appletConfigs)[0]?.default || {};
-
-const defaultConfig = {
-  apiKey: "AIzaSyB2i8AWa0O2fr2CtMvd5HWR94hOzCYBUls",
-  authDomain: "warraich-goods.firebaseapp.com",
-  projectId: "warraich-goods",
-  storageBucket: "warraich-goods.firebasestorage.app",
-  messagingSenderId: "805249879186",
-  appId: "1:805249879186:web:0ccfeaa631bb1a07e5ea4b",
-  measurementId: "G-Y1LF9N2VQT"
-};
-
+// Environment-variable based Firebase configuration
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || appletConfig.apiKey || defaultConfig.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || appletConfig.authDomain || defaultConfig.authDomain,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || appletConfig.projectId || defaultConfig.projectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || appletConfig.storageBucket || defaultConfig.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || appletConfig.messagingSenderId || defaultConfig.messagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || appletConfig.appId || defaultConfig.appId,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || appletConfig.measurementId || defaultConfig.measurementId
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ''
 };
 
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();

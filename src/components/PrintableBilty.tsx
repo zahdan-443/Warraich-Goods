@@ -163,8 +163,9 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
           top: '51%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          opacity: 0.08,
+          opacity: 0.11,
           pointerEvents: 'none',
+          userSelect: 'none',
           zIndex: 0,
           width: '580px',
           maxWidth: '85%',
@@ -177,10 +178,25 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
           src={resolvedCard || companyCardData || './warraich-card.png'}
           alt="Warraich Goods Transport Company Card"
           referrerPolicy="no-referrer"
+          onError={(e) => {
+            const target = e.currentTarget;
+            if (!target.dataset.triedBase) {
+              target.dataset.triedBase = '1';
+              const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) ? import.meta.env.BASE_URL : './';
+              const clean = base.endsWith('/') ? base : base + '/';
+              target.src = `${clean}warraich-card.png`;
+            } else if (!target.dataset.triedGh) {
+              target.dataset.triedGh = '1';
+              target.src = 'https://zahdan-443.github.io/Warraich-Goods/warraich-card.png';
+            } else if (!target.dataset.triedRoot) {
+              target.dataset.triedRoot = '1';
+              target.src = '/warraich-card.png';
+            }
+          }}
           style={{
             width: '100%',
             height: 'auto',
-            maxHeight: '400px',
+            maxHeight: '420px',
             objectFit: 'contain',
             borderRadius: '12px'
           }}

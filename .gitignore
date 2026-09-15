@@ -10,7 +10,6 @@ coverage/
 !.github/**
 !.env.example
 firebase-applet-config.json
-!firebase-applet-config.example.json
 *.jks
 *.keystore
 *.p12
@@ -22,5 +21,6 @@ android/keystores/
 android/app/*.keystore
 android/app/*.jks
 android/app/google-services.json
+android/app/src/main/assets/public/
 firebase-debug.log*
 firestore-debug.log*
