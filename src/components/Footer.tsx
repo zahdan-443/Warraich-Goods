@@ -39,7 +39,7 @@ export const Footer: React.FC<FooterProps> = ({
                 {isUrdu ? 'ڈرائیور دوست' : 'Driver Dost'}
               </span>
               <span className="text-[10px] text-[#8b9d77] font-semibold tracking-wider uppercase block">
-                {isUrdu ? 'وڑائچ گڈز ٹرانسپورٹ کمپنی' : 'Warraich Goods Transport Co.'}
+                {isUrdu ? 'ڈرائیور دوست لاجسٹکس' : 'Driver Dost Logistics'}
               </span>
             </div>
           </div>
@@ -162,11 +162,11 @@ export const Footer: React.FC<FooterProps> = ({
                 <a
                   href="#bilty"
                   onClick={(e) => handleLinkClick(e, 'bilty')}
-                  title={isUrdu ? 'وڑائچ گڈز ڈیجیٹل بلٹی جنریٹر' : 'Warraich Goods Digital Bilty Generator'}
+                  title={isUrdu ? 'ڈیجیٹل بلٹی جنریٹر' : 'Digital Bilty Generator'}
                   className="hover:text-[#8b9d77] flex items-center gap-2 transition-colors py-0.5"
                 >
                   <Receipt className="w-3.5 h-3.5 text-[#8b9d77]" />
-                  <span>{isUrdu ? 'وڑائچ گڈز آفیشل بلٹی جنریٹر' : 'Official Bilty Receipt Generator'}</span>
+                  <span>{isUrdu ? 'ڈیجیٹل بلٹی جنریٹر' : 'Digital Bilty Generator'}</span>
                 </a>
               </li>
             )}
@@ -191,7 +191,7 @@ export const Footer: React.FC<FooterProps> = ({
         <div className="flex items-center gap-2 flex-wrap text-center sm:text-left">
           <span className="font-semibold text-[#4a4a35]">Driver Dost · Pakistan Road Freight Manager v1.0.2</span>
           <span>·</span>
-          <span>© 2026 Warraich Goods Transport Company. All Rights Reserved.</span>
+          <span>© 2026 Driver Dost. All Rights Reserved.</span>
         </div>
         <div className="flex items-center gap-1 text-[11px] font-medium">
           <span>{isUrdu ? 'ڈرائیورز کے لیے خلوص کے ساتھ' : 'Dedicated to Pakistan Logistics'}</span>

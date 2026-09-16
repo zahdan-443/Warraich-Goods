@@ -344,7 +344,7 @@ export const DICTIONARY = {
       verify: "Gov Verify",
       bilty: "Bilty"
     },
-    heroTitle: "Built for Punjab Road Freight",
+    heroTitle: "Built for Pakistan's Road Freight",
     heroHighlight: "Safar",
     heroDesc: "Trip calculations, driver directories, fleet profiles, preset routes & Punjab Government verification portals — beautifully orchestrated.",
     stats: {
@@ -563,7 +563,7 @@ export const DICTIONARY = {
       verify: "تصدیق",
       bilty: "بلٹی"
     },
-    heroTitle: "پنجاب کے ٹرانسپورٹرز کے لیے",
+    heroTitle: "پاکستان بھر کے ٹرانسپورٹرز کے لیے",
     heroHighlight: "سفر",
     heroDesc: "سفر کے اخراجات کا حساب، ڈرائیور ڈائریکٹری، فلیٹ پروفائلز، راستے اور پنجاب حکومت کے تصدیقی پورٹلز — ایک خوبصورت انداز میں۔",
     stats: {

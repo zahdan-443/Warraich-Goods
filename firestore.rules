@@ -60,9 +60,10 @@ service cloud.firestore {
       allow read, write: if isBiltyAuthorized();
     }
 
-    // Counters collection for transaction-based sequential Bilty allocation
+    // Counters collection for transaction-based sequential Bilty allocation (read for signed in users, write restricted to bilty-authorized)
     match /counters/{counterId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isBiltyAuthorized();
     }
 
     // Company Profile and System Settings (All can read, ONLY Owner can write)

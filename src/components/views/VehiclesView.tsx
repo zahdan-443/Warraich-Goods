@@ -109,7 +109,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
                   reg: 'LES-20-4124',
                   model: 'Hino 500 FG 1628 (6-Wheeler)',
                   mileage: 4.2,
-                  owner: 'Warraich Goods Fleet',
+                  owner: 'My Fleet',
                   capacity: 16
                 })}
                 className="px-4 py-2.5 bg-white border border-[#ecece0] hover:border-[#8b9d77] text-[#4a4a35] rounded-2xl text-xs font-bold shadow-2xs cursor-pointer transition-all active:scale-95"

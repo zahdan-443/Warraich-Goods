@@ -351,7 +351,7 @@ export default function App() {
       uid,
       email,
       role: finalRole,
-      name: isOwnerEmail ? 'Warraich Goods Owner' : email.split('@')[0]
+      name: isOwnerEmail ? 'Driver Dost Owner' : email.split('@')[0]
     });
   };
 

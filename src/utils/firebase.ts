@@ -16,33 +16,31 @@ try {
   // ignore
 }
 
-// Default public Firebase Client configuration (prevents CI / test crashes when GitHub secrets are empty)
-const defaultFirebaseConfig = {
-  apiKey: "AIzaSyB2i8AWa0O2fr2CtMvd5HWR94hOzCYBUls",
-  authDomain: "warraich-goods.firebaseapp.com",
-  projectId: "warraich-goods",
-  storageBucket: "warraich-goods.firebasestorage.app",
-  messagingSenderId: "805249879186",
-  appId: "1:805249879186:web:0ccfeaa631bb1a07e5ea4b",
-  measurementId: "G-Y1LF9N2VQT"
-};
+const requiredEnvVars = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_STORAGE_BUCKET',
+  'VITE_FIREBASE_MESSAGING_SENDER_ID',
+  'VITE_FIREBASE_APP_ID'
+] as const;
 
-const getEnvOrFallback = (envVal: string | undefined, fallback: string): string => {
-  if (typeof envVal === 'string' && envVal.trim() !== '') {
-    return envVal.trim();
-  }
-  return fallback;
-};
+const missingEnvVars = requiredEnvVars.filter((key) => !import.meta.env[key]);
+if (missingEnvVars.length > 0) {
+  console.error(
+    `[Firebase Error] Missing required Firebase environment variables: ${missingEnvVars.join(', ')}. ` +
+    `Please check your .env file or project configuration.`
+  );
+}
 
-// Environment-variable based Firebase configuration with resilient fallback
 const firebaseConfig = {
-  apiKey: getEnvOrFallback(import.meta.env.VITE_FIREBASE_API_KEY, defaultFirebaseConfig.apiKey),
-  authDomain: getEnvOrFallback(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN, defaultFirebaseConfig.authDomain),
-  projectId: getEnvOrFallback(import.meta.env.VITE_FIREBASE_PROJECT_ID, defaultFirebaseConfig.projectId),
-  storageBucket: getEnvOrFallback(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET, defaultFirebaseConfig.storageBucket),
-  messagingSenderId: getEnvOrFallback(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID, defaultFirebaseConfig.messagingSenderId),
-  appId: getEnvOrFallback(import.meta.env.VITE_FIREBASE_APP_ID, defaultFirebaseConfig.appId),
-  measurementId: getEnvOrFallback(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID, defaultFirebaseConfig.measurementId)
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();

@@ -18,7 +18,7 @@ export const CompanyLogo: React.FC<CompanyLogoProps> = ({ className = "w-32 h-32
         fallbackIcon={
           <PublicImage
             fileName="logo.png"
-            alt="Warraich Goods Transport Company Logo"
+            alt="Driver Dost Logo"
             width={128}
             height={128}
             className="w-full h-full object-contain p-0.5"
