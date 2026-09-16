@@ -113,6 +113,7 @@ export interface BiltyRecord {
   consignor?: string;
   consignee?: string;
   receivedBy?: string;
+  pendingOnlineNumber?: boolean;
 }
 
 export type UserRole = 'owner' | 'driver' | 'accountant';
@@ -173,7 +174,7 @@ export interface ContactItem {
 
 export interface OfflineAction {
   id: number | string;
-  type: 'trip' | 'vehicle' | 'driver' | 'fuel' | 'bilty' | 'settings' | 'routes';
+  type: 'trip' | 'vehicle' | 'driver' | 'fuel' | 'bilty' | 'settings' | 'routes' | 'public_bilty';
   data: any;
   timestamp: string;
   retryCount?: number;

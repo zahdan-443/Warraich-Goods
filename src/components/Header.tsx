@@ -709,10 +709,6 @@ export const Header: React.FC<HeaderProps> = ({
                 ))
               )}
             </div>
-
-            <div className="p-3 bg-[#f0f0e4] border-t border-[#ecece0] text-center text-[10px] font-mono text-[#8e8e75]">
-              Connected to FCM Asia-South Cluster
-            </div>
           </div>
         </div>
       )}

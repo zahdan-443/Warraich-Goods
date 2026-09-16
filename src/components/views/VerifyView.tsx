@@ -25,6 +25,8 @@ import {
 import { BiltyVerificationCard } from './BiltyVerificationCard';
 import { getStoredBilties } from '../../utils/storage';
 import { getBiltyVerificationUrl } from '../../utils/biltyHelpers';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../utils/firebase';
 
 interface VerifyViewProps {
   lang: Language;
@@ -98,34 +100,100 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
   const [biltyQuery, setBiltyQuery] = useState(initialBiltyNo || '');
   const [verifiedBilty, setVerifiedBilty] = useState<BiltyRecord | null>(null);
   const [biltySearchAttempted, setBiltySearchAttempted] = useState(false);
+  const [isBiltyLoading, setIsBiltyLoading] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const handleVerifyBilty = (q?: string) => {
-    const term = (q !== undefined ? q : biltyQuery).trim().toLowerCase();
-    if (!term) return;
+  const handleVerifyBilty = async (q?: string) => {
+    const rawTerm = (q !== undefined ? q : biltyQuery).trim();
+    if (!rawTerm) return;
 
     setBiltySearchAttempted(true);
+    setIsBiltyLoading(true);
+    setVerifiedBilty(null);
+
+    const cleanLower = rawTerm.toLowerCase();
+    const normalizedTerm = cleanLower.replace(/[^a-z0-9]/g, '');
+
+    // 1. First check local getStoredBilties (creator's device, offline capable)
     const allBilties = getStoredBilties();
-
-    const normalizedTerm = term.replace(/[^a-z0-9]/g, '');
-
-    const match = allBilties.find((b) => {
+    const localMatch = allBilties.find((b) => {
       const bNo = String(b.biltyNo || '').toLowerCase();
       const bId = String(b.id ?? '').toLowerCase();
       const vNo = String(b.vehicleNo || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       return (
-        bNo === term ||
+        bNo === cleanLower ||
         bNo.replace(/[^a-z0-9]/g, '') === normalizedTerm ||
-        bId === term ||
+        bId === cleanLower ||
         (normalizedTerm.length > 3 && vNo === normalizedTerm)
       );
     });
 
-    if (match) {
-      setVerifiedBilty(match);
-    } else {
-      setVerifiedBilty(null);
+    if (localMatch) {
+      setVerifiedBilty(localMatch);
+      setIsBiltyLoading(false);
+      return;
     }
+
+    // 2. Fallback to top-level public Firestore document: bilties/{biltyNo}
+    try {
+      if (db) {
+        const candidateKeys = [
+          rawTerm.toUpperCase(),
+          rawTerm.toUpperCase().replace(/\s+/g, ''),
+        ];
+        if (!rawTerm.toUpperCase().startsWith('AH-')) {
+          candidateKeys.push(`AH-${rawTerm.toUpperCase()}`);
+        }
+
+        let remoteDocData: any = null;
+        for (const docKey of candidateKeys) {
+          try {
+            const snap = await getDoc(doc(db, 'bilties', docKey));
+            if (snap.exists() && snap.data()) {
+              remoteDocData = snap.data();
+              break;
+            }
+          } catch {
+            // Keep trying next candidate key
+          }
+        }
+
+        if (remoteDocData) {
+          const publicBilty: BiltyRecord = {
+            id: typeof remoteDocData.id === 'number' ? remoteDocData.id : Date.now(),
+            biltyNo: remoteDocData.biltyNo || rawTerm.toUpperCase(),
+            vehicleNo: remoteDocData.vehicleNo || '',
+            date: remoteDocData.date || '',
+            driverName: '',
+            mobileNo: '',
+            sendingCity: remoteDocData.sendingCity || '',
+            receivingCity: remoteDocData.receivingCity || '',
+            senderName: remoteDocData.senderName || '',
+            senderMobile: '',
+            receiverName: remoteDocData.receiverName || '',
+            receiverMobile: '',
+            senderCnic: '',
+            qty: remoteDocData.qty || '',
+            itemDescription: remoteDocData.itemDescription || '',
+            weight: remoteDocData.weight || '',
+            total: typeof remoteDocData.total === 'number' ? remoteDocData.total : 0,
+            advance: typeof remoteDocData.advance === 'number' ? remoteDocData.advance : 0,
+            payable: typeof remoteDocData.payable === 'number' ? remoteDocData.payable : 0,
+            consignor: remoteDocData.consignor || '',
+            consignee: remoteDocData.consignee || '',
+            receivedBy: remoteDocData.receivedBy || ''
+          };
+          setVerifiedBilty(publicBilty);
+          setIsBiltyLoading(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Public cloud bilty verification lookup error:', err);
+    }
+
+    setVerifiedBilty(null);
+    setIsBiltyLoading(false);
   };
 
   useEffect(() => {
@@ -1096,8 +1164,18 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   </form>
                 </div>
 
+                {/* Cloud Search Loading indicator */}
+                {isBiltyLoading && (
+                  <div className="p-6 rounded-3xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 flex items-center justify-center gap-3 animate-in fade-in">
+                    <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-xs sm:text-sm font-bold text-emerald-900">
+                      {isUrdu ? 'کلاؤڈ ریکارڈ سے بلٹی کی تصدیق جاری ہے...' : 'Checking verified cloud dispatch records...'}
+                    </span>
+                  </div>
+                )}
+
                 {/* Search not found message */}
-                {biltySearchAttempted && !verifiedBilty && (
+                {!isBiltyLoading && biltySearchAttempted && !verifiedBilty && (
                   <div className="p-5 sm:p-6 rounded-3xl bg-amber-50/80 border border-amber-200 text-amber-950 space-y-3 animate-in fade-in">
                     <div className="flex items-start gap-3">
                       <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5">

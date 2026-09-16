@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BiltyRecord, ContactItem, DICTIONARY, Language } from '../../types';
-import { Receipt, Search, Download, FileText, MapPin, Share2, Phone, FileSpreadsheet, Printer, Loader2, ArrowLeft } from 'lucide-react';
+import { Receipt, Search, Download, FileText, MapPin, Share2, Phone, FileSpreadsheet, Printer, Loader2, ArrowLeft, AlertTriangle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import { VoiceInputButton } from '../VoiceInputButton';
@@ -106,9 +106,11 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
 
     // Allocate sequential unique Bilty Number via Transaction / Monotonic counter
     const allocatedBiltyNo = await allocateNextBiltyNumber();
+    const isPendingOnline = allocatedBiltyNo.includes('-OFF-');
 
     const record: Omit<BiltyRecord, 'id'> = {
       biltyNo: allocatedBiltyNo,
+      pendingOnlineNumber: isPendingOnline ? true : undefined,
       vehicleNo: vehicleNo.trim(),
       date: date.trim() || getTodayFormatted(),
       driverName: driverName.trim(),
@@ -238,10 +240,16 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
   const renderBiltyPreview = (record: BiltyRecord) => (
     <div className="space-y-4">
       <div className="flex items-center justify-between pb-2 border-b border-[#ecece0]">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-black uppercase tracking-wider font-mono bg-slate-900 text-white px-3 py-1 rounded-xs">
             {record.biltyNo}
           </span>
+          {record.pendingOnlineNumber && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+              <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+              <span>{lang === 'ur' ? 'آن لائن نمبر الاٹمنٹ زیر التواء' : 'Pending Online Number Allocation'}</span>
+            </span>
+          )}
           <span className="text-xs font-bold text-slate-700 hidden sm:inline">
             {lang === 'ur' ? 'مارکیٹ اسٹینڈرڈ پرنٹ کے لیے تیار بلٹی' : 'Market Standard Print-Ready Builty'}
           </span>

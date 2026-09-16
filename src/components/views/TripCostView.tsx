@@ -165,6 +165,8 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     const d = distVal.value;
     const exp = expVal.value;
 
+    if (!m || m <= 0) return;
+
     const effDist = isReturn ? d * 2 : d;
     const consumedL = effDist / m;
     const fuelCostVal = consumedL * p;

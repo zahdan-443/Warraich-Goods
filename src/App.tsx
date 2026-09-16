@@ -80,7 +80,8 @@ export default function App() {
   const [biltyAllowedUIDs, setBiltyAllowedUIDs] = useState<string[]>(() => {
     try {
       const cached = localStorage.getItem('wg_global_bilty_allowed_uids') || localStorage.getItem('ah-bilty-allowed-uids');
-      return cached ? JSON.parse(cached) : [];
+      const parsed = cached ? JSON.parse(cached) : null;
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
     }
@@ -88,8 +89,9 @@ export default function App() {
   const [biltyAllowedEmails, setBiltyAllowedEmails] = useState<string[]>(() => {
     try {
       const cached = localStorage.getItem('wg_global_bilty_allowed_emails') || localStorage.getItem('ah-bilty-allowed-emails');
-      const parsed = cached ? JSON.parse(cached).map((e: string) => String(e).toLowerCase().trim()) : [];
-      return Array.from(new Set([...MASTER_EMAILS, ...parsed]));
+      const parsed = cached ? JSON.parse(cached) : null;
+      const emails = Array.isArray(parsed) ? parsed.map((e: string) => String(e).toLowerCase().trim()) : [];
+      return Array.from(new Set([...MASTER_EMAILS, ...emails]));
     } catch {
       return [...MASTER_EMAILS];
     }

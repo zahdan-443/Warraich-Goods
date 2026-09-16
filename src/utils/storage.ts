@@ -220,6 +220,20 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
         if (action.type === 'bilty' && Array.isArray(action.data)) {
           const userDocRef = doc(db, 'users', user.uid, 'collections', 'bilties');
           await withTimeout(setDoc(userDocRef, { items: action.data, updatedAt: new Date().toISOString() }, { merge: true }), 3000);
+          // Also process public verification copies for each bilty
+          for (const b of action.data) {
+            if (b?.biltyNo) {
+              const safeData = extractPublicBiltyVerification(b);
+              const normalizedNo = String(b.biltyNo).trim().toUpperCase();
+              const pubRef = doc(db, 'bilties', normalizedNo);
+              await withTimeout(setDoc(pubRef, safeData, { merge: true }), 3000).catch(() => {});
+            }
+          }
+          processedCount++;
+        } else if (action.type === 'public_bilty' && action.data?.biltyNo) {
+          const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
+          const pubRef = doc(db, 'bilties', normalizedNo);
+          await withTimeout(setDoc(pubRef, action.data, { merge: true }), 3000);
           processedCount++;
         } else if (['trip', 'trips', 'vehicle', 'vehicles', 'driver', 'drivers', 'fuel', 'routes'].includes(action.type)) {
           const collectionName = action.type.endsWith('s') ? action.type : `${action.type}s`;
@@ -234,6 +248,12 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
         } else {
           processedCount++;
         }
+      } else if (action.type === 'public_bilty' && action.data?.biltyNo) {
+        // Public bilty writes can proceed even if user profile is pending, provided client has network
+        const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
+        const pubRef = doc(db, 'bilties', normalizedNo);
+        await withTimeout(setDoc(pubRef, action.data, { merge: true }), 3000);
+        processedCount++;
       } else {
         // No authenticated user yet; retain in queue
         remainingQueue.push(action);
@@ -262,7 +282,7 @@ export async function loadFromFirestore(uid: string) {
       const snap = await withTimeout(getDoc(docRef), 2500);
       if (snap.exists() && snap.data()?.items) {
         const scopedKey = getScopedStorageKey(key, uid);
-        localStorage.setItem(scopedKey, JSON.stringify(snap.data().items));
+        safeStorage.setItem(scopedKey, JSON.stringify(snap.data().items));
       }
     } catch {
       // Graceful offline fallback
@@ -350,6 +370,85 @@ export function getStoredBilties(): BiltyRecord[] {
 export function saveStoredBilties(bilties: BiltyRecord[]) {
   setScopedItem('bilties', JSON.stringify(bilties));
   syncToFirestore('bilties', bilties);
+  // Also sync public verification copies for all bilties
+  bilties.forEach((b) => {
+    syncPublicBiltyVerification(b).catch(() => {});
+  });
+}
+
+/**
+ * Public Verification Safe Document (Strictly excludes PII such as CNIC and mobile numbers)
+ */
+export interface PublicBiltyVerification {
+  biltyNo: string;
+  vehicleNo: string;
+  date: string;
+  sendingCity: string;
+  receivingCity: string;
+  senderName: string;
+  receiverName: string;
+  qty: string;
+  itemDescription: string;
+  weight: string;
+  total: number;
+  advance: number;
+  payable: number;
+  consignor?: string;
+  consignee?: string;
+  receivedBy?: string;
+  verifiedPublicly: true;
+  createdAt: string;
+}
+
+/**
+ * Extracts only safe, non-PII fields from a Bilty record for public QR verification
+ */
+export function extractPublicBiltyVerification(bilty: Partial<BiltyRecord>): PublicBiltyVerification {
+  return {
+    biltyNo: bilty.biltyNo || '',
+    vehicleNo: bilty.vehicleNo || '',
+    date: bilty.date || '',
+    sendingCity: bilty.sendingCity || '',
+    receivingCity: bilty.receivingCity || '',
+    senderName: bilty.senderName || '',
+    receiverName: bilty.receiverName || '',
+    qty: bilty.qty || '',
+    itemDescription: bilty.itemDescription || '',
+    weight: bilty.weight || '',
+    total: typeof bilty.total === 'number' ? bilty.total : 0,
+    advance: typeof bilty.advance === 'number' ? bilty.advance : 0,
+    payable: typeof bilty.payable === 'number' ? bilty.payable : 0,
+    consignor: bilty.consignor || '',
+    consignee: bilty.consignee || '',
+    receivedBy: bilty.receivedBy || '',
+    verifiedPublicly: true,
+    createdAt: new Date().toISOString()
+  };
+}
+
+/**
+ * Writes a public verification copy to Firestore at top-level bilties/{biltyNo}
+ * Online: writes directly with timeout. Offline: enqueues action for retry.
+ */
+export async function syncPublicBiltyVerification(bilty: BiltyRecord): Promise<boolean> {
+  if (!bilty.biltyNo) return false;
+  const safeData = extractPublicBiltyVerification(bilty);
+  const normalizedNo = bilty.biltyNo.trim().toUpperCase();
+
+  const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+  if (!isOnline || !db) {
+    enqueueOfflineAction('public_bilty', safeData);
+    return false;
+  }
+
+  try {
+    const docRef = doc(db, 'bilties', normalizedNo);
+    await withTimeout(setDoc(docRef, safeData, { merge: true }), 3000);
+    return true;
+  } catch {
+    enqueueOfflineAction('public_bilty', safeData);
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -359,7 +458,8 @@ export function saveStoredBilties(bilties: BiltyRecord[]) {
 /**
  * Transactionally increments and allocates the next sequential Bilty Number.
  * When online, runs an atomic Firestore transaction on the global counter document.
- * When offline or on timeout, monotonically increments user-scoped local counter and queues sync.
+ * When offline or on timeout, monotonically increments user-scoped local counter,
+ * appends an offline random suffix (e.g. AH-0042-OFF-A9F3) to prevent collisions, and queues sync.
  */
 export async function allocateNextBiltyNumber(userUid?: string): Promise<string> {
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
@@ -413,7 +513,16 @@ export async function allocateNextBiltyNumber(userUid?: string): Promise<string>
   // Enqueue offline counter sync
   enqueueOfflineAction('bilty' as any, { localCounter: nextLocalSeq });
 
-  return 'AH-' + String(nextLocalSeq).padStart(4, '0');
+  // Generate 4-character random alphanumeric suffix to prevent multi-device collision
+  const chars = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let randSuffix = '';
+  for (let i = 0; i < 4; i++) {
+    randSuffix += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  // TODO: Implement full online reconciliation logic to reconcile the provisional offline suffix
+  // (-OFF-XXXX) into a final canonical sequence number when network reconnects (known limitation).
+  return `AH-${String(nextLocalSeq).padStart(4, '0')}-OFF-${randSuffix}`;
 }
 
 export function getNextBiltyNo(): string {
