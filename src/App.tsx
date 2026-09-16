@@ -51,7 +51,6 @@ import { NavigationView } from './components/views/NavigationView';
 import { AuthModal } from './components/AuthModal';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
-import { AiAdvisorChat } from './components/AiAdvisorChat';
 import { BottomNavBar } from './components/BottomNavBar';
 
 export default function App() {
@@ -867,7 +866,6 @@ export default function App() {
         />
 
         <InstallPwaModal lang={lang} />
-        <AiAdvisorChat lang={lang} userEmail={userEmail} />
       </React.Suspense>
 
       <BottomNavBar
