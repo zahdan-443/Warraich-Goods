@@ -25,7 +25,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 var import_express = __toESM(require("express"), 1);
 var import_path = __toESM(require("path"), 1);
 var import_vite = require("vite");
-var import_genai = require("@google/genai");
 var import_dotenv = __toESM(require("dotenv"), 1);
 import_dotenv.default.config();
 var app = (0, import_express.default)();
@@ -40,24 +39,6 @@ app.use((req, res, next) => {
   next();
 });
 app.use(import_express.default.json({ limit: "2mb" }));
-var geminiClient = null;
-function getGeminiClient() {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey.trim() === "") {
-    return null;
-  }
-  if (!geminiClient) {
-    geminiClient = new import_genai.GoogleGenAI({
-      apiKey: apiKey.trim(),
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build"
-        }
-      }
-    });
-  }
-  return geminiClient;
-}
 app.get(["/sitemap.xml", "/Warraich-Goods/sitemap.xml"], (_req, res) => {
   const publicPath = import_path.default.join(process.cwd(), "public", "sitemap.xml");
   const distPath = import_path.default.join(process.cwd(), "dist", "sitemap.xml");
@@ -91,103 +72,7 @@ app.get(["/.well-known/assetlinks.json", "/Warraich-Goods/.well-known/assetlinks
 app.get("/api/health", (_req, res) => {
   res.json({
     status: "ok",
-    service: "Driver Dost API Server",
-    aiAvailable: Boolean(process.env.GEMINI_API_KEY)
-  });
-});
-app.post(["/api/ai-chat", "/Warraich-Goods/api/ai-chat"], async (req, res) => {
-  const { message, lang = "ur", contextSummary, chatHistory = [] } = req.body || {};
-  if (!message || typeof message !== "string" || message.trim() === "") {
-    return res.status(400).json({
-      error: "MESSAGE_REQUIRED",
-      reply: lang === "en" ? "Please enter a question or topic to discuss." : "\u0628\u0631\u0627\u06C1 \u06A9\u0631\u0645 \u06A9\u0648\u0626\u06CC \u0633\u0648\u0627\u0644 \u06CC\u0627 \u067E\u06CC\u063A\u0627\u0645 \u062F\u0631\u062C \u06A9\u0631\u06CC\u06BA\u06D4"
-    });
-  }
-  const ai = getGeminiClient();
-  if (!ai) {
-    const fallbackMsg = lang === "en" ? "Driver Dost AI requires GEMINI_API_KEY to be configured in project settings. Please add your free Gemini API key in settings." : "\u0688\u0631\u0627\u0626\u06CC\u0648\u0631 \u062F\u0648\u0633\u062A AI \u06A9\u0648 \u0641\u0639\u0627\u0644 \u06A9\u0631\u0646\u06D2 \u06A9\u06D2 \u0644\u06CC\u06D2 \u067E\u0631\u0648\u062C\u06CC\u06A9\u0679 \u0633\u06CC\u0679\u0646\u06AF\u0632 \u0645\u06CC\u06BA \u0645\u0641\u062A Gemini API Key \u0634\u0627\u0645\u0644 \u06A9\u0631\u06CC\u06BA\u06D4";
-    return res.status(503).json({
-      error: "AI_KEY_NOT_CONFIGURED",
-      reply: fallbackMsg,
-      message: fallbackMsg
-    });
-  }
-  const systemInstruction = `You are "Driver Dost AI" (\u0688\u0631\u0627\u0626\u06CC\u0648\u0631 \u062F\u0648\u0633\u062A AI), an intelligent, brotherly, practical road freight and transport assistant for Pakistani truck drivers, vehicle owners, and logistics operators.
-Language mode: ${lang === "en" ? "English (with friendly Pakistani road freight context)" : "Urdu (friendly, clear, conversational, Urdu-first)"}.
-
-Current Signed-In User Data Context:
-${contextSummary || "No data recorded yet for this user."}
-
-CRITICAL RULES:
-1. Persona: Speak like a trusted, helpful transport driver friend ("\u062F\u0648\u0633\u062A\u0627\u0646\u06C1\u060C \u0628\u0627\u0627\u062F\u0628 \u0627\u0648\u0631 \u0628\u0627\u0648\u0642\u0627\u0631 \u0627\u0646\u062F\u0627\u0632"). Keep responses short, direct, and practical.
-2. ABSOLUTE TRUTH RULE: You must ONLY answer questions based on the user's data provided above. NEVER invent, fabricate, hallucinate, or guess any numbers, financial figures (PKR), vehicle numbers, trip expenses, or bilties.
-3. If the user asks about an expense, trip, vehicle, or bilty that is NOT present in their data, clearly and politely respond:
-   - In Urdu: "\u06CC\u06C1 \u0688\u06CC\u0679\u0627 \u0627\u0628\u06BE\u06CC \u0622\u067E \u06A9\u06D2 \u0631\u06CC\u06A9\u0627\u0631\u0688 \u0645\u06CC\u06BA \u0645\u0648\u062C\u0648\u062F \u0646\u06C1\u06CC\u06BA \u06C1\u06D2\u06D4"
-   - In English: "This data is not currently recorded in your app."
-4. Quick advice guidelines:
-   - For trip costs: refer to saved trips or calculate distance / mileage * fuel rate if asked.
-   - For fuel: quote the user's latest POL fuel rates if available.
-   - For routes: give safe driving, motorway/highway M-Tag, and resting point guidance across Pakistan.
-5. Do not use complex jargon. Be supportive and helpful to transporters and drivers.`;
-  const contents = [];
-  if (Array.isArray(chatHistory) && chatHistory.length > 0) {
-    for (const turn of chatHistory.slice(-6)) {
-      if (turn && (turn.role === "user" || turn.role === "model")) {
-        contents.push({
-          role: turn.role,
-          parts: [{ text: String(turn.text || "") }]
-        });
-      }
-    }
-  }
-  contents.push({
-    role: "user",
-    parts: [{ text: message.trim() }]
-  });
-  const candidateModels = ["gemini-3.1-flash-lite", "gemini-flash-latest"];
-  let lastError = null;
-  for (const model of candidateModels) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents,
-        config: {
-          systemInstruction,
-          temperature: 0.3,
-          maxOutputTokens: 700
-        }
-      });
-      if (response && response.text) {
-        return res.json({
-          reply: response.text.trim(),
-          modelUsed: model
-        });
-      }
-    } catch (err) {
-      lastError = err;
-      const status = err?.status || err?.code;
-      console.warn(`[Driver Dost AI] Model ${model} encountered error (status: ${status}):`, err?.message);
-      if (status === 503 || status === 404 || status === 429 || String(err?.message || "").includes("demand")) {
-        continue;
-      }
-    }
-  }
-  console.error("All Gemini AI models exhausted:", lastError);
-  const errMsg = String(lastError?.message || "");
-  const isRateLimit = lastError?.status === 429 || errMsg.includes("429") || errMsg.includes("quota") || errMsg.includes("RESOURCE_EXHAUSTED");
-  if (isRateLimit) {
-    const rateLimitReply = lang === "en" ? "AI is currently busy with high requests, please try again in a little while." : "AI \u0627\u0628\u06BE\u06CC \u062A\u06BE\u0648\u0691\u0627 \u0645\u0635\u0631\u0648\u0641 \u06C1\u06D2\u060C \u0628\u0631\u0627\u06C1 \u06A9\u0631\u0645 \u062A\u06BE\u0648\u0691\u06CC \u062F\u06CC\u0631 \u0628\u0639\u062F \u062F\u0648\u0628\u0627\u0631\u06C1 \u06A9\u0648\u0634\u0634 \u06A9\u0631\u06CC\u06BA\u06D4";
-    return res.status(429).json({
-      error: "RATE_LIMIT_EXCEEDED",
-      reply: rateLimitReply,
-      message: rateLimitReply
-    });
-  }
-  const serverErrorReply = lang === "en" ? "Sorry, communication failed. Please try sending your message again." : "\u0645\u0639\u0630\u0631\u062A\u060C \u0631\u0627\u0628\u0637\u06C1 \u0645\u06CC\u06BA \u06A9\u0686\u06BE \u062F\u0634\u0648\u0627\u0631\u06CC \u067E\u06CC\u0634 \u0622\u0626\u06CC \u06C1\u06D2\u06D4 \u0628\u0631\u0627\u06C1 \u06A9\u0631\u0645 \u062F\u0648\u0628\u0627\u0631\u06C1 \u067E\u06CC\u063A\u0627\u0645 \u0628\u06BE\u06CC\u062C\u06CC\u06BA\u06D4";
-  return res.status(500).json({
-    error: "SERVER_ERROR",
-    reply: serverErrorReply,
-    message: serverErrorReply
+    service: "Driver Dost API Server"
   });
 });
 async function startServer() {
