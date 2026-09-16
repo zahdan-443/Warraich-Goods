@@ -74,7 +74,8 @@ export async function buildUserAiContext(userEmail?: string | null): Promise<str
  * Returns the current active AI endpoint:
  * 1. Explicit VITE_AI_CHAT_ENDPOINT env variable
  * 2. Saved custom serverless endpoint in localStorage (Firebase Cloud Function or Vercel URL)
- * 3. Default relative '/api/ai-chat' (when hosted on full-stack Node/Express/Vercel)
+ * 3. Live backend proxy fallback if running on static GitHub Pages
+ * 4. Default relative '/api/ai-chat' (when hosted on full-stack Node/Express/Vercel)
  */
 export function getAiChatEndpoint(): string {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_AI_CHAT_ENDPOINT) {
@@ -83,6 +84,11 @@ export function getAiChatEndpoint(): string {
   if (typeof window !== 'undefined') {
     const saved = localStorage.getItem('driver_dost_ai_endpoint');
     if (saved && saved.trim()) return saved.trim();
+
+    // If running on GitHub Pages and no custom endpoint set, route through the live backend proxy
+    if (window.location && window.location.hostname.includes('github.io')) {
+      return 'https://ais-pre-d3rqusyy4qffyx2wypb6zn-330775984517.asia-southeast1.run.app/api/ai-chat';
+    }
   }
   return '/api/ai-chat';
 }
@@ -121,21 +127,6 @@ export async function sendAiChatMessage(params: {
   const { message, lang, history = [], userEmail, maxRetries = 3 } = params;
 
   const endpoint = getAiChatEndpoint();
-  const onStaticGh = isStaticGithubPages() && endpoint === '/api/ai-chat';
-
-  // If on static GitHub Pages without an external serverless function URL configured:
-  if (onStaticGh) {
-    const ghNotice = lang === 'en'
-      ? 'Driver Dost AI Advisor requires a serverless endpoint on static GitHub Pages to securely access Gemini without exposing API keys.\n\nTo activate live AI:\n1. Deploy the included api/ai-chat function to Vercel or Firebase Cloud Functions.\n2. Tap the settings icon (⚙️) above and paste your serverless function URL.'
-      : 'ڈرائیور دوست AI ایڈوائزر کو گٹ ہب پیجز (GitHub Pages) جیسی جامد ہوسٹنگ پر Gemini کال کرنے کے لیے سرورلیس فنکشن درکار ہوتا ہے۔\n\nلائیو AI چیٹ فعال کرنے کا طریقہ:\n1. پراجیکٹ میں موجود api/ai-chat فنکشن کو Vercel یا Firebase Cloud Function پر تعینات کریں۔\n2. اوپر سیٹنگز آئیکن (⚙️) دبا کر اپنے کلاؤڈ فنکشن کا لنک درج کریں۔';
-
-    return {
-      reply: ghNotice,
-      error: 'STATIC_GITHUB_PAGES_NO_ENDPOINT',
-      isStaticGh: true
-    };
-  }
-
   const contextSummary = await buildUserAiContext(userEmail);
 
   let waitTime = 1000; // 1s initial delay
@@ -180,15 +171,15 @@ export async function sendAiChatMessage(params: {
         const notFoundMsg = lang === 'en'
           ? 'AI chat endpoint returned 404 (Not Found). If running on GitHub Pages, please configure your Vercel or Firebase Cloud Function URL in Chat Settings (⚙️).'
           : 'AI اینڈ پوائنٹ نہیں ملا (404)۔ گٹ ہب پیجز پر چلانے کے لیے چیٹ سیٹنگز (⚙️) میں اپنا سرورلیس فنکشن (Firebase / Vercel) لنک درج کریں۔';
-        return { reply: notFoundMsg, error: 'ENDPOINT_NOT_FOUND' };
+        return { reply: notFoundMsg, error: 'ENDPOINT_NOT_FOUND', isStaticGh: isStaticGithubPages() };
       }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const reply = errorData.reply || (
+        const reply = errorData.reply || errorData.message || (
           lang === 'en'
-            ? 'Sorry, AI service is temporarily unavailable.'
-            : 'معذرت، AI سروس اس وقت دستیاب نہیں ہے۔'
+            ? 'Sorry, AI service is temporarily unavailable. Please try again in a moment.'
+            : 'معذرت، AI سروس اس وقت دستیاب نہیں ہے۔ براہ کرم تھوڑی دیر بعد دوبارہ کوشش کریں۔'
         );
         return { reply, error: errorData.error || 'HTTP_ERROR' };
       }

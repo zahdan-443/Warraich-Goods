@@ -66,18 +66,38 @@ CRITICAL RULES:
         parts: [{ text: message.trim() }]
       });
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-flash-latest',
-        contents,
-        config: {
-          systemInstruction,
-          temperature: 0.3,
-          maxOutputTokens: 600
-        }
-      });
+      // Candidate models: Primary is 'gemini-3.1-flash-lite', secondary is 'gemini-flash-latest'
+      const candidateModels = ['gemini-3.1-flash-lite', 'gemini-flash-latest'];
+      let lastError = null;
 
-      const reply = response.text || (lang === 'en' ? 'Sorry, could not generate a response.' : 'معذرت، اس وقت جواب تیار نہیں ہو سکا۔');
-      return res.status(200).json({ reply });
+      for (const model of candidateModels) {
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents,
+            config: {
+              systemInstruction,
+              temperature: 0.3,
+              maxOutputTokens: 700
+            }
+          });
+
+          if (response && response.text) {
+            return res.status(200).json({
+              reply: response.text.trim(),
+              modelUsed: model
+            });
+          }
+        } catch (err) {
+          lastError = err;
+          const status = err?.status || err?.code;
+          if (status === 503 || status === 404 || status === 429 || String(err?.message || '').includes('demand')) {
+            continue;
+          }
+        }
+      }
+
+      throw lastError || new Error('ALL_MODELS_UNAVAILABLE');
 
     } catch (err) {
       console.error('Firebase Cloud Function AI Error:', err);
