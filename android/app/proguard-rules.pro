@@ -12,6 +12,23 @@
     public <methods>;
 }
 
+# Capacitor v3+ Annotations and Plugin Methods
+-keep @com.getcapacitor.annotation.CapacitorPlugin public class * {
+    @com.getcapacitor.annotation.PermissionCallback <methods>;
+    @com.getcapacitor.annotation.ActivityCallback <methods>;
+    @com.getcapacitor.annotation.Permission <methods>;
+    @com.getcapacitor.PluginMethod public <methods>;
+}
+
+# Official Capacitor Plugins (including @capacitor/filesystem)
+-keep class com.capacitorjs.plugins.** { *; }
+-dontwarn com.capacitorjs.plugins.**
+
+# Native library used by @capacitor/filesystem
+-keep class io.ionic.libs.** { *; }
+-dontwarn io.ionic.libs.**
+-dontwarn kotlinx.coroutines.**
+
 # 3. WebView JavaScript Interfaces & Reflection
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;

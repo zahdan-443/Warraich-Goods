@@ -2,6 +2,21 @@
 
 All notable changes to the "Driver Dost" transport & logistics application will be documented in this file.
 
+## [1.1.0] - 2026-09-17
+### Added
+- **Third-Party QR Bilty Verification**: Added working verification portal allowing external parties and law enforcement to scan and verify Bilty authenticity.
+- **Offline Bilty-Number Collision Handling**: Resilient sequence resolution avoiding overlapping document IDs during offline freight dispatch.
+- **Hardened ProGuard & R8 Rules**: Explicit keep rules for `@capacitor/filesystem`, `io.ionic.libs`, and Capacitor plugin annotations to prevent runtime reflection stripping.
+
+### Changed
+- **Version Bump**: Bumped to `versionName "1.1.0"` and `versionCode 5` for Palm Store and Uptodown store resubmission.
+- **Firestore Security Rules**: Hardened document read/write authorization and access control policies.
+- **Data Safety**: Disabled `allowBackup="false"` in Android manifest to protect sensitive freight and financial logs on shared devices.
+- **Branding Polish**: Removed misleading placeholder status badges and cleaned up all typography and branding elements.
+
+### Removed
+- **Unused AI Advisor**: Removed non-functional experimental AI advisor backend routes and unneeded `@google/genai` dependency to streamline package weight.
+
 ## [1.0.3] - 2026-09-14
 ### Added
 - **Third-Party Store Compliance**: Tailored release bundle for distribution on Uptodown, Palmstore, and independent Android app repositories alongside Google Web / PWA.
