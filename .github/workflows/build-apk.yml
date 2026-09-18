@@ -41,6 +41,8 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
 
       - name: Install NPM Dependencies
         run: |
@@ -102,22 +104,4 @@ jobs:
           ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
           ANDROID_KEYSTORE_PASSWORD: ${{ env.ANDROID_KEYSTORE_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ env.ANDROID_KEY_ALIAS || secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ env.ANDROID_KEY_PASSWORD || secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          cd android
-          if [ "${{ inputs.build_type }}" = "release" ] && [ -f "app/release-keystore.jks" ]; then
-            echo "Building officially signed Release APK..."
-            gradle assembleRelease --no-daemon
-          else
-            echo "Building Debug APK..."
-            gradle assembleDebug --no-daemon
-          fi
-
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: warraich-goods-apk-${{ inputs.build_type }}
-          path: |
-            android/app/build/outputs/apk/release/*.apk
-            android/app/build/outputs/apk/debug/*.apk
-          retention-days: 14
+          ANDROID_KEY_PASSWORD: ${{ env.ANDROID_KEY_PASSWORD || secret
