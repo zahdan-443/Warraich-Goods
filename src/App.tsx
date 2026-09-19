@@ -256,11 +256,13 @@ export default function App() {
     } catch {}
     document.documentElement.lang = nextLang;
     document.documentElement.dir = nextLang === 'ur' ? 'rtl' : 'ltr';
+    document.body.classList.toggle('urdu', nextLang === 'ur');
   };
 
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ur' ? 'rtl' : 'ltr';
+    document.body.classList.toggle('urdu', lang === 'ur');
     // Ensure document is always freely scrollable
     document.body.style.overflow = '';
     document.documentElement.style.overflow = '';

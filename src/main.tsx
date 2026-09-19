@@ -32,6 +32,10 @@ if (typeof window !== 'undefined') {
   if (stalePreloader) {
     stalePreloader.remove();
   }
+  const initialLoader = document.getElementById('app-initial-loader');
+  if (initialLoader) {
+    initialLoader.remove();
+  }
 }
 
 createRoot(document.getElementById('root')!).render(

@@ -53,7 +53,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
               />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-serif font-bold tracking-tight text-white">
+              <h2 className={`text-lg sm:text-xl font-bold tracking-tight text-white ${lang === 'ur' ? 'font-nastaliq' : 'font-serif'}`}>
                 {lang === 'ur' ? 'وڑائچ گڈز ٹرانسپورٹ کمپنی' : 'Warraich Goods Transport Co.'}
               </h2>
               <p className="text-xs text-amber-200 font-sans mt-0.5">

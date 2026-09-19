@@ -267,7 +267,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
               {/* Urdu Big Title with Authentic Nastaliq Typography */}
               <h1
                 style={{
-                  fontFamily: "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Typesetting', 'Noto Sans Arabic', serif",
+                  fontFamily: "'Jameel Noori Nastaleeq', 'jameel-noori-nastaleeq', 'Alvi Lahori Nastaleeq', 'PDMS Nastaleeq Nafees', 'Noto Nastaliq Urdu', serif",
                   fontSize: '25px',
                   fontWeight: 700,
                   letterSpacing: '0',
@@ -333,7 +333,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({ record, qrDataUr
               <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: "'Plus Jakarta Sans', Arial, sans-serif" }}>
                 CONSIGNMENT NOTE / BILTY
               </div>
-              <div style={{ fontSize: '11px', fontWeight: 700, fontFamily: "'Noto Nastaliq Urdu', 'Noto Sans Arabic', Arial, sans-serif", marginTop: '2px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, fontFamily: "'Jameel Noori Nastaleeq', 'jameel-noori-nastaleeq', 'Akbar', 'PDMS Nastaleeq Nafees', 'Noto Nastaliq Urdu', serif", marginTop: '2px' }}>
                 با ضابطہ فریٹ بلٹی رسید
               </div>
             </div>

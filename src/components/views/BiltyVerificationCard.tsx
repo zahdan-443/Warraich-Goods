@@ -83,7 +83,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-[#8b9d77]" />
-              <h3 className="font-serif font-bold text-lg text-[#4a4a35]">
+              <h3 className={`font-bold text-lg text-[#4a4a35] ${isUrdu ? 'font-nastaliq' : 'font-serif'}`}>
                 {isUrdu ? 'ورائچ گڈز ٹرانسپورٹ کمپنی' : 'Warraich Goods Transport Co.'}
               </h3>
             </div>

@@ -155,11 +155,25 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const [showQuickOpsModal, setShowQuickOpsModal] = useState(false);
   const [showTollCalculatorModal, setShowTollCalculatorModal] = useState(false);
 
-  const currentDate = new Date().toLocaleDateString(lang === 'en' ? 'en-US' : 'ur-PK', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'short',
-  });
+  const currentDate = (() => {
+    try {
+      return new Date().toLocaleDateString(lang === 'en' ? 'en-US' : 'ur-PK', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'short',
+      });
+    } catch {
+      try {
+        return new Date().toLocaleDateString('en-US', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'short',
+        });
+      } catch {
+        return new Date().toDateString();
+      }
+    }
+  })();
 
   // Calendar navigation states
   const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
