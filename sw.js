@@ -11,33 +11,33 @@
    - Native Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v18';
+const CACHE_NAME = 'driver-dost-v19';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const STATIC_ASSETS = [
   './',
-  './index.html',
-  './manifest.json',
-  './manifest.webmanifest',
-  './logo.png',
-  './bilty-official-icon.png',
-  './bilty-official-icon.jpg',
-  './app-icon.png',
-  './icon-192.png',
-  './icon-512.png',
-  './screenshot-mobile.png',
-  './screenshot-desktop.png',
-  './vehicle-icon.png',
-  './trip-icon.png',
-  './bilty-icon.png',
-  './gari-hisaab-icon.png',
-  './safar-diary-icon.png',
-  './echallan-icon.png',
-  './license-icon.png',
-  './quick-ops-icon.png',
-  './scan-me-qr.png',
-  './splash.png',
-  './toll-icon.png',
-  './map-icon.png'
+  'index.html',
+  'manifest.json',
+  'manifest.webmanifest',
+  'logo.png',
+  'bilty-official-icon.png',
+  'bilty-official-icon.jpg',
+  'app-icon.png',
+  'icon-192.png',
+  'icon-512.png',
+  'screenshot-mobile.png',
+  'screenshot-desktop.png',
+  'vehicle-icon.png',
+  'trip-icon.png',
+  'bilty-icon.png',
+  'gari-hisaab-icon.png',
+  'safar-diary-icon.png',
+  'echallan-icon.png',
+  'license-icon.png',
+  'quick-ops-icon.png',
+  'scan-me-qr.png',
+  'splash.png',
+  'toll-icon.png',
+  'map-icon.png'
 ];
 
 // Custom Urdu/English Offline Fallback Page
@@ -139,12 +139,23 @@ self.addEventListener('fetch', (event) => {
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+              cache.put('index.html', responseToCache.clone());
+            });
           }
           return networkResponse;
         })
         .catch(async () => {
-          const cachedResponse = await caches.match(event.request) || await caches.match('/index.html') || await caches.match('/');
+          const cachedResponse = 
+            await caches.match(event.request) || 
+            await caches.match('./') || 
+            await caches.match('index.html') || 
+            await caches.match('/Warraich-Goods/') || 
+            await caches.match('/Warraich-Goods/index.html') ||
+            await caches.match('/index.html') || 
+            await caches.match('/');
+
           if (cachedResponse) return cachedResponse;
           return new Response(OFFLINE_HTML, {
             headers: { 'Content-Type': 'text/html; charset=utf-8' }
@@ -156,11 +167,11 @@ self.addEventListener('fetch', (event) => {
 
   // For static assets (images, scripts, styles): Cache first, fallback to network
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
       if (cachedResponse) {
         // Background revalidation
         fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
           }
         }).catch(() => {});
@@ -168,11 +179,16 @@ self.addEventListener('fetch', (event) => {
       }
 
       return fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+        if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
         }
         return networkResponse;
+      }).catch(async (fetchError) => {
+        // If an asset fails offline, check cache without query string
+        const fallback = await caches.match(event.request, { ignoreSearch: true });
+        if (fallback) return fallback;
+        throw fetchError;
       });
     })
   );

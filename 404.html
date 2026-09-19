@@ -85,6 +85,7 @@
     <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+    <link rel="preload" href="https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/PDMS_NastaliqNafees.ttf" as="font" type="font/ttf" crossorigin />
     <link rel="preconnect" href="https://unpkg.com" crossorigin />
     <link rel="dns-prefetch" href="https://unpkg.com" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -92,24 +93,41 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Noto+Nastaliq+Urdu:wght@400;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap">
     <script>
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
-          .then(function(reg) {
-            console.log('SW registered:', reg.scope);
-            if (reg.update) reg.update();
-          })
-          .catch(function(err) {
-            console.warn('SW notice:', err);
-          });
+        window.addEventListener('load', function() {
+          var swUrl = './sw.js';
+          navigator.serviceWorker.register(swUrl)
+            .then(function(reg) {
+              if (reg.update) reg.update();
+            })
+            .catch(function(err) {
+              console.warn('SW registration fallback:', err);
+            });
+        });
       }
     </script>
-    <script type="module" crossorigin src="./assets/index-BLYBkKss.js"></script>
+    <script type="module" crossorigin src="./assets/index-C6NBX571.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/vendor-react-BsiFW0t0.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor-firebase-CyRSZaZw.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor-pdf-DHk9U0YS.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-PozmcGz2.css">
+    <link rel="stylesheet" crossorigin href="./assets/index-CsGuk8BP.css">
   </head>
   <body class="bg-[#fdfbf7] text-[#4a4a35] font-sans antialiased min-h-full selection:bg-[#8b9d77] selection:text-white">
-    <div id="root" class="min-h-screen flex flex-col"></div>
+    <div id="root" class="min-h-screen flex flex-col">
+      <!-- Lightweight, instantaneous fallback preloader in case of slow network or initial script load -->
+      <div id="app-initial-loader" style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fdfbf7;font-family:system-ui,-apple-system,sans-serif;color:#4a4a35;padding:24px;text-align:center;">
+        <div style="width:48px;height:48px;border:3px solid #ecece0;border-top-color:#8b9d77;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:16px;"></div>
+        <div style="font-weight:700;font-size:16px;color:#8b9d77;margin-bottom:6px;">Driver Dost • ڈرائیور دوست</div>
+        <div style="font-size:13px;color:#8e8e75;">Warraich Goods Transport Company</div>
+        <noscript>
+          <div style="margin-top:16px;padding:12px 18px;background:#fff3cd;color:#856404;border-radius:12px;font-size:13px;max-width:320px;">
+            برائے مہربانی ایپ استعمال کرنے کے لئے براؤزر میں JavaScript آن کریں۔
+          </div>
+        </noscript>
+      </div>
+      <style>
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      </style>
+    </div>
   </body>
 </html>
 
