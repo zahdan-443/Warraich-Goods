@@ -5,7 +5,7 @@
     ],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.driverdost.app",
+      "package_name": "com.warraichgoods.driverdost",
       "sha256_cert_fingerprints": [
         "14:6D:E9:7D:0F:52:AB:E0:43:F6:11:24:AE:5E:2B:1A:4C:E3:42:3E:68:5A:F4:79:B0:1B:32:FD:7E:6D:E0:4D"
       ]
