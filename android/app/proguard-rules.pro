@@ -53,4 +53,4 @@
 -dontwarn com.google.android.gms.**
 
 # 6. Keep native activity entry point
--keep class com.driverdost.app.MainActivity { *; }
+-keep class com.warraichgoods.driverdost.MainActivity { *; }
