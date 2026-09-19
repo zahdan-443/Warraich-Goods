@@ -1,4 +1,4 @@
-package com.driverdost.app;
+package com.warraichgoods.driverdost;
 
 import com.getcapacitor.BridgeActivity;
 
