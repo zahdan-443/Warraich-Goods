@@ -59,11 +59,8 @@ android {
     }
 }
 
-repositories {
-    flatDir{
-        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
-    }
-}
+// Repositories are provided by allprojects in root build.gradle (google, mavenCentral).
+// Local JAR dependencies are handled directly by fileTree(include: ['*.jar'], dir: 'libs').
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
