@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.driverdost.app"
+    namespace = "com.warraichgoods.driverdost"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.driverdost.app"
