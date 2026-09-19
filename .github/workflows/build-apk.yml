@@ -65,6 +65,8 @@ jobs:
         run: |
           npm run build
           npx cap sync android
+          # Safety cleanup: remove any obsolete or duplicate MainActivity files outside official package
+          find android/app/src/main/java -name "MainActivity.java" ! -path "*/com/warraichgoods/driverdost/*" -delete || true
           # Safety cleanup: remove any corrupt/non-standard land-hdpi splash that can fail aapt2 compilation
           rm -rf android/app/src/main/res/drawable-land-hdpi || true
 

@@ -27,7 +27,7 @@ if (fs.existsSync(distDir) && fs.existsSync(androidAssetsDir)) {
 
     // Update capacitor.config.json
     const config = {
-      appId: "com.driverdost.app",
+      appId: "com.warraichgoods.driverdost",
       appName: "Driver Dost",
       webDir: "dist",
       server: {
