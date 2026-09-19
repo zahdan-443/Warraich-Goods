@@ -4,7 +4,7 @@ android {
     namespace = "com.warraichgoods.driverdost"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.driverdost.app"
+        applicationId "com.warraichgoods.driverdost"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 5
