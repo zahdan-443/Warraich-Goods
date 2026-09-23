@@ -1032,7 +1032,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
 
             {searchResult === null && (
               <div className="p-8 text-center text-xs text-[#8e8e75] bg-[#fdfbf7] rounded-2xl border border-[#ecece0]">
-                {t.notFound}
+                {t.noResult}
               </div>
             )}
 
