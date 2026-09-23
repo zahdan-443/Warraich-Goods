@@ -411,10 +411,14 @@ export default function App() {
   // Firebase auth & bilty access real-time sync
   useEffect(() => {
     // Initial fetch of bilty access configuration
-    getBiltyAccessConfig().then((config) => {
-      setBiltyAllowedUIDs(config.allowedUIDs);
-      setBiltyAllowedEmails(config.allowedEmails);
-    });
+    getBiltyAccessConfig()
+      .then((config) => {
+        setBiltyAllowedUIDs(config.allowedUIDs);
+        setBiltyAllowedEmails(config.allowedEmails);
+      })
+      .catch((err) => {
+        console.warn('Initial offline bilty access config loaded from cache:', err);
+      });
 
     // Real-time listener for Bilty access changes in Firestore
     const unsubBilty = subscribeToBiltyAccess((config) => {

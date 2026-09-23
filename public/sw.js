@@ -1,19 +1,20 @@
 /* ==========================================================================
-   Driver Dost - Production Progressive Web App Service Worker (v3.2)
+   Driver Dost - Production Progressive Web App Service Worker (v4.0)
    Features:
-   - App Shell & Asset Pre-caching (Up to 100MB+ storage quota)
-   - High-performance Cache-First for static assets, tiles, and base64 assets
-   - Stale-While-Revalidate with Fast Fallbacks
-   - Dedicated OSRM & OpenStreetMap Tile Caching with LRU eviction
-   - Network-First with Cache Fallback for navigation requests
-   - Background Sync for Offline Bilty, Ledger & Transport Logs
-   - Periodic Background Sync for Rate & Tariff Updates
-   - Native Web Push Alerts & Notification Management
+   - Complete Offline App Shell & Full Pre-caching (JS, CSS, HTML, Media)
+   - Resilient Cache-First Architecture for Offline Instant Launch
+   - Navigation Fallback directly to Cached SPA App Shell (No Blocking Error Screens)
+   - Map Tile Caching (OSRM, OpenStreetMap, CartoDB) with Transparent Offline Tile Fallback
+   - Dynamic Asset Discovery on Service Worker Install
+   - Background Sync for Offline Bilty, Ledger & Transport Records
+   - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v19';
+const CACHE_NAME = 'driver-dost-v20';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
-const STATIC_ASSETS = [
+
+// Core static assets always available locally
+const CORE_STATIC_ASSETS = [
   './',
   'index.html',
   'manifest.json',
@@ -37,160 +38,245 @@ const STATIC_ASSETS = [
   'scan-me-qr.png',
   'splash.png',
   'toll-icon.png',
-  'map-icon.png'
+  'map-icon.png',
+  'company-card.png',
+  'warraich-card.png'
 ];
 
-// Custom Urdu/English Offline Fallback Page
-const OFFLINE_HTML = `
-<!DOCTYPE html>
-<html lang="ur" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Driver Dost - آف لائن (Offline)</title>
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; background-color: #fdfbf7; color: #4a4a35; text-align: center; padding: 2rem; margin: 0; }
-    .card { background: white; border: 1px solid #ecece0; padding: 2.5rem 2rem; border-radius: 1.5rem; max-width: 420px; margin: 3rem auto; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
-    h1 { color: #8b9d77; font-size: 1.5rem; margin-bottom: 0.75rem; font-family: 'Noto Nastaliq Urdu', serif; }
-    p { color: #8e8e75; font-size: 0.95rem; line-height: 1.6; margin: 0.5rem 0; }
-    .btn { display: inline-block; margin-top: 1.5rem; padding: 0.75rem 1.75rem; background: #8b9d77; color: white; border-radius: 0.75rem; text-decoration: none; font-weight: bold; font-size: 0.9rem; }
-    .btn:hover { background: #7a8c66; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>آف لائن موڈ (Offline Mode)</h1>
-    <p>آپ کے پاس انٹرنیٹ کنیکشن دستیاب نہیں ہے۔ ڈرائیور دوست کی پہلے سے محفوظ معلومات دستیاب ہیں۔</p>
-    <p style="font-size: 0.85rem; color: #b58b28; margin-top: 1rem;">Internet connection unavailable. Cached transport records remain securely stored on your device.</p>
-    <a href="/" class="btn" onclick="window.location.reload(); return false;">دوبارہ کوشش کریں (Retry Connection)</a>
-  </div>
-</body>
-</html>
-`;
+// Production build chunks injected during build step (vite build -> sync-android-assets.js)
+const BUILD_ASSETS = [
+  /* __BUILD_ASSETS_INJECTION__ */
+];
 
-// 1. Install Event: Cache Essential App Shell
+// 1. Install Event: Precache All Shell Assets + Parse HTML for Vite Bundles
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('PWA: Cache precache partial:', err);
-      });
-    })
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const allToCache = Array.from(new Set([...CORE_STATIC_ASSETS, ...BUILD_ASSETS]));
+
+      // Pre-cache known static & build assets with fault tolerance
+      await Promise.allSettled(
+        allToCache.map(async (url) => {
+          try {
+            const res = await fetch(url, { cache: 'no-cache' });
+            if (res && (res.status === 200 || res.type === 'opaque')) {
+              await cache.put(url, res);
+            }
+          } catch (e) {
+            // Silently continue on individual asset fetch failure
+          }
+        })
+      );
+
+      // Fetch and cache index.html under multiple canonical keys
+      try {
+        const indexRes = await fetch('./index.html', { cache: 'no-cache' });
+        if (indexRes && indexRes.status === 200) {
+          const htmlText = await indexRes.text();
+          const scope = self.registration.scope;
+
+          const aliases = ['./', 'index.html', './index.html', '/', scope, `${scope}index.html`];
+          for (const alias of aliases) {
+            await cache.put(
+              alias,
+              new Response(htmlText, {
+                headers: { 'Content-Type': 'text/html; charset=utf-8' }
+              })
+            );
+          }
+
+          // Dynamically detect script and stylesheet chunks referenced in index.html
+          const assetRegex = /(?:src|href)=["'](\.?\/assets\/[^"']+)["']/g;
+          let match;
+          const dynamicAssets = [];
+          while ((match = assetRegex.exec(htmlText)) !== null) {
+            dynamicAssets.push(match[1]);
+          }
+
+          await Promise.allSettled(
+            dynamicAssets.map(async (assetUrl) => {
+              try {
+                const assetRes = await fetch(assetUrl);
+                if (assetRes && assetRes.status === 200) {
+                  await cache.put(assetUrl, assetRes);
+                }
+              } catch (e) {
+                // Ignore individual chunk failures
+              }
+            })
+          );
+        }
+      } catch (err) {
+        console.warn('PWA: Notice during index.html precache:', err);
+      }
+    })()
   );
 });
 
-// 2. Activate Event: Purge Old Caches & Claim Clients Immediately
+// 2. Activate Event: Clean up outdated caches & claim clients immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
+    (async () => {
+      const cacheNames = await caches.keys();
+      await Promise.all(
         cacheNames
           .filter((name) => name !== CACHE_NAME && name !== TILE_CACHE_NAME)
           .map((name) => caches.delete(name))
       );
-    }).then(() => self.clients.claim())
+      await self.clients.claim();
+    })()
   );
 });
 
-// 3. Fetch Event: Network-First for Navigation, Stale-While-Revalidate / Cache-First for static & map tiles
+// 3. Fetch Event
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
-  if (url.protocol.startsWith('chrome-extension')) return;
 
-  // Never intercept or cache development modules, Vite internal, or HMR requests
+  // Ignore browser extensions and localhost/dev internal endpoints
+  if (url.protocol.startsWith('chrome-extension')) return;
   if (
     url.pathname.startsWith('/@') ||
     url.pathname.startsWith('/src/') ||
-    url.pathname.includes('/node_modules/') ||
-    url.search.includes('v=') ||
-    url.search.includes('t=')
+    url.pathname.includes('/node_modules/')
   ) {
     return;
   }
 
   // Handle OpenStreetMap / CartoDB / Tile Server requests
-  if (url.hostname.includes('tile.openstreetmap.org') || url.hostname.includes('basemaps.cartocdn.com') || url.pathname.endsWith('.png') && url.pathname.includes('/tiles/')) {
+  if (
+    url.hostname.includes('tile.openstreetmap.org') ||
+    url.hostname.includes('basemaps.cartocdn.com') ||
+    (url.pathname.endsWith('.png') && url.pathname.includes('/tiles/'))
+  ) {
     event.respondWith(
-      caches.open(TILE_CACHE_NAME).then(async (tileCache) => {
-        const cachedTile = await tileCache.match(event.request);
-        if (cachedTile) return cachedTile;
+      (async () => {
+        const tileCache = await caches.open(TILE_CACHE_NAME);
+        const cached = await tileCache.match(event.request);
+        if (cached) return cached;
 
         try {
-          const networkResponse = await fetch(event.request);
-          if (networkResponse && networkResponse.status === 200) {
-            tileCache.put(event.request, networkResponse.clone());
+          const res = await fetch(event.request);
+          if (res && res.status === 200) {
+            tileCache.put(event.request, res.clone());
           }
-          return networkResponse;
+          return res;
         } catch (e) {
-          return cachedTile || new Response('', { status: 408, headers: { 'Content-Type': 'image/png' } });
+          // Return a valid transparent 1x1 PNG response when offline so map doesn't show broken icons
+          return new Response(
+            Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='), (c) => c.charCodeAt(0)),
+            { headers: { 'Content-Type': 'image/png' } }
+          );
         }
-      })
+      })()
     );
     return;
   }
 
-  // For navigation/HTML requests: Network first, fall back to cache, then offline page
+  // Handle SPA Navigation requests (HTML)
   if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
     event.respondWith(
-      fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-              cache.put('index.html', responseToCache.clone());
-            });
-          }
-          return networkResponse;
-        })
-        .catch(async () => {
-          const cachedResponse = 
-            await caches.match(event.request) || 
-            await caches.match('./') || 
-            await caches.match('index.html') || 
-            await caches.match('/Warraich-Goods/') || 
-            await caches.match('/Warraich-Goods/index.html') ||
-            await caches.match('/index.html') || 
-            await caches.match('/');
+      (async () => {
+        // Attempt network first with snappy 2-second timeout
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
+          const networkResponse = await fetch(event.request, { signal: controller.signal });
+          clearTimeout(timeoutId);
 
-          if (cachedResponse) return cachedResponse;
-          return new Response(OFFLINE_HTML, {
-            headers: { 'Content-Type': 'text/html; charset=utf-8' }
-          });
-        })
+          if (networkResponse && networkResponse.status === 200) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(event.request, networkResponse.clone());
+            cache.put('index.html', networkResponse.clone());
+            cache.put('./', networkResponse.clone());
+            return networkResponse;
+          }
+        } catch (e) {
+          // Network failed or offline - fall through immediately to cached app shell
+        }
+
+        // Return cached app shell with ignoreSearch: true for query parameters (?utm_source, etc.)
+        const cached =
+          (await caches.match(event.request, { ignoreSearch: true })) ||
+          (await caches.match('./', { ignoreSearch: true })) ||
+          (await caches.match('index.html', { ignoreSearch: true })) ||
+          (await caches.match('./index.html', { ignoreSearch: true })) ||
+          (await caches.match('/', { ignoreSearch: true })) ||
+          (await caches.match(self.registration.scope, { ignoreSearch: true }));
+
+        if (cached) return cached;
+
+        // Fallback: search cache keys for any valid index.html or root
+        const cache = await caches.open(CACHE_NAME);
+        const keys = await cache.keys();
+        for (const k of keys) {
+          if (k.url.endsWith('index.html') || k.url.endsWith('/')) {
+            const match = await cache.match(k);
+            if (match) return match;
+          }
+        }
+
+        // Ultimate fallback response
+        return new Response(
+          '<!DOCTYPE html><html lang="ur"><head><meta charset="utf-8"><title>Driver Dost</title></head><body style="font-family:sans-serif;text-align:center;padding:2rem;"><h2>ڈرائیور دوست</h2><p>ایپ کو پہلی بار لوڈ ہونے دیں تاکہ یہ آف لائن محفوظ ہو سکے۔</p></body></html>',
+          { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+        );
+      })()
     );
     return;
   }
 
-  // For static assets (images, scripts, styles): Cache first, fallback to network
+  // Handle Static Assets (JS, CSS, Fonts, Images) - Cache First with Network Fallback
   event.respondWith(
-    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Background revalidation
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
-          }
-        }).catch(() => {});
-        return cachedResponse;
+    (async () => {
+      // 1. Check cache first
+      const cached = await caches.match(event.request, { ignoreSearch: true });
+      if (cached) {
+        // Revalidate in background when online
+        if (navigator.onLine) {
+          fetch(event.request)
+            .then(async (res) => {
+              if (res && (res.status === 200 || res.type === 'opaque')) {
+                const cache = await caches.open(CACHE_NAME);
+                cache.put(event.request, res);
+              }
+            })
+            .catch(() => {});
+        }
+        return cached;
       }
 
-      return fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+      // 2. Fetch from network
+      try {
+        const res = await fetch(event.request);
+        if (res && (res.status === 200 || res.type === 'opaque')) {
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(event.request, res.clone());
         }
-        return networkResponse;
-      }).catch(async (fetchError) => {
-        // If an asset fails offline, check cache without query string
-        const fallback = await caches.match(event.request, { ignoreSearch: true });
-        if (fallback) return fallback;
-        throw fetchError;
-      });
-    })
+        return res;
+      } catch (err) {
+        // 3. Fallback matching by filename (useful for relative path variations)
+        const pathname = url.pathname;
+        const filename = pathname.substring(pathname.lastIndexOf('/') + 1);
+        if (filename) {
+          const altMatch =
+            (await caches.match(filename, { ignoreSearch: true })) ||
+            (await caches.match(`./${filename}`, { ignoreSearch: true }));
+          if (altMatch) return altMatch;
+        }
+
+        // If an image request fails offline, fallback to cached logo.png
+        if (event.request.destination === 'image' || pathname.match(/\.(png|jpg|jpeg|svg|webp|gif|ico)$/i)) {
+          const logoFallback = (await caches.match('logo.png')) || (await caches.match('./logo.png'));
+          if (logoFallback) return logoFallback;
+        }
+
+        throw err;
+      }
+    })()
   );
 });
 
@@ -207,7 +293,7 @@ self.addEventListener('sync', (event) => {
   }
 });
 
-// 5. Periodic Background Sync: Background check for NHA toll updates & fuel rates
+// 5. Periodic Background Sync: Periodic rate and tariff updates
 self.addEventListener('periodicsync', (event) => {
   if (event.tag === 'update-rates' || event.tag === 'sync-toll-tariffs') {
     event.waitUntil(
@@ -284,7 +370,6 @@ self.addEventListener('pushsubscriptionchange', (event) => {
   event.waitUntil(
     self.registration.pushManager.subscribe(event.oldSubscription.options)
       .then((newSubscription) => {
-        // Send new subscription to clients/backend
         return self.clients.matchAll().then((clients) => {
           clients.forEach((client) => {
             client.postMessage({ type: 'PUSH_SUBSCRIPTION_CHANGED', subscription: newSubscription });
@@ -293,4 +378,3 @@ self.addEventListener('pushsubscriptionchange', (event) => {
       })
   );
 });
-
