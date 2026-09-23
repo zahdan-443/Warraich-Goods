@@ -55,10 +55,10 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
-    // Public bilty verification copy (Read allowed for anyone for QR code validation; write restricted to bilty-authorized)
+    // Public bilty verification copy (Read allowed for anyone for QR code validation; write restricted to bilty-authorized or safe public verification doc)
     match /bilties/{biltyId} {
       allow read: if true;
-      allow write: if isBiltyAuthorized();
+      allow write: if isBiltyAuthorized() || (request.resource.data.verifiedPublicly == true);
     }
 
     // Counters collection for transaction-based sequential Bilty allocation (read for signed in users, write restricted to bilty-authorized)

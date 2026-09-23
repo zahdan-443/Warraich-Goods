@@ -28,7 +28,9 @@ import {
   Check,
   Milestone,
   Crown,
-  Compass
+  Compass,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { LiveFuelPriceWidget } from '../LiveFuelPriceWidget';
 import { TollCalculatorModal } from '../TollCalculatorModal';
@@ -154,6 +156,28 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const [showSafarDiaryModal, setShowSafarDiaryModal] = useState(false);
   const [showQuickOpsModal, setShowQuickOpsModal] = useState(false);
   const [showTollCalculatorModal, setShowTollCalculatorModal] = useState(false);
+
+  // Owner Panel Dismissed State
+  const [isOwnerPanelDismissed, setIsOwnerPanelDismissed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('hide_owner_panel_banner') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleOwnerBanner = (dismiss: boolean) => {
+    setIsOwnerPanelDismissed(dismiss);
+    try {
+      localStorage.setItem('hide_owner_panel_banner', dismiss ? 'true' : 'false');
+    } catch {
+      // ignore
+    }
+  };
+
+  const totalBiltyCount = bilties.length;
+  const totalBiltyFreight = bilties.reduce((sum, b) => sum + (Number(b.total) || 0), 0);
+  const totalBiltyPayable = bilties.reduce((sum, b) => sum + (Number(b.payable) || 0), 0);
 
   const currentDate = (() => {
     try {
@@ -470,34 +494,131 @@ export const HomeView: React.FC<HomeViewProps> = ({
         
         {/* Authenticated App Owner Control Panel Quick Link */}
         {(userEmail?.toLowerCase() === 'warraichgoods43@gmail.com') && onOpenBiltyAccess && (
-          <div className="p-4 rounded-[28px] bg-gradient-to-r from-amber-500/15 via-[#fdfbf7] to-amber-500/15 border-2 border-amber-400/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-in fade-in">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-amber-500 to-[#b58b28] rounded-2xl text-white shrink-0 shadow-xs">
-                <Crown className="w-5 h-5" />
+          isOwnerPanelDismissed ? (
+            /* Minimalist Hidden State - Keeps Home View Clean and Uncluttered */
+            <div className="px-4 py-2.5 rounded-2xl bg-amber-50/70 border border-amber-300/80 shadow-2xs flex items-center justify-between text-xs text-amber-950 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <Crown className="w-4 h-4 text-amber-600" />
+                <span className="font-bold font-serif">{lang === 'ur' ? 'آنر کنٹرول پینل (مخفی)' : 'Fleet Owner Panel (Minimized)'}</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold border border-amber-300">
+                  {totalBiltyCount} {lang === 'ur' ? 'بلٹیاں' : 'Bilties'}
+                </span>
               </div>
-              <div>
-                <div className="font-bold text-amber-950 font-serif text-sm flex items-center gap-2">
-                  <span>{lang === 'ur' ? 'ایپ آنر کنٹرول پینل فعال ہے' : 'App Owner Control Panel'}</span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold border border-amber-300">
-                    Master Admin
-                  </span>
-                </div>
-                <p className="text-[11px] text-amber-800 font-sans mt-0.5">
-                  {lang === 'ur' 
-                    ? 'بلٹی رسائی، کمپنی پروفائل و مالیاتی رپورٹس' 
-                    : 'Bilty authorization, company settings & reports'}
-                </p>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => toggleOwnerBanner(false)}
+                  className="px-2.5 py-1 bg-amber-200/80 hover:bg-amber-300 rounded-lg font-bold text-[11px] text-amber-900 transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <Eye className="w-3 h-3" />
+                  <span>{lang === 'ur' ? 'پینل دکھائیں' : 'Show Panel'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenBiltyAccess}
+                  className="px-3 py-1 bg-[#b58b28] hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] transition-all cursor-pointer"
+                >
+                  {lang === 'ur' ? 'کھولیں' : 'Open'}
+                </button>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={onOpenBiltyAccess}
-              className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-amber-500 to-[#b58b28] hover:from-amber-600 hover:to-[#96721f] text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-95"
-            >
-              <Crown className="w-3.5 h-3.5 text-amber-200" />
-              <span>{lang === 'ur' ? 'آنر پینل کھولیں' : 'Open Control Panel'}</span>
-            </button>
-          </div>
+          ) : (
+            /* High-Utility Executive Command Center */
+            <div className="p-4 sm:p-5 rounded-[28px] bg-gradient-to-br from-amber-500/15 via-[#fdfbf7] to-amber-500/10 border-2 border-amber-400/80 shadow-xs space-y-3.5 text-xs animate-in fade-in">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-gradient-to-br from-amber-500 to-[#b58b28] rounded-2xl text-white shrink-0 shadow-xs">
+                    <Crown className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-amber-950 font-serif text-sm flex items-center gap-2">
+                      <span>{lang === 'ur' ? 'وارائچ گڈز آنر کمانڈ سینٹر' : 'Warraich Goods Master Center'}</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold border border-amber-300">
+                        Master Admin
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-amber-800 font-sans mt-0.5">
+                      {lang === 'ur' 
+                        ? 'بلٹی انتظام، ایکسل ایکسپورٹ، مکمل کلاؤڈ بیک اپ و مالیاتی کنٹرول' 
+                        : 'Bilty management, Excel export, cloud backup & financial control'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => toggleOwnerBanner(true)}
+                    title={lang === 'ur' ? 'ہوم اسکرین سے پینل چھپائیں' : 'Hide panel from home'}
+                    className="p-1.5 text-amber-800 hover:text-amber-950 hover:bg-amber-200/60 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-[11px]"
+                  >
+                    <EyeOff className="w-3.5 h-3.5" />
+                    <span>{lang === 'ur' ? 'چھپائیں' : 'Hide'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onOpenBiltyAccess}
+                    className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-[#b58b28] hover:from-amber-600 hover:to-[#96721f] text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                  >
+                    <Crown className="w-3.5 h-3.5 text-amber-200" />
+                    <span>{lang === 'ur' ? 'آنر سیٹنگز پینل' : 'Owner Settings'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Real-time Bilty & Business KPI Summary */}
+              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-amber-300/60">
+                <div className="p-2.5 bg-white/90 rounded-2xl border border-amber-200 text-center">
+                  <div className="text-[10px] text-amber-800 font-bold">
+                    {lang === 'ur' ? 'کل بلٹیاں' : 'Total Bilties'}
+                  </div>
+                  <div className="text-base font-bold font-mono text-amber-950 mt-0.5">
+                    {totalBiltyCount}
+                  </div>
+                </div>
+
+                <div className="p-2.5 bg-white/90 rounded-2xl border border-amber-200 text-center">
+                  <div className="text-[10px] text-emerald-800 font-bold">
+                    {lang === 'ur' ? 'کل فریٹ حجم' : 'Total Freight'}
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold font-mono text-emerald-950 mt-0.5 truncate">
+                    Rs. {totalBiltyFreight.toLocaleString()}
+                  </div>
+                </div>
+
+                <div className="p-2.5 bg-white/90 rounded-2xl border border-amber-200 text-center">
+                  <div className="text-[10px] text-rose-800 font-bold">
+                    {lang === 'ur' ? 'بقایا وصولی' : 'Pending'}
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold font-mono text-rose-950 mt-0.5 truncate">
+                    Rs. {totalBiltyPayable.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Navigation Shortcuts */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => onNavigate('bilty', 'create')}
+                  className="flex-1 py-2 px-3 bg-white hover:bg-amber-50/80 border border-amber-300 rounded-xl font-bold text-[11px] text-amber-950 text-center transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>{lang === 'ur' ? 'نئی بلٹی بنائیں' : 'Create Bilty'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigate('bilty', 'ledger')}
+                  className="flex-1 py-2 px-3 bg-white hover:bg-amber-50/80 border border-amber-300 rounded-xl font-bold text-[11px] text-amber-950 text-center transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <Receipt className="w-3.5 h-3.5 text-amber-700" />
+                  <span>{lang === 'ur' ? 'تمام بلٹیاں دیکھیں' : 'View All Bilties'}</span>
+                </button>
+              </div>
+            </div>
+          )
         )}
 
         {/* SECTION 1: Primary Transport, Route & Trip Calculation Tools (4 Core Buttons) */}
@@ -618,18 +739,25 @@ export const HomeView: React.FC<HomeViewProps> = ({
             />
           </div>
 
-          {/* Bilty Form (ONLY visible when authenticated owner) */}
+          {/* Bilty Form & Ledger (ONLY visible when authenticated owner) */}
           {isBiltyAuthorized && (
-            <div className="pt-2.5 border-t border-[#ecece0] flex items-center justify-between gap-3">
+            <div className="pt-2.5 border-t border-[#ecece0] flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2.5">
                 <img
                   src="./bilty-official-icon.png"
                   alt="Official Bilty Seal"
-                  className="w-6 h-6 rounded-lg object-contain border border-amber-400/40 p-0.5 bg-white shadow-2xs"
+                  className="w-7 h-7 rounded-lg object-contain border border-amber-400/40 p-0.5 bg-white shadow-2xs"
                 />
-                <span className="text-xs font-bold text-[#4a4a35]">
-                  {lang === 'ur' ? 'آفیشل بلٹی جنریٹر (آنر پینل):' : 'Official Bilty Generator (Owner):'}
-                </span>
+                <div>
+                  <span className="text-xs font-bold text-[#4a4a35] block">
+                    {lang === 'ur' ? 'آفیشل بلٹی لیجر (آنر پینل):' : 'Official Bilty & Ledger (Owner):'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    {lang === 'ur'
+                      ? `${bilties.length} بلٹیاں محفوظ ہیں`
+                      : `${bilties.length} Bilties in Ledger`}
+                  </span>
+                </div>
               </div>
               <button
                 type="button"
@@ -637,7 +765,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-[#b58b28] hover:from-amber-600 hover:to-[#96721f] text-white font-serif font-bold text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
               >
                 <Receipt className="w-3.5 h-3.5" />
-                <span>{lang === 'ur' ? 'بلٹی فارم کھولیں' : 'Open Bilty Form'}</span>
+                <span>{lang === 'ur' ? 'تمام بلٹیاں کھولیں' : 'View All Bilties'}</span>
               </button>
             </div>
           )}

@@ -207,7 +207,7 @@ export function formatBiltyWhatsAppSummary(record: BiltyRecord): string {
   const company = getCachedCompanyProfile();
   const fmt = (n?: number) => (n !== undefined && n !== null ? n.toLocaleString('en-US') : '0');
 
-  const verifyLink = getBiltyVerificationUrl(record.biltyNo);
+  const verifyLink = getBiltyVerificationUrl(record);
 
   const lines = [
     `🚚 *${company.nameUr || 'ورائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)'}*`,

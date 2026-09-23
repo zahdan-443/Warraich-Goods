@@ -92,14 +92,14 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
   useEffect(() => {
     let isMounted = true;
     if (!propQrUrl && record?.biltyNo) {
-      generateBiltyVerificationQrDataUrl(record.biltyNo)
+      generateBiltyVerificationQrDataUrl(record)
         .then((url) => {
           if (isMounted) setInternalQrUrl(url);
         })
         .catch((err) => {
           console.error('QR generation error:', err);
           if (isMounted) {
-            const fallback = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(getBiltyVerificationUrl(record.biltyNo))}&size=150x150`;
+            const fallback = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(getBiltyVerificationUrl(record))}&size=200x200`;
             setInternalQrUrl(fallback);
           }
         });
@@ -107,7 +107,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [propQrUrl, record?.biltyNo]);
+  }, [propQrUrl, record?.biltyNo, record?.total, record?.vehicleNo]);
 
   const activeQrUrl = propQrUrl || internalQrUrl;
   const fmt = (n?: number) => (n !== undefined && n !== null ? n.toLocaleString('en-US') : '0');

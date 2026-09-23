@@ -143,21 +143,25 @@ export default function App() {
 
   const [verifySubSection, setVerifySubSection] = useState<'vehicle' | 'license' | 'challan' | 'history' | 'bilty'>('vehicle');
   const [initialBiltySearch, setInitialBiltySearch] = useState<string>('');
+  const [initialBiltyToken, setInitialBiltyToken] = useState<string>('');
 
   useEffect(() => {
     // Check URL parameters first for direct Bilty verification links (from QR code scan or WhatsApp link)
-    // E.g. ?page=verify&bilty=WGT-2026-001 or ?view=verify&biltyNo=... or ?bilty=...
+    // E.g. ?page=verify&bilty=WG-2026-0001&vdata=... or ?view=verify&biltyNo=... or ?bilty=...
     const urlParams = new URLSearchParams(window.location.search);
     const paramPage = urlParams.get('page') || urlParams.get('view') || urlParams.get('tab');
     const paramBilty = urlParams.get('bilty') || urlParams.get('biltyNo') || urlParams.get('id');
+    const paramToken = urlParams.get('vdata') || urlParams.get('data') || urlParams.get('d');
 
-    if (paramPage === 'verify' || paramBilty) {
+    if (paramPage === 'verify' || paramBilty || paramToken) {
       setActiveTab('verify');
       setVerifySubSection('bilty');
       if (paramBilty) {
         setInitialBiltySearch(paramBilty.trim());
       }
-      window.history.replaceState({ tab: 'verify' }, '');
+      if (paramToken) {
+        setInitialBiltyToken(paramToken.trim());
+      }
       return;
     }
 
@@ -669,6 +673,19 @@ export default function App() {
     );
   };
 
+  const handleDeleteBilty = (id: number) => {
+    const target = bilties.find((b) => b.id === id);
+    const updated = bilties.filter((b) => b.id !== id);
+    setBilties(updated);
+    saveStoredBilties(updated);
+
+    pushAppNotification(
+      lang === 'ur' ? 'بلٹی حذف کر دی گئی' : 'Bilty Deleted',
+      lang === 'ur' ? `بلٹی نمبر ${target?.biltyNo || ''} ریکارڈ سے ہٹا دی گئی۔` : `Bilty #${target?.biltyNo || ''} removed.`,
+      'system'
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#fdfbf7] text-[#4a4a35] flex flex-col font-sans relative">
       {showSplash && (
@@ -800,6 +817,7 @@ export default function App() {
               drivers={drivers}
               initialSection={verifySubSection}
               initialBiltyNo={initialBiltySearch}
+              initialBiltyToken={initialBiltyToken}
             />
           )}
 
@@ -815,6 +833,7 @@ export default function App() {
               lang={lang}
               bilties={bilties}
               onAddBilty={handleAddBilty}
+              onDeleteBilty={handleDeleteBilty}
               onNavigate={handleNavigate}
             />
           )}

@@ -383,6 +383,7 @@ export interface PublicBiltyVerification {
   biltyNo: string;
   vehicleNo: string;
   date: string;
+  branch?: string;
   sendingCity: string;
   receivingCity: string;
   senderName: string;
@@ -408,18 +409,19 @@ export function extractPublicBiltyVerification(bilty: Partial<BiltyRecord>): Pub
     biltyNo: bilty.biltyNo || '',
     vehicleNo: bilty.vehicleNo || '',
     date: bilty.date || '',
+    branch: bilty.branch || 'samundri',
     sendingCity: bilty.sendingCity || '',
     receivingCity: bilty.receivingCity || '',
-    senderName: bilty.senderName || '',
-    receiverName: bilty.receiverName || '',
+    senderName: bilty.senderName || bilty.consignor || '',
+    receiverName: bilty.receiverName || bilty.consignee || '',
     qty: bilty.qty || '',
     itemDescription: bilty.itemDescription || '',
     weight: bilty.weight || '',
     total: typeof bilty.total === 'number' ? bilty.total : 0,
     advance: typeof bilty.advance === 'number' ? bilty.advance : 0,
     payable: typeof bilty.payable === 'number' ? bilty.payable : 0,
-    consignor: bilty.consignor || '',
-    consignee: bilty.consignee || '',
+    consignor: bilty.consignor || bilty.senderName || '',
+    consignee: bilty.consignee || bilty.receiverName || '',
     receivedBy: bilty.receivedBy || '',
     verifiedPublicly: true,
     createdAt: new Date().toISOString()
@@ -444,6 +446,11 @@ export async function syncPublicBiltyVerification(bilty: BiltyRecord): Promise<b
   try {
     const docRef = doc(db, 'bilties', normalizedNo);
     await withTimeout(setDoc(docRef, safeData, { merge: true }), 3000);
+    const cleanId = normalizedNo.replace(/[^A-Z0-9]/g, '');
+    if (cleanId && cleanId !== normalizedNo) {
+      const docRef2 = doc(db, 'bilties', cleanId);
+      await withTimeout(setDoc(docRef2, safeData, { merge: true }), 3000).catch(() => {});
+    }
     return true;
   } catch {
     enqueueOfflineAction('public_bilty', safeData);
@@ -1190,6 +1197,8 @@ export function exportAllBusinessDataJSON(privacyOptions?: ExportPrivacyOptions)
   logActivity('Data Backup Exported', 'Full JSON backup downloaded with privacy filters', 'export');
 }
 
+export const exportFullLocalBackup = exportAllBusinessDataJSON;
+
 export function exportAllBiltiesCSV(privacyOptions?: ExportPrivacyOptions) {
   const rawBilties = getStoredBilties();
   if (rawBilties.length === 0) {
@@ -1274,4 +1283,39 @@ export function exportAllTripsCSV(privacyOptions?: ExportPrivacyOptions) {
   link.click();
   document.body.removeChild(link);
   logActivity('Trips CSV Exported', `${trips.length} trip records exported as CSV`, 'export');
+}
+
+export function restoreFullBackupFromJson(jsonString: string): { success: boolean; message: string; count: number } {
+  try {
+    const data = JSON.parse(jsonString);
+    if (!data || typeof data !== 'object') {
+      return { success: false, message: 'Invalid backup file format', count: 0 };
+    }
+    let restoredCount = 0;
+    if (Array.isArray(data.bilties) && data.bilties.length > 0) {
+      const existing = getStoredBilties();
+      const map = new Map<string, BiltyRecord>();
+      existing.forEach(b => { if (b.biltyNo) map.set(b.biltyNo, b); });
+      data.bilties.forEach((b: BiltyRecord) => {
+        if (b.biltyNo) {
+          map.set(b.biltyNo, b);
+          restoredCount++;
+        }
+      });
+      safeStorage.setItem('ah-bilties-data', JSON.stringify(Array.from(map.values())));
+    }
+    if (Array.isArray(data.trips) && data.trips.length > 0) {
+      safeStorage.setItem('ah-trips-data', JSON.stringify(data.trips));
+    }
+    if (Array.isArray(data.vehicles) && data.vehicles.length > 0) {
+      safeStorage.setItem('ah-vehicles-data', JSON.stringify(data.vehicles));
+    }
+    if (data.company) {
+      safeStorage.setItem('ah-company-profile', JSON.stringify(data.company));
+    }
+    logActivity('Backup Restored', `Restored ${restoredCount} bilty records from backup`, 'settings');
+    return { success: true, message: 'Backup successfully restored!', count: restoredCount };
+  } catch (err: any) {
+    return { success: false, message: err.message || 'Failed to restore backup', count: 0 };
+  }
 }

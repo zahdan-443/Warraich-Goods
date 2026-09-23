@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   ShieldCheck, 
@@ -14,9 +14,16 @@ import {
   CheckCircle2, 
   Users,
   Milestone,
-  Save
+  Save,
+  Download,
+  Upload,
+  Database,
+  FileSpreadsheet,
+  Building2,
+  Phone,
+  Wallet
 } from 'lucide-react';
-import { Language, UserProfile, ActivityLogItem, BiltyRecord, Trip, TollRatesConfig } from '../types';
+import { Language, UserProfile, ActivityLogItem, BiltyRecord, Trip, TollRatesConfig, CompanyProfile } from '../types';
 import { 
   getBiltyAccessConfig, 
   updateBiltyAccessInFirestore,
@@ -24,7 +31,14 @@ import {
   getActivityLogs,
   logActivity,
   getStoredBilties,
-  getStoredTrips
+  getStoredTrips,
+  exportAllBiltiesCSV,
+  exportAllTripsCSV,
+  exportFullLocalBackup,
+  restoreFullBackupFromJson,
+  getStoredCompanyProfile,
+  saveCompanyProfileInFirestore,
+  DEFAULT_COMPANY_PROFILE
 } from '../utils/storage';
 import { 
   getStoredTollRates, 
@@ -41,7 +55,7 @@ interface ManageBiltyAccessModalProps {
   onUpdated?: (config: { allowedUIDs: string[]; allowedEmails: string[] }) => void;
 }
 
-type PanelTab = 'access' | 'reports' | 'tollRates' | 'logs';
+type PanelTab = 'access' | 'reports' | 'backup' | 'tollRates' | 'logs';
 
 export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
   isOpen,
@@ -72,6 +86,13 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
+
+  // Backup, Settings & Payment Accounts State
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(DEFAULT_COMPANY_PROFILE);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSuccessMsg, setProfileSuccessMsg] = useState(false);
+  const [restoreStatus, setRestoreStatus] = useState<{ msg: string; success: boolean } | null>(null);
+  const backupInputRef = useRef<HTMLInputElement>(null);
 
   // Activity Logs State
   const [logs, setLogs] = useState<ActivityLogItem[]>([]);
@@ -108,6 +129,14 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
       console.warn("Failed loading toll rates:", err);
     }
 
+    // Load Company & Branch Profile
+    try {
+      const prof = await getStoredCompanyProfile();
+      setCompanyProfile(prof);
+    } catch (err) {
+      console.warn("Failed loading company profile:", err);
+    }
+
     // Load Operational Data for Reports
     setBilties(getStoredBilties());
     setTrips(getStoredTrips());
@@ -126,6 +155,40 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
     } finally {
       setLoadingLogs(false);
     }
+  };
+
+  const handleSaveCompanyProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    try {
+      await saveCompanyProfileInFirestore(companyProfile);
+      setProfileSuccessMsg(true);
+      setTimeout(() => setProfileSuccessMsg(false), 3000);
+      await logActivity('Company Profile Updated', 'Updated branch contacts & online payment details', 'settings');
+    } catch (err) {
+      console.error('Failed to save profile:', err);
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleRestoreFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      const res = restoreFullBackupFromJson(content);
+      if (res.success) {
+        setRestoreStatus({ msg: `${res.message} (${res.count} records)`, success: true });
+        setBilties(getStoredBilties());
+        setTrips(getStoredTrips());
+      } else {
+        setRestoreStatus({ msg: res.message, success: false });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   if (!isOpen) return null;
@@ -340,6 +403,18 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
           >
             <BarChart3 className="w-4 h-4" />
             <span>{lang === 'ur' ? 'ماہانہ رپورٹ و حساب' : 'Business Reports'}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('backup')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'backup'
+                ? 'bg-[#8b9d77] text-white shadow-xs'
+                : 'bg-[#fdfbf7] text-[#5a5a40] hover:bg-[#f0f0e4] border border-[#ecece0]'
+            }`}
+          >
+            <Database className="w-4 h-4" />
+            <span>{lang === 'ur' ? 'بیک اپ، ایکسل و برانچز' : 'Backup & Settings'}</span>
           </button>
 
           <button
@@ -622,7 +697,223 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
             </div>
           )}
 
-          {/* TAB 3: TOLL RATES & MOTORWAY TARIFFS */}
+          {/* TAB 3: BACKUP, EXCEL EXPORT & COMPANY PROFILE */}
+          {activeTab === 'backup' && (
+            <div className="space-y-4">
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-xs text-emerald-950 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold">
+                    {lang === 'ur' ? 'ڈیٹا بیک اپ، ایکسل رپورٹس اور کمپنی پروفائل' : 'Data Backup, Excel Exports & Company Setup'}
+                  </h3>
+                  <p className="text-[11px] text-emerald-800 mt-0.5">
+                    {lang === 'ur' 
+                      ? '1-کلک میں تمام بلٹیوں کا ایکسل ڈاؤن لوڈ کریں، فون یا کلاؤڈ کا مکمل بیک اپ محفوظ کریں یا بحال کریں۔'
+                      : 'Download all bilties as Excel/CSV, generate complete system backups, or restore data.'}
+                  </p>
+                </div>
+                <Database className="w-7 h-7 text-emerald-600 shrink-0" />
+              </div>
+
+              {restoreStatus && (
+                <div className={`p-3.5 rounded-xl border text-xs font-bold flex items-center gap-2 animate-in fade-in ${
+                  restoreStatus.success ? 'bg-emerald-100 border-emerald-300 text-emerald-900' : 'bg-rose-100 border-rose-300 text-rose-900'
+                }`}>
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{restoreStatus.msg}</span>
+                </div>
+              )}
+
+              {/* SECTION 1: 1-Click Excel / CSV Exports */}
+              <div className="p-4 bg-[#fdfbf7] rounded-2xl border border-[#ecece0] space-y-3">
+                <div className="flex items-center justify-between border-b border-[#ecece0] pb-2">
+                  <div className="flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+                    <h4 className="font-bold text-xs text-[#4a4a35]">
+                      {lang === 'ur' ? 'ایکسل (CSV) شیٹس ڈاؤن لوڈ کریں' : 'Instant Excel (CSV) Exports'}
+                    </h4>
+                  </div>
+                  <span className="text-[10px] font-mono text-[#8e8e75]">
+                    {bilties.length} Bilties · {trips.length} Trips
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => exportAllBiltiesCSV()}
+                    className="p-3 bg-white hover:bg-emerald-50/60 border border-[#ecece0] hover:border-emerald-300 rounded-xl text-right transition-all cursor-pointer flex items-center justify-between group shadow-2xs"
+                  >
+                    <div>
+                      <div className="font-bold text-xs text-[#4a4a35] group-hover:text-emerald-900">
+                        {lang === 'ur' ? 'تمام بلٹیوں کا ایکسل لیجر' : 'Export All Bilties (Excel)'}
+                      </div>
+                      <div className="text-[10px] text-[#8e8e75] mt-0.5">
+                        {lang === 'ur' ? 'تاریخ، گاڑیاں، فریقین اور مکمل رقوم' : 'Complete financial & dispatch ledger'}
+                      </div>
+                    </div>
+                    <Download className="w-4 h-4 text-emerald-700 shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => exportAllTripsCSV()}
+                    className="p-3 bg-white hover:bg-emerald-50/60 border border-[#ecece0] hover:border-emerald-300 rounded-xl text-right transition-all cursor-pointer flex items-center justify-between group shadow-2xs"
+                  >
+                    <div>
+                      <div className="font-bold text-xs text-[#4a4a35] group-hover:text-emerald-900">
+                        {lang === 'ur' ? 'تمام ٹرپس و اخراجات ایکسل' : 'Export All Trips (Excel)'}
+                      </div>
+                      <div className="text-[10px] text-[#8e8e75] mt-0.5">
+                        {lang === 'ur' ? 'ڈیزل، ٹول ٹیکس اور ڈرائیور خرچے' : 'Fuel, tolls & driver trip log'}
+                      </div>
+                    </div>
+                    <Download className="w-4 h-4 text-emerald-700 shrink-0" />
+                  </button>
+                </div>
+              </div>
+
+              {/* SECTION 2: Full System Backup & Restore */}
+              <div className="p-4 bg-[#fdfbf7] rounded-2xl border border-[#ecece0] space-y-3">
+                <div className="flex items-center justify-between border-b border-[#ecece0] pb-2">
+                  <div className="flex items-center gap-2">
+                    <Database className="w-4 h-4 text-amber-700" />
+                    <h4 className="font-bold text-xs text-[#4a4a35]">
+                      {lang === 'ur' ? 'مکمل سسٹم بیک اپ و ڈیٹا بحالی' : 'Full Backup & Restore (JSON)'}
+                    </h4>
+                  </div>
+                  <span className="text-[10px] font-mono text-[#8e8e75]">
+                    Offline & Cloud
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => exportFullLocalBackup()}
+                    className="p-3 bg-white hover:bg-amber-50/60 border border-[#ecece0] hover:border-amber-300 rounded-xl text-right transition-all cursor-pointer flex items-center justify-between group shadow-2xs"
+                  >
+                    <div>
+                      <div className="font-bold text-xs text-[#4a4a35] group-hover:text-amber-900">
+                        {lang === 'ur' ? 'سسٹم بیک اپ ڈاؤن لوڈ کریں' : 'Download Full System Backup'}
+                      </div>
+                      <div className="text-[10px] text-[#8e8e75] mt-0.5">
+                        {lang === 'ur' ? 'سنگل محفوظ فائل برائے کمپیوٹر یا نیا فون' : 'All bilties, trips & settings in 1 file'}
+                      </div>
+                    </div>
+                    <Download className="w-4 h-4 text-amber-700 shrink-0" />
+                  </button>
+
+                  <div>
+                    <input
+                      type="file"
+                      ref={backupInputRef}
+                      accept=".json"
+                      onChange={handleRestoreFile}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => backupInputRef.current?.click()}
+                      className="w-full p-3 bg-white hover:bg-amber-50/60 border border-[#ecece0] hover:border-amber-300 rounded-xl text-right transition-all cursor-pointer flex items-center justify-between group shadow-2xs"
+                    >
+                      <div>
+                        <div className="font-bold text-xs text-[#4a4a35] group-hover:text-amber-900">
+                          {lang === 'ur' ? 'بیک اپ فائل سے ڈیٹا بحال کریں' : 'Restore from Backup File'}
+                        </div>
+                        <div className="text-[10px] text-[#8e8e75] mt-0.5">
+                          {lang === 'ur' ? 'پہلے سے ڈاؤن لوڈ کی گئی فائل منتخب کریں' : 'Select .json backup file to import'}
+                        </div>
+                      </div>
+                      <Upload className="w-4 h-4 text-amber-700 shrink-0" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3: Warraich Goods Branches & Online Payment Details */}
+              <form onSubmit={handleSaveCompanyProfile} className="p-4 bg-[#fdfbf7] rounded-2xl border border-[#ecece0] space-y-3">
+                <div className="flex items-center justify-between border-b border-[#ecece0] pb-2">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-emerald-700" />
+                    <h4 className="font-bold text-xs text-[#4a4a35]">
+                      {lang === 'ur' ? 'وارائچ گڈز برانچز و کسٹمر آن لائن پیمنٹ سیٹ اپ' : 'Branches & Online Payment Details'}
+                    </h4>
+                  </div>
+                  {profileSuccessMsg && (
+                    <span className="text-[11px] text-emerald-800 font-bold bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300">
+                      {lang === 'ur' ? 'کامیابی سے محفوظ ہو گیا!' : 'Saved Successfully!'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-[#4a4a35]">
+                      {lang === 'ur' ? 'رابطہ فون نمبرز:' : 'Contact Phone Numbers:'}
+                    </label>
+                    <input
+                      type="text"
+                      value={companyProfile.phoneNumbers || ''}
+                      onChange={(e) => setCompanyProfile(prev => ({ ...prev, phoneNumbers: e.target.value }))}
+                      placeholder="0300-5370443, 0339-5370443"
+                      className="w-full px-3 py-2 bg-white border border-[#ecece0] rounded-xl focus:border-[#8b9d77] outline-hidden font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-[#4a4a35]">
+                      {lang === 'ur' ? 'ہیڈ آفس پتہ (سمندری):' : 'Samundri Head Office:'}
+                    </label>
+                    <input
+                      type="text"
+                      value={companyProfile.headOfficeUr || ''}
+                      onChange={(e) => setCompanyProfile(prev => ({ ...prev, headOfficeUr: e.target.value }))}
+                      placeholder="سمندری، فیصل آباد"
+                      className="w-full px-3 py-2 bg-white border border-[#ecece0] rounded-xl focus:border-[#8b9d77] outline-hidden"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-[#4a4a35]">
+                      {lang === 'ur' ? 'آن لائن ایزی پیسہ اکاؤنٹ نمبر:' : 'EasyPaisa Account Number:'}
+                    </label>
+                    <input
+                      type="text"
+                      value={companyProfile.phoneNumbers?.split(',')?.[0] || '0300-5370443'}
+                      readOnly
+                      className="w-full px-3 py-2 bg-gray-50 border border-[#ecece0] rounded-xl text-[#6b6b55] font-mono cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-[#4a4a35]">
+                      {lang === 'ur' ? 'این ٹی این (NTN) رجسٹرڈ نمبر:' : 'NTN Registration Number:'}
+                    </label>
+                    <input
+                      type="text"
+                      value={companyProfile.ntn || ''}
+                      onChange={(e) => setCompanyProfile(prev => ({ ...prev, ntn: e.target.value }))}
+                      placeholder="7779394-1"
+                      className="w-full px-3 py-2 bg-white border border-[#ecece0] rounded-xl focus:border-[#8b9d77] outline-hidden font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    disabled={savingProfile}
+                    className="px-5 py-2.5 bg-[#4a5e38] text-white hover:bg-[#3d4e2e] text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{savingProfile ? (lang === 'ur' ? 'محفوظ ہو رہا ہے...' : 'Saving...') : (lang === 'ur' ? 'کمپنی سیٹنگز محفوظ کریں' : 'Save Company Details')}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* TAB 4: TOLL RATES & MOTORWAY TARIFFS */}
           {activeTab === 'tollRates' && (
             <form onSubmit={handleSaveTollRates} className="space-y-4">
               <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-xs text-emerald-950 flex items-center justify-between">
