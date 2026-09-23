@@ -90,6 +90,9 @@ export interface FuelLogItem {
   cng?: number;
 }
 
+export type BiltyBranch = 'samundri' | 'kamalia';
+export type BiltyLanguage = 'ur' | 'en';
+
 export interface BiltyRecord {
   id: number;
   biltyNo: string;
@@ -114,6 +117,8 @@ export interface BiltyRecord {
   consignee?: string;
   receivedBy?: string;
   pendingOnlineNumber?: boolean;
+  branch?: BiltyBranch;
+  language?: BiltyLanguage;
 }
 
 export type UserRole = 'owner' | 'driver' | 'accountant';

@@ -89,6 +89,11 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
             </div>
             <p className="text-xs text-[#8e8e75]">
               {isUrdu ? 'رجسٹرڈ بلٹی تصدیق پورٹل' : 'Registered Consignment Verification Portal'}
+              {bilty.branch && (
+                <span className="inline-flex items-center gap-1 mx-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#0f2942] text-white">
+                  📍 {bilty.branch === 'kamalia' ? (isUrdu ? 'برانچ: کمالیہ' : 'Branch: Kamalia') : (isUrdu ? 'برانچ: سمندری' : 'Branch: Samundri')}
+                </span>
+              )}
             </p>
           </div>
 
