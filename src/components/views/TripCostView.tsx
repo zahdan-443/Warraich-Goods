@@ -442,13 +442,16 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   };
 
   // ════════════════════════════════════════════════════════════
-  // RENDER SCREEN 1: INPUT FORM (Full-Screen Fit, Larger Fields & Typography)
+  // RENDER SCREEN 1: INPUT FORM (Smooth Scrollable, Generous Spacing & High Visibility)
   // ════════════════════════════════════════════════════════════
   if (viewMode === 'input') {
     return (
-      <div className={`fixed inset-0 z-30 h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#f6f5ee] flex flex-col justify-between p-2.5 sm:p-4 pb-20 md:pb-4 font-sans select-none ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
+      <div 
+        className={`fixed inset-0 z-30 min-h-[100dvh] h-full overflow-y-auto overscroll-y-contain bg-[#f6f5ee] flex flex-col p-3 sm:p-5 pb-40 sm:pb-36 md:pb-12 font-sans ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} 
+        dir={isUrdu ? 'rtl' : 'ltr'}
+      >
         {/* Top Header with Trip Icon */}
-        <div className="max-w-xl mx-auto w-full flex items-center justify-between pb-1 shrink-0">
+        <div className="max-w-xl mx-auto w-full flex items-center justify-between pb-2 shrink-0 border-b border-[#e0e0d2]">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
               <PublicImage
@@ -461,10 +464,10 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
               />
             </div>
             <div>
-              <h1 className="text-sm sm:text-base font-bold text-[#4a4a35] leading-tight">
+              <h1 className="text-base sm:text-lg font-bold text-[#4a4a35] leading-tight">
                 {isUrdu ? 'سفر اخراجات کیلکولیٹر' : 'Trip Expense Calculator'}
               </h1>
-              <p className="text-[10px] text-[#8e8e75]">
+              <p className="text-[11px] text-[#8e8e75]">
                 {isUrdu ? 'کرایہ، ڈیزل و اخراجات کا تخمینہ' : 'Freight, Fuel & Expense Estimate'}
               </p>
             </div>
@@ -481,19 +484,19 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
           )}
         </div>
 
-        {/* 7 Inputs - Compact Full Screen Fit with Big Text */}
-        <div className="flex-1 flex flex-col justify-evenly space-y-1 sm:space-y-1.5 max-w-xl mx-auto w-full my-auto">
+        {/* 7 Inputs - Smooth scrollable sequence with generous spacing */}
+        <div className="max-w-xl mx-auto w-full flex-1 flex flex-col space-y-3 sm:space-y-3.5 py-3">
           
           {/* Field 1: Origin City / از (روانگی - ڈراپ ڈاؤن) */}
-          <div className="bg-white p-2.5 sm:p-3 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-            <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1 flex items-center gap-1.5">
+          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+            <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1.5 flex items-center gap-1.5">
               <MapPin className="w-4 h-4 text-[#8b9d77]" />
               <span>{isUrdu ? 'از (روانگی - ڈراپ ڈاؤن)' : 'From City (Origin)'}</span>
             </label>
             <select
               value={originCity}
               onChange={(e) => setOriginCity(e.target.value)}
-              className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 text-sm sm:text-base font-black text-[#2b2b1f] focus:border-[#8b9d77] focus:outline-none cursor-pointer shadow-2xs"
+              className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-sm sm:text-base font-black text-[#2b2b1f] focus:border-[#8b9d77] focus:outline-none cursor-pointer shadow-2xs"
             >
               {PAKISTAN_CITIES.map((c) => (
                 <option key={c.nameEn} value={isUrdu ? c.nameUr : c.nameEn}>
@@ -504,15 +507,15 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
           </div>
 
           {/* Field 2: Destination City / تا (منزل - ڈراپ ڈاؤن) */}
-          <div className="bg-white p-2.5 sm:p-3 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-            <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1 flex items-center gap-1.5">
+          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+            <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1.5 flex items-center gap-1.5">
               <Navigation className="w-4 h-4 text-[#8b9d77]" />
               <span>{isUrdu ? 'تا (منزل - ڈراپ ڈاؤن)' : 'To City (Destination)'}</span>
             </label>
             <select
               value={destCity}
               onChange={(e) => setDestCity(e.target.value)}
-              className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 text-sm sm:text-base font-black text-[#2b2b1f] focus:border-[#8b9d77] focus:outline-none cursor-pointer shadow-2xs"
+              className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-sm sm:text-base font-black text-[#2b2b1f] focus:border-[#8b9d77] focus:outline-none cursor-pointer shadow-2xs"
             >
               {PAKISTAN_CITIES.map((c) => (
                 <option key={c.nameEn} value={isUrdu ? c.nameUr : c.nameEn}>
@@ -523,8 +526,8 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
           </div>
 
           {/* Field 3: Route Distance / روٹ فاصلہ (کلومیٹر) */}
-          <div className="bg-white p-2.5 sm:p-3 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-            <div className="flex items-center justify-between mb-1">
+          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+            <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs sm:text-sm font-black text-[#383827]">
                 {isUrdu ? 'روٹ فاصلہ (کلومیٹر)' : 'Route Distance (Kilometers)'}
               </label>
@@ -534,7 +537,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                 </span>
               )}
             </div>
-            <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1 focus-within:border-[#8b9d77] transition-all shadow-2xs">
+            <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77] transition-all shadow-2xs">
               <input
                 type="number"
                 inputMode="decimal"
@@ -552,8 +555,8 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
           </div>
 
           {/* Field 4: Fuel Rate / ڈیزل ریٹ (روپے / لٹر) */}
-          <div className="bg-white p-2.5 sm:p-3 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-            <div className="flex items-center justify-between mb-1 gap-2">
+          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+            <div className="flex items-center justify-between mb-1.5 gap-2">
               <label className="block text-xs sm:text-sm font-black text-[#383827]">
                 {isUrdu ? 'ڈیزل ریٹ (روپے / لٹر)' : 'Diesel Rate (PKR / Liter)'}
               </label>
@@ -566,7 +569,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                 <span>{isUrdu ? `سرکاری ریٹ: Rs. ${liveDieselBenchmark}` : `Live: Rs. ${liveDieselBenchmark}`}</span>
               </button>
             </div>
-            <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1 focus-within:border-[#8b9d77] transition-all shadow-2xs">
+            <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77] transition-all shadow-2xs">
               <input
                 type="number"
                 inputMode="decimal"
@@ -584,11 +587,11 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
           </div>
 
           {/* Field 5: Mileage / گاڑی کی ایوریج (کلومیٹر / لٹر) */}
-          <div className="bg-white p-2.5 sm:p-3 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-            <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1">
+          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+            <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1.5">
               {isUrdu ? 'گاڑی کی ایوریج (کلومیٹر / لٹر)' : 'Vehicle Mileage Average (KM / L)'}
             </label>
-            <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1 focus-within:border-[#8b9d77] transition-all shadow-2xs">
+            <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77] transition-all shadow-2xs">
               <input
                 type="number"
                 inputMode="decimal"
@@ -607,11 +610,11 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
           </div>
 
           {/* Field 6: Combined Expenses / ڈرائیور، ٹول و دیگر اخراجات (روپے) */}
-          <div className="bg-white p-2.5 sm:p-3 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-            <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1">
+          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+            <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1.5">
               {isUrdu ? 'ڈرائیور، ٹول و دیگر اخراجات (روپے)' : 'Driver, Toll & Misc Expenses (PKR)'}
             </label>
-            <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1 focus-within:border-[#8b9d77] transition-all shadow-2xs">
+            <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77] transition-all shadow-2xs">
               <input
                 type="number"
                 inputMode="decimal"
@@ -629,8 +632,8 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
           </div>
 
           {/* Field 7: Round Trip / واپسی کا چکر (دگنا فاصلہ) */}
-          <label className="bg-white p-2.5 sm:p-3 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex items-center justify-between cursor-pointer active:bg-[#f6f5ee] transition-all">
-            <div className="flex items-center gap-2">
+          <label className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex items-center justify-between cursor-pointer active:bg-[#f6f5ee] transition-all">
+            <div className="flex items-center gap-2.5">
               <input
                 type="checkbox"
                 checked={isReturn}
@@ -650,29 +653,29 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 
           {/* Error notice */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-2 rounded-xl text-center">
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-2.5 rounded-xl text-center">
               {error}
             </div>
           )}
         </div>
 
-        {/* Bottom Actions - 2 buttons */}
-        <div className="max-w-xl mx-auto w-full pt-2 flex items-center gap-2 shrink-0">
+        {/* Bottom Actions - 2 buttons prominently positioned above the bottom navigation bar */}
+        <div className="max-w-xl mx-auto w-full pt-4 pb-2 flex items-center gap-3 shrink-0">
           <button
             type="button"
             onClick={handleCalculate}
-            className="flex-1 py-3 bg-[#4a4a35] hover:bg-[#383827] text-white rounded-2xl font-black text-base shadow-md transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+            className="flex-1 py-3.5 sm:py-4 bg-[#4a4a35] hover:bg-[#383827] active:bg-[#2e2e21] text-white rounded-2xl font-black text-base sm:text-lg shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5 border border-[#8b9d77]/40"
           >
-            <Calculator className="w-5 h-5 text-[#8b9d77]" />
+            <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-[#8b9d77]" />
             <span>{isUrdu ? 'حساب لگائیں (Calculate)' : 'Calculate Cost'}</span>
           </button>
           <button
             type="button"
             onClick={handleReset}
             title={isUrdu ? 'صاف کریں' : 'Reset'}
-            className="p-3 bg-white border-2 border-[#d5d5c5] hover:bg-[#f0f0e4] text-[#4a4a35] rounded-2xl font-bold transition-all active:scale-95 cursor-pointer shadow-2xs"
+            className="p-3.5 sm:p-4 bg-white border-2 border-[#d5d5c5] hover:bg-[#f0f0e4] active:bg-[#e4e4d6] text-[#4a4a35] rounded-2xl font-bold transition-all active:scale-[0.98] cursor-pointer shadow-2xs"
           >
-            <RotateCcw className="w-5 h-5" />
+            <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
       </div>
@@ -680,12 +683,15 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   }
 
   // ════════════════════════════════════════════════════════════
-  // RENDER SCREEN 2: DEDICATED RESULT BREAKDOWN SCREEN
+  // RENDER SCREEN 2: DEDICATED RESULT BREAKDOWN SCREEN (Scrollable)
   // ════════════════════════════════════════════════════════════
   const fmt = (n: number) => 'Rs ' + n.toLocaleString('en-US');
 
   return (
-    <div className={`fixed inset-0 z-30 h-[100dvh] max-h-[100dvh] overflow-y-auto bg-[#f6f5ee] flex flex-col justify-between p-3 sm:p-5 pb-24 md:pb-5 font-sans select-none ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
+    <div 
+      className={`fixed inset-0 z-30 min-h-[100dvh] h-full overflow-y-auto overscroll-y-contain bg-[#f6f5ee] flex flex-col p-3 sm:p-5 pb-40 sm:pb-36 md:pb-12 font-sans ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} 
+      dir={isUrdu ? 'rtl' : 'ltr'}
+    >
       {/* Top Header */}
       <div className="max-w-xl mx-auto w-full flex items-center justify-between pb-2 shrink-0 border-b border-[#e0e0d2]">
         <div className="flex items-center gap-2">
@@ -720,7 +726,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 
       {/* Main Result Card */}
       {lastCalc && (
-        <div className="max-w-xl mx-auto w-full my-auto space-y-3 py-2">
+        <div className="max-w-xl mx-auto w-full space-y-3.5 py-3 flex-1">
           {/* Total Cost Highlight Card */}
           <div className="bg-[#8b9d77] text-white p-5 rounded-3xl shadow-md text-center space-y-1">
             <span className="text-xs sm:text-sm font-bold opacity-90 block">
@@ -783,7 +789,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       )}
 
       {/* Bottom Action Grid */}
-      <div className="max-w-xl mx-auto w-full pt-2 shrink-0 space-y-2">
+      <div className="max-w-xl mx-auto w-full pt-3 pb-2 shrink-0 space-y-2.5">
         <div className="grid grid-cols-3 gap-2">
           {/* WhatsApp Share */}
           <button
@@ -837,3 +843,4 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     </div>
   );
 };
+
