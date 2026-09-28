@@ -100,5 +100,8 @@ async function startServer() {
     console.log(`Driver Dost Server running on http://0.0.0.0:${PORT}`);
   });
 }
-startServer();
+startServer().catch((err) => {
+  console.error("Failed to start Driver Dost server:", err);
+  process.exit(1);
+});
 //# sourceMappingURL=server.cjs.map
