@@ -33,6 +33,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   // Screen View Mode: 'input' or 'result'
   const [viewMode, setViewMode] = useState<'input' | 'result'>('input');
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   // Input States (Strict 1-box per line sequence)
   const initialFuel = getStoredFuelPrices();
@@ -143,6 +144,21 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     };
   }, [originCity, destCity]);
 
+  // Back button listener: Return from Result mode to Input mode
+  useEffect(() => {
+    const handleBackButton = (e: Event) => {
+      if (viewMode === 'result') {
+        e.preventDefault();
+        setViewMode('input');
+        try {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch {}
+      }
+    };
+    window.addEventListener('app-back-button', handleBackButton);
+    return () => window.removeEventListener('app-back-button', handleBackButton);
+  }, [viewMode]);
+
   // Calculate & Navigate to Dedicated Result Screen
   const handleCalculate = () => {
     const fuelVal = validateFinancialNumber(fuelPrice, 'Fuel Rate', { allowZero: false });
@@ -159,6 +175,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       return;
     }
     setError(null);
+    setPdfError(null);
 
     const p = fuelVal.value;
     const m = mileageVal.value;
@@ -207,18 +224,25 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     setLastCalc(calcObj);
     setSaveSuccess(false);
     setViewMode('result');
+    try {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {}
   };
 
   const handleReset = () => {
-    setOriginCity('لاہور (Lahore)');
-    setDestCity('فیصل آباد (Faisalabad)');
-    setDistance('180');
+    setOriginCity('سمندری (Samundri)');
+    setDestCity('لاہور (Lahore)');
+    setDistance('195');
     setFuelPrice(liveDieselBenchmark);
     setMileage('7');
     setCombinedExpenses('3200');
     setIsReturn(false);
     setError(null);
+    setPdfError(null);
     setLastCalc(null);
+    try {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {}
   };
 
   const handleSaveToDiary = () => {
@@ -420,22 +444,27 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       console.warn('Trip PDF share fallback:', e);
     }
 
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    try {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    } catch {
+      window.location.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+    }
   };
 
   const handleExportPDF = async () => {
     if (!lastCalc || isExportingPdf) return;
     setIsExportingPdf(true);
+    setPdfError(null);
     try {
       const result = await generateTripCostPdf();
       if (result) {
         result.pdf.save(result.fileName);
       } else {
-        alert('پی ڈی ایف بنانے میں مسئلہ آیا، دوبارہ کوشش کریں۔');
+        setPdfError(isUrdu ? 'پی ڈی ایف بنانے میں مسئلہ آیا، دوبارہ کوشش کریں۔' : 'Could not generate PDF receipt. Please retry.');
       }
     } catch (err) {
       console.error('PDF export error:', err);
-      alert('پی ڈی ایف بنانے میں مسئلہ آیا: ' + (err instanceof Error ? err.message : String(err)));
+      setPdfError(isUrdu ? 'پی ڈی ایف بنانے میں مسئلہ آیا، دوبارہ کوشش کریں۔' : 'Failed to generate PDF receipt.');
     } finally {
       setIsExportingPdf(false);
     }
@@ -447,11 +476,11 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   if (viewMode === 'input') {
     return (
       <div 
-        className={`fixed inset-0 z-30 min-h-[100dvh] h-full overflow-y-auto overscroll-y-contain bg-[#f6f5ee] flex flex-col p-3 sm:p-5 pb-40 sm:pb-36 md:pb-12 font-sans ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} 
+        className={`w-full max-w-xl mx-auto flex flex-col p-3.5 sm:p-6 pb-48 sm:pb-40 md:pb-20 font-sans ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} 
         dir={isUrdu ? 'rtl' : 'ltr'}
       >
         {/* Top Header with Trip Icon */}
-        <div className="max-w-xl mx-auto w-full flex items-center justify-between pb-2 shrink-0 border-b border-[#e0e0d2]">
+        <div className="w-full flex items-center justify-between pb-3 shrink-0 border-b border-[#e0e0d2]">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
               <PublicImage
@@ -485,7 +514,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
         </div>
 
         {/* 7 Inputs - Smooth scrollable sequence with generous spacing */}
-        <div className="max-w-xl mx-auto w-full flex-1 flex flex-col space-y-3 sm:space-y-3.5 py-3">
+        <div className="w-full flex-1 flex flex-col space-y-3 sm:space-y-3.5 py-4">
           
           {/* Field 1: Origin City / از (روانگی - ڈراپ ڈاؤن) */}
           <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
@@ -653,18 +682,18 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 
           {/* Error notice */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-2.5 rounded-xl text-center">
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-3 rounded-2xl text-center">
               {error}
             </div>
           )}
         </div>
 
-        {/* Bottom Actions - 2 buttons prominently positioned above the bottom navigation bar */}
-        <div className="max-w-xl mx-auto w-full pt-4 pb-2 flex items-center gap-3 shrink-0">
+        {/* Bottom Actions - 2 buttons prominently positioned above the bottom navigation bar with generous clearance */}
+        <div className="w-full pt-4 pb-6 flex items-center gap-3 shrink-0">
           <button
             type="button"
             onClick={handleCalculate}
-            className="flex-1 py-3.5 sm:py-4 bg-[#4a4a35] hover:bg-[#383827] active:bg-[#2e2e21] text-white rounded-2xl font-black text-base sm:text-lg shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5 border border-[#8b9d77]/40"
+            className="flex-1 py-4 sm:py-4.5 bg-[#4a4a35] hover:bg-[#383827] active:bg-[#2e2e21] text-white rounded-2xl font-black text-base sm:text-lg shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5 border-2 border-[#8b9d77]/60"
           >
             <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-[#8b9d77]" />
             <span>{isUrdu ? 'حساب لگائیں (Calculate)' : 'Calculate Cost'}</span>
@@ -673,7 +702,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
             type="button"
             onClick={handleReset}
             title={isUrdu ? 'صاف کریں' : 'Reset'}
-            className="p-3.5 sm:p-4 bg-white border-2 border-[#d5d5c5] hover:bg-[#f0f0e4] active:bg-[#e4e4d6] text-[#4a4a35] rounded-2xl font-bold transition-all active:scale-[0.98] cursor-pointer shadow-2xs"
+            className="p-4 sm:p-4.5 bg-white border-2 border-[#d5d5c5] hover:bg-[#f0f0e4] active:bg-[#e4e4d6] text-[#4a4a35] rounded-2xl font-bold transition-all active:scale-[0.98] cursor-pointer shadow-2xs"
           >
             <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
@@ -685,15 +714,15 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   // ════════════════════════════════════════════════════════════
   // RENDER SCREEN 2: DEDICATED RESULT BREAKDOWN SCREEN (Scrollable)
   // ════════════════════════════════════════════════════════════
-  const fmt = (n: number) => 'Rs ' + n.toLocaleString('en-US');
+  const fmt = (n: number | undefined | null) => 'Rs ' + (Number(n) || 0).toLocaleString('en-US');
 
   return (
     <div 
-      className={`fixed inset-0 z-30 min-h-[100dvh] h-full overflow-y-auto overscroll-y-contain bg-[#f6f5ee] flex flex-col p-3 sm:p-5 pb-40 sm:pb-36 md:pb-12 font-sans ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} 
+      className={`w-full max-w-xl mx-auto flex flex-col p-3.5 sm:p-6 pb-48 sm:pb-40 md:pb-20 font-sans ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} 
       dir={isUrdu ? 'rtl' : 'ltr'}
     >
       {/* Top Header */}
-      <div className="max-w-xl mx-auto w-full flex items-center justify-between pb-2 shrink-0 border-b border-[#e0e0d2]">
+      <div className="w-full flex items-center justify-between pb-3 shrink-0 border-b border-[#e0e0d2]">
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
             <PublicImage
@@ -716,7 +745,12 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
         </div>
         <button
           type="button"
-          onClick={() => setViewMode('input')}
+          onClick={() => {
+            setViewMode('input');
+            try {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch {}
+          }}
           className="px-3 py-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
         >
           <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
@@ -726,14 +760,14 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 
       {/* Main Result Card */}
       {lastCalc && (
-        <div className="max-w-xl mx-auto w-full space-y-3.5 py-3 flex-1">
+        <div className="w-full space-y-3.5 py-4 flex-1">
           {/* Total Cost Highlight Card */}
           <div className="bg-[#8b9d77] text-white p-5 rounded-3xl shadow-md text-center space-y-1">
             <span className="text-xs sm:text-sm font-bold opacity-90 block">
               {isUrdu ? 'کل متوقع سفری اخراجات (Total Freight Cost)' : 'Total Estimated Trip Cost'}
             </span>
             <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight">
-              PKR {lastCalc.total.toLocaleString('en-US')}
+              PKR {(Number(lastCalc.total) || 0).toLocaleString('en-US')}
             </div>
             <span className="text-[11px] opacity-80 block">
               {lastCalc.dist} KM {lastCalc.isReturn ? (isUrdu ? '(راؤنڈ ٹرپ دگنا فاصلہ)' : '(Round Trip 2x Distance)') : ''}
@@ -778,6 +812,13 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
             </div>
           </div>
 
+          {/* PDF error notification */}
+          {pdfError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 p-2.5 rounded-2xl text-xs font-bold text-center shadow-2xs">
+              {pdfError}
+            </div>
+          )}
+
           {/* Save confirmation */}
           {saveSuccess && (
             <div className="bg-[#eef4ea] border border-[#8b9d77] text-[#3d5a2d] p-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs">
@@ -788,14 +829,14 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
         </div>
       )}
 
-      {/* Bottom Action Grid */}
-      <div className="max-w-xl mx-auto w-full pt-3 pb-2 shrink-0 space-y-2.5">
+      {/* Bottom Action Grid with generous spacing */}
+      <div className="w-full pt-4 pb-6 shrink-0 space-y-2.5">
         <div className="grid grid-cols-3 gap-2">
           {/* WhatsApp Share */}
           <button
             type="button"
             onClick={handleWhatsAppShare}
-            className="py-2.5 px-2 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1"
+            className="py-3 px-2 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1"
           >
             <Share2 className="w-4 h-4" />
             <span>{isUrdu ? 'واٹس ایپ' : 'WhatsApp'}</span>
@@ -806,7 +847,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
             type="button"
             disabled={isExportingPdf}
             onClick={handleExportPDF}
-            className={`py-2.5 px-2 text-white rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1 ${
+            className={`py-3 px-2 text-white rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1 ${
               isExportingPdf ? 'bg-[#4a4a35]/70 opacity-80 cursor-wait' : 'bg-[#4a4a35] hover:bg-[#383827]'
             }`}
           >
@@ -818,7 +859,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
           <button
             type="button"
             onClick={handleSaveToDiary}
-            className="py-2.5 px-2 bg-white border-2 border-[#8b9d77] text-[#4a4a35] hover:bg-[#eef4ea] rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1"
+            className="py-3 px-2 bg-white border-2 border-[#8b9d77] text-[#4a4a35] hover:bg-[#eef4ea] rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1"
           >
             <BookmarkPlus className="w-4 h-4 text-[#8b9d77]" />
             <span>{isUrdu ? 'محفوظ کریں' : 'Save Trip'}</span>
@@ -833,9 +874,12 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
               onNavigate('home');
             } else {
               setViewMode('input');
+              try {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              } catch {}
             }
           }}
-          className="w-full py-2.5 bg-white border border-[#e0e0d2] text-[#4a4a35] hover:bg-[#f6f5ee] rounded-2xl font-bold text-xs shadow-2xs transition-all active:scale-95 cursor-pointer text-center"
+          className="w-full py-3 bg-white border border-[#e0e0d2] text-[#4a4a35] hover:bg-[#f6f5ee] rounded-2xl font-bold text-xs shadow-2xs transition-all active:scale-95 cursor-pointer text-center"
         >
           {isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Return to Dashboard'}
         </button>

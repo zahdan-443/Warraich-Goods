@@ -106,13 +106,20 @@ export async function fetchOSRMRouteDistance(
 
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${originCity.lng},${originCity.lat};${destCity.lng},${destCity.lat}?overview=false`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.routes && data.routes.length > 0 && data.routes[0].distance) {
-        const meters = data.routes[0].distance;
-        return Math.round(meters / 1000);
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 4000) : null;
+    try {
+      const res = await fetch(url, { signal: controller ? controller.signal : undefined });
+      if (timeoutId) clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.routes && data.routes.length > 0 && data.routes[0].distance) {
+          const meters = data.routes[0].distance;
+          return Math.round(meters / 1000);
+        }
       }
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
     }
   } catch (e) {
     console.warn('OSRM API fetch error or timeout, falling back to Haversine road estimation:', e);

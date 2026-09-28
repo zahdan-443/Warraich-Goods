@@ -19,6 +19,7 @@ export const CameraOcrInput: React.FC<CameraOcrInputProps> = ({
   label
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,6 +27,7 @@ export const CameraOcrInput: React.FC<CameraOcrInputProps> = ({
     if (!file) return;
 
     setIsProcessing(true);
+    setScanError(null);
     try {
       const worker = await createWorker('eng');
       const ret = await worker.recognize(file);
@@ -55,11 +57,13 @@ export const CameraOcrInput: React.FC<CameraOcrInputProps> = ({
       if (processed) {
         onScanResult(processed);
       } else {
-        alert(lang === 'ur' ? 'تصویر سے تحریر نہیں پڑھی جا سکی۔ براہ کرم دوبارہ کوشش کریں یا خود درج کریں۔' : 'Could not auto-read text from photo. Please try again or type manually.');
+        setScanError(lang === 'ur' ? 'تصویر سے تحریر نہیں پڑھی جا سکی۔' : 'Could not read text from photo.');
+        setTimeout(() => setScanError(null), 4000);
       }
     } catch (err) {
       console.warn('OCR error:', err);
-      alert(lang === 'ur' ? 'تصویر اسکین کرنے میں مسئلہ آیا۔' : 'Failed to scan image.');
+      setScanError(lang === 'ur' ? 'تصویر اسکین میں مسئلہ آیا۔' : 'Failed to scan image.');
+      setTimeout(() => setScanError(null), 4000);
     } finally {
       setIsProcessing(false);
       if (fileInputRef.current) {
@@ -69,7 +73,7 @@ export const CameraOcrInput: React.FC<CameraOcrInputProps> = ({
   };
 
   return (
-    <div className="inline-block">
+    <div className="inline-block relative">
       <input
         ref={fileInputRef}
         type="file"
@@ -101,6 +105,12 @@ export const CameraOcrInput: React.FC<CameraOcrInputProps> = ({
           </>
         )}
       </button>
+
+      {scanError && (
+        <span className="absolute bottom-full left-0 mb-1 z-30 px-2 py-1 bg-red-600 text-white text-[10px] rounded-lg shadow-md whitespace-nowrap">
+          {scanError}
+        </span>
+      )}
     </div>
   );
 };

@@ -137,6 +137,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
   const [weight, setWeight] = useState('');
   const [total, setTotal] = useState('');
   const [advance, setAdvance] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   const [lastBilty, setLastBilty] = useState<BiltyRecord | null>(null);
   const [contactsList, setContactsList] = useState<ContactItem[]>([]);
@@ -258,9 +260,10 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
     const advanceNum = parseFloat(advance) || 0;
 
     // Financial Validation
+    setFormError(null);
     const validation = validateBiltyFreight(totalNum, advanceNum);
     if (!validation.isValid) {
-      alert(validation.error || (selectedLanguage === 'en' ? 'Please enter valid freight & advance amount.' : 'درست کرایہ اور پیشگی رقم درج کریں۔'));
+      setFormError(validation.error || (selectedLanguage === 'en' ? 'Please enter valid freight & advance amount.' : 'درست کرایہ اور پیشگی رقم درج کریں۔'));
       return;
     }
 
@@ -361,6 +364,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
   const handleDownloadPDF = async (record: BiltyRecord) => {
     if (isGeneratingPdf) return;
     setIsGeneratingPdf(true);
+    setPdfError(null);
     try {
       const result = await generateBiltyPdf(record);
       if (result) {
@@ -368,7 +372,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
       }
     } catch (err) {
       console.error('PDF export failed:', err);
-      alert('پی ڈی ایف بنانے میں مسئلہ آیا: ' + (err instanceof Error ? err.message : String(err)));
+      setPdfError('پی ڈی ایف بنانے میں مسئلہ آیا: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -750,6 +754,18 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
             </div>
           </div>
         </header>
+
+        {formError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-3 rounded-2xl text-center shadow-2xs">
+            {formError}
+          </div>
+        )}
+
+        {pdfError && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold p-3 rounded-2xl text-center shadow-2xs">
+            {pdfError}
+          </div>
+        )}
 
         {/* 2. Top Branch & Language Control Bar */}
         <div className="p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-linear-to-r from-amber-50/80 via-emerald-50/60 to-blue-50/80 border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-2xs">

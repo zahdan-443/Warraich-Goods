@@ -243,6 +243,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
   const [navEtaText, setNavEtaText] = useState<string>('');
   const [navStepIndex, setNavStepIndex] = useState<number>(0);
   const [navCurrentPos, setNavCurrentPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // Filtered Cities for Search Box
   const filteredOriginCities = useMemo(() => {
@@ -467,7 +468,14 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
       const requests = coords.map(async (city) => {
         try {
           const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&timezone=Asia%2FKarachi`;
-          const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+          const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+          const timeoutId = controller ? setTimeout(() => controller.abort(), 5000) : null;
+          let resp;
+          try {
+            resp = await fetch(url, { signal: controller ? controller.signal : undefined });
+          } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+          }
           if (!resp.ok) throw new Error('API failed');
           const data = await resp.json();
           const current = data.current;
@@ -929,7 +937,8 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
   // Geolocation trigger
   const handleLocateMe = () => {
     if (!navigator.geolocation) {
-      alert('آپ کے موبائل براؤزر میں لوکیشن کی سہولت موجود نہیں۔');
+      setLocationError('آپ کے موبائل براؤزر میں لوکیشن کی سہولت موجود نہیں۔');
+      setTimeout(() => setLocationError(null), 5000);
       return;
     }
     setLocatingUser(true);
@@ -938,13 +947,15 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(coords);
         setLocatingUser(false);
+        setLocationError(null);
         if (leafletMapRef.current) {
           leafletMapRef.current.flyTo([coords.lat, coords.lng], 11, { animate: true });
         }
       },
       () => {
         setLocatingUser(false);
-        alert('لوکیشن حاصل کرنے میں مسئلہ پیش آیا۔ موبائل جی پی ایس آن کریں۔');
+        setLocationError('لوکیشن حاصل کرنے میں مسئلہ پیش آیا۔ موبائل جی پی ایس آن کریں۔');
+        setTimeout(() => setLocationError(null), 5000);
       },
       { timeout: 8000 }
     );
@@ -1020,6 +1031,12 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
           </button>
         )}
       </div>
+
+      {locationError && (
+        <div className="mb-4 bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold p-3 rounded-2xl text-center shadow-2xs">
+          {locationError}
+        </div>
+      )}
 
       {/* SEARCHABLE CITY SELECTION BOX (From City & To City) */}
       <section className="bg-white p-5 sm:p-6 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] space-y-4">

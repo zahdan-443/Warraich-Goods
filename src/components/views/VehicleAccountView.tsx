@@ -60,6 +60,8 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
   const [customExpenses, setCustomExpenses] = useState<CustomExpense[]>([]);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   // Add Income entry
   const handleAddIncome = () => {
@@ -155,6 +157,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
   };
 
   const handleSaveToDiary = () => {
+    setFormError(null);
     const finValidation = validateVehicleAccountFinancials(incomes, {
       diesel: dieselVal,
       toll: tollVal,
@@ -167,12 +170,12 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
     });
 
     if (!finValidation.isValid) {
-      window.alert(finValidation.error || 'براہ کرم گاڑی کے درست اور مثبت اخراجات درج کریں۔');
+      setFormError(finValidation.error || 'براہ کرم گاڑی کے درست اور مثبت اخراجات درج کریں۔');
       return;
     }
 
     if (grandTotalExpenses <= 0 && totalIncome <= 0) {
-      window.alert('براہ کرم پہلے گاڑی کی آمدن یا اخراجات درج کریں۔');
+      setFormError('براہ کرم پہلے گاڑی کی آمدن یا اخراجات درج کریں۔');
       return;
     }
 
@@ -452,29 +455,34 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
       console.warn('PDF direct share fallback:', e);
     }
 
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    try {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+    } catch {
+      window.location.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+    }
   };
 
   const handleExportPDF = async () => {
     if (isExportingPdf) return;
     setIsExportingPdf(true);
+    setPdfError(null);
     try {
       const result = await generateAccountPdf();
       if (result) {
         result.pdf.save(result.fileName);
       } else {
-        alert('پی ڈی ایف بنانے میں مسئلہ آیا، دوبارہ کوشش کریں۔');
+        setPdfError('پی ڈی ایف بنانے میں مسئلہ آیا، دوبارہ کوشش کریں۔');
       }
     } catch (err) {
       console.error('PDF export failed:', err);
-      alert('پی ڈی ایف بنانے میں مسئلہ آیا: ' + (err instanceof Error ? err.message : String(err)));
+      setPdfError('پی ڈی ایف بنانے میں مسئلہ آیا: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsExportingPdf(false);
     }
   };
 
   return (
-    <div className="flex-1 p-3 sm:p-6 md:p-8 max-w-4xl mx-auto w-full font-sans" dir="rtl">
+    <div className="flex-1 p-3 sm:p-6 md:p-8 pb-36 md:pb-16 max-w-4xl mx-auto w-full font-sans" dir="rtl">
       {/* Top Header with Back to Dashboard Button */}
       <div className="w-full flex items-center justify-between pb-1 mb-3 shrink-0">
         <div className="flex items-center gap-2.5">
@@ -509,6 +517,18 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
           </button>
         )}
       </div>
+
+      {formError && (
+        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-3 rounded-2xl text-center shadow-2xs">
+          {formError}
+        </div>
+      )}
+
+      {pdfError && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold p-3 rounded-2xl text-center shadow-2xs">
+          {pdfError}
+        </div>
+      )}
 
       {/* Main Container Card */}
       <div className="bg-white p-5 sm:p-7 rounded-[28px] shadow-sm border border-[#ecece0] mb-6 space-y-6">

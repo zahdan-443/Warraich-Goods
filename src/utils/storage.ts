@@ -982,8 +982,8 @@ export function getContactList(privacyOptions?: ExportPrivacyOptions): ContactIt
 export function exportContactsCSV(privacyOptions?: ExportPrivacyOptions) {
   const contacts = getContactList(privacyOptions);
   if (contacts.length === 0) {
-    alert("No contact records available to export.");
-    return;
+    console.warn("No contact records available to export.");
+    return false;
   }
 
   let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
@@ -1202,8 +1202,8 @@ export const exportFullLocalBackup = exportAllBusinessDataJSON;
 export function exportAllBiltiesCSV(privacyOptions?: ExportPrivacyOptions) {
   const rawBilties = getStoredBilties();
   if (rawBilties.length === 0) {
-    alert("No bilty records found to export.");
-    return;
+    console.warn("No bilty records found to export.");
+    return false;
   }
 
   const bilties = rawBilties.map(b => sanitizeBiltyRecord(b, privacyOptions));
@@ -1243,13 +1243,14 @@ export function exportAllBiltiesCSV(privacyOptions?: ExportPrivacyOptions) {
   link.click();
   document.body.removeChild(link);
   logActivity('Bilties CSV Exported', `${bilties.length} bilty records exported as CSV`, 'export');
+  return true;
 }
 
 export function exportAllTripsCSV(privacyOptions?: ExportPrivacyOptions) {
   const rawTrips = getStoredTrips();
   if (rawTrips.length === 0) {
-    alert("No trip records found to export.");
-    return;
+    console.warn("No trip records found to export.");
+    return false;
   }
 
   const trips = rawTrips.map(t => sanitizeTripRecord(t, privacyOptions));

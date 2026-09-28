@@ -66,6 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [themePref, setThemePref] = useState<'light' | 'dark' | 'system' | 'emerald' | 'desert' | 'navy'>('light');
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>('default');
   const [testSent, setTestSent] = useState(false);
+  const [copyToast, setCopyToast] = useState(false);
 
   useEffect(() => {
     if (isNotificationSupported()) {
@@ -139,9 +140,10 @@ export const Header: React.FC<HeaderProps> = ({
     } else {
       try {
         await navigator.clipboard.writeText(shareData.url);
-        alert(lang === 'ur' ? 'ایپ کا لنک کاپی ہو گیا ہے!' : 'App link copied to clipboard!');
+        setCopyToast(true);
+        setTimeout(() => setCopyToast(false), 2500);
       } catch {
-        alert(shareData.url);
+        // fallback ignore
       }
     }
   };
@@ -152,6 +154,12 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
+      {copyToast && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-[#4a4a35] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg animate-in fade-in">
+          {lang === 'ur' ? 'ایپ کا لنک کاپی ہو گیا ہے!' : 'App link copied to clipboard!'}
+        </div>
+      )}
+
       {/* CLEAN SINGLE LINE TOP HEADER: Logo, Brand Name & Notification Bell Icon ONLY */}
       <header className="sticky top-0 z-50 bg-[#fdfbf7] border-b border-[#e2e2d5] shadow-2xs transition-all pt-[env(safe-area-inset-top,0px)]">
         <div className="py-2.5 px-3 sm:px-6 md:px-10 flex items-center justify-between">
