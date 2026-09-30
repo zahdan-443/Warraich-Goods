@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v20';
+const CACHE_NAME = 'driver-dost-v21';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 
 // Core static assets always available locally
@@ -45,11 +45,11 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/index-314P1o4E.css',
-  './assets/index-CDkIgN64.js',
+    './assets/index-Cbu_gu33.css',
+  './assets/index-Ntvgm1iJ.js',
   './assets/vendor-firebase-CyRSZaZw.js',
-  './assets/vendor-pdf-DN3F-nAo.js',
-  './assets/vendor-react--r9-s-_a.js'
+  './assets/vendor-pdf-BWntjTkQ.js',
+  './assets/vendor-react-Di70DhWY.js'
 ];
 
 // 1. Install Event: Precache All Shell Assets + Parse HTML for Vite Bundles
