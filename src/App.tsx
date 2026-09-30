@@ -51,7 +51,7 @@ import { NavigationView } from './components/views/NavigationView';
 import { AuthModal } from './components/AuthModal';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
-import { BottomNavBar } from './components/BottomNavBar';
+import { Home, ArrowLeft } from 'lucide-react';
 
 export default function App() {
   const OWNER_EMAIL = 'warraichgoods43@gmail.com';
@@ -62,13 +62,8 @@ export default function App() {
     return (saved === 'en' || saved === 'ur') ? saved : 'ur';
   });
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
-  const [showSplash, setShowSplash] = useState<boolean>(() => {
-    try {
-      return !sessionStorage.getItem('ah_splash_shown');
-    } catch {
-      return false;
-    }
-  });
+  // Show official Driver Dost splash screen on every app launch/load
+  const [showSplash, setShowSplash] = useState<boolean>(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showBiltyAccessModal, setShowBiltyAccessModal] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);
@@ -140,6 +135,27 @@ export default function App() {
 
   const lastBackPressTime = useRef(0);
   const [exitToast, setExitToast] = useState(false);
+
+  // Floating "Back to Dashboard" button: appears in upper-left corner when scrolled down on any inner screen
+  const [showFloatingBack, setShowFloatingBack] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'home') {
+      setShowFloatingBack(false);
+      return;
+    }
+
+    const handleScroll = () => {
+      const scrollY = window.scrollY || document.documentElement.scrollTop;
+      // Show floating back button as soon as user scrolls past in-page back button (scrollY > 70)
+      setShowFloatingBack(scrollY > 70);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [activeTab]);
 
   const [verifySubSection, setVerifySubSection] = useState<'vehicle' | 'license' | 'challan' | 'history' | 'bilty'>('vehicle');
   const [initialBiltySearch, setInitialBiltySearch] = useState<string>('');
@@ -725,7 +741,7 @@ export default function App() {
         />
       )}
 
-      <main className="flex-1 flex flex-col w-full pb-28 md:pb-12 min-h-0">
+      <main className="flex-1 flex flex-col w-full min-h-0 pb-10 md:pb-12">
         <React.Suspense
           fallback={
             <div className="flex-1 flex items-center justify-center p-12 text-[#8e8e75] text-sm">
@@ -893,12 +909,30 @@ export default function App() {
         <InstallPwaModal lang={lang} />
       </React.Suspense>
 
-      <BottomNavBar
-        activeTab={activeTab}
-        onNavigate={handleNavigate}
-        lang={lang}
-        isBiltyAuthorized={isBiltyAuthorized}
-      />
+      {/* FLOATING UPPER-LEFT "BACK TO DASHBOARD" BUTTON (Appears at top-left matching header position when scrolled) */}
+      {activeTab !== 'home' && (
+        <button
+          type="button"
+          onClick={() => {
+            if ('vibrate' in navigator) {
+              try { navigator.vibrate(10); } catch {}
+            }
+            handleNavigate('home');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          className={`fixed top-[58px] left-3 sm:left-5 z-40 flex items-center gap-1.5 py-1.5 px-3 bg-white/95 hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl shadow-md border border-[#ecece0] active:scale-95 cursor-pointer font-bold text-xs select-none backdrop-blur-md transition-all duration-200 ease-out ${
+            showFloatingBack
+              ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
+              : 'opacity-0 -translate-y-2 scale-90 pointer-events-none'
+          }`}
+          title={lang === 'ur' ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
+          aria-label={lang === 'ur' ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
+        >
+          <Home className="w-3.5 h-3.5 text-[#8b9d77] shrink-0" />
+          <span>{lang === 'ur' ? 'ڈیش بورڈ' : 'Dashboard'}</span>
+          <ArrowLeft className={`w-3.5 h-3.5 text-[#8b9d77] shrink-0 ${lang === 'ur' ? 'rotate-180' : ''}`} />
+        </button>
+      )}
 
       {exitToast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-[#4a4a35] text-white rounded-full text-xs font-bold shadow-xl border border-[#8b9d77] animate-bounce">

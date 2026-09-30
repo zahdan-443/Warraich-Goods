@@ -401,6 +401,48 @@ html.theme-navy .text-\[\#8e8e75\] {
   color: #94a3b8 !important;
 }
 
+/* Highway / Outdoor Sunlight High-Contrast Mode */
+html.theme-highway body {
+  background-color: #f8fafc;
+  color: #09090b;
+}
+html.theme-highway .bg-\[\#fdfbf7\] {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+html.theme-highway .bg-\[\#f9f9f2\] {
+  background-color: #f1f5f9 !important;
+  color: #000000 !important;
+}
+html.theme-highway .bg-white {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #18181b !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+}
+html.theme-highway .border-\[\#ecece0\],
+html.theme-highway .border-\[\#e0e0d2\],
+html.theme-highway .border-2 {
+  border-color: #27272a !important;
+}
+html.theme-highway .text-\[\#4a4a35\],
+html.theme-highway .text-\[\#383827\],
+html.theme-highway .text-\[\#5a5a40\] {
+  color: #09090b !important;
+  font-weight: 700 !important;
+}
+html.theme-highway .text-\[\#8e8e75\] {
+  color: #3f3f46 !important;
+  font-weight: 600 !important;
+}
+html.theme-highway input,
+html.theme-highway select {
+  border-color: #18181b !important;
+  color: #000000 !important;
+  font-weight: 700 !important;
+  background-color: #ffffff !important;
+}
+
 /* Print Rules for Bilty Generation */
 #printable-bilty-dom,
 #printable-bilty-dom *,

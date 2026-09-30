@@ -69,8 +69,8 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
   const [originId, setOriginId] = useState<string>(originCityId);
   const [destId, setDestId] = useState<string>(destCityId);
 
-  const originCity = PAKISTAN_CITIES.find(c => c.id === originId) || PAKISTAN_CITIES[0];
-  const destCity = PAKISTAN_CITIES.find(c => c.id === destId) || PAKISTAN_CITIES[53]; // Karachi default
+  const originCity = PAKISTAN_CITIES.find(c => c.id === originId) || PAKISTAN_CITIES.find(c => c.id === 'samundri') || PAKISTAN_CITIES[0];
+  const destCity = PAKISTAN_CITIES.find(c => c.id === destId) || PAKISTAN_CITIES.find(c => c.id === 'karachi') || PAKISTAN_CITIES[1];
 
   // Real GPS States (No Fake Simulation)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);

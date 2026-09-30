@@ -63,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [showExportPrivacyModal, setShowExportPrivacyModal] = useState(false);
   const [showPrivacyPolicyModal, setShowPrivacyPolicyModal] = useState(false);
   const [internalShowTopMenu, setInternalShowTopMenu] = useState(false);
-  const [themePref, setThemePref] = useState<'light' | 'dark' | 'system' | 'emerald' | 'desert' | 'navy'>('light');
+  const [themePref, setThemePref] = useState<'light' | 'dark' | 'system' | 'emerald' | 'desert' | 'navy' | 'highway'>('light');
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>('default');
   const [testSent, setTestSent] = useState(false);
   const [copyToast, setCopyToast] = useState(false);
@@ -96,7 +96,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   React.useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove('dark', 'theme-emerald', 'theme-desert', 'theme-navy');
+    root.classList.remove('dark', 'theme-emerald', 'theme-desert', 'theme-navy', 'theme-highway');
     if (themePref === 'dark') {
       root.classList.add('dark');
     } else if (themePref === 'emerald') {
@@ -105,6 +105,8 @@ export const Header: React.FC<HeaderProps> = ({
       root.classList.add('theme-desert');
     } else if (themePref === 'navy') {
       root.classList.add('theme-navy');
+    } else if (themePref === 'highway') {
+      root.classList.add('theme-highway');
     } else if (themePref === 'system') {
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       if (prefersDark) {
@@ -398,6 +400,17 @@ export const Header: React.FC<HeaderProps> = ({
                     >
                       <span className="w-2.5 h-2.5 rounded-full bg-[#3B82F6]"></span>
                       <span>{lang === 'ur' ? 'نیلا' : 'Navy'}</span>
+                    </button>
+                    <button
+                      onClick={() => setThemePref('highway')}
+                      className={`col-span-3 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer border-2 ${
+                        themePref === 'highway'
+                          ? 'bg-amber-400 text-black border-black shadow-sm font-black'
+                          : 'bg-amber-50 border-amber-300 text-amber-950 hover:bg-amber-100'
+                      }`}
+                    >
+                      <Sun className="w-4 h-4 text-amber-700" />
+                      <span>{lang === 'ur' ? 'ہائی وے موڈ ☀️ (تیز دھوپ و ہائی کنٹراسٹ)' : 'Highway Mode ☀️ (High-Contrast Sunlight)'}</span>
                     </button>
                   </div>
                 </div>

@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { PAKISTAN_CITIES_MASTER } from '../../utils/pakistanCitiesData';
 
 interface MapViewProps {
   lang: Language;
@@ -64,79 +65,7 @@ export interface TransitCity {
   highways: string[];
 }
 
-export const PAKISTAN_CITIES: TransitCity[] = [
-  { id: 'samundri', nameEn: 'Samundri', nameUr: 'سمندری', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 31.0632, lng: 72.9602, elevationMeters: 168, highways: ['M-4 Motorway Interchange', 'Samundri-Gojra Rd', 'Rajana Rd'] },
-  { id: 'faisalabad', nameEn: 'Faisalabad', nameUr: 'فیصل آباد', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 31.4504, lng: 73.1350, elevationMeters: 184, highways: ['M-3', 'M-4'] },
-  { id: 'lahore', nameEn: 'Lahore', nameUr: 'لاہور', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 31.5204, lng: 74.3587, elevationMeters: 217, highways: ['M-2', 'M-3', 'M-11', 'N-5'] },
-  { id: 'rawalpindi', nameEn: 'Rawalpindi', nameUr: 'راولپنڈی', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 33.5651, lng: 73.0169, elevationMeters: 508, highways: ['M-2', 'N-5'] },
-  { id: 'islamabad', nameEn: 'Islamabad', nameUr: 'اسلام آباد', provinceEn: 'Federal', provinceUr: 'وفاق', lat: 33.6844, lng: 73.0479, elevationMeters: 540, highways: ['M-1', 'M-2', 'M-15', 'N-5'] },
-  { id: 'multan', nameEn: 'Multan', nameUr: 'ملتان', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.1575, lng: 71.5249, elevationMeters: 122, highways: ['M-4', 'M-5', 'N-5'] },
-  { id: 'gujranwala', nameEn: 'Gujranwala', nameUr: 'گوجرانوالہ', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 32.1877, lng: 74.1945, elevationMeters: 226, highways: ['N-5', 'M-11'] },
-  { id: 'sialkot', nameEn: 'Sialkot', nameUr: 'سیالکوٹ', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 32.4945, lng: 74.5229, elevationMeters: 256, highways: ['M-11'] },
-  { id: 'sargodha', nameEn: 'Sargodha', nameUr: 'سرگودھا', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 32.0836, lng: 72.6711, elevationMeters: 193, highways: ['M-2 Link'] },
-  { id: 'bahawalpur', nameEn: 'Bahawalpur', nameUr: 'بہاولپور', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 29.3956, lng: 71.6836, elevationMeters: 117, highways: ['N-5', 'M-5 Link'] },
-  { id: 'sahiwal', nameEn: 'Sahiwal', nameUr: 'ساہیوال', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.6682, lng: 73.1114, elevationMeters: 171, highways: ['N-5'] },
-  { id: 'gojra', nameEn: 'Gojra', nameUr: 'گوجرہ', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 31.1503, lng: 72.6836, elevationMeters: 165, highways: ['M-4 Motorway Interchange', 'Gojra-Faisalabad Rd'] },
-  { id: 'tobateksingh', nameEn: 'Toba Tek Singh', nameUr: 'ٹوبہ ٹیک سنگھ', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.9709, lng: 72.4826, elevationMeters: 162, highways: ['M-4 Motorway', 'Jhang Rd'] },
-  { id: 'kamalia', nameEn: 'Kamalia', nameUr: 'کمالیہ', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.7258, lng: 72.6447, elevationMeters: 160, highways: ['M-4 Interchange', 'Rajana Road'] },
-  { id: 'pirmahal', nameEn: 'Pir Mahal', nameUr: 'پیر محل', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.7675, lng: 72.4338, elevationMeters: 158, highways: ['M-4 Motorway Link', 'Kamalia Rd'] },
-  { id: 'jhang', nameEn: 'Jhang', nameUr: 'جھنگ', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 31.2681, lng: 72.3181, elevationMeters: 158, highways: ['M-4 Link', 'N-70'] },
-  { id: 'chiniot', nameEn: 'Chiniot', nameUr: 'چنیوٹ', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 31.7200, lng: 72.9780, elevationMeters: 179, highways: ['Faisalabad-Sargodha Rd'] },
-  { id: 'sheikhupura', nameEn: 'Sheikhupura', nameUr: 'شیخوپورہ', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 31.7131, lng: 73.9783, elevationMeters: 214, highways: ['M-2 Interchange', 'N-5'] },
-  { id: 'kasur', nameEn: 'Kasur', nameUr: 'قصور', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 31.1179, lng: 74.4461, elevationMeters: 218, highways: ['Ferozepur Rd'] },
-  { id: 'okara', nameEn: 'Okara', nameUr: 'اوکاڑہ', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.8081, lng: 73.4458, elevationMeters: 180, highways: ['N-5 G.T Road'] },
-  { id: 'rahimyarkhan', nameEn: 'Rahim Yar Khan', nameUr: 'رحیم یار خان', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 28.4212, lng: 70.2989, elevationMeters: 88, highways: ['M-5', 'N-5'] },
-  { id: 'dgkhan', nameEn: 'Dera Ghazi Khan', nameUr: 'ڈیرہ غازی خان', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.0489, lng: 70.6455, elevationMeters: 125, highways: ['N-55 Indus Hwy', 'N-70'] },
-  { id: 'gujrat', nameEn: 'Gujrat', nameUr: 'گجرات', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 32.5744, lng: 74.0754, elevationMeters: 233, highways: ['N-5 G.T Road'] },
-  { id: 'khanewal', nameEn: 'Khanewal', nameUr: 'خانیوال', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.3017, lng: 71.9321, elevationMeters: 128, highways: ['M-4', 'N-5'] },
-  { id: 'muzaffargarh', nameEn: 'Muzaffargarh', nameUr: 'مظفر گڑھ', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.0703, lng: 71.1933, elevationMeters: 122, highways: ['N-70', 'N-55'] },
-  { id: 'vehari', nameEn: 'Vehari', nameUr: 'وہاڑی', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.0419, lng: 72.3528, elevationMeters: 135, highways: ['Multan-Vehari Rd'] },
-  { id: 'burewala', nameEn: 'Burewala', nameUr: 'بورے والا', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.1667, lng: 72.6833, elevationMeters: 138, highways: ['Vehari-Chichawatni Rd'] },
-  { id: 'pakpattan', nameEn: 'Pakpattan', nameUr: 'پاکپتن', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.3410, lng: 73.3866, elevationMeters: 157, highways: ['Sahiwal-Pakpattan Rd'] },
-  { id: 'bahawalnagar', nameEn: 'Bahawalnagar', nameUr: 'بہاولنگر', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 29.9961, lng: 73.2536, elevationMeters: 163, highways: ['Minchinabad Rd'] },
-  { id: 'lodhran', nameEn: 'Lodhran', nameUr: 'لودھراں', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 29.5405, lng: 71.6336, elevationMeters: 114, highways: ['M-5', 'N-5'] },
-  { id: 'mianwali', nameEn: 'Mianwali', nameUr: 'میانوالی', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 32.5839, lng: 71.5370, elevationMeters: 210, highways: ['M-14 Hakla-DI Khan'] },
-  { id: 'bhakkar', nameEn: 'Bhakkar', nameUr: 'بھکر', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 31.6253, lng: 71.0657, elevationMeters: 159, highways: ['M-14 Link', 'MM Road'] },
-  { id: 'layyah', nameEn: 'Layyah', nameUr: 'لیہ', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.9613, lng: 70.9390, elevationMeters: 143, highways: ['Indus Highway Link'] },
-  { id: 'khushab', nameEn: 'Khushab', nameUr: 'خوشاب', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 32.2967, lng: 72.3525, elevationMeters: 182, highways: ['M-2 Link'] },
-  { id: 'chakwal', nameEn: 'Chakwal', nameUr: 'چکوال', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 32.9328, lng: 72.8631, elevationMeters: 498, highways: ['M-2 Interchange Balkassar'] },
-  { id: 'jhelum', nameEn: 'Jhelum', nameUr: 'جہلم', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 32.9425, lng: 73.7257, elevationMeters: 233, highways: ['N-5 G.T Road'] },
-  { id: 'attock', nameEn: 'Attock', nameUr: 'اٹک', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 33.7667, lng: 72.3598, elevationMeters: 352, highways: ['M-1 Interchange', 'N-5'] },
-  { id: 'mandibahauddin', nameEn: 'Mandi Bahauddin', nameUr: 'منڈی بہاؤالدین', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 32.5861, lng: 73.4917, elevationMeters: 220, highways: ['M-2 Salam Interchange Link'] },
-  { id: 'hafizabad', nameEn: 'Hafizabad', nameUr: 'حافظ آباد', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 32.0679, lng: 73.6854, elevationMeters: 207, highways: ['M-2 Kot Sarwar Interchange'] },
-  { id: 'nankanasahib', nameEn: 'Nankana Sahib', nameUr: 'ننکانہ صاحب', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 31.4492, lng: 73.7042, elevationMeters: 187, highways: ['M-3 Nankana Interchange'] },
-  { id: 'pattoki', nameEn: 'Pattoki', nameUr: 'پتوکی', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 31.0214, lng: 73.8475, elevationMeters: 186, highways: ['N-5 G.T Road'] },
-  { id: 'wazirabad', nameEn: 'Wazirabad', nameUr: 'وزیرآباد', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 32.4431, lng: 74.1197, elevationMeters: 228, highways: ['N-5 G.T Road'] },
-  { id: 'daska', nameEn: 'Daska', nameUr: 'ڈسکہ', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 32.3242, lng: 74.3503, elevationMeters: 236, highways: ['M-11 Sialkot Motorway'] },
-  { id: 'narowal', nameEn: 'Narowal', nameUr: 'نارووال', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 32.0997, lng: 74.8756, elevationMeters: 234, highways: ['Muridke-Narowal Rd'] },
-  { id: 'chichawatni', nameEn: 'Chichawatni', nameUr: 'چیچہ وطنی', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.5333, lng: 72.7000, elevationMeters: 161, highways: ['N-5 G.T Road', 'Kamalia Rd'] },
-  { id: 'arifwala', nameEn: 'Arifwala', nameUr: 'عارف والا', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.2906, lng: 73.0644, elevationMeters: 154, highways: ['Sahiwal-Bahawalnagar Rd'] },
-  { id: 'depalpur', nameEn: 'Depalpur', nameUr: 'دیپالپور', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 30.6708, lng: 73.6528, elevationMeters: 172, highways: ['Okara-Depalpur Rd'] },
-  { id: 'pindibhattian', nameEn: 'Pindi Bhattian', nameUr: 'پنڈی بھٹیاں', provinceEn: 'Punjab', provinceUr: 'پنجاب', lat: 31.8984, lng: 73.2736, elevationMeters: 190, highways: ['M-2 / M-3 Junction Motorway'] },
-  { id: 'karachi', nameEn: 'Karachi', nameUr: 'کراچی', provinceEn: 'Sindh', provinceUr: 'سندھ', lat: 24.8607, lng: 67.0011, elevationMeters: 8, highways: ['M-9', 'N-5', 'N-10', 'N-25'] },
-  { id: 'sukkur', nameEn: 'Sukkur', nameUr: 'سکھر', provinceEn: 'Sindh', provinceUr: 'سندھ', lat: 27.7052, lng: 68.8574, elevationMeters: 67, highways: ['M-5', 'M-6', 'N-5', 'N-55'] },
-  { id: 'hyderabad', nameEn: 'Hyderabad', nameUr: 'حیدرآباد', provinceEn: 'Sindh', provinceUr: 'سندھ', lat: 25.3960, lng: 68.3578, elevationMeters: 28, highways: ['M-9', 'N-5', 'N-55'] },
-  { id: 'larkana', nameEn: 'Larkana', nameUr: 'لاڑکانہ', provinceEn: 'Sindh', provinceUr: 'سندھ', lat: 27.5590, lng: 68.2120, elevationMeters: 49, highways: ['N-55 Indus Hwy'] },
-  { id: 'nawabshah', nameEn: 'Nawabshah', nameUr: 'نوابشاہ', provinceEn: 'Sindh', provinceUr: 'سندھ', lat: 26.2483, lng: 68.4096, elevationMeters: 36, highways: ['N-5', 'M-6'] },
-  { id: 'peshawar', nameEn: 'Peshawar', nameUr: 'پشاور', provinceEn: 'KPK', provinceUr: 'خیبر پختونخوا', lat: 34.0151, lng: 71.5249, elevationMeters: 359, highways: ['M-1', 'N-5', 'N-55'] },
-  { id: 'abbottabad', nameEn: 'Abbottabad', nameUr: 'ایبٹ آباد', provinceEn: 'KPK', provinceUr: 'خیبر پختونخوا', lat: 34.1688, lng: 73.2215, elevationMeters: 1256, highways: ['M-15 Hazara', 'N-35 KKH'] },
-  { id: 'swat', nameEn: 'Swat / Mingora', nameUr: 'سوات / مینگورہ', provinceEn: 'KPK', provinceUr: 'خیبر پختونخوا', lat: 34.7717, lng: 72.3602, elevationMeters: 984, highways: ['M-16 Swat Expy'] },
-  { id: 'mansehra', nameEn: 'Mansehra', nameUr: 'مانسہرہ', provinceEn: 'KPK', provinceUr: 'خیبر پختونخوا', lat: 34.3333, lng: 73.2000, elevationMeters: 1088, highways: ['M-15 Hazara', 'N-35 KKH'] },
-  { id: 'mardan', nameEn: 'Mardan', nameUr: 'مردان', provinceEn: 'KPK', provinceUr: 'خیبر پختونخوا', lat: 34.1989, lng: 72.0403, elevationMeters: 285, highways: ['M-1 Link', 'N-45'] },
-  { id: 'kohat', nameEn: 'Kohat', nameUr: 'کوہاٹ', provinceEn: 'KPK', provinceUr: 'خیبر پختونخوا', lat: 33.5869, lng: 71.4414, elevationMeters: 489, highways: ['N-55 Indus Hwy', 'Kohat Tunnel'] },
-  { id: 'bannu', nameEn: 'Bannu', nameUr: 'بنوں', provinceEn: 'KPK', provinceUr: 'خیبر پختونخوا', lat: 32.9861, lng: 70.6042, elevationMeters: 371, highways: ['N-55 Indus Hwy'] },
-  { id: 'dikhan', nameEn: 'Dera Ismail Khan', nameUr: 'ڈیرہ اسماعیل خان', provinceEn: 'KPK', provinceUr: 'خیبر پختونخوا', lat: 31.8314, lng: 70.9019, elevationMeters: 165, highways: ['M-14 Hakla', 'N-55'] },
-  { id: 'quetta', nameEn: 'Quetta', nameUr: 'کوئٹہ', provinceEn: 'Balochistan', provinceUr: 'بلوچستان', lat: 30.1798, lng: 66.9750, elevationMeters: 1680, highways: ['N-25', 'N-50', 'N-65', 'N-70'] },
-  { id: 'gwadar', nameEn: 'Gwadar', nameUr: 'گوادر', provinceEn: 'Balochistan', provinceUr: 'بلوچستان', lat: 25.1216, lng: 62.3254, elevationMeters: 12, highways: ['N-10 Coastal Hwy', 'M-8'] },
-  { id: 'khuzdar', nameEn: 'Khuzdar', nameUr: 'خضدار', provinceEn: 'Balochistan', provinceUr: 'بلوچستان', lat: 27.8105, lng: 66.6053, elevationMeters: 1237, highways: ['N-25 RCD Hwy', 'M-8'] },
-  { id: 'turbat', nameEn: 'Turbat', nameUr: 'تربت', provinceEn: 'Balochistan', provinceUr: 'بلوچستان', lat: 26.0031, lng: 63.0544, elevationMeters: 129, highways: ['M-8 Motorway'] },
-  { id: 'chaman', nameEn: 'Chaman', nameUr: 'چمن', provinceEn: 'Balochistan', provinceUr: 'بلوچستان', lat: 30.9210, lng: 66.4597, elevationMeters: 1324, highways: ['N-25 RCD Hwy'] },
-  { id: 'hub', nameEn: 'Hub', nameUr: 'حب چوکی', provinceEn: 'Balochistan', provinceUr: 'بلوچستان', lat: 25.0289, lng: 66.8833, elevationMeters: 25, highways: ['N-25', 'RCD Hwy'] },
-  { id: 'gilgit', nameEn: 'Gilgit', nameUr: 'گلگت', provinceEn: 'GB', provinceUr: 'گلگت بلتستان', lat: 35.9221, lng: 74.3087, elevationMeters: 1500, highways: ['N-35 KKH'] },
-  { id: 'skardu', nameEn: 'Skardu', nameUr: 'سکردو', provinceEn: 'GB', provinceUr: 'گلگت بلتستان', lat: 35.2971, lng: 75.6333, elevationMeters: 2228, highways: ['Jaglot-Skardu Rd'] },
-  { id: 'muzaffarabad', nameEn: 'Muzaffarabad', nameUr: 'مظفر آباد', provinceEn: 'AJK', provinceUr: 'آزاد کشمیر', lat: 34.3700, lng: 73.4711, elevationMeters: 737, highways: ['Kohala-Muzaffarabad Rd'] },
-  { id: 'mirpur', nameEn: 'Mirpur', nameUr: 'میرپور', provinceEn: 'AJK', provinceUr: 'آزاد کشمیر', lat: 33.1484, lng: 73.7519, elevationMeters: 450, highways: ['Mangla Rd'] }
-];
+export const PAKISTAN_CITIES: TransitCity[] = PAKISTAN_CITIES_MASTER;
 
 export interface PopularRoutePreset {
   id: string;

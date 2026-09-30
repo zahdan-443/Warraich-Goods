@@ -34,11 +34,12 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   const [viewMode, setViewMode] = useState<'input' | 'result'>('input');
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [copyToast, setCopyToast] = useState<boolean>(false);
 
   // Input States (Strict 1-box per line sequence)
   const initialFuel = getStoredFuelPrices();
-  const [originCity, setOriginCity] = useState<string>('سمندری (Samundri)');
-  const [destCity, setDestCity] = useState<string>('لاہور (Lahore)');
+  const [originCity, setOriginCity] = useState<string>('Samundri');
+  const [destCity, setDestCity] = useState<string>('Lahore');
   const [distance, setDistance] = useState<string>('195');
   const [liveDieselBenchmark, setLiveDieselBenchmark] = useState<string>(initialFuel.diesel);
   const [fuelPrice, setFuelPrice] = useState<string>(initialFuel.diesel);
@@ -100,18 +101,24 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
         }
         if (prefill.fromCity) {
           const match = PAKISTAN_CITIES.find(
-            c => c.nameEn.toLowerCase() === prefill.fromCity.toLowerCase() || c.nameUr.includes(prefill.fromCity)
+            c => c.nameEn.toLowerCase() === prefill.fromCity.toLowerCase() || 
+                 c.nameUr === prefill.fromCity || 
+                 prefill.fromCity.toLowerCase().includes(c.nameEn.toLowerCase()) || 
+                 prefill.fromCity.includes(c.nameUr)
           );
           if (match) {
-            setOriginCity(`${match.nameUr} (${match.nameEn})`);
+            setOriginCity(match.nameEn);
           }
         }
         if (prefill.toCity) {
           const match = PAKISTAN_CITIES.find(
-            c => c.nameEn.toLowerCase() === prefill.toCity.toLowerCase() || c.nameUr.includes(prefill.toCity)
+            c => c.nameEn.toLowerCase() === prefill.toCity.toLowerCase() || 
+                 c.nameUr === prefill.toCity || 
+                 prefill.toCity.toLowerCase().includes(c.nameEn.toLowerCase()) || 
+                 prefill.toCity.includes(c.nameUr)
           );
           if (match) {
-            setDestCity(`${match.nameUr} (${match.nameEn})`);
+            setDestCity(match.nameEn);
           }
         }
         localStorage.removeItem('ah-prefill-toll-calc');
@@ -158,6 +165,16 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     window.addEventListener('app-back-button', handleBackButton);
     return () => window.removeEventListener('app-back-button', handleBackButton);
   }, [viewMode]);
+
+  const formatCityDisplay = (cityName: string) => {
+    const match = PAKISTAN_CITIES.find(
+      c => c.nameEn.toLowerCase() === cityName.toLowerCase() || 
+           c.nameUr === cityName || 
+           (c.id && c.id.toLowerCase() === cityName.toLowerCase())
+    );
+    if (!match) return cityName;
+    return isUrdu ? `${match.nameUr} (${match.nameEn})` : `${match.nameEn} (${match.nameUr})`;
+  };
 
   // Calculate & Navigate to Dedicated Result Screen
   const handleCalculate = () => {
@@ -214,8 +231,8 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       date: new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' }),
       time: new Date().toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }),
       month: new Date().toLocaleString('default', { month: 'short', year: '2-digit' }),
-      origin: originCity,
-      dest: destCity,
+      origin: formatCityDisplay(originCity),
+      dest: formatCityDisplay(destCity),
       fuelRateVal: p,
       mileageVal: m,
       combinedExpensesVal: exp
@@ -230,8 +247,8 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   };
 
   const handleReset = () => {
-    setOriginCity('سمندری (Samundri)');
-    setDestCity('لاہور (Lahore)');
+    setOriginCity('Samundri');
+    setDestCity('Lahore');
     setDistance('195');
     setFuelPrice(liveDieselBenchmark);
     setMileage('7');
@@ -416,18 +433,49 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     }
   };
 
+  const buildWhatsAppMsg = () => {
+    if (!lastCalc) return '';
+    const fmt = (n: number) => 'Rs ' + (Number(n) || 0).toLocaleString();
+    return `🚚 *وارائچ گڈز ٹرانسپورٹ کمپنی*\n` +
+      `📋 *سفری لاگت اور اخراجات کا تخمینہ*\n` +
+      `─────────────────────\n` +
+      `📍 *روانگی (از):* ${lastCalc.origin}\n` +
+      `🏁 *منزل (تا):* ${lastCalc.dest}\n` +
+      `🛣️ *روٹ فاصلہ:* ${lastCalc.dist} KM ${lastCalc.isReturn ? '(راؤنڈ ٹرپ دگنا فاصلہ)' : ''}\n` +
+      `⛽ *ڈیزل ریٹ:* Rs ${lastCalc.fuelRateVal} / Ltr (ایوریج: ${lastCalc.mileageVal} KM/L)\n` +
+      `🛢️ *ڈیزل کھپت:* ${lastCalc.consumed} لٹر\n` +
+      `💵 *ڈیزل کا کل خرچہ:* ${fmt(lastCalc.fuelCost)}\n` +
+      `🛣️ *ٹول، ڈرائیور و دیگر اخراجات:* ${fmt(lastCalc.combinedExpensesVal || 0)}\n` +
+      `─────────────────────\n` +
+      `💰 *کل متوقع سفری اخراجات:* ${fmt(lastCalc.total)}\n` +
+      `📅 *تاریخ:* ${lastCalc.date || new Date().toLocaleDateString('ur-PK')}\n` +
+      `─────────────────────\n` +
+      `📱 *ڈرائیور دوست — سمارٹ ٹرانسپورٹ سسٹم*`;
+  };
+
+  const handleQuickWhatsAppText = () => {
+    const msg = buildWhatsAppMsg();
+    if (!msg) return;
+    try {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(msg);
+      }
+    } catch {}
+
+    setCopyToast(true);
+    setTimeout(() => setCopyToast(false), 3000);
+
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+    try {
+      window.open(url, '_blank');
+    } catch {
+      window.location.href = url;
+    }
+  };
+
   const handleWhatsAppShare = async () => {
     if (!lastCalc) return;
-    const fmt = (n: number) => 'PKR ' + n.toLocaleString();
-    const msg = `🚛 *ڈرائیور دوست — کرایہ اور سفری اخراجات لاگ*\n` +
-      `📍 روانگی (از): ${lastCalc.origin}\n` +
-      `🏁 منزل (تا): ${lastCalc.dest}\n` +
-      `🛣️ روٹ فاصلہ: ${lastCalc.dist} km ${lastCalc.isReturn ? '(راؤنڈ ٹرپ)' : ''}\n` +
-      `🛢️ فیول کھپت: ${lastCalc.consumed} Liters\n` +
-      `⛽ فیول خرچہ: ${fmt(lastCalc.fuelCost)}\n` +
-      `💵 ڈرائیور و دیگر اخراجات: ${fmt(lastCalc.combinedExpensesVal || 0)}\n\n` +
-      `💰 *کل سفری اخراجات (Total Freight Cost): ${fmt(lastCalc.total)}*\n` +
-      `📅 تاریخ: ${lastCalc.date}`;
+    const msg = buildWhatsAppMsg();
 
     try {
       const result = await generateTripCostPdf();
@@ -528,8 +576,8 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
               className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-sm sm:text-base font-black text-[#2b2b1f] focus:border-[#8b9d77] focus:outline-none cursor-pointer shadow-2xs"
             >
               {PAKISTAN_CITIES.map((c) => (
-                <option key={c.nameEn} value={isUrdu ? c.nameUr : c.nameEn}>
-                  {isUrdu ? `${c.nameUr} (${c.nameEn})` : c.nameEn}
+                <option key={c.nameEn} value={c.nameEn}>
+                  {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`}
                 </option>
               ))}
             </select>
@@ -547,8 +595,8 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
               className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-sm sm:text-base font-black text-[#2b2b1f] focus:border-[#8b9d77] focus:outline-none cursor-pointer shadow-2xs"
             >
               {PAKISTAN_CITIES.map((c) => (
-                <option key={c.nameEn} value={isUrdu ? c.nameUr : c.nameEn}>
-                  {isUrdu ? `${c.nameUr} (${c.nameEn})` : c.nameEn}
+                <option key={c.nameEn} value={c.nameEn}>
+                  {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`}
                 </option>
               ))}
             </select>
@@ -580,6 +628,23 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
               <span className="text-xs font-mono font-black text-[#4a5a3a] bg-[#e6e6d8] px-2 py-0.5 rounded-lg shrink-0 select-none">
                 KM
               </span>
+            </div>
+            {/* Quick distance preset chips */}
+            <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
+              <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری فاصلہ:' : 'Quick:'}</span>
+              {[25, 50, 100, 200].map((delta) => (
+                <button
+                  key={delta}
+                  type="button"
+                  onClick={() => {
+                    const current = parseFloat(distance) || 0;
+                    setDistance(String(current + delta));
+                  }}
+                  className="px-2 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded-md text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#d5d5c5]"
+                >
+                  +{delta} KM
+                </button>
+              ))}
             </div>
           </div>
 
@@ -657,6 +722,23 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
               <span className="text-xs font-mono font-black text-[#4a5a3a] bg-[#e6e6d8] px-2 py-0.5 rounded-lg shrink-0 select-none">
                 PKR
               </span>
+            </div>
+            {/* Quick expense preset chips */}
+            <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
+              <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری خرچہ:' : 'Quick:'}</span>
+              {[500, 1000, 2000, 3000, 5000].map((amt) => (
+                <button
+                  key={amt}
+                  type="button"
+                  onClick={() => {
+                    const current = parseFloat(combinedExpenses) || 0;
+                    setCombinedExpenses(String(current + amt));
+                  }}
+                  className="px-2 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded-md text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#d5d5c5]"
+                >
+                  +{amt}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -826,43 +908,51 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
               <span>{isUrdu ? 'یہ ٹرپ سفر ڈائری لاگز میں محفوظ کر لیا گیا ہے۔' : 'Trip saved to Safar Diary logs.'}</span>
             </div>
           )}
+
+          {/* Copy toast */}
+          {copyToast && (
+            <div className="bg-emerald-50 border-2 border-emerald-400 text-emerald-950 p-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>{isUrdu ? 'واٹس ایپ ٹیکسٹ میسج کاپی ہو گیا اور واٹس ایپ اوپن ہو رہا ہے! 📲' : 'WhatsApp message copied & opening WhatsApp! 📲'}</span>
+            </div>
+          )}
         </div>
       )}
 
       {/* Bottom Action Grid with generous spacing */}
       <div className="w-full pt-4 pb-6 shrink-0 space-y-2.5">
         <div className="grid grid-cols-3 gap-2">
-          {/* WhatsApp Share */}
+          {/* 1. Fast WhatsApp Text Share */}
           <button
             type="button"
-            onClick={handleWhatsAppShare}
-            className="py-3 px-2 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1"
+            onClick={handleQuickWhatsAppText}
+            className="min-h-[50px] py-2.5 px-2 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1"
           >
             <Share2 className="w-4 h-4" />
-            <span>{isUrdu ? 'واٹس ایپ' : 'WhatsApp'}</span>
+            <span>{isUrdu ? 'واٹس ایپ میسج 📲' : 'WhatsApp 📲'}</span>
           </button>
 
-          {/* PDF Download */}
+          {/* 2. PDF Download */}
           <button
             type="button"
             disabled={isExportingPdf}
             onClick={handleExportPDF}
-            className={`py-3 px-2 text-white rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1 ${
+            className={`min-h-[50px] py-2.5 px-2 text-white rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1 ${
               isExportingPdf ? 'bg-[#4a4a35]/70 opacity-80 cursor-wait' : 'bg-[#4a4a35] hover:bg-[#383827]'
             }`}
           >
             <FileDown className={`w-4 h-4 text-[#8b9d77] ${isExportingPdf ? 'animate-bounce' : ''}`} />
-            <span>{isExportingPdf ? (isUrdu ? 'بن رہی ہے...' : 'Generating...') : (isUrdu ? 'پی ڈی ایف' : 'PDF Receipt')}</span>
+            <span>{isExportingPdf ? (isUrdu ? 'بن رہی ہے...' : 'Generating...') : (isUrdu ? 'پی ڈی ایف رسید 📄' : 'PDF Receipt 📄')}</span>
           </button>
 
-          {/* Save to Diary */}
+          {/* 3. Save to Diary */}
           <button
             type="button"
             onClick={handleSaveToDiary}
-            className="py-3 px-2 bg-white border-2 border-[#8b9d77] text-[#4a4a35] hover:bg-[#eef4ea] rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1"
+            className="min-h-[50px] py-2.5 px-2 bg-white border-2 border-[#8b9d77] text-[#4a4a35] hover:bg-[#eef4ea] rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1"
           >
             <BookmarkPlus className="w-4 h-4 text-[#8b9d77]" />
-            <span>{isUrdu ? 'محفوظ کریں' : 'Save Trip'}</span>
+            <span>{isUrdu ? 'ڈائری محفوظ 💾' : 'Save Trip 💾'}</span>
           </button>
         </div>
 

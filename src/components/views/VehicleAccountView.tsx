@@ -59,9 +59,21 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
   // Custom expense items added on the fly
   const [customExpenses, setCustomExpenses] = useState<CustomExpense[]>([]);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
+  const [copyToast, setCopyToast] = useState<boolean>(false);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
+
+  const addAmount = (setter: React.Dispatch<React.SetStateAction<string>>, current: string, delta: number) => {
+    const val = parseFloat(current) || 0;
+    setter(String(val + delta));
+  };
+
+  const addIncomeAmount = (id: string, delta: number) => {
+    setIncomes((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, amount: (Number(item.amount) || 0) + delta } : item))
+    );
+  };
 
   // Add Income entry
   const handleAddIncome = () => {
@@ -401,44 +413,69 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
     }
   };
 
-  const handleWhatsAppShare = async () => {
+  const buildWhatsAppMsg = () => {
     const fmt = (num: number) => 'Rs ' + num.toLocaleString('en-US');
-    let msg = `🚛 *ڈرائیور دوست — گاڑی کا مکمل حساب و منافع رپورٹ*\n` +
-      `🚗 گاڑی نمبر: ${vehicleNo}\n` +
-      `📅 تاریخ: ${new Date().toLocaleDateString('ur-PK')}\n\n` +
-      `💵 *حاصل شدہ آمدن و کرایہ جات (Freight Incomes):*\n`;
+    let msg = `🚚 *وارائچ گڈز ٹرانسپورٹ کمپنی*\n` +
+      `📋 *گاڑی کا تفصیلی حساب و لیجر رپورٹ*\n` +
+      `─────────────────────\n` +
+      `🚛 *گاڑی نمبر:* ${vehicleNo || 'نامعلوم'}\n` +
+      `📅 *تاریخ:* ${new Date().toLocaleDateString('ur-PK')}\n\n` +
+      `*【 حاصل شدہ آمدن و کرایہ جات 】*\n`;
 
-    incomes.forEach((item) => {
-      msg += `• ${item.label}: ${fmt(item.amount || 0)}\n`;
+    incomes.forEach((item, idx) => {
+      if (item.amount > 0 || item.label) {
+        msg += `💵 ${item.label || `کرایہ ${idx + 1}`}: ${fmt(item.amount || 0)}\n`;
+      }
     });
-    msg += `👉 *کل حاصل آمدن: ${fmt(totalIncome)}*\n\n`;
+    msg += `👉 *کل حاصل آمدن:* ${fmt(totalIncome)}\n\n`;
 
-    msg += `🧾 *سفری اخراجات تفصیل (Trip Expenses):*\n` +
+    msg += `*【 سفری اخراجات کی تفصیل 】*\n` +
       `⛽ ڈیزل خرچہ: ${fmt(dieselVal)}\n` +
       `🛣️ ٹول پلازہ و ٹیکس: ${fmt(tollVal)}\n` +
       `🚔 چالان و جرمانہ: ${fmt(challanVal)}\n` +
-      `🍲 روٹی و خوراک: ${fmt(rotiVal)}\n` +
-      `🛡️ چوکیداری و پارکنگ: ${fmt(chowkidaraVal)}\n` +
+      `🍲 روٹی و خوراک الاؤنس: ${fmt(rotiVal)}\n` +
+      `🛡️ چوکیداری و اڈا پرچی: ${fmt(chowkidaraVal)}\n` +
       `🔧 گاڑی کام و مرمت: ${fmt(gariKaamVal)}\n` +
       `👨‍✈️ ڈرائیور کمیشن و اجرت: ${fmt(commissionVal)}\n`;
 
     if (customExpenses.length > 0) {
       customExpenses.forEach((item) => {
         if (item.amount > 0) {
-          msg += `• ${item.label}: ${fmt(item.amount)}\n`;
+          msg += `🔧 ${item.label || 'اضافی خرچہ'}: ${fmt(item.amount)}\n`;
         }
       });
     }
 
-    msg += `👉 *کل کل خرچہ: ${fmt(grandTotalExpenses)}*\n\n`;
+    msg += `─────────────────────\n` +
+      `🧾 *کل سفری اخراجات:* ${fmt(grandTotalExpenses)}\n` +
+      (netProfit >= 0
+        ? `🟢 *خالص بچت و منافع (Net Profit):* ${fmt(netProfit)}\n`
+        : `🔴 *خسارہ / بقایا خرچہ:* ${fmt(Math.abs(netProfit))}\n`) +
+      `─────────────────────\n` +
+      `📱 *ڈرائیور دوست ایپ (Driver Dost Pakistan)*`;
+    return msg;
+  };
 
-    if (netProfit >= 0) {
-      msg += `💰 *خالص بچت / نفع (Net Profit): ${fmt(netProfit)}* 🟢\n\n`;
-    } else {
-      msg += `⚠️ *خسارہ / بقایا خرچہ (Deficit): ${fmt(Math.abs(netProfit))}* 🔴\n\n`;
+  const handleQuickWhatsAppText = () => {
+    const msg = buildWhatsAppMsg();
+    try {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(msg);
+      }
+    } catch {}
+    setCopyToast(true);
+    setTimeout(() => setCopyToast(false), 3000);
+
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+    try {
+      window.open(url, '_blank');
+    } catch {
+      window.location.href = url;
     }
+  };
 
-    msg += `📱 ڈرائیور دوست ایپ (Driver Dost Pakistan)`;
+  const handleWhatsAppShare = async () => {
+    const msg = buildWhatsAppMsg();
 
     try {
       const result = await generateAccountPdf();
@@ -632,6 +669,20 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                         PKR
                       </span>
                     </div>
+                    {/* Quick amount chips for income */}
+                    <div className="flex items-center gap-1 pt-1 flex-wrap">
+                      <span className="text-[10px] text-emerald-800 font-bold">فوری:</span>
+                      {[10000, 25000, 50000, 100000].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => addIncomeAmount(item.id, amt)}
+                          className="px-1.5 py-0.5 bg-emerald-100 hover:bg-emerald-200 active:scale-95 text-emerald-900 rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-emerald-300"
+                        >
+                          +{amt >= 1000 ? `${amt / 1000}k` : amt}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* DELETE BUTTON */}
@@ -706,6 +757,19 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 />
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
+              <div className="flex items-center gap-1 pt-1 flex-wrap">
+                <span className="text-[10px] text-[#8e8e75] font-bold">فوری:</span>
+                {[1000, 2000, 5000, 10000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => addAmount(setDiesel, diesel, amt)}
+                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
+                  >
+                    +{amt >= 1000 ? `${amt / 1000}k` : amt}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* 2. Toll Plaza */}
@@ -724,6 +788,19 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                   className="w-full bg-transparent text-left font-mono font-bold text-sm text-[#4a4a35] focus:outline-none dir-ltr"
                 />
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
+              </div>
+              <div className="flex items-center gap-1 pt-1 flex-wrap">
+                <span className="text-[10px] text-[#8e8e75] font-bold">فوری:</span>
+                {[500, 1000, 2000, 3000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => addAmount(setToll, toll, amt)}
+                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
+                  >
+                    +{amt}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -744,6 +821,19 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 />
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
+              <div className="flex items-center gap-1 pt-1 flex-wrap">
+                <span className="text-[10px] text-[#8e8e75] font-bold">فوری:</span>
+                {[500, 1000, 2500, 5000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => addAmount(setChallan, challan, amt)}
+                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
+                  >
+                    +{amt}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* 4. Roti Kharcha */}
@@ -762,6 +852,19 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                   className="w-full bg-transparent text-left font-mono font-bold text-sm text-[#4a4a35] focus:outline-none dir-ltr"
                 />
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
+              </div>
+              <div className="flex items-center gap-1 pt-1 flex-wrap">
+                <span className="text-[10px] text-[#8e8e75] font-bold">فوری:</span>
+                {[300, 500, 1000, 2000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => addAmount(setRotiKharcha, rotiKharcha, amt)}
+                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
+                  >
+                    +{amt}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -782,6 +885,19 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 />
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
+              <div className="flex items-center gap-1 pt-1 flex-wrap">
+                <span className="text-[10px] text-[#8e8e75] font-bold">فوری:</span>
+                {[200, 500, 1000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => addAmount(setChowkidara, chowkidara, amt)}
+                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
+                  >
+                    +{amt}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* 6. Gari Kaam / Repair */}
@@ -801,6 +917,19 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 />
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
+              <div className="flex items-center gap-1 pt-1 flex-wrap">
+                <span className="text-[10px] text-[#8e8e75] font-bold">فوری:</span>
+                {[1000, 2000, 5000, 10000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => addAmount(setGariKaam, gariKaam, amt)}
+                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
+                  >
+                    +{amt >= 1000 ? `${amt / 1000}k` : amt}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* 7. Driver Commission */}
@@ -819,6 +948,19 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                   className="w-full bg-transparent text-left font-mono font-bold text-sm text-[#4a4a35] focus:outline-none dir-ltr"
                 />
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
+              </div>
+              <div className="flex items-center gap-1 pt-1 flex-wrap">
+                <span className="text-[10px] text-[#8e8e75] font-bold">فوری:</span>
+                {[2000, 5000, 10000, 15000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => addAmount(setDriverCommission, driverCommission, amt)}
+                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
+                  >
+                    +{amt >= 1000 ? `${amt / 1000}k` : amt}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -902,46 +1044,54 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
           </div>
         )}
 
-        {/* SECTION 4: ACTIONS (WhatsApp, PDF, Save, Reset) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-          {/* WhatsApp Share */}
+        {/* Copy toast */}
+        {copyToast && (
+          <div className="bg-emerald-50 border-2 border-emerald-400 text-emerald-950 p-3.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm animate-in fade-in">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            <span>واٹس ایپ ٹیکسٹ میسج کاپی ہو گیا اور واٹس ایپ اوپن ہو رہا ہے! 📲</span>
+          </div>
+        )}
+
+        {/* SECTION 4: ACTIONS (WhatsApp Quick Text, PDF, Save, Reset) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
+          {/* 1. Fast WhatsApp Text Share */}
           <button
             type="button"
-            onClick={handleWhatsAppShare}
-            className="py-3 px-3 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+            onClick={handleQuickWhatsAppText}
+            className="min-h-[48px] py-2.5 px-3 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
           >
             <Share2 className="w-4 h-4" />
-            <span>واٹس ایپ رسید</span>
+            <span>واٹس ایپ میسج 📲</span>
           </button>
 
-          {/* PDF Download */}
+          {/* 2. PDF Download */}
           <button
             type="button"
             disabled={isExportingPdf}
             onClick={handleExportPDF}
-            className={`py-3 px-3 text-white rounded-2xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2 ${
+            className={`min-h-[48px] py-2.5 px-3 text-white rounded-2xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 ${
               isExportingPdf ? 'bg-[#4a4a35]/70 opacity-80 cursor-wait' : 'bg-[#4a4a35] hover:bg-[#383827]'
             }`}
           >
             <FileDown className={`w-4 h-4 text-amber-300 ${isExportingPdf ? 'animate-bounce' : ''}`} />
-            <span>{isExportingPdf ? 'پی ڈی ایف بن رہی ہے...' : 'پی ڈی ایف ڈاؤنلوڈ'}</span>
+            <span>{isExportingPdf ? 'پی ڈی ایف بن رہی ہے...' : 'پی ڈی ایف رسید 📄'}</span>
           </button>
 
-          {/* Save to Log */}
+          {/* 3. Save to Diary */}
           <button
             type="button"
             onClick={handleSaveToDiary}
-            className="py-3 px-3 bg-white border-2 border-[#8b9d77] text-[#4a4a35] hover:bg-[#eef4ea] rounded-2xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+            className="min-h-[48px] py-2.5 px-3 bg-white border-2 border-[#8b9d77] text-[#4a4a35] hover:bg-[#eef4ea] rounded-2xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
           >
             <BookmarkPlus className="w-4 h-4 text-[#8b9d77]" />
-            <span>ڈائری میں محفوظ</span>
+            <span>ڈائری محفوظ 💾</span>
           </button>
 
-          {/* Reset */}
+          {/* 4. Reset */}
           <button
             type="button"
             onClick={handleReset}
-            className="py-3 px-3 bg-white border border-[#ecece0] text-[#8e8e75] hover:bg-[#f6f5ee] rounded-2xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+            className="min-h-[48px] py-2.5 px-3 bg-white border border-[#ecece0] text-[#8e8e75] hover:bg-[#f6f5ee] rounded-2xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
           >
             <RotateCcw className="w-4 h-4" />
             <span>خانے خالی کریں</span>
