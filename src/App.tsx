@@ -62,8 +62,20 @@ export default function App() {
     return (saved === 'en' || saved === 'ur') ? saved : 'ur';
   });
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
-  // Show official Driver Dost splash screen on every app launch/load
-  const [showSplash, setShowSplash] = useState<boolean>(true);
+  // Show official Driver Dost splash screen on initial app launch (bypass on deep-links)
+  const [showSplash, setShowSplash] = useState<boolean>(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('page') || urlParams.get('view') || urlParams.get('bilty') || urlParams.get('vdata')) {
+        return false;
+      }
+    } catch {}
+    return true;
+  });
+
+  const handleDismissSplash = React.useCallback(() => {
+    setShowSplash(false);
+  }, []);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showBiltyAccessModal, setShowBiltyAccessModal] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);
@@ -706,10 +718,10 @@ export default function App() {
     <div className="min-h-screen bg-[#fdfbf7] text-[#4a4a35] flex flex-col font-sans relative">
       {showSplash && (
         <SplashScreen
-          onDismiss={() => setShowSplash(false)}
+          onDismiss={handleDismissSplash}
           onSelectTab={(tab) => {
             handleNavigate(tab);
-            setShowSplash(false);
+            handleDismissSplash();
           }}
           isBiltyAuthorized={isBiltyAuthorized}
         />

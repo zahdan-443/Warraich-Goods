@@ -11,17 +11,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
   const [fadeOut, setFadeOut] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const dismissedRef = useRef(false);
+  const onDismissRef = useRef(onDismiss);
 
-  const base = import.meta.env.BASE_URL ?? './';
-  const cleanBase = base.endsWith('/') ? base : base + '/';
-
-  const candidates = [
-    './splash.png',
-    `${cleanBase}splash.png`,
-    '/splash.png',
-    'splash.png',
-  ];
-  const [idx, setIdx] = useState(0);
+  // Keep latest onDismiss reference without triggering effect re-runs
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  }, [onDismiss]);
 
   const dismiss = useCallback(() => {
     if (dismissedRef.current) return;
@@ -29,59 +24,42 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
     setFadeOut(true);
 
     setTimeout(() => {
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
-      onDismiss();
-    }, 320);
-  }, [onDismiss]);
+      try {
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+      } catch {}
+      if (typeof onDismissRef.current === 'function') {
+        onDismissRef.current();
+      }
+    }, 200);
+  }, []);
 
-  const handleError = useCallback(() => {
-    if (idx + 1 < candidates.length) {
-      setIdx(prev => prev + 1);
-    } else {
-      // Even if image fails to load, mark loaded so user sees screen then transitions
-      setImgLoaded(true);
-    }
-  }, [idx, candidates.length]);
-
-  // Initial mount: lock scroll and preload image
+  // Single mount effect: strictly timed display that CANNOT be cancelled by parent re-renders
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
+    try {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } catch {}
 
-    // Preload image in memory
-    const preloader = new Image();
-    preloader.src = candidates[idx];
-    if (preloader.complete) {
-      setImgLoaded(true);
-    } else {
-      preloader.onload = () => setImgLoaded(true);
-      preloader.onerror = handleError;
-    }
-
-    // Safety fallback timeout: under no circumstance should the user be blocked longer than 4.5s
-    const maxSafetyTimer = setTimeout(() => {
+    // Auto-dismiss after 1300ms so user sees the branding without delay
+    const timer = setTimeout(() => {
       dismiss();
-    }, 4500);
+    }, 1300);
+
+    // Guaranteed failsafe timer: under NO circumstance can splash stay visible past 2000ms
+    const failsafe = setTimeout(() => {
+      dismiss();
+    }, 2000);
 
     return () => {
-      clearTimeout(maxSafetyTimer);
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
+      clearTimeout(timer);
+      clearTimeout(failsafe);
+      try {
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+      } catch {}
     };
-  }, [idx, handleError, dismiss]);
-
-  // Auto-dismiss timer starts once image has loaded
-  useEffect(() => {
-    if (!imgLoaded || dismissedRef.current) return;
-
-    // Show full splash screen for 2200ms once loaded so user can see it cleanly
-    const displayTimer = setTimeout(() => {
-      dismiss();
-    }, 2200);
-
-    return () => clearTimeout(displayTimer);
-  }, [imgLoaded, dismiss]);
+  }, [dismiss]);
 
   return (
     <div
@@ -92,7 +70,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
       className="fixed inset-0 w-screen h-screen z-[99999] bg-white flex flex-col items-center justify-center overflow-hidden cursor-pointer select-none"
       style={{
         opacity: fadeOut ? 0 : 1,
-        transition: 'opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
         touchAction: 'manipulation',
       }}
     >
@@ -107,7 +85,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
         <button
           type="button"
           aria-label="Skip splash screen"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#162a4d]/80 hover:bg-[#162a4d] text-white text-xs font-semibold backdrop-blur-md shadow-md border border-white/20 transition-all active:scale-95 cursor-pointer"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#162a4d]/85 hover:bg-[#162a4d] text-white text-xs font-semibold backdrop-blur-md shadow-md border border-white/20 transition-all active:scale-95 cursor-pointer"
         >
           <span>چھوڑیں</span>
           <span className="text-[10px] opacity-75">• Skip ✕</span>
@@ -117,10 +95,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
       {/* Main Splash Image */}
       <div className="relative w-full h-full flex items-center justify-center">
         <img
-          src={candidates[idx]}
+          src="./splash.png"
           alt="Driver Dost Welcome Splash Screen - Warraich Goods"
           onLoad={() => setImgLoaded(true)}
-          onError={handleError}
+          onError={() => setImgLoaded(true)}
           decoding="async"
           loading="eager"
           className="w-full h-full object-cover sm:object-contain max-h-screen"
@@ -129,7 +107,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
             maxHeight: '100vh',
             display: 'block',
             opacity: imgLoaded ? 1 : 0.98,
-            transition: 'opacity 0.25s ease-in',
+            transition: 'opacity 0.2s ease-in',
           }}
         />
 
@@ -138,7 +116,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
           className="absolute bottom-5 sm:bottom-8 inset-x-0 flex flex-col items-center justify-center gap-2 pointer-events-none px-4"
           dir="rtl"
         >
-          <div className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/90 shadow-md border border-slate-200 backdrop-blur-sm">
+          <div className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/95 shadow-md border border-slate-200 backdrop-blur-sm">
             <span className="w-2 h-2 rounded-full bg-[#8b9d77] animate-ping" />
             <span className="text-xs font-bold text-[#162a4d]">
               ڈرائیور دوست لوڈ ہو رہا ہے...
