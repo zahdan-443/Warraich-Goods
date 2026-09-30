@@ -84,7 +84,7 @@ const QuickActionButton: React.FC<{
   highlight?: boolean;
   href?: string;
   external?: boolean;
-}> = ({ onClick, imgSrc, fullName, highlight, href, external }) => {
+}> = ({ onClick, imgSrc, fullName, highlight, href, external, fallbackIcon }) => {
   const commonClasses = `p-1.5 sm:p-2 bg-white border ${
     highlight ? 'border-2 border-[#8b9d77] shadow-sm' : 'border-[#ecece0]'
   } hover:border-[#8b9d77] hover:shadow-md rounded-2xl sm:rounded-3xl transition-all active:scale-95 cursor-pointer flex items-center justify-center text-center group w-full aspect-square min-h-[110px] sm:min-h-[135px] no-underline`;
@@ -93,6 +93,7 @@ const QuickActionButton: React.FC<{
     <div className="w-full h-full bg-[#fdfbf7] rounded-xl sm:rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs flex items-center justify-center transition-transform group-hover:scale-105 overflow-hidden">
       <PublicImage
         fileName={imgSrc}
+        fallbackIcon={fallbackIcon}
         alt={`Driver Dost Transport Tool: ${fullName}`}
         width={140}
         height={140}

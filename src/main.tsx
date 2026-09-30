@@ -3,9 +3,18 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 import './index.css';
+import { requestPersistentStorage, hydrateStorageFromIndexedDB } from './utils/persistentStorage';
 
 // Global safety handler for unhandled promise rejections and browser lifecycle events
 if (typeof window !== 'undefined') {
+  // Request permanent storage mode and hydrate missing data from IndexedDB
+  requestPersistentStorage().then((info) => {
+    if (info.persisted) {
+      console.log(`Driver Dost: Persistent storage enabled. Quota: ${info.quotaMB}MB, Used: ${info.usageMB}MB`);
+    }
+  }).catch(() => {});
+
+  hydrateStorageFromIndexedDB().catch(() => {});
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason?.message || String(event.reason || '');
     if (

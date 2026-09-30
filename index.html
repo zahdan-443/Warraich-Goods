@@ -127,33 +127,32 @@
     </script>
   </head>
   <body class="bg-[#fdfbf7] text-[#4a4a35] font-sans antialiased min-h-full selection:bg-[#8b9d77] selection:text-white">
-    <div id="root" class="min-h-screen flex flex-col">
-      <!-- Instantaneous official Driver Dost splash screen on initial HTML load -->
-      <div id="app-initial-loader" style="position:fixed;inset:0;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;background:#ffffff;z-index:99999;overflow:hidden;cursor:pointer;">
-        <img src="./splash.png" alt="Driver Dost Splash Screen" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;" />
-        <noscript>
-          <div style="position:absolute;bottom:20px;padding:12px 18px;background:#fff3cd;color:#856404;border-radius:12px;font-size:13px;max-width:320px;text-align:center;">
-            برائے مہربانی ایپ استعمال کرنے کے لئے براؤزر میں JavaScript آن کریں۔
-          </div>
-        </noscript>
-      </div>
-      <script>
-        (function() {
-          var loader = document.getElementById('app-initial-loader');
-          if (!loader) return;
-          function killLoader() {
-            if (loader && loader.parentNode) {
-              loader.style.transition = 'opacity 0.25s ease';
-              loader.style.opacity = '0';
-              setTimeout(function() { if (loader && loader.parentNode) loader.remove(); }, 250);
-            }
-          }
-          loader.addEventListener('click', killLoader);
-          // Safety failsafe dismiss after 1200ms
-          setTimeout(killLoader, 1200);
-        })();
-      </script>
+    <div id="root" class="min-h-screen flex flex-col"></div>
+    <!-- Instantaneous official Driver Dost splash screen on initial HTML load -->
+    <div id="app-initial-loader" style="position:fixed;inset:0;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;background:#ffffff;z-index:99999;overflow:hidden;cursor:pointer;">
+      <img src="./splash.png" alt="Driver Dost Splash Screen" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;" />
+      <noscript>
+        <div style="position:absolute;bottom:20px;padding:12px 18px;background:#fff3cd;color:#856404;border-radius:12px;font-size:13px;max-width:320px;text-align:center;">
+          برائے مہربانی ایپ استعمال کرنے کے لئے براؤزر میں JavaScript آن کریں۔
+        </div>
+      </noscript>
     </div>
+    <script>
+      (function() {
+        var loader = document.getElementById('app-initial-loader');
+        if (!loader) return;
+        function killLoader() {
+          if (loader && loader.parentNode) {
+            loader.style.transition = 'opacity 0.25s ease';
+            loader.style.opacity = '0';
+            setTimeout(function() { if (loader && loader.parentNode) loader.remove(); }, 250);
+          }
+        }
+        loader.addEventListener('click', killLoader);
+        // Safety failsafe dismiss after 1200ms
+        setTimeout(killLoader, 1200);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v20';
+const CACHE_NAME = 'driver-dost-v21';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 
 // Core static assets always available locally

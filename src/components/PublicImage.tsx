@@ -9,7 +9,9 @@ import {
   BookOpen,
   Wrench,
   Fuel,
-  Sparkles
+  Sparkles,
+  MapPin,
+  Compass
 } from 'lucide-react';
 
 /**
@@ -18,31 +20,35 @@ import {
 export function getAssetCandidates(fileName: string): string[] {
   const clean = (fileName || '').replace(/^\.?\//, '');
   
+  const base = typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL ? import.meta.env.BASE_URL : './';
+  const cleanBase = base.endsWith('/') ? base : base + '/';
+
   const list: string[] = [
-    `/${clean}`,
     `./${clean}`,
+    `/${clean}`,
+    `${cleanBase}${clean}`,
     `/Warraich-Goods/${clean}`,
     `./public/${clean}`
   ];
 
   // Specific filename aliases in /public:
   if (clean === 'toll-icon.png') {
-    list.splice(2, 0, '/toll_icon.png', './toll_icon.png');
+    list.splice(1, 0, './toll_icon.png', '/toll_icon.png');
   } else if (clean === 'toll_icon.png') {
-    list.splice(2, 0, '/toll-icon.png', './toll-icon.png');
+    list.splice(1, 0, './toll-icon.png', '/toll-icon.png');
   }
 
   if (clean === 'splash.png') {
-    list.splice(2, 0, '/splash-screen.png', './splash-screen.png');
+    list.splice(1, 0, './splash-screen.png', '/splash-screen.png');
   } else if (clean === 'splash-screen.png') {
-    list.splice(2, 0, '/splash.png', './splash.png');
+    list.splice(1, 0, './splash.png', '/splash.png');
   }
 
   if (['logo.png', 'icon-192.png', 'icon-512.png'].includes(clean)) {
-    list.push('/app-icon.png', './app-icon.png');
+    list.push('./app-icon.png', '/app-icon.png');
   }
 
-  return list;
+  return Array.from(new Set(list));
 }
 
 /**
@@ -79,6 +85,22 @@ export const DefaultServiceVector: React.FC<{ name: string; className?: string }
           <span className="text-xs sm:text-sm font-bold font-serif leading-tight">موٹروے ٹول ٹیکس</span>
         </div>
         <span className="text-[9px] sm:text-[10px] text-sky-100 text-center font-mono">M-1 تا M-16 ریٹس</span>
+      </div>
+    );
+  }
+
+  if (clean.includes('map')) {
+    return (
+      <div className={`w-full h-full bg-gradient-to-br from-blue-600 via-indigo-700 to-[#1e293b] rounded-xl sm:rounded-2xl p-2.5 sm:p-3 text-white flex flex-col items-center justify-between shadow-inner ${className}`}>
+        <div className="w-full flex items-center justify-between opacity-85">
+          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-white/20 px-1.5 py-0.5 rounded">روٹ</span>
+          <Compass className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-200" />
+        </div>
+        <div className="my-auto flex flex-col items-center justify-center text-center">
+          <MapPin className="w-8 h-8 sm:w-10 sm:h-10 text-white drop-shadow-md mb-0.5" />
+          <span className="text-xs sm:text-sm font-bold font-serif leading-tight">نقشہ و موسم</span>
+        </div>
+        <span className="text-[9px] sm:text-[10px] text-blue-200 text-center font-mono">لائیو ہائی ویز</span>
       </div>
     );
   }
@@ -205,7 +227,7 @@ export const DefaultServiceVector: React.FC<{ name: string; className?: string }
 };
 
 /**
- * Resilient Image component with automatic multi-path recovery and fallback vector support
+ * Resilient Image component with instant vector placeholder and multi-path recovery
  */
 export interface PublicImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   fileName: string;
@@ -225,6 +247,7 @@ export const PublicImage: React.FC<PublicImageProps> = ({
   const candidates = getAssetCandidates(clean);
   const [candidateIndex, setCandidateIndex] = useState(0);
   const [hasFailedAll, setHasFailedAll] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const handleError = () => {
     if (candidateIndex + 1 < candidates.length) {
@@ -234,28 +257,53 @@ export const PublicImage: React.FC<PublicImageProps> = ({
     }
   };
 
-  if (hasFailedAll) {
-    if (fallbackIcon) {
-      return <div className={`flex items-center justify-center w-full h-full ${className || ''}`}>{fallbackIcon}</div>;
-    }
-    return <DefaultServiceVector name={clean} className={className} />;
-  }
+  const handleLoad = () => {
+    setLoaded(true);
+  };
 
   const computedAlt = alt && alt.trim().length > 0 
     ? alt 
     : `Driver Dost Transport Logistics - ${clean.replace(/[-_.]/g, ' ')}`;
 
+  if (hasFailedAll) {
+    if (fallbackIcon) {
+      return (
+        <div className={`flex items-center justify-center w-full h-full ${className || ''}`}>
+          {fallbackIcon}
+        </div>
+      );
+    }
+    return <DefaultServiceVector name={clean} className={className} />;
+  }
+
   return (
-    <img
-      src={candidates[candidateIndex]}
-      alt={computedAlt}
-      loading={rest.loading || "eager"}
-      decoding="async"
-      width={width}
-      height={height}
-      className={className}
-      onError={handleError}
-      {...rest}
-    />
+    <div className={`relative flex items-center justify-center overflow-hidden w-full h-full ${className || ''}`}>
+      {/* Instant fallback graphic / icon shown immediately until image is loaded */}
+      {!loaded && (
+        <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
+          {fallbackIcon ? (
+            <div className="flex items-center justify-center w-full h-full">{fallbackIcon}</div>
+          ) : (
+            <DefaultServiceVector name={clean} className="w-full h-full" />
+          )}
+        </div>
+      )}
+
+      {/* Primary User Image (smoothly displays as soon as ready) */}
+      <img
+        src={candidates[candidateIndex]}
+        alt={computedAlt}
+        loading={rest.loading || "eager"}
+        decoding="async"
+        width={width}
+        height={height}
+        className={`w-full h-full object-cover transition-opacity duration-200 ${
+          loaded ? 'opacity-100 relative z-10' : 'opacity-0'
+        }`}
+        onError={handleError}
+        onLoad={handleLoad}
+        {...rest}
+      />
+    </div>
   );
 };

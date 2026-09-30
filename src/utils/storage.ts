@@ -28,42 +28,53 @@ import {
   sanitizeDriverRecord,
   sanitizeTripRecord
 } from './calculator';
+import { idbSet, idbDelete } from './persistentStorage';
 
-// Memory storage fallback for non-browser/test environments
+// Memory storage fallback for non-browser/test environments or quota exceeded
 const memoryStorage = new Map<string, string>();
 
 export const safeStorage = {
   getItem: (key: string): string | null => {
     try {
       if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-        return localStorage.getItem(key);
+        const val = localStorage.getItem(key);
+        if (val !== null) return val;
       }
     } catch {
-      // fallback
+      // fallback to memory
     }
     return memoryStorage.get(key) || null;
   },
   setItem: (key: string, value: string): void => {
+    // Keep in-memory mirror
+    memoryStorage.set(key, value);
+
+    // Save to localStorage if possible
     try {
       if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
         localStorage.setItem(key, value);
-        return;
       }
-    } catch {
-      // fallback
+    } catch (e) {
+      console.warn('LocalStorage quota limit reached; saved safely in memory and IndexedDB:', e);
     }
-    memoryStorage.set(key, value);
+
+    // Persist to IndexedDB (supports gigabytes of offline storage)
+    if (typeof window !== 'undefined') {
+      idbSet(key, value).catch(() => {});
+    }
   },
   removeItem: (key: string): void => {
+    memoryStorage.delete(key);
     try {
       if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
         localStorage.removeItem(key);
-        return;
       }
     } catch {
-      // fallback
+      // ignore
     }
-    memoryStorage.delete(key);
+    if (typeof window !== 'undefined') {
+      idbDelete(key).catch(() => {});
+    }
   }
 };
 
