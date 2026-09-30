@@ -84,7 +84,7 @@
     <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
-    <link rel="preload" href="https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/PDMS_NastaliqNafees.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="./fonts/PDMS_NastaliqNafees.ttf" as="font" type="font/ttf" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Noto+Nastaliq+Urdu:wght@400;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'">
@@ -125,16 +125,16 @@
         });
       })();
     </script>
-    <script type="module" crossorigin src="./assets/index-k2RBR_2N.js"></script>
+    <script type="module" crossorigin src="./assets/index-CDkIgN64.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/vendor-react--r9-s-_a.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor-firebase-CyRSZaZw.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor-pdf-DN3F-nAo.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-D7n5TMH4.css">
+    <link rel="stylesheet" crossorigin href="./assets/index-314P1o4E.css">
   </head>
   <body class="bg-[#fdfbf7] text-[#4a4a35] font-sans antialiased min-h-full selection:bg-[#8b9d77] selection:text-white">
     <div id="root" class="min-h-screen flex flex-col">
       <!-- Instantaneous official Driver Dost splash screen on initial HTML load -->
-      <div id="app-initial-loader" style="position:fixed;inset:0;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;background:#ffffff;z-index:99999;overflow:hidden;">
+      <div id="app-initial-loader" style="position:fixed;inset:0;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;background:#ffffff;z-index:99999;overflow:hidden;cursor:pointer;">
         <img src="./splash.png" alt="Driver Dost Splash Screen" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;" />
         <noscript>
           <div style="position:absolute;bottom:20px;padding:12px 18px;background:#fff3cd;color:#856404;border-radius:12px;font-size:13px;max-width:320px;text-align:center;">
@@ -142,6 +142,22 @@
           </div>
         </noscript>
       </div>
+      <script>
+        (function() {
+          var loader = document.getElementById('app-initial-loader');
+          if (!loader) return;
+          function killLoader() {
+            if (loader && loader.parentNode) {
+              loader.style.transition = 'opacity 0.25s ease';
+              loader.style.opacity = '0';
+              setTimeout(function() { if (loader && loader.parentNode) loader.remove(); }, 250);
+            }
+          }
+          loader.addEventListener('click', killLoader);
+          // Safety failsafe dismiss after 1200ms
+          setTimeout(killLoader, 1200);
+        })();
+      </script>
     </div>
   </body>
 </html>
