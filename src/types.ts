@@ -63,6 +63,9 @@ export interface Vehicle {
   mileage: number;
   owner: string;
   capacity: number;
+  regExpiry?: string;          // Registration (RC) Expiry (YYYY-MM-DD)
+  routePermitExpiry?: string;  // Route Permit Expiry (YYYY-MM-DD)
+  fitnessExpiry?: string;      // Fitness Certificate Expiry (YYYY-MM-DD)
 }
 
 export interface Driver {
@@ -72,6 +75,7 @@ export interface Driver {
   license: string;
   lictype: string;
   cnic: string;
+  licenseExpiry?: string;      // Driver License Expiry (YYYY-MM-DD)
 }
 
 export interface RoutePreset {

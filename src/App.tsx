@@ -52,6 +52,7 @@ import { AuthModal } from './components/AuthModal';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
 import { Home, ArrowLeft } from 'lucide-react';
+import { checkExpiringDocuments, processExpiryNotifications } from './utils/documentExpiry';
 
 export default function App() {
   const OWNER_EMAIL = 'warraichgoods43@gmail.com';
@@ -440,6 +441,14 @@ export default function App() {
     };
   }, [lang]);
 
+  // Check vehicle & driver document expiries on app load and dispatch 30/15/7 day reminders (Feature A)
+  useEffect(() => {
+    const expiring = checkExpiringDocuments(vehicles, drivers);
+    if (expiring.length > 0) {
+      processExpiryNotifications(expiring, lang);
+    }
+  }, [vehicles, drivers, lang]);
+
   // Firebase auth & bilty access real-time sync
   useEffect(() => {
     // Initial fetch of bilty access configuration
@@ -608,6 +617,12 @@ export default function App() {
     );
   };
 
+  const handleUpdateVehicle = (updatedVeh: Vehicle) => {
+    const updated = vehicles.map((v) => (v.id === updatedVeh.id ? updatedVeh : v));
+    setVehicles(updated);
+    saveStoredVehicles(updated);
+  };
+
   const handleDeleteVehicle = (id: number) => {
     const updated = vehicles.filter((v) => v.id !== id);
     setVehicles(updated);
@@ -634,6 +649,12 @@ export default function App() {
       lang === 'ur' ? `ڈرائیور: ${newDrv.name} (${newDrv.phone}) شامل ہو گئے۔` : `Driver ${newDrv.name} added.`,
       'fleet'
     );
+  };
+
+  const handleUpdateDriver = (updatedDrv: Driver) => {
+    const updated = drivers.map((d) => (d.id === updatedDrv.id ? updatedDrv : d));
+    setDrivers(updated);
+    saveStoredDrivers(updated);
   };
 
   const handleDeleteDriver = (id: number) => {
@@ -788,6 +809,7 @@ export default function App() {
             <TripCostView
               lang={lang}
               trips={trips}
+              routes={routes}
               onSaveTrip={handleSaveTrip}
               onDeleteTrip={handleDeleteTrip}
               onClearAllTrips={handleClearAllTrips}
@@ -801,6 +823,7 @@ export default function App() {
               lang={lang}
               vehicles={vehicles}
               onAddVehicle={handleAddVehicle}
+              onUpdateVehicle={handleUpdateVehicle}
               onDeleteVehicle={handleDeleteVehicle}
               onSelectMileage={handleSelectMileage}
               onNavigate={handleNavigate}
@@ -812,6 +835,7 @@ export default function App() {
               lang={lang}
               drivers={drivers}
               onAddDriver={handleAddDriver}
+              onUpdateDriver={handleUpdateDriver}
               onDeleteDriver={handleDeleteDriver}
               onNavigate={handleNavigate}
             />

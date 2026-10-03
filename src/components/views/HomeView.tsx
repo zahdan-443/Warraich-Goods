@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ActiveTab, BiltyRecord, DICTIONARY, Driver, Language, Trip, UserRole, Vehicle } from '../../types';
 import { 
   Calculator, 
@@ -30,10 +30,15 @@ import {
   Crown,
   Compass,
   Eye,
-  EyeOff
+  EyeOff,
+  ExternalLink,
+  Clock,
+  AlertCircle,
+  ShieldAlert
 } from 'lucide-react';
 import { LiveFuelPriceWidget } from '../LiveFuelPriceWidget';
 import { TollCalculatorModal } from '../TollCalculatorModal';
+import { checkExpiringDocuments, processExpiryNotifications, ExpiringDocumentItem } from '../../utils/documentExpiry';
 
 // Embedded high-resolution base64 images - 100% offline proof, zero 404s, works across all Android PWA & APK wrappers
 import {
@@ -179,6 +184,25 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const totalBiltyCount = bilties.length;
   const totalBiltyFreight = bilties.reduce((sum, b) => sum + (Number(b.total) || 0), 0);
   const totalBiltyPayable = bilties.reduce((sum, b) => sum + (Number(b.payable) || 0), 0);
+
+  // Document Expiry Tracking (Feature A)
+  const expiringDocs = useMemo(() => {
+    return checkExpiringDocuments(vehicles, drivers);
+  }, [vehicles, drivers]);
+
+  const [isExpiryBannerDismissed, setIsExpiryBannerDismissed] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('dismiss_expiry_banner') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (expiringDocs.length > 0) {
+      processExpiryNotifications(expiringDocs, lang);
+    }
+  }, [expiringDocs, lang]);
 
   const currentDate = (() => {
     try {
@@ -620,6 +644,142 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </div>
             </div>
           )
+        )}
+
+        {/* Documents Expiring Soon Reminder Section (Feature A) */}
+        {expiringDocs.length > 0 && !isExpiryBannerDismissed && (
+          <div className="bg-white p-5 sm:p-6 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] space-y-4 animate-in fade-in duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#ecece0]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-700 flex items-center justify-center shrink-0">
+                  <ShieldAlert className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35]">
+                      {lang === 'ur' ? 'دستاویزات کی میعاد جلد ختم ہو رہی ہے' : 'Documents Expiring Soon'}
+                    </h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-rose-600 text-white shadow-2xs">
+                      {expiringDocs.length} {lang === 'ur' ? 'نوٹس' : 'alerts'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#8e8e75] mt-0.5">
+                    {lang === 'ur'
+                      ? 'اگلے 30 دنوں میں قابلِ تجدید رجسٹریشن (RC)، روٹ پرمٹ، فٹنس اور ڈرائیور لائسنس'
+                      : 'Vehicle RC, Route Permit, Fitness & Driving Licenses due for renewal within 30 days'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsExpiryBannerDismissed(true);
+                    try {
+                      sessionStorage.setItem('dismiss_expiry_banner', 'true');
+                    } catch {}
+                  }}
+                  className="px-2.5 py-1 text-xs text-[#8e8e75] hover:text-[#4a4a35] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                  title={lang === 'ur' ? 'چھپائیں' : 'Dismiss'}
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>{lang === 'ur' ? 'چھپائیں' : 'Dismiss'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* List of Expiring Document Cards (Sorted Most-Urgent-First) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {expiringDocs.map((item) => {
+                const isCritical = item.urgency === 'critical'; // under 7 days or already expired
+                const isWarningUrgent = item.urgency === 'warning-urgent'; // 8-14 days
+                
+                return (
+                  <div
+                    key={item.id}
+                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
+                      isCritical
+                        ? 'bg-rose-50/70 border-rose-300 hover:border-rose-400'
+                        : isWarningUrgent
+                        ? 'bg-orange-50/60 border-orange-300 hover:border-orange-400'
+                        : 'bg-amber-50/60 border-amber-300 hover:border-amber-400'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2.5">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                          isCritical ? 'bg-rose-600 text-white' : 'bg-amber-600 text-white'
+                        }`}>
+                          {item.type === 'driver_license' ? (
+                            <Users className="w-4 h-4" />
+                          ) : (
+                            <Truck className="w-4 h-4" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono font-bold text-xs uppercase px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-800">
+                              {item.identifier}
+                            </span>
+                            <span className="text-xs font-bold text-slate-700">
+                              {lang === 'ur' ? item.docNameUr : item.docNameEn}
+                            </span>
+                          </div>
+                          {item.subIdentifier && (
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                              {item.subIdentifier}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Expiry Badge */}
+                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 font-sans ${
+                        isCritical
+                          ? 'bg-rose-600 text-white'
+                          : isWarningUrgent
+                          ? 'bg-orange-600 text-white'
+                          : 'bg-amber-600 text-white'
+                      }`}>
+                        {item.isExpired
+                          ? (lang === 'ur' ? 'میعاد ختم!' : 'EXPIRED')
+                          : (lang === 'ur' ? `${item.daysLeft} دن باقی` : `${item.daysLeft} days left`)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-600 pt-2 border-t border-slate-200/80">
+                      <div className="flex items-center gap-1 font-mono">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        <span>{lang === 'ur' ? 'آخری تاریخ:' : 'Due:'} <b>{item.expiryDateStr}</b></span>
+                      </div>
+
+                      {/* Direct Links to Government Portals (Requirement 5) */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('verify', item.inAppSubSection)}
+                          className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 font-bold text-[11px] transition-colors cursor-pointer shadow-2xs"
+                        >
+                          {item.portalType === 'mtmis' ? 'MTMIS' : 'DLIMS'}
+                        </button>
+
+                        <a
+                          href={item.portalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer shadow-2xs"
+                          title={lang === 'ur' ? 'سرکاری ویب سائٹ کھولیں' : 'Open Official Portal'}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* SECTION 1: Primary Transport, Route & Trip Calculation Tools (4 Core Buttons) */}

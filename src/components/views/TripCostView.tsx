@@ -1,17 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { DICTIONARY, FuelType, Language, Trip } from '../../types';
+import { DICTIONARY, FuelType, Language, Trip, RoutePreset } from '../../types';
 import { PublicImage } from '../../assets/dashboardIcons';
-import { Calculator, RotateCcw, Share2, CheckCircle2, BookmarkPlus, FileDown, ArrowLeft, Navigation, MapPin } from 'lucide-react';
+import { 
+  Calculator, 
+  RotateCcw, 
+  Share2, 
+  CheckCircle2, 
+  BookmarkPlus, 
+  FileDown, 
+  ArrowLeft, 
+  Navigation, 
+  MapPin,
+  Zap,
+  Wallet,
+  ArrowLeftRight,
+  Clock,
+  Info,
+  Check,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { fetchOSRMRouteDistance, PAKISTAN_CITIES } from '../../utils/mapRoutes';
 import { getLogoBase64, sharePdfFileOrWhatsApp, escapeHtml, sanitizeHtml } from '../../utils/pdfHelper';
 import { validateFinancialNumber, validateTripFinancials } from '../../utils/calculator';
 import { getStoredFuelPrices, fetchLiveFuelPrices, FuelPricesData } from '../../utils/fuelPrice';
+import { getRouteComparisonOptions, RouteComparisonResult, RouteOptionComparison } from '../../utils/routeComparison';
+import { getStoredRoutes } from '../../utils/storage';
 
 interface TripCostViewProps {
   lang: Language;
   trips: Trip[];
+  routes?: RoutePreset[];
   onSaveTrip: (tripData: Omit<Trip, 'id' | 'name'>, tripName: string) => void;
   onDeleteTrip: (id: number) => void;
   onClearAllTrips: () => void;
@@ -22,6 +43,7 @@ interface TripCostViewProps {
 export const TripCostView: React.FC<TripCostViewProps> = ({
   lang,
   trips,
+  routes,
   onSaveTrip,
   onDeleteTrip,
   onClearAllTrips,
@@ -48,6 +70,12 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   const [isReturn, setIsReturn] = useState<boolean>(false);
   const [isRouteLoading, setIsRouteLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Feature B: Route Comparison States
+  const [showRouteComparison, setShowRouteComparison] = useState<boolean>(false);
+  const [comparisonResult, setComparisonResult] = useState<RouteComparisonResult | null>(null);
+  const [isLoadingComparison, setIsLoadingComparison] = useState<boolean>(false);
+  const [selectedComparisonRouteId, setSelectedComparisonRouteId] = useState<string | null>(null);
 
   // Result Calculation Object
   const [lastCalc, setLastCalc] = useState<Omit<Trip, 'id' | 'name'> & {
@@ -150,6 +178,46 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       isMounted = false;
     };
   }, [originCity, destCity]);
+
+  // Feature B: Auto-fetch route comparison options when enabled or when cities/parameters change
+  useEffect(() => {
+    let isMounted = true;
+    if (showRouteComparison && originCity && destCity && originCity !== destCity) {
+      setIsLoadingComparison(true);
+      const fPriceNum = parseFloat(fuelPrice) || 340;
+      const mileageNum = parseFloat(mileage) || 7;
+      const activeRoutes = routes && routes.length > 0 ? routes : getStoredRoutes();
+
+      getRouteComparisonOptions({
+        origin: originCity,
+        dest: destCity,
+        fuelPrice: fPriceNum,
+        mileage: mileageNum,
+        vehicleClass: 'truck',
+        customRoutes: activeRoutes
+      })
+        .then((res) => {
+          if (isMounted) {
+            setComparisonResult(res);
+            setIsLoadingComparison(false);
+          }
+        })
+        .catch(() => {
+          if (isMounted) setIsLoadingComparison(false);
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [originCity, destCity, fuelPrice, mileage, showRouteComparison, routes]);
+
+  const handleSelectRouteOption = (route: RouteOptionComparison) => {
+    setSelectedComparisonRouteId(route.id);
+    setDistance(route.distanceKm.toString());
+    if (route.tollCost >= 0) {
+      setCombinedExpenses(route.tollCost.toString());
+    }
+  };
 
   // Back button listener: Return from Result mode to Input mode
   useEffect(() => {
@@ -600,6 +668,241 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* FEATURE B: Cheapest vs Fastest Route Comparison Toggle & Cards */}
+          <div className="bg-[#fdfbf7] p-3 sm:p-3.5 rounded-2xl border border-[#ecece0] shadow-2xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-[#8b9d77]/20 flex items-center justify-center text-[#4a5e38]">
+                  <ArrowLeftRight className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-bold text-[#4a4a35]">
+                    {isUrdu ? 'روٹ موازنہ (کم خرچ بمقابلہ تیز ترین)' : 'Route Comparison (Cheapest vs Fastest)'}
+                  </h3>
+                  <p className="text-[10px] text-[#8e8e75]">
+                    {isUrdu ? 'ٹول ٹیکس، فاصلہ و فیول لاگت کا موازنہ' : 'Compare toll, distance & fuel trade-off'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowRouteComparison(!showRouteComparison)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                  showRouteComparison
+                    ? 'bg-[#4a5e38] text-white'
+                    : 'bg-white hover:bg-slate-100 text-[#4a4a35] border border-[#d5d5c5]'
+                }`}
+              >
+                <span>{showRouteComparison ? (isUrdu ? 'موازنہ فعال' : 'Active') : (isUrdu ? 'موازنہ دیکھیں' : 'Compare Routes')}</span>
+                {showRouteComparison ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+
+            {/* Expanded Route Comparison Cards */}
+            {showRouteComparison && (
+              <div className="space-y-3 pt-2 border-t border-[#ecece0] animate-in fade-in duration-150">
+                {isLoadingComparison ? (
+                  <div className="py-6 text-center text-xs text-[#8e8e75] font-bold animate-pulse flex items-center justify-center gap-2">
+                    <Clock className="w-4 h-4 text-[#8b9d77]" />
+                    <span>{isUrdu ? 'روٹس اور لاگت کا موازنہ کیا جا رہا ہے...' : 'Analyzing route trade-offs & toll matrix...'}</span>
+                  </div>
+                ) : comparisonResult && comparisonResult.hasMultipleRoutes ? (
+                  /* Multiple Viable Routes: Side-by-Side Cards (Fastest vs Cheapest) */
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-[#5a5a40]">
+                      {isUrdu
+                        ? 'نیچے دیے گئے کارڈ پر کلک کریں تاکہ وہ فاصلہ اور ٹول کیلکولیٹر میں لاگو ہو سکے:'
+                        : 'Tap a route card to apply its distance and toll to the calculator:'}
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {/* Fastest Route Card */}
+                      {comparisonResult.fastestRoute && (
+                        <div
+                          onClick={() => handleSelectRouteOption(comparisonResult.fastestRoute!)}
+                          className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                            selectedComparisonRouteId === comparisonResult.fastestRoute.id
+                              ? 'bg-emerald-50/80 border-emerald-500 shadow-xs ring-2 ring-emerald-500/20'
+                              : 'bg-white border-[#d5d5c5] hover:border-[#8b9d77]'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1.5">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                                <Zap className="w-3 h-3 text-amber-600" />
+                                <span>{isUrdu ? 'تیز ترین روٹ' : 'Fastest Route'}</span>
+                              </span>
+                              <span className="font-mono text-xs font-bold text-slate-700">
+                                {isUrdu ? comparisonResult.fastestRoute.estimatedTimeFormattedUr : comparisonResult.fastestRoute.estimatedTimeFormattedEn}
+                              </span>
+                            </div>
+
+                            <h4 className="font-bold text-xs text-[#2b2b1f] line-clamp-1">
+                              {isUrdu ? comparisonResult.fastestRoute.nameUr : comparisonResult.fastestRoute.nameEn}
+                            </h4>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-1.5 py-1.5 px-2 bg-[#fdfbf7] rounded-xl border border-[#ecece0] text-[11px]">
+                            <div>
+                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'فاصلہ' : 'Distance'}</span>
+                              <span className="font-mono font-bold text-[#4a4a35]">{comparisonResult.fastestRoute.distanceKm} KM</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'ٹول ٹیکس' : 'Toll Cost'}</span>
+                              <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.fastestRoute.tollCost.toLocaleString()}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'ڈیزل لاگت' : 'Fuel Cost'}</span>
+                              <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.fastestRoute.fuelCost.toLocaleString()}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'کل لاگت' : 'Total Cost'}</span>
+                              <span className="font-mono font-bold text-emerald-700">Rs {comparisonResult.fastestRoute.totalTripCost.toLocaleString()}</span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            className={`w-full py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                              selectedComparisonRouteId === comparisonResult.fastestRoute.id
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35]'
+                            }`}
+                          >
+                            {selectedComparisonRouteId === comparisonResult.fastestRoute.id ? (
+                              <>
+                                <Check className="w-3.5 h-3.5" />
+                                <span>{isUrdu ? 'منتخب شدہ' : 'Selected'}</span>
+                              </>
+                            ) : (
+                              <span>{isUrdu ? 'یہ روٹ منتخب کریں' : 'Select This Route'}</span>
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Cheapest Route Card */}
+                      {comparisonResult.cheapestRoute && (
+                        <div
+                          onClick={() => handleSelectRouteOption(comparisonResult.cheapestRoute!)}
+                          className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                            selectedComparisonRouteId === comparisonResult.cheapestRoute.id
+                              ? 'bg-emerald-50/80 border-emerald-500 shadow-xs ring-2 ring-emerald-500/20'
+                              : 'bg-white border-[#d5d5c5] hover:border-[#8b9d77]'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1.5">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-1">
+                                <Wallet className="w-3 h-3 text-emerald-700" />
+                                <span>{isUrdu ? 'سب سے کم خرچ روٹ' : 'Cheapest Route'}</span>
+                              </span>
+                              <span className="font-mono text-xs font-bold text-slate-700">
+                                {isUrdu ? comparisonResult.cheapestRoute.estimatedTimeFormattedUr : comparisonResult.cheapestRoute.estimatedTimeFormattedEn}
+                              </span>
+                            </div>
+
+                            <h4 className="font-bold text-xs text-[#2b2b1f] line-clamp-1">
+                              {isUrdu ? comparisonResult.cheapestRoute.nameUr : comparisonResult.cheapestRoute.nameEn}
+                            </h4>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-1.5 py-1.5 px-2 bg-[#fdfbf7] rounded-xl border border-[#ecece0] text-[11px]">
+                            <div>
+                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'فاصلہ' : 'Distance'}</span>
+                              <span className="font-mono font-bold text-[#4a4a35]">{comparisonResult.cheapestRoute.distanceKm} KM</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'ٹول ٹیکس' : 'Toll Cost'}</span>
+                              <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.cheapestRoute.tollCost.toLocaleString()}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'ڈیزل لاگت' : 'Fuel Cost'}</span>
+                              <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.cheapestRoute.fuelCost.toLocaleString()}</span>
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'کل لاگت' : 'Total Cost'}</span>
+                              <span className="font-mono font-bold text-emerald-700">Rs {comparisonResult.cheapestRoute.totalTripCost.toLocaleString()}</span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            className={`w-full py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                              selectedComparisonRouteId === comparisonResult.cheapestRoute.id
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35]'
+                            }`}
+                          >
+                            {selectedComparisonRouteId === comparisonResult.cheapestRoute.id ? (
+                              <>
+                                <Check className="w-3.5 h-3.5" />
+                                <span>{isUrdu ? 'منتخب شدہ' : 'Selected'}</span>
+                              </>
+                            ) : (
+                              <span>{isUrdu ? 'یہ روٹ منتخب کریں' : 'Select This Route'}</span>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  /* Single Route Available: Show Single Route Card & Requirement 4 Notice */
+                  <div className="space-y-2.5">
+                    {comparisonResult && comparisonResult.routes[0] && (
+                      <div 
+                        onClick={() => handleSelectRouteOption(comparisonResult.routes[0])}
+                        className="p-3.5 rounded-2xl bg-white border border-[#ecece0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs cursor-pointer hover:border-[#8b9d77]"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8b9d77]/20 text-[#4a5e38]">
+                              {isUrdu ? 'دستیاب واحد روٹ' : 'Current Active Route'}
+                            </span>
+                            <span className="text-xs font-mono font-bold text-slate-700">
+                              {comparisonResult.routes[0].distanceKm} KM • {isUrdu ? comparisonResult.routes[0].estimatedTimeFormattedUr : comparisonResult.routes[0].estimatedTimeFormattedEn}
+                            </span>
+                          </div>
+                          <h4 className="font-bold text-xs text-[#2b2b1f]">
+                            {isUrdu ? comparisonResult.routes[0].nameUr : comparisonResult.routes[0].nameEn}
+                          </h4>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="text-right text-[11px] font-mono font-bold text-emerald-800">
+                            Rs {comparisonResult.routes[0].totalTripCost.toLocaleString()}
+                          </div>
+                          <button
+                            type="button"
+                            className="px-3 py-1.5 rounded-xl bg-[#4a5e38] text-white text-xs font-bold transition-all cursor-pointer"
+                          >
+                            {isUrdu ? 'لاگو کریں' : 'Apply'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Requirement 4 Notice: Inform user route comparison isn't possible yet without additional route data */}
+                    <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs flex items-start gap-2 leading-relaxed">
+                      <Info className="w-4 h-4 shrink-0 text-amber-700 mt-0.5" />
+                      <div>
+                        <p className="font-semibold">
+                          {isUrdu ? 'متبادل روٹ موازنہ نوٹس:' : 'Route Comparison Notice:'}
+                        </p>
+                        <p className="text-[11px] text-amber-800 mt-0.5">
+                          {isUrdu
+                            ? (comparisonResult?.informationalNoticeUr || 'اس شہر کے جوڑے کے لیے فی الوقت صرف ایک روٹ ڈیٹا دستیاب ہے۔ متبادل روٹ ڈیٹا کے بغیر موازنہ ممکن نہیں۔')
+                            : (comparisonResult?.informationalNoticeEn || 'Only one route currently exists in the dataset for this city pair. Alternate route comparison requires additional route data.')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Field 3: Route Distance / روٹ فاصلہ (کلومیٹر) */}
