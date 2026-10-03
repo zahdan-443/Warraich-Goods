@@ -118,6 +118,24 @@
         "details": { "type": "string" },
         "category": { "type": "string" }
       }
+    },
+    "HazardReport": {
+      "title": "HazardReport",
+      "description": "Crowd-sourced road hazard alert report",
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["checkpoint", "flooding", "accident", "closure", "traffic"]
+        },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "cityNear": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "expiresAt": { "type": "string" },
+        "reporterUid": { "type": "string" }
+      },
+      "required": ["category", "lat", "lng", "createdAt", "expiresAt", "reporterUid"]
     }
   },
   "firestore": {
@@ -156,6 +174,10 @@
     "/activityLog/{logId}": {
       "schema": "ActivityLog",
       "description": "System activity logs"
+    },
+    "/hazardReports/{reportId}": {
+      "schema": "HazardReport",
+      "description": "Crowd-sourced active highway hazard reports"
     }
   }
 }

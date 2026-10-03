@@ -690,9 +690,9 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowRouteComparison(!showRouteComparison)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                className={`px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs active:scale-95 ${
                   showRouteComparison
-                    ? 'bg-[#4a5e38] text-white'
+                    ? 'bg-[#4a5e38] text-white shadow-xs'
                     : 'bg-white hover:bg-slate-100 text-[#4a4a35] border border-[#d5d5c5]'
                 }`}
               >
@@ -765,9 +765,9 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 
                           <button
                             type="button"
-                            className={`w-full py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                            className={`w-full py-2 min-h-[38px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-98 cursor-pointer ${
                               selectedComparisonRouteId === comparisonResult.fastestRoute.id
-                                ? 'bg-emerald-600 text-white'
+                                ? 'bg-emerald-600 text-white shadow-xs'
                                 : 'bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35]'
                             }`}
                           >
@@ -830,9 +830,9 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 
                           <button
                             type="button"
-                            className={`w-full py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                            className={`w-full py-2 min-h-[38px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-98 cursor-pointer ${
                               selectedComparisonRouteId === comparisonResult.cheapestRoute.id
-                                ? 'bg-emerald-600 text-white'
+                                ? 'bg-emerald-600 text-white shadow-xs'
                                 : 'bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35]'
                             }`}
                           >

@@ -46,6 +46,17 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { PAKISTAN_CITIES_MASTER } from '../../utils/pakistanCitiesData';
 import { RouteWeatherAdvisoryBanner } from './RouteWeatherAdvisoryBanner';
+import { RouteHazardAdvisoryBanner } from './RouteHazardAdvisoryBanner';
+import { HazardReportingModal } from './HazardReportingModal';
+import { 
+  HazardReport, 
+  fetchActiveHazardReports, 
+  deleteHazardReport, 
+  getRouteHazardSummaries, 
+  HAZARD_CATEGORIES, 
+  formatTimeAgo 
+} from '../../utils/hazardReports';
+import { auth } from '../../utils/firebase';
 
 interface MapViewProps {
   lang: Language;
@@ -181,6 +192,27 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
   const [shareSuccess, setShareSuccess] = useState<boolean>(false);
   const [autoRefreshInterval] = useState<boolean>(true);
 
+  // --- ROAD HAZARD ALERTS STATE (Requirement 2 & 5) ---
+  const [hazardReports, setHazardReports] = useState<HazardReport[]>([]);
+  const [loadingHazards, setLoadingHazards] = useState<boolean>(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
+
+  const loadHazards = async () => {
+    setLoadingHazards(true);
+    try {
+      const reports = await fetchActiveHazardReports();
+      setHazardReports(reports);
+    } catch (err) {
+      console.warn('Failed to load active hazard reports:', err);
+    } finally {
+      setLoadingHazards(false);
+    }
+  };
+
+  useEffect(() => {
+    loadHazards();
+  }, []);
+
   // --- LIVE NAVIGATION STATE ---
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
   const [isNavPaused, setIsNavPaused] = useState<boolean>(false);
@@ -292,6 +324,15 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
     // Default 2 points
     return [originCity, destCity];
   }, [originCity, destCity]);
+
+  // Active road hazard alerts along the route corridor (Requirement 5)
+  const routeHazardSummaries = useMemo(() => {
+    if (!routeCities || routeCities.length === 0 || hazardReports.length === 0) {
+      return [];
+    }
+    const routePoints = routeCities.map(c => ({ lat: c.lat, lng: c.lng }));
+    return getRouteHazardSummaries(hazardReports, routePoints, 35);
+  }, [hazardReports, routeCities]);
 
   // Approximate distance and duration calculation
   const routeMetrics = useMemo(() => {
@@ -839,11 +880,88 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
       bounds.extend([userLocation.lat, userLocation.lng]);
     }
 
+    // 3. Add Crowd-Sourced Hazard Markers (Requirement 5)
+    hazardReports.forEach((hazard) => {
+      const meta = HAZARD_CATEGORIES[hazard.category] || HAZARD_CATEGORIES.traffic;
+      const timeAgo = formatTimeAgo(hazard.createdAt, lang);
+      const catLabel = isUrdu ? meta.labelUr : meta.labelEn;
+      const isMyReport = auth.currentUser?.uid === hazard.reporterUid;
+
+      const hazardIcon = L.divIcon({
+        className: 'custom-leaflet-hazard-pin',
+        html: `
+          <div style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            background: ${meta.markerColor};
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+          ">
+            <span style="font-size: 15px;">⚠️</span>
+          </div>
+        `,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+      });
+
+      const popupHtml = `
+        <div style="min-width: 170px; font-family: sans-serif; direction: ${isUrdu ? 'rtl' : 'ltr'}; text-align: ${isUrdu ? 'right' : 'left'};">
+          <div style="font-weight: bold; font-size: 13px; color: ${meta.markerColor}; margin-bottom: 3px;">
+            ⚠️ ${catLabel}
+          </div>
+          <div style="font-size: 11px; color: #4b5563; margin-bottom: 4px;">
+            ${hazard.cityNear ? (isUrdu ? `قریب: <strong>${hazard.cityNear}</strong>` : `Near: <strong>${hazard.cityNear}</strong>`) : (isUrdu ? 'ہائی وے' : 'Highway')}
+          </div>
+          <div style="font-size: 10px; color: #6b7280; margin-bottom: 6px;">
+            🕒 ${timeAgo}
+          </div>
+          ${isMyReport ? `
+            <button id="del-hazard-${hazard.id}" style="
+              width: 100%;
+              padding: 4px 8px;
+              background: #fee2e2;
+              color: #dc2626;
+              border: 1px solid #fca5a5;
+              border-radius: 6px;
+              font-size: 10px;
+              font-weight: bold;
+              cursor: pointer;
+            ">
+              ${isUrdu ? 'میری رپورٹ حذف کریں' : 'Delete my report'}
+            </button>
+          ` : ''}
+        </div>
+      `;
+
+      const marker = L.marker([hazard.lat, hazard.lng], { icon: hazardIcon, zIndexOffset: 800 })
+        .addTo(markersGroup)
+        .bindPopup(popupHtml);
+
+      marker.on('popupopen', () => {
+        if (isMyReport) {
+          const btn = document.getElementById(`del-hazard-${hazard.id}`);
+          if (btn) {
+            btn.onclick = async () => {
+              await deleteHazardReport(hazard.id, hazard.reporterUid);
+              loadHazards();
+              map.closePopup();
+            };
+          }
+        }
+      });
+    });
+
     // Auto-fit bounds
     if (bounds.isValid() && routeCities.length >= 2 && !isNavigating) {
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 10, animate: true });
     }
-  }, [routeCities, weatherMap, lang, userLocation, isNavigating, navCurrentPos]);
+  }, [routeCities, weatherMap, lang, userLocation, isNavigating, navCurrentPos, hazardReports]);
 
   // Swap Origin and Destination
   const handleSwapCities = () => {
@@ -959,7 +1077,18 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
     message += `📱 *ڈرائیور دوست لائیو ایپ:* https://zahdan-443.github.io/Warraich-Goods/`;
 
     const encoded = encodeURIComponent(message);
-    window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+    const waUrl = `https://api.whatsapp.com/send?text=${encoded}`;
+    try {
+      const a = document.createElement('a');
+      a.href = waUrl;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
+      window.location.href = waUrl;
+    }
     setShareSuccess(true);
     setTimeout(() => setShareSuccess(false), 3000);
   };
@@ -990,17 +1119,29 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
           </div>
         </div>
 
-        {onNavigate && (
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => onNavigate('home')}
-            className="p-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-            title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
+            onClick={() => setIsReportModalOpen(true)}
+            className="px-3 py-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs active:scale-95"
+            title={isUrdu ? 'سڑک پر خطرہ رپورٹ کریں' : 'Report Road Hazard'}
           >
-            <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
-            <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span>{isUrdu ? 'خطرہ رپورٹ کریں' : 'Report Hazard'}</span>
           </button>
-        )}
+
+          {onNavigate && (
+            <button
+              type="button"
+              onClick={() => onNavigate('home')}
+              className="p-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+              title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
+            >
+              <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
+              <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {locationError && (
@@ -1433,6 +1574,15 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
             onRefreshWeather={fetchAllCitiesWeather}
           />
 
+          {/* Crowd-Sourced Road Hazard Advisory Summary Banner (Requirement 5) */}
+          <RouteHazardAdvisoryBanner
+            lang={lang}
+            summaries={routeHazardSummaries}
+            onOpenReportModal={() => setIsReportModalOpen(true)}
+            onRefresh={loadHazards}
+            isRefreshing={loadingHazards}
+          />
+
           <div className="flex items-center justify-between">
             <h2 className="font-serif font-bold text-sm sm:text-base text-[#4a4a35] flex items-center gap-2">
               <Navigation className="w-4 h-4 text-[#8b9d77]" />
@@ -1683,6 +1833,15 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
             )}
           </div>
         )}
+
+        {/* Hazard Reporting Modal (Requirement 4) */}
+        <HazardReportingModal
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          lang={lang}
+          currentGpsLocation={userLocation}
+          onReportSubmitted={loadHazards}
+        />
 
       </div>
 

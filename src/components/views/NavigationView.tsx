@@ -28,6 +28,7 @@ import {
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { PAKISTAN_CITIES } from './MapView';
+import { HazardReportingModal } from './HazardReportingModal';
 
 interface NavigationViewProps {
   lang: Language;
@@ -81,6 +82,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
   const [selectedMapStyle, setSelectedMapStyle] = useState<'streets' | 'satellite' | 'dark'>('streets');
   const [copiedShare, setCopiedShare] = useState<boolean>(false);
   const [activeTabMode, setActiveTabMode] = useState<'realGps' | 'roadSteps' | 'services'>('realGps');
+  const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
   const [realRouteDistanceKm, setRealRouteDistanceKm] = useState<number>(() => {
     return Math.round(calculateHaversineDistance(originCity.lat, originCity.lng, destCity.lat, destCity.lng) * 1.25);
   });
@@ -392,15 +394,28 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
           </div>
         </div>
 
-        {/* Back to Dashboard shortcut */}
-        <button
-          type="button"
-          onClick={() => onNavigate('home')}
-          className="p-2 sm:px-3 sm:py-2 rounded-2xl bg-slate-800 hover:bg-[#8b9d77] border border-slate-600 text-white font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1 font-serif"
-          title={isUrdu ? 'ڈیش بورڈ پر جائیں' : 'Go to Dashboard'}
-        >
-          <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          {/* Report Hazard Shortcut (Requirement 4) */}
+          <button
+            type="button"
+            onClick={() => setIsReportModalOpen(true)}
+            className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 border border-red-500/50 text-white font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5"
+            title={isUrdu ? 'سڑک پر خطرہ رپورٹ کریں' : 'Report Road Hazard'}
+          >
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span className="hidden xs:inline">{isUrdu ? 'خطرہ رپورٹ' : 'Report'}</span>
+          </button>
+
+          {/* Back to Dashboard shortcut */}
+          <button
+            type="button"
+            onClick={() => onNavigate('home')}
+            className="p-2 sm:px-3 sm:py-2 rounded-2xl bg-slate-800 hover:bg-[#8b9d77] border border-slate-600 text-white font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1 font-serif"
+            title={isUrdu ? 'ڈیش بورڈ پر جائیں' : 'Go to Dashboard'}
+          >
+            <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
+          </button>
+        </div>
       </div>
 
       {/* 2. REAL GPS HUD DASHBOARD (High Visibility for Drivers) */}
@@ -670,6 +685,14 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
 
         </div>
       </div>
+
+      {/* Hazard Reporting Modal (Requirement 4) */}
+      <HazardReportingModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        lang={lang}
+        currentGpsLocation={userLocation}
+      />
 
     </div>
   );

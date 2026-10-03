@@ -84,5 +84,13 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update, delete: if isOwner();
     }
+
+    // Crowd-sourced road hazard reports (read for signed in users; create/delete restricted to reporter; no updates)
+    match /hazardReports/{reportId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.reporterUid == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.reporterUid == request.auth.uid;
+      allow update: if false;
+    }
   }
 }
