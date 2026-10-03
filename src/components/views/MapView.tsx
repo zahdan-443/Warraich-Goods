@@ -45,6 +45,7 @@ import {
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { PAKISTAN_CITIES_MASTER } from '../../utils/pakistanCitiesData';
+import { RouteWeatherAdvisoryBanner } from './RouteWeatherAdvisoryBanner';
 
 interface MapViewProps {
   lang: Language;
@@ -95,6 +96,7 @@ export interface LiveWeatherData {
   windSpeed: number;
   visibilityKm: number;
   precipitationMm: number;
+  precipitationProbability?: number;
   weatherCode: number;
   conditionEn: string;
   conditionUr: string;
@@ -155,6 +157,23 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
       return true;
     }
   });
+
+  const [weatherCachedTimestamp, setWeatherCachedTimestamp] = useState<number | null>(() => {
+    try {
+      const cachedStr = localStorage.getItem(CACHE_KEY_WEATHER);
+      if (cachedStr) {
+        const parsed = JSON.parse(cachedStr);
+        if (parsed && parsed.timestamp) {
+          return parsed.timestamp;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  });
+
+  const [weatherFetchError, setWeatherFetchError] = useState<boolean>(false);
 
   const [selectedCityForDetail, setSelectedCityForDetail] = useState<TransitCity | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -390,15 +409,17 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
   // Fetch live weather from Open-Meteo
   const fetchAllCitiesWeather = async () => {
     setLoadingWeather(true);
+    let anyFetchFailed = false;
+    let anyFetchSuccess = false;
     try {
-      const results: Record<string, LiveWeatherData> = {};
+      const results: Record<string, LiveWeatherData> = { ...weatherMap };
       const coords = PAKISTAN_CITIES.map(c => ({ id: c.id, lat: c.lat, lng: c.lng }));
 
       const requests = coords.map(async (city) => {
         try {
-          const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&timezone=Asia%2FKarachi`;
+          const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&hourly=precipitation_probability&forecast_days=1&timezone=Asia%2FKarachi`;
           const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-          const timeoutId = controller ? setTimeout(() => controller.abort(), 5000) : null;
+          const timeoutId = controller ? setTimeout(() => controller.abort(), 6000) : null;
           let resp;
           try {
             resp = await fetch(url, { signal: controller ? controller.signal : undefined });
@@ -417,6 +438,11 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
           const precipitationMm = current.precipitation || 0;
           const weatherCode = current.weather_code || 0;
 
+          const currentHour = new Date().getHours();
+          const precipitationProbability = (data.hourly && Array.isArray(data.hourly.precipitation_probability))
+            ? (data.hourly.precipitation_probability[currentHour] ?? data.hourly.precipitation_probability[0] ?? (precipitationMm > 0 ? 80 : 0))
+            : (precipitationMm > 0 ? 80 : (weatherCode >= 51 && weatherCode <= 67 ? 60 : 0));
+
           const parsed = parseWeatherCode(weatherCode, current.visibility || 10000, windSpeed, temp);
 
           results[city.id] = {
@@ -426,39 +452,55 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
             windSpeed,
             visibilityKm,
             precipitationMm,
+            precipitationProbability,
             weatherCode,
             ...parsed,
             updatedAt: new Date().toLocaleTimeString(lang === 'ur' ? 'ur-PK' : 'en-US', { hour: '2-digit', minute: '2-digit' })
           };
+          anyFetchSuccess = true;
         } catch {
-          const baseTemp = city.id === 'karachi' || city.id === 'gwadar' ? 29 : city.id === 'gilgit' || city.id === 'abbottabad' ? 16 : 24;
-          const parsed = parseWeatherCode(0, 8000, 14, baseTemp);
-          results[city.id] = {
-            temp: baseTemp,
-            apparentTemp: baseTemp + 1,
-            humidity: 45,
-            windSpeed: 12,
-            visibilityKm: 8.5,
-            precipitationMm: 0,
-            weatherCode: 0,
-            ...parsed,
-            updatedAt: new Date().toLocaleTimeString(lang === 'ur' ? 'ur-PK' : 'en-US', { hour: '2-digit', minute: '2-digit' })
-          };
+          anyFetchFailed = true;
+          // Stale data preservation: keep previous cached weather if available!
+          if (!results[city.id]) {
+            const baseTemp = city.id === 'karachi' || city.id === 'gwadar' ? 29 : city.id === 'gilgit' || city.id === 'abbottabad' ? 16 : 24;
+            const parsed = parseWeatherCode(0, 8000, 14, baseTemp);
+            results[city.id] = {
+              temp: baseTemp,
+              apparentTemp: baseTemp + 1,
+              humidity: 45,
+              windSpeed: 12,
+              visibilityKm: 8.5,
+              precipitationMm: 0,
+              precipitationProbability: 0,
+              weatherCode: 0,
+              ...parsed,
+              updatedAt: new Date().toLocaleTimeString(lang === 'ur' ? 'ur-PK' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+            };
+          }
         }
       });
 
       await Promise.all(requests);
       setWeatherMap(results);
-      try {
-        localStorage.setItem(CACHE_KEY_WEATHER, JSON.stringify({
-          data: results,
-          timestamp: Date.now()
-        }));
-      } catch {
-        // ignore
+
+      if (anyFetchSuccess && !anyFetchFailed) {
+        const now = Date.now();
+        setWeatherCachedTimestamp(now);
+        setWeatherFetchError(false);
+        try {
+          localStorage.setItem(CACHE_KEY_WEATHER, JSON.stringify({
+            data: results,
+            timestamp: now
+          }));
+        } catch {
+          // ignore
+        }
+      } else if (anyFetchFailed) {
+        setWeatherFetchError(true);
       }
     } catch (e) {
       console.error('Weather fetch error:', e);
+      setWeatherFetchError(true);
     } finally {
       setLoadingWeather(false);
     }
@@ -1378,6 +1420,19 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
         {/* Route Stations Weather Flow Horizontal Cards */}
         <div className="bg-white p-5 sm:p-6 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] space-y-4">
           
+          {/* Route Weather Advisory Summary Banner (Above per-city weather cards) */}
+          <RouteWeatherAdvisoryBanner
+            lang={lang}
+            routeCities={routeCities}
+            weatherMap={weatherMap}
+            loadingWeather={loadingWeather}
+            weatherFetchError={weatherFetchError}
+            weatherCachedTimestamp={weatherCachedTimestamp}
+            originCity={originCity}
+            destCity={destCity}
+            onRefreshWeather={fetchAllCitiesWeather}
+          />
+
           <div className="flex items-center justify-between">
             <h2 className="font-serif font-bold text-sm sm:text-base text-[#4a4a35] flex items-center gap-2">
               <Navigation className="w-4 h-4 text-[#8b9d77]" />

@@ -93,6 +93,13 @@ export interface FuelLogItem {
 export type BiltyBranch = 'samundri' | 'kamalia';
 export type BiltyLanguage = 'ur' | 'en';
 
+export interface PodConfirmation {
+  receiverName: string;
+  confirmedAt: string;
+  photoUrl?: string;
+  status?: 'delivered';
+}
+
 export interface BiltyRecord {
   id: number;
   biltyNo: string;
@@ -119,6 +126,8 @@ export interface BiltyRecord {
   pendingOnlineNumber?: boolean;
   branch?: BiltyBranch;
   language?: BiltyLanguage;
+  podConfirmation?: PodConfirmation;
+  isDelivered?: boolean;
 }
 
 export type UserRole = 'owner' | 'driver' | 'accountant';
@@ -179,7 +188,7 @@ export interface ContactItem {
 
 export interface OfflineAction {
   id: number | string;
-  type: 'trip' | 'vehicle' | 'driver' | 'fuel' | 'bilty' | 'settings' | 'routes' | 'public_bilty';
+  type: 'trip' | 'vehicle' | 'driver' | 'fuel' | 'bilty' | 'settings' | 'routes' | 'public_bilty' | 'pod_confirmation';
   data: any;
   timestamp: string;
   retryCount?: number;

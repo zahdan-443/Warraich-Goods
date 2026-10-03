@@ -15,7 +15,10 @@ import {
   ExternalLink,
   Receipt,
   Download,
-  Share2
+  Share2,
+  PackageCheck,
+  Clock,
+  Image as ImageIcon
 } from 'lucide-react';
 import { sanitizeContactOrCnic } from '../../utils/biltyHelpers';
 
@@ -39,6 +42,9 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
   const receiverMobile = sanitizeContactOrCnic(bilty.receiverMobile);
   const senderCnic = sanitizeContactOrCnic(bilty.senderCnic);
   const driverMobile = sanitizeContactOrCnic(bilty.mobileNo);
+
+  const isDelivered = bilty.isDelivered || !!bilty.podConfirmation;
+  const receiverConfirmedName = bilty.podConfirmation?.receiverName || bilty.receivedBy || bilty.receiverName;
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 animate-in fade-in slide-in-from-top-3">
@@ -75,6 +81,60 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
           </button>
         )}
       </div>
+
+      {/* Proof of Delivery (POD) Confirmation Banner */}
+      {isDelivered && (
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-blue-50/95 to-indigo-50/90 border-2 border-blue-500 shadow-sm text-blue-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <PackageCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-700 text-white font-mono">
+                  {isUrdu ? '📦 مال وصول ہو گیا (DELIVERED)' : '📦 DELIVERED (POD CONFIRMED)'}
+                </span>
+                <span className="text-[11px] font-bold text-blue-800">
+                  {isUrdu ? 'ڈیجیٹل رسید وصولی' : 'Digital Proof of Delivery'}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-blue-900 font-medium mt-1">
+                {isUrdu ? 'وصول کنندہ (Received By): ' : 'Received By: '}
+                <strong className="text-blue-950 font-bold underline underline-offset-2">{receiverConfirmedName}</strong>
+                {bilty.podConfirmation?.confirmedAt && (
+                  <span className="text-xs text-blue-700 font-sans block sm:inline sm:ml-2">
+                    • {new Date(bilty.podConfirmation.confirmedAt).toLocaleDateString(isUrdu ? 'ur-PK' : 'en-US', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {bilty.podConfirmation?.photoUrl && (
+            <div className="flex items-center gap-2 mt-1 sm:mt-0">
+              <a
+                href={bilty.podConfirmation.photoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-300 hover:bg-blue-100 text-xs font-bold text-blue-800 transition-colors cursor-pointer shadow-2xs"
+              >
+                <img
+                  src={bilty.podConfirmation.photoUrl}
+                  alt="Received goods photo"
+                  className="w-5 h-5 rounded-md object-cover border border-blue-200"
+                />
+                <span>{isUrdu ? 'رسید مال تصویر' : 'View Goods Photo'}</span>
+              </a>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Main Details Card */}
       <div className="p-5 sm:p-6 rounded-3xl bg-white border border-[#ecece0] shadow-xs space-y-5">

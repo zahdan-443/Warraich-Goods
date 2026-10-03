@@ -13,7 +13,8 @@ import {
   CompanyProfile,
   ActivityLogItem,
   ExportPrivacyOptions,
-  SyncStatusState
+  SyncStatusState,
+  PodConfirmation
 } from '../types';
 import { auth, db } from './firebase';
 import { doc, getDoc, setDoc, collection, getDocs, addDoc, runTransaction, onSnapshot, Unsubscribe } from 'firebase/firestore';
@@ -256,11 +257,22 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
           const docRef = doc(db, 'settings', 'companyProfile');
           await withTimeout(setDoc(docRef, action.data, { merge: true }), 3000);
           processedCount++;
+        } else if (action.type === 'pod_confirmation' && action.data?.biltyNo) {
+          const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
+          const pubRef = doc(db, 'bilties', normalizedNo);
+          await withTimeout(setDoc(pubRef, action.data, { merge: true }), 3000);
+          processedCount++;
         } else {
           processedCount++;
         }
       } else if (action.type === 'public_bilty' && action.data?.biltyNo) {
         // Public bilty writes can proceed even if user profile is pending, provided client has network
+        const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
+        const pubRef = doc(db, 'bilties', normalizedNo);
+        await withTimeout(setDoc(pubRef, action.data, { merge: true }), 3000);
+        processedCount++;
+      } else if (action.type === 'pod_confirmation' && action.data?.biltyNo) {
+        // POD confirmation can be submitted by consignee without user login
         const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
         const pubRef = doc(db, 'bilties', normalizedNo);
         await withTimeout(setDoc(pubRef, action.data, { merge: true }), 3000);
@@ -408,6 +420,8 @@ export interface PublicBiltyVerification {
   consignor?: string;
   consignee?: string;
   receivedBy?: string;
+  podConfirmation?: PodConfirmation;
+  isDelivered?: boolean;
   verifiedPublicly: true;
   createdAt: string;
 }
@@ -433,10 +447,113 @@ export function extractPublicBiltyVerification(bilty: Partial<BiltyRecord>): Pub
     payable: typeof bilty.payable === 'number' ? bilty.payable : 0,
     consignor: bilty.consignor || bilty.senderName || '',
     consignee: bilty.consignee || bilty.receiverName || '',
-    receivedBy: bilty.receivedBy || '',
+    receivedBy: bilty.receivedBy || bilty.podConfirmation?.receiverName || '',
+    podConfirmation: bilty.podConfirmation,
+    isDelivered: bilty.isDelivered || !!bilty.podConfirmation,
     verifiedPublicly: true,
     createdAt: new Date().toISOString()
   };
+}
+
+/**
+ * Confirms Digital Proof of Delivery (POD) for a Bilty.
+ * Writes podConfirmation to Firestore (both public verification and private copy)
+ * and updates local device cache. If offline, safely enqueues the action.
+ */
+export async function confirmBiltyDelivery(
+  bilty: BiltyRecord,
+  receiverName: string,
+  photoUrl?: string
+): Promise<{ success: boolean; offlineQueued: boolean; podConfirmation: PodConfirmation }> {
+  const trimmedName = receiverName.trim() || bilty.receiverName || 'Consignee';
+  const confirmedAt = new Date().toISOString();
+  const podConfirmation: PodConfirmation = {
+    receiverName: trimmedName,
+    confirmedAt,
+    photoUrl: photoUrl || undefined,
+    status: 'delivered'
+  };
+
+  // 1. Update local storage if present on this device
+  try {
+    const stored = getStoredBilties();
+    const cleanBiltyNo = String(bilty.biltyNo || '').trim().toUpperCase();
+    const updated = stored.map(b => {
+      if (String(b.biltyNo).trim().toUpperCase() === cleanBiltyNo || String(b.id) === String(bilty.id)) {
+        return {
+          ...b,
+          podConfirmation,
+          isDelivered: true,
+          receivedBy: trimmedName
+        };
+      }
+      return b;
+    });
+    if (stored.some(b => String(b.biltyNo).trim().toUpperCase() === cleanBiltyNo || String(b.id) === String(bilty.id))) {
+      setScopedItem('bilties', JSON.stringify(updated));
+      syncToFirestore('bilties', updated).catch(() => {});
+    }
+  } catch (err) {
+    console.warn('Local bilty POD update notice:', err);
+  }
+
+  // 2. Prepare payload for public & cloud sync
+  const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+  const payload = {
+    biltyNo: bilty.biltyNo,
+    podConfirmation,
+    isDelivered: true,
+    receivedBy: trimmedName,
+    verifiedPublicly: true,
+    updatedAt: confirmedAt
+  };
+
+  if (!isOnline || !db) {
+    enqueueOfflineAction('pod_confirmation', payload);
+    return { success: true, offlineQueued: true, podConfirmation };
+  }
+
+  try {
+    const normalizedNo = String(bilty.biltyNo).trim().toUpperCase();
+    const pubRef = doc(db, 'bilties', normalizedNo);
+    await withTimeout(setDoc(pubRef, payload, { merge: true }), 4000);
+
+    const cleanAlpha = normalizedNo.replace(/[^A-Z0-9]/g, '');
+    if (cleanAlpha && cleanAlpha !== normalizedNo) {
+      const pubRef2 = doc(db, 'bilties', cleanAlpha);
+      await withTimeout(setDoc(pubRef2, payload, { merge: true }), 4000).catch(() => {});
+    }
+
+    // If current signed-in user has this in their private collection, update that too
+    const user = auth.currentUser;
+    if (user) {
+      const userDocRef = doc(db, 'users', user.uid, 'collections', 'bilties');
+      const snap = await withTimeout(getDoc(userDocRef), 3000).catch(() => null);
+      if (snap && snap.exists()) {
+        const d = snap.data();
+        if (Array.isArray(d?.items)) {
+          const items = d.items.map((item: BiltyRecord) => {
+            if (String(item.biltyNo).trim().toUpperCase() === normalizedNo || String(item.id) === String(bilty.id)) {
+              return {
+                ...item,
+                podConfirmation,
+                isDelivered: true,
+                receivedBy: trimmedName
+              };
+            }
+            return item;
+          });
+          await setDoc(userDocRef, { items, updatedAt: confirmedAt }, { merge: true }).catch(() => {});
+        }
+      }
+    }
+
+    return { success: true, offlineQueued: false, podConfirmation };
+  } catch (err) {
+    console.warn('POD direct write timed out or failed, enqueuing offline action:', err);
+    enqueueOfflineAction('pod_confirmation', payload);
+    return { success: true, offlineQueued: true, podConfirmation };
+  }
 }
 
 /**
