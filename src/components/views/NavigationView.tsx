@@ -29,6 +29,13 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { PAKISTAN_CITIES } from './MapView';
 import { HazardReportingModal } from './HazardReportingModal';
+import { 
+  fetchActiveHazardReports, 
+  HazardReport, 
+  HAZARD_CATEGORIES, 
+  formatTimeAgo,
+  calculateDistanceKm 
+} from '../../utils/hazardReports';
 
 interface NavigationViewProps {
   lang: Language;
@@ -66,9 +73,11 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
   const userGpsMarkerRef = useRef<L.Marker | null>(null);
   const routePolylineRef = useRef<L.Polyline | null>(null);
   const gpsWatchIdRef = useRef<number | null>(null);
+  const hazardMarkersGroupRef = useRef<L.LayerGroup | null>(null);
 
   const [originId, setOriginId] = useState<string>(originCityId);
   const [destId, setDestId] = useState<string>(destCityId);
+  const [hazardReports, setHazardReports] = useState<HazardReport[]>([]);
 
   const originCity = PAKISTAN_CITIES.find(c => c.id === originId) || PAKISTAN_CITIES.find(c => c.id === 'samundri') || PAKISTAN_CITIES[0];
   const destCity = PAKISTAN_CITIES.find(c => c.id === destId) || PAKISTAN_CITIES.find(c => c.id === 'karachi') || PAKISTAN_CITIES[1];
@@ -316,6 +325,81 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
       leafletMapRef.current = null;
     };
   }, [selectedMapStyle]);
+
+  // Load and periodically refresh active crowd-sourced road hazards
+  const loadHazards = async () => {
+    try {
+      const reports = await fetchActiveHazardReports();
+      setHazardReports(reports);
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    loadHazards();
+    const interval = setInterval(loadHazards, 60000); // 1 minute auto refresh
+    return () => clearInterval(interval);
+  }, []);
+
+  // Render Hazard Markers on Leaflet Navigation Map
+  useEffect(() => {
+    if (!leafletMapRef.current) return;
+
+    if (!hazardMarkersGroupRef.current) {
+      hazardMarkersGroupRef.current = L.layerGroup().addTo(leafletMapRef.current);
+    }
+    hazardMarkersGroupRef.current.clearLayers();
+
+    hazardReports.forEach((hazard) => {
+      const meta = HAZARD_CATEGORIES[hazard.category] || HAZARD_CATEGORIES.traffic;
+      const timeAgo = formatTimeAgo(hazard.createdAt, lang);
+      const catLabel = isUrdu ? meta.labelUr : meta.labelEn;
+
+      const hazardIcon = L.divIcon({
+        className: 'custom-leaflet-hazard-pin-nav',
+        html: `
+          <div style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: ${meta.markerColor};
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+          ">
+            <span style="font-size: 13px;">⚠️</span>
+          </div>
+        `,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+
+      const popupHtml = `
+        <div style="min-width: 160px; font-family: sans-serif; direction: ${isUrdu ? 'rtl' : 'ltr'}; text-align: ${isUrdu ? 'right' : 'left'};">
+          <div style="font-weight: bold; font-size: 12px; color: ${meta.markerColor}; margin-bottom: 2px;">
+            ⚠️ ${catLabel}
+          </div>
+          <div style="font-size: 11px; color: #4b5563; margin-bottom: 3px;">
+            ${hazard.cityNear ? (isUrdu ? `قریب: <strong>${hazard.cityNear}</strong>` : `Near: <strong>${hazard.cityNear}</strong>`) : (isUrdu ? 'ہائی وے' : 'Highway')}
+          </div>
+          <div style="font-size: 10px; color: #6b7280;">
+            🕒 ${timeAgo}
+          </div>
+        </div>
+      `;
+
+      if (hazardMarkersGroupRef.current) {
+        L.marker([hazard.lat, hazard.lng], { icon: hazardIcon, zIndexOffset: 1200 })
+          .addTo(hazardMarkersGroupRef.current)
+          .bindPopup(popupHtml);
+      }
+    });
+  }, [hazardReports, lang, isUrdu]);
 
   // Center map on user's real GPS position
   const handleRecenterGps = () => {
@@ -692,6 +776,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
         onClose={() => setIsReportModalOpen(false)}
         lang={lang}
         currentGpsLocation={userLocation}
+        onReportSubmitted={loadHazards}
       />
 
     </div>
