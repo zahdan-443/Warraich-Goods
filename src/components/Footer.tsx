@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActiveTab, Language } from '../types';
-import { Truck, Calculator, Fuel, MapPin, Users, ShieldCheck, Receipt, ExternalLink, Heart } from 'lucide-react';
+import { Truck, Calculator, Fuel, MapPin, Users, ShieldCheck, Receipt, ExternalLink, Heart, Camera } from 'lucide-react';
 import { CompanyLogo } from './CompanyLogo';
 
 interface FooterProps {
@@ -93,6 +93,17 @@ export const Footer: React.FC<FooterProps> = ({
               >
                 <Fuel className="w-3.5 h-3.5 text-[#8b9d77]" />
                 <span>{isUrdu ? 'لائیو ڈیزل ریٹس اور فیول لاگ' : 'Live Diesel Rates & Fuel Consumption'}</span>
+              </a>
+            </li>
+            <li>
+              <a
+                href="#dashcam"
+                onClick={(e) => handleLinkClick(e, 'dashcam')}
+                title={isUrdu ? 'ڈیش کیم روڈ ویڈیو ریکارڈر' : 'Dashcam Video Recorder'}
+                className="hover:text-[#8b9d77] flex items-center gap-2 transition-colors py-0.5"
+              >
+                <Camera className="w-3.5 h-3.5 text-[#8b9d77]" />
+                <span>{isUrdu ? 'ڈیش کیم ویڈیو ریکارڈر' : 'Dashcam Video Recorder'}</span>
               </a>
             </li>
           </ul>

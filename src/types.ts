@@ -1,6 +1,6 @@
 export type Language = 'en' | 'ur';
 export type FuelType = 'diesel' | 'petrol' | 'cng';
-export type ActiveTab = 'home' | 'calculator' | 'vehicle' | 'drivers' | 'routes' | 'fuel' | 'verify' | 'bilty' | 'vehicleAccount' | 'map' | 'toll' | 'navigation';
+export type ActiveTab = 'home' | 'calculator' | 'vehicle' | 'drivers' | 'routes' | 'fuel' | 'verify' | 'bilty' | 'vehicleAccount' | 'map' | 'toll' | 'navigation' | 'dashcam';
 export type CalcSubTab = 'calc' | 'history' | 'summary';
 
 export interface CustomExpense {
@@ -361,7 +361,8 @@ export const DICTIONARY = {
       routes: "Routes",
       fuel: "Fuel Log",
       verify: "Gov Verify",
-      bilty: "Bilty"
+      bilty: "Bilty",
+      dashcam: "Dashcam"
     },
     heroTitle: "Built for Pakistan's Road Freight",
     heroHighlight: "Safar",
@@ -581,7 +582,8 @@ export const DICTIONARY = {
       routes: "راستے",
       fuel: "ایندھن لاگ",
       verify: "تصدیق",
-      bilty: "بلٹی"
+      bilty: "بلٹی",
+      dashcam: "ڈیش کیم"
     },
     heroTitle: "پاکستان بھر کے ٹرانسپورٹرز کے لیے",
     heroHighlight: "سفر",

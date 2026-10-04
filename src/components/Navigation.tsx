@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActiveTab, DICTIONARY, Language } from '../types';
-import { LayoutDashboard, Calculator, Truck, Users, MapPin, Fuel, ShieldCheck, Receipt, Map as MapIcon } from 'lucide-react';
+import { LayoutDashboard, Calculator, Truck, Users, MapPin, Fuel, ShieldCheck, Receipt, Map as MapIcon, Camera } from 'lucide-react';
 
 interface NavigationProps {
   activeTab: ActiveTab;
@@ -32,6 +32,7 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, onSelectTab, 
     { id: 'drivers', label: t.drivers, icon: <Users className="w-4 h-4" /> },
     { id: 'routes', label: t.routes, icon: <MapPin className="w-4 h-4" /> },
     { id: 'fuel', label: t.fuel, icon: <Fuel className="w-4 h-4" /> },
+    { id: 'dashcam', label: t.dashcam || (lang === 'ur' ? 'ڈیش کیم' : 'Dashcam'), icon: <Camera className="w-4 h-4" /> },
   ];
 
   const navItems = rawNavItems.filter((item) => item.id !== 'bilty' || isBiltyAuthorized);

@@ -48,6 +48,7 @@ import { VehicleAccountView } from './components/views/VehicleAccountView';
 import { MapView } from './components/views/MapView';
 import { TollPlazaView } from './components/views/TollPlazaView';
 import { NavigationView } from './components/views/NavigationView';
+import { DashcamView } from './components/views/DashcamView';
 import { AuthModal } from './components/AuthModal';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
@@ -925,6 +926,13 @@ export default function App() {
               onOpenTollCalc={(from, to) => {
                 handleNavigate('toll');
               }}
+            />
+          )}
+
+          {activeTab === 'dashcam' && (
+            <DashcamView
+              lang={lang}
+              onNavigate={handleNavigate}
             />
           )}
         </React.Suspense>

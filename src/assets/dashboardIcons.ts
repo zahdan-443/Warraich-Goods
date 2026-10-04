@@ -34,6 +34,7 @@ export const icon192Data: string = './icon-192.png';
 export const icon512Data: string = './icon-512.png';
 export const companyCardData: string = './warraich-card.png';
 export const warraichCardData: string = './warraich-card.png';
+export const dashcamIconData: string = './dashcam-icon.png';
 
 // Alternate / legacy public filenames (some users or PWA wrappers may serve these variants)
 export const tollIconAltData: string = './toll_icon.png';

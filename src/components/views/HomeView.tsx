@@ -34,7 +34,8 @@ import {
   ExternalLink,
   Clock,
   AlertCircle,
-  ShieldAlert
+  ShieldAlert,
+  Camera
 } from 'lucide-react';
 import { LiveFuelPriceWidget } from '../LiveFuelPriceWidget';
 import { TollCalculatorModal } from '../TollCalculatorModal';
@@ -52,7 +53,8 @@ import {
   tollIconData,
   quickOpsIconData,
   mapIconData,
-  biltyIconData
+  biltyIconData,
+  dashcamIconData
 } from '../../assets/dashboardIcons';
 
 interface HomeViewProps {
@@ -462,6 +464,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   const quickItems: { id: string; title: string; desc: string; icon: React.ReactNode }[] = [
     { 
+      id: 'dashcam', 
+      title: lang === 'ur' ? 'ڈیش کیم ویڈیو ریکارڈر' : 'Dashcam Video Recorder', 
+      desc: lang === 'ur' ? 'محفوظ روڈ ویڈیو اور آڈیو ریکارڈنگ (اسکرین آف موڈ)' : 'Background road video & audio recording with screen-off support', 
+      icon: <Camera className="w-5 h-5 text-[#8b9d77]" /> 
+    },
+    { 
       id: 'map', 
       title: lang === 'ur' ? 'نقشہ و روٹ موسم' : 'Map & Route Weather', 
       desc: lang === 'ur' ? 'موٹروے روٹ نقشہ، حدِ نگاہ اور لائیو موسم' : 'Highway corridors, visibility & live weather', 
@@ -792,11 +800,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </h2>
             </div>
             <span className="text-[10px] font-bold text-[#8b9d77] bg-[#8b9d77]/10 px-2 py-0.5 rounded-full border border-[#8b9d77]/20">
-              {lang === 'ur' ? '4 اہم ٹولز' : '4 Core Tools'}
+              {lang === 'ur' ? 'بنیادی ٹولز' : 'Core Tools'}
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-3.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-3.5">
             {/* 1. Trip Expense Calculator */}
             <QuickActionButton
               href="#calculator"
@@ -838,6 +846,17 @@ export const HomeView: React.FC<HomeViewProps> = ({
               fallbackIcon={<MapPin className="w-7 h-7 text-[#8b9d77]" />}
               fullName={lang === 'ur' ? 'نقشہ و روٹ موسم' : 'Map & Route Weather'}
               subtitle={lang === 'ur' ? 'لائیو موٹروے میپ، دھند و موسم' : 'Highway map & live weather'}
+              highlight={true}
+            />
+
+            {/* 5. Dashcam Video Recorder */}
+            <QuickActionButton
+              href="#dashcam"
+              onClick={() => onNavigate('dashcam')}
+              imgSrc={dashcamIconData}
+              fallbackIcon={<Camera className="w-7 h-7 text-[#8b9d77]" />}
+              fullName={lang === 'ur' ? 'ڈیش کیم ریکارڈر' : 'Dashcam Recorder'}
+              subtitle={lang === 'ur' ? 'روڈ ویڈیو و آڈیو کیمرہ لاگ' : 'Road video & audio recording'}
               highlight={true}
             />
           </div>
@@ -1337,6 +1356,23 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Quick Operations Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               
+              {/* Dashcam Video Recorder */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickOpsModal(false);
+                  onNavigate('dashcam');
+                }}
+                className="p-5 rounded-3xl bg-blue-500/10 border border-blue-300/80 hover:border-blue-500 hover:bg-blue-500/20 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95"
+              >
+                <div className="p-3 bg-white rounded-2xl border border-blue-300 group-hover:border-blue-500 shadow-2xs shrink-0 text-blue-800">
+                  <Camera className="w-6 h-6 text-blue-700" />
+                </div>
+                <span className="font-serif font-bold text-xs text-blue-950 group-hover:text-blue-800 transition-colors">
+                  {lang === 'ur' ? 'ڈیش کیم ریکارڈر' : 'Dashcam Recorder'}
+                </span>
+              </button>
+
               {/* Safar Diary (Shifted to Quick Operations as requested) */}
               <button
                 type="button"
