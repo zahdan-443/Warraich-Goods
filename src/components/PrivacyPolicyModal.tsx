@@ -20,7 +20,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200">
       <div 
-        className="bg-[#fdfbf7] w-full max-w-2xl max-h-[90vh] rounded-[32px] shadow-2xl border border-[#ecece0] flex flex-col overflow-hidden text-right relative animate-in zoom-in-95 duration-200"
+        className={`bg-[#fdfbf7] w-full max-w-2xl max-h-[90vh] rounded-[32px] shadow-2xl border border-[#ecece0] flex flex-col overflow-hidden ${isUrdu ? 'text-right' : 'text-left'} relative animate-in zoom-in-95 duration-200`}
         dir={isUrdu ? 'rtl' : 'ltr'}
       >
         {/* Header */}

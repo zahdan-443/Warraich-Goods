@@ -75,10 +75,14 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
               </h3>
             </div>
             <p className="text-xs sm:text-sm text-[#5a5a40] leading-relaxed">
-              وڑائچ گڈز ٹرانسپورٹ کمپنی پاکستان بھر میں بااعتماد اور تیز ترین لاجسٹکس سروسز فراہم کرتی ہے۔ ہم فل ٹرک لوڈ (FTL) آپریشنز، ملک گیر مال برداری اور جدید فلیٹ شیڈولنگ کے ماہر ہیں۔
+              {lang === 'ur'
+                ? 'وڑائچ گڈز ٹرانسپورٹ کمپنی پاکستان بھر میں بااعتماد اور تیز ترین لاجسٹکس سروسز فراہم کرتی ہے۔ ہم فل ٹرک لوڈ (FTL) آپریشنز، ملک گیر مال برداری اور جدید فلیٹ شیڈولنگ کے ماہر ہیں۔'
+                : 'Warraich Goods Transport Co. provides reliable and rapid logistics across Pakistan. We specialize in Full Truck Load (FTL) operations, nationwide freight carriage, and advanced fleet scheduling.'}
             </p>
             <p className="text-xs sm:text-sm text-[#5a5a40] leading-relaxed">
-              ہمارا مقصد آپ کے سامان کو محفوظ طریقے سے، بروقت اور مناسب ترین اخراجات میں منزل مقصود تک پہنچانا ہے۔ بہتر نگاہ داشت، پیشہ ورانہ انتظامیہ اور بہترین کسٹمر سپورٹ کے ساتھ ہم آپ کے کاروبار کے لیے ایک بااعتماد ٹرانسپورٹ پارٹنر ہیں۔
+              {lang === 'ur'
+                ? 'ہمارا مقصد آپ کے سامان کو محفوظ طریقے سے، بروقت اور مناسب ترین اخراجات میں منزل مقصود تک پہنچانا ہے۔ بہتر نگاہ داشت، پیشہ ورانہ انتظامیہ اور بہترین کسٹمر سپورٹ کے ساتھ ہم آپ کے کاروبار کے لیے ایک بااعتماد ٹرانسپورٹ پارٹنر ہیں۔'
+                : 'Our mission is to transport your cargo safely, punctually, and cost-effectively to its destination. With attentive care, professional management, and stellar customer support, we are your trusted transport partner.'}
             </p>
           </div>
 
@@ -87,7 +91,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
             <div className="flex items-center gap-2">
               <Truck className="w-5 h-5 text-[#8b9d77]" />
               <h3 className="font-serif font-bold text-base text-[#1e3a68]">
-                {lang === 'ur' ? 'ہماری اہم سروسز (Our Key Services)' : 'Our Key Freight Services'}
+                {lang === 'ur' ? 'ہماری اہم سروسز' : 'Our Key Freight Services'}
               </h3>
             </div>
 
@@ -96,9 +100,11 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
                 <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
                   <Truck className="w-4 h-4" />
                 </div>
-                <h4 className="font-serif font-bold text-xs text-[#1e3a68]">فل ٹرک لوڈ (FTL)</h4>
+                <h4 className="font-serif font-bold text-xs text-[#1e3a68]">
+                  {lang === 'ur' ? 'فل ٹرک لوڈ (FTL)' : 'Full Truck Load (FTL)'}
+                </h4>
                 <p className="text-[11px] text-[#7a7a60] leading-normal">
-                  پورے پاکستان میں سامان کی محفوظ اور تیز رفتاری سے منتقلی۔
+                  {lang === 'ur' ? 'پورے پاکستان میں سامان کی محفوظ اور تیز رفتاری سے منتقلی۔' : 'Secure and rapid cargo transit across Pakistan.'}
                 </p>
               </div>
 
@@ -106,9 +112,11 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
                 <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
                   <Clock className="w-4 h-4" />
                 </div>
-                <h4 className="font-serif font-bold text-xs text-[#1e3a68]">اسمارٹ فلیٹ مینجمنٹ</h4>
+                <h4 className="font-serif font-bold text-xs text-[#1e3a68]">
+                  {lang === 'ur' ? 'اسمارٹ فلیٹ مینجمنٹ' : 'Smart Fleet Management'}
+                </h4>
                 <p className="text-[11px] text-[#7a7a60] leading-normal">
-                  بہترین روٹس اور شیڈولنگ تاکہ آپ کے وقت کی بچت ہو۔
+                  {lang === 'ur' ? 'بہترین روٹس اور شیڈولنگ تاکہ آپ کے وقت کی بچت ہو۔' : 'Optimized corridors and scheduling to maximize efficiency.'}
                 </p>
               </div>
 
@@ -116,9 +124,11 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
                 <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
-                <h4 className="font-serif font-bold text-xs text-[#1e3a68]">شفاف شرحیں</h4>
+                <h4 className="font-serif font-bold text-xs text-[#1e3a68]">
+                  {lang === 'ur' ? 'شفاف شرحیں' : 'Transparent Pricing'}
+                </h4>
                 <p className="text-[11px] text-[#7a7a60] leading-normal">
-                  بغیر کسی مخفی اخراجات کے مناسب ریٹس اور واضح بلنگ۔
+                  {lang === 'ur' ? 'بغیر کسی مخفی اخراجات کے مناسب ریٹس اور واضح بلنگ۔' : 'Honest competitive rates with zero hidden charges.'}
                 </p>
               </div>
             </div>
@@ -129,12 +139,14 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
             <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2">
               <Phone className="w-5 h-5 text-emerald-600" />
               <h3 className="font-serif font-bold text-base text-[#1e3a68]">
-                {lang === 'ur' ? 'رابطہ کریں (Contact Us)' : 'Contact Information'}
+                {lang === 'ur' ? 'رابطہ کی معلومات' : 'Contact Information'}
               </h3>
             </div>
 
             <p className="text-xs text-[#7a7a60]">
-              کسی بھی قسم کی بکنگ، معلومات یا رہنمائی کے لیے ہم سے رابطہ کریں:
+              {lang === 'ur' 
+                ? 'کسی بھی قسم کی بکنگ، معلومات یا رہنمائی کے لیے ہم سے رابطہ کریں:'
+                : 'For booking, inquiries, or support, please reach out directly:'}
             </p>
 
             <div className="space-y-3 text-xs sm:text-sm font-sans">
@@ -144,7 +156,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
                     <Phone className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-[11px] text-[#8e8e75] block">فون / واٹس ایپ:</span>
+                    <span className="text-[11px] text-[#8e8e75] block">{lang === 'ur' ? 'فون / واٹس ایپ:' : 'Phone / WhatsApp:'}</span>
                     <span className="font-bold text-[#1e3a68] dir-ltr text-sm">{phoneNum}</span>
                   </div>
                 </div>
@@ -156,7 +168,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
-                  <span>واٹس ایپ کریں</span>
+                  <span>{lang === 'ur' ? 'واٹس ایپ کریں' : 'WhatsApp Us'}</span>
                 </a>
               </div>
 
@@ -165,7 +177,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
                   <Mail className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-[11px] text-[#8e8e75] block">ای میل ایڈریس:</span>
+                  <span className="text-[11px] text-[#8e8e75] block">{lang === 'ur' ? 'ای میل ایڈریس:' : 'Email Address:'}</span>
                   <span className="font-bold text-[#1e3a68] text-xs sm:text-sm">warraichgoods43@gmail.com</span>
                 </div>
               </div>
@@ -175,9 +187,9 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
                   <MapPin className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-[11px] text-[#8e8e75] block">ہیڈ آفس پتہ:</span>
+                  <span className="text-[11px] text-[#8e8e75] block">{lang === 'ur' ? 'ہیڈ آفس پتہ:' : 'Head Office Address:'}</span>
                   <span className="font-bold text-[#4a4a35] text-xs sm:text-sm leading-relaxed">
-                    سمندری، فیصل آباد، پنجاب، پاکستان
+                    {lang === 'ur' ? 'سمندری، فیصل آباد، پنجاب، پاکستان' : 'Samundri, Faisalabad, Punjab, Pakistan'}
                   </span>
                 </div>
               </div>
@@ -189,7 +201,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
         {/* Footer */}
         <div className="p-4 bg-[#f0f0e4] border-t border-[#ecece0] flex items-center justify-between shrink-0">
           <span className="text-xs text-[#7a7a60] font-sans font-medium">
-            وڑائچ گڈز ٹرانسپورٹ کمپنی · فیصل آباد، پاکستان
+            {lang === 'ur' ? 'وڑائچ گڈز ٹرانسپورٹ کمپنی · فیصل آباد، پاکستان' : 'Warraich Goods Transport Co. · Faisalabad, Pakistan'}
           </span>
           <button
             onClick={onClose}

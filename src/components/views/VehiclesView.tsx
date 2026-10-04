@@ -297,7 +297,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
                             <span className="font-mono font-bold">{v.regExpiry || '-'}</span>
                             {regStatus && regStatus.days <= 30 && (
                               <span className="text-[9px] mt-0.5 font-bold">
-                                {regStatus.isExpired ? (isUrdu ? 'میعاد ختم' : 'Expired') : `${regStatus.days}d left`}
+                                {regStatus.isExpired ? (isUrdu ? 'میعاد ختم' : 'Expired') : (isUrdu ? `${regStatus.days} دن باقی` : `${regStatus.days}d left`)}
                               </span>
                             )}
                           </div>
@@ -308,7 +308,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
                             <span className="font-mono font-bold">{v.routePermitExpiry || '-'}</span>
                             {permitStatus && permitStatus.days <= 30 && (
                               <span className="text-[9px] mt-0.5 font-bold">
-                                {permitStatus.isExpired ? (isUrdu ? 'میعاد ختم' : 'Expired') : `${permitStatus.days}d left`}
+                                {permitStatus.isExpired ? (isUrdu ? 'میعاد ختم' : 'Expired') : (isUrdu ? `${permitStatus.days} دن باقی` : `${permitStatus.days}d left`)}
                               </span>
                             )}
                           </div>
@@ -319,7 +319,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
                             <span className="font-mono font-bold">{v.fitnessExpiry || '-'}</span>
                             {fitnessStatus && fitnessStatus.days <= 30 && (
                               <span className="text-[9px] mt-0.5 font-bold">
-                                {fitnessStatus.isExpired ? (isUrdu ? 'میعاد ختم' : 'Expired') : `${fitnessStatus.days}d left`}
+                                {fitnessStatus.isExpired ? (isUrdu ? 'میعاد ختم' : 'Expired') : (isUrdu ? `${fitnessStatus.days} دن باقی` : `${fitnessStatus.days}d left`)}
                               </span>
                             )}
                           </div>
@@ -348,7 +348,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
                     <button
                       onClick={() => onDeleteVehicle(v.id)}
                       className="p-3 bg-white hover:bg-red-500 hover:text-white text-red-500 border border-[#ecece0] rounded-full transition-all cursor-pointer shadow-2xs"
-                      title="Remove vehicle"
+                      title={isUrdu ? 'گاڑی حذف کریں' : 'Remove vehicle'}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

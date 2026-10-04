@@ -15,7 +15,7 @@ interface LiveFuelPriceWidgetProps {
 }
 
 export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
-  lang = 'en',
+  lang = 'ur',
   onApplyRates,
   compact = false
 }) => {

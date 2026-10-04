@@ -143,7 +143,10 @@ export const InstallPwaModal: React.FC<InstallPwaModalProps> = ({ lang }) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 pt-[max(env(safe-area-inset-top,0px),1rem)] pb-[max(env(safe-area-inset-bottom,0px),1rem)] animate-in fade-in duration-300">
-      <div className="bg-white w-full max-w-sm rounded-[32px] shadow-2xl border border-[#ecece0] overflow-hidden text-right relative animate-in zoom-in-95 duration-200">
+      <div 
+        dir={lang === 'ur' ? 'rtl' : 'ltr'}
+        className={`bg-white w-full max-w-sm rounded-[32px] shadow-2xl border border-[#ecece0] overflow-hidden ${lang === 'ur' ? 'text-right' : 'text-left'} relative animate-in zoom-in-95 duration-200`}
+      >
         
         {/* Header decoration */}
         <div className="bg-gradient-to-r from-[#162a4d] via-[#1e3a68] to-[#162a4d] p-6 text-white text-center relative">

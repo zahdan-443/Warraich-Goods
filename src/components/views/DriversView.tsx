@@ -271,7 +271,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
                             <span className="font-mono font-bold">{d.licenseExpiry}</span>
                             {licStatus && licStatus.days <= 30 && (
                               <span className="text-[10px] font-bold">
-                                {licStatus.isExpired ? (isUrdu ? 'میعاد ختم' : 'Expired') : `${licStatus.days} days left`}
+                                {licStatus.isExpired ? (isUrdu ? 'میعاد ختم' : 'Expired') : (isUrdu ? `${licStatus.days} دن باقی` : `${licStatus.days} days left`)}
                               </span>
                             )}
                           </div>
@@ -300,7 +300,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
                     <button
                       onClick={() => onDeleteDriver(d.id)}
                       className="p-3 bg-white hover:bg-red-500 hover:text-white text-red-500 border border-[#ecece0] rounded-full transition-all cursor-pointer shadow-2xs"
-                      title="Remove profile"
+                      title={isUrdu ? 'ڈرائیور حذف کریں' : 'Remove profile'}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -340,7 +340,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Driver Name / نام"
+                placeholder={isUrdu ? 'ڈرائیور کا نام' : 'Driver Full Name'}
                 className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-4 py-2.5 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none"
                 required
               />

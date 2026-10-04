@@ -457,8 +457,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   ];
   
   const currentMonthName = lang === 'ur' ? monthNamesUR[currentMonth] : monthNamesEN[currentMonth];
-  const urduDayLetters = ['ا', 'پ', 'م', 'ب', 'ج', 'ج', 'ہ'];
-  const englishDayLetters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const urduDayNames = ['اتوار', 'پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ'];
+  const englishDayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const quickItems: { id: string; title: string; desc: string; icon: React.ReactNode }[] = [
     { 
@@ -987,51 +987,58 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </button>
           </header>
           
-          <div className="grid grid-cols-7 gap-1.5 text-[10px] font-bold text-center mb-4 text-[#8b9d77]">
-            {(lang === 'ur' ? urduDayLetters : englishDayLetters).map((day, idx) => (
-              <div key={idx} className="w-full">{day}</div>
-            ))}
-          </div>
-          
-          <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-medium text-[#4a4a35] items-center mb-6">
-            {daysInGrid.map((day, idx) => {
-              const dateObj = new Date(day.year, day.month, day.dayNum);
-              const isSelected = selectedDate.getDate() === day.dayNum && 
-                                 selectedDate.getMonth() === day.month && 
-                                 selectedDate.getFullYear() === day.year;
-                                 
-              const { totalCount } = getDayEventsAndTrips(day.dayNum, day.month, day.year);
-              
-              const isToday = new Date().getDate() === day.dayNum && 
-                              new Date().getMonth() === day.month && 
-                              new Date().getFullYear() === day.year;
-
-              return (
-                <button
-                  key={idx}
-                  onClick={() => handleDayClick(day)}
-                  aria-label={`${day.dayNum} ${monthNamesEN[day.month]} ${day.year}`}
-                  className={`relative p-1.5 w-7 h-7 mx-auto rounded-full flex flex-col items-center justify-center cursor-pointer transition-all ${
-                    isSelected 
-                      ? 'bg-[#8b9d77] text-white font-bold shadow-2xs' 
-                      : isToday
-                        ? 'border border-[#8b9d77] text-[#4a4a35] font-bold'
-                        : day.isCurrentMonth 
-                          ? 'text-[#4a4a35] hover:bg-[#f9f9f2]' 
-                          : 'text-[#8e8e75]/60 hover:bg-[#f9f9f2]/50'
-                  }`}
+          <div dir="ltr" className="select-none">
+            <div className="grid grid-cols-7 gap-1 text-center mb-3 text-[#8b9d77]">
+              {(lang === 'ur' ? urduDayNames : englishDayNames).map((day, idx) => (
+                <div 
+                  key={idx} 
+                  title={day}
+                  className={`w-full py-0.5 text-center leading-tight ${lang === 'ur' ? 'font-nastaliq text-[10px] sm:text-[11.5px] font-bold text-[#62774f]' : 'text-[10px] font-bold uppercase tracking-wider'}`}
                 >
-                  <span>{day.dayNum}</span>
-                  {totalCount > 0 && !isSelected && (
-                    <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-[#C59B27]"></span>
-                  )}
-                </button>
-              );
-            })}
+                  {day}
+                </div>
+              ))}
+            </div>
+            
+            <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-medium text-[#4a4a35] items-center mb-6">
+              {daysInGrid.map((day, idx) => {
+                const isSelected = selectedDate.getDate() === day.dayNum && 
+                                   selectedDate.getMonth() === day.month && 
+                                   selectedDate.getFullYear() === day.year;
+                                   
+                const { totalCount } = getDayEventsAndTrips(day.dayNum, day.month, day.year);
+                
+                const isToday = new Date().getDate() === day.dayNum && 
+                                new Date().getMonth() === day.month && 
+                                new Date().getFullYear() === day.year;
+
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => handleDayClick(day)}
+                    aria-label={`${day.dayNum} ${monthNamesEN[day.month]} ${day.year}`}
+                    className={`relative p-1.5 w-7 h-7 mx-auto rounded-full flex flex-col items-center justify-center cursor-pointer transition-all ${
+                      isSelected 
+                        ? 'bg-[#8b9d77] text-white font-bold shadow-2xs' 
+                        : isToday
+                          ? 'border border-[#8b9d77] text-[#4a4a35] font-bold'
+                          : day.isCurrentMonth 
+                            ? 'text-[#4a4a35] hover:bg-[#f9f9f2]' 
+                            : 'text-[#8e8e75]/60 hover:bg-[#f9f9f2]/50'
+                    }`}
+                  >
+                    <span>{day.dayNum}</span>
+                    {totalCount > 0 && !isSelected && (
+                      <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-[#C59B27]"></span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Schedule Events List for Selected Day */}
-          <div className="mt-4 pt-4 border-t border-[#ecece0] flex-1 flex flex-col">
+          <div dir={lang === 'ur' ? 'rtl' : 'ltr'} className="mt-4 pt-4 border-t border-[#ecece0] flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs uppercase tracking-wider font-bold text-[#5a5a40] flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-[#8b9d77]" />
@@ -1072,10 +1079,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     aria-label={lang === 'ur' ? 'ایونٹ کی قسم' : 'Event Type'}
                     className="flex-1 text-[11px] px-2 py-1.5 bg-white border border-[#ecece0] rounded-lg text-[#4a4a35] focus:outline-none focus:border-[#8b9d77]"
                   >
-                    <option value="load">{lang === 'ur' ? 'مال برداری (Load)' : 'Cargo Load'}</option>
-                    <option value="maintenance">{lang === 'ur' ? 'مرمت (Repair)' : 'Maintenance'}</option>
-                    <option value="dispatch">{lang === 'ur' ? 'روانگی (Dispatch)' : 'Dispatch'}</option>
-                    <option value="other">{lang === 'ur' ? 'دیگر (Other)' : 'Other'}</option>
+                    <option value="load">{lang === 'ur' ? 'مال برداری' : 'Cargo Load'}</option>
+                    <option value="maintenance">{lang === 'ur' ? 'مرمت و دیکھ بھال' : 'Maintenance'}</option>
+                    <option value="dispatch">{lang === 'ur' ? 'روانگی' : 'Dispatch'}</option>
+                    <option value="other">{lang === 'ur' ? 'دیگر' : 'Other'}</option>
                   </select>
                   <button 
                     type="submit"
@@ -1159,7 +1166,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* Safar Diary Modal */}
       {showSafarDiaryModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-[40px] max-w-4xl w-full p-6 md:p-10 shadow-2xl border border-[#ecece0] max-h-[90vh] overflow-y-auto space-y-8 text-left">
+          <div 
+            dir={lang === 'ur' ? 'rtl' : 'ltr'}
+            className={`bg-white rounded-[40px] max-w-4xl w-full p-6 md:p-10 shadow-2xl border border-[#ecece0] max-h-[90vh] overflow-y-auto space-y-8 ${lang === 'ur' ? 'text-right' : 'text-left'}`}
+          >
             
             {/* Modal Header */}
             <header className="flex justify-between items-start border-b border-[#ecece0] pb-6">
@@ -1297,7 +1307,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* Quick Operations Modal */}
       {showQuickOpsModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-[40px] max-w-4xl w-full p-6 md:p-10 shadow-2xl border border-[#ecece0] max-h-[90vh] overflow-y-auto space-y-8 text-left">
+          <div 
+            dir={lang === 'ur' ? 'rtl' : 'ltr'}
+            className={`bg-white rounded-[40px] max-w-4xl w-full p-6 md:p-10 shadow-2xl border border-[#ecece0] max-h-[90vh] overflow-y-auto space-y-8 ${lang === 'ur' ? 'text-right' : 'text-left'}`}
+          >
             
             {/* Modal Header */}
             <header className="flex justify-between items-start border-b border-[#ecece0] pb-6">

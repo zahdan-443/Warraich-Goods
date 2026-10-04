@@ -95,7 +95,7 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
               {t.title}
             </h1>
             <p className="text-sm text-[#8e8e75] font-sans mt-1">
-              Keep historic diary of Pakistan petroleum prices for auditing
+              {isUrdu ? 'آڈٹ اور سفری حساب کے لیے پاکستان کے پٹرولیم نرخوں کی تاریخ محفوظ رکھیں' : 'Keep historic diary of Pakistan petroleum prices for auditing'}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -125,7 +125,7 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-4 bg-[#fdfbf7] rounded-2xl border border-[#ecece0] focus-within:border-[#8b9d77] transition-colors">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-[#8e8e75] mb-2 flex items-center justify-between">
-                <span>🛢️ High Speed Diesel</span>
+                <span>{isUrdu ? '🛢️ ہائی اسپیڈ ڈیزل' : '🛢️ High Speed Diesel'}</span>
                 <span className="text-[10px] font-mono text-[#8b9d77]">PKR/L</span>
               </label>
               <input
@@ -140,7 +140,7 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
 
             <div className="p-4 bg-[#fdfbf7] rounded-2xl border border-[#ecece0] focus-within:border-[#8b9d77] transition-colors">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-[#8e8e75] mb-2 flex items-center justify-between">
-                <span>⛽ Super Petrol</span>
+                <span>{isUrdu ? '⛽ سپر پیٹرول' : '⛽ Super Petrol'}</span>
                 <span className="text-[10px] font-mono text-[#8b9d77]">PKR/L</span>
               </label>
               <input
@@ -158,7 +158,7 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
             {savedSuccess ? (
               <div className="px-6 py-4 bg-[#f9f9f2] border border-[#8b9d77] rounded-full text-xs font-bold text-[#5a5a40] flex items-center gap-2 animate-fadeIn">
                 <CheckCircle2 className="w-4 h-4 text-[#8b9d77]" />
-                <span>Market Diary Updated!</span>
+                <span>{isUrdu ? 'مارکیٹ ریٹس اپڈیٹ ہو گئے!' : 'Market Diary Updated!'}</span>
               </div>
             ) : (
               <button
@@ -181,7 +181,7 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
             <span>{t.trendTitle}</span>
           </h2>
           <span className="text-xs text-[#8e8e75] uppercase tracking-wider font-bold">
-            {fuelLogs.length} Entries
+            {fuelLogs.length} {isUrdu ? 'اندراجات' : 'Entries'}
           </span>
         </div>
 
@@ -208,7 +208,9 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
                   <div>
                     <span className="text-xs font-mono font-bold text-[#4a4a35] block">{item.date}</span>
                     <span className="text-[10px] uppercase tracking-wider text-[#8e8e75]">
-                      {idx === 0 ? '● Latest Market Log' : 'Historic Log'}
+                      {idx === 0 
+                        ? (isUrdu ? '● تازہ ترین مارکیٹ ریٹ' : '● Latest Market Log') 
+                        : (isUrdu ? 'پرانا ریکارڈ' : 'Historic Log')}
                     </span>
                   </div>
                 </div>

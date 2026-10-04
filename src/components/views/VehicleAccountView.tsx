@@ -36,15 +36,15 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
   onNavigate,
   onSaveTrip,
 }) => {
-  const isUrdu = true; // Always display in Urdu as requested by user
+  const isUrdu = lang === 'ur';
 
   // Vehicle info
   const [vehicleNo, setVehicleNo] = useState<string>('LHR-7860');
 
   // Incomes (آمدن / کرایہ) - Initialized with 2 clear editable Karaya entries
-  const [incomes, setIncomes] = useState<FreightIncome[]>([
-    { id: 'income_1', label: 'کرایہ 1 (جانے کا مال / پارٹی)', amount: 0 },
-    { id: 'income_2', label: 'کرایہ 2 (واپسی کا مال / پارٹی)', amount: 0 },
+  const [incomes, setIncomes] = useState<FreightIncome[]>(() => [
+    { id: 'income_1', label: lang === 'ur' ? 'کرایہ 1 (جانے کا مال / پارٹی)' : 'Freight 1 (Outbound Cargo / Party)', amount: 0 },
+    { id: 'income_2', label: lang === 'ur' ? 'کرایہ 2 (واپسی کا مال / پارٹی)' : 'Freight 2 (Return Cargo / Party)', amount: 0 },
   ]);
 
   // Expenses (اخراجات)
@@ -82,7 +82,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
       ...prev,
       {
         id: `income_${Date.now()}`,
-        label: `کرایہ ${nextIdx} (اضافی پارٹی یا مال)`,
+        label: isUrdu ? `کرایہ ${nextIdx} (اضافی پارٹی یا مال)` : `Freight ${nextIdx} (Extra Party or Cargo)`,
         amount: 0,
       },
     ]);
@@ -116,7 +116,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
     const newId = `custom_${Date.now()}`;
     setCustomExpenses((prev) => [
       ...prev,
-      { id: newId, label: 'نیا متفرق خرچہ', amount: 0 },
+      { id: newId, label: isUrdu ? 'نیا متفرق خرچہ' : 'Custom Expense', amount: 0 },
     ]);
   };
 
@@ -519,7 +519,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
   };
 
   return (
-    <div className="flex-1 p-3 sm:p-6 md:p-8 pb-36 md:pb-16 max-w-4xl mx-auto w-full font-sans" dir="rtl">
+    <div className={`flex-1 p-3 sm:p-6 md:p-8 pb-36 md:pb-16 max-w-4xl mx-auto w-full font-sans ${isUrdu ? 'text-right' : 'text-left'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
       {/* Top Header with Back to Dashboard Button */}
       <div className="w-full flex items-center justify-between pb-1 mb-3 shrink-0">
         <div className="flex items-center gap-2.5">
@@ -535,10 +535,10 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
           </div>
           <div>
             <h1 className="text-sm sm:text-base font-bold text-[#4a4a35] leading-tight">
-              گاڑی کا حساب و منافع لیجر
+              {isUrdu ? 'گاڑی کا حساب و منافع لیجر' : 'Vehicle Account & Net Profit Ledger'}
             </h1>
             <p className="text-[10px] text-[#8e8e75]">
-              آمدن، اخراجات اور خالص بچت کا کھاتہ
+              {isUrdu ? 'آمدن، اخراجات اور خالص بچت کا کھاتہ' : 'Trip earnings, operational expenses and profit ledger'}
             </p>
           </div>
         </div>
@@ -547,10 +547,10 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             type="button"
             onClick={() => onNavigate('home')}
             className="p-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-            title="ڈیش بورڈ پر واپس جائیں"
+            title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
           >
-            <ArrowLeft className="w-3.5 h-3.5 rotate-180" />
-            <span>ڈیش بورڈ</span>
+            <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
+            <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
           </button>
         )}
       </div>
@@ -573,13 +573,13 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
         {/* Vehicle Selector bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#ecece0] pb-4">
           <p className="text-xs text-[#8e8e75]">
-            گاڑی کے تمام کرایہ جات اور سفری اخراجات درج کر کے خالص بچت کا حساب لگائیں
+            {isUrdu ? 'گاڑی کے تمام کرایہ جات اور سفری اخراجات درج کر کے خالص بچت کا حساب لگائیں' : 'Enter all freight revenues and trip operational expenses to calculate net margin'}
           </p>
 
           {/* Vehicle Selector */}
           <div className="w-full sm:w-auto flex items-center gap-2">
             <label className="text-xs font-bold text-[#4a4a35] shrink-0">
-              گاڑی نمبر (Reg No):
+              {isUrdu ? 'گاڑی نمبر (Reg No):' : 'Vehicle Reg No:'}
             </label>
             <input
               type="text"
@@ -587,7 +587,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
               onChange={(e) => setVehicleNo(e.target.value)}
               onFocus={(e) => e.target.select()}
               onClick={(e) => (e.target as HTMLInputElement).select()}
-              placeholder="مثلاً: LHR-7860"
+              placeholder={isUrdu ? 'مثلاً: LHR-7860' : 'e.g. LHR-7860'}
               className="bg-[#fdfbf7] border-2 border-[#ecece0] rounded-xl px-3 py-1.5 text-sm font-bold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none w-full sm:w-44 font-mono dir-ltr text-left"
             />
           </div>
@@ -602,10 +602,10 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
               </div>
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-emerald-900">
-                  1. حاصل شدہ آمدن و کرایہ جات
+                  {isUrdu ? '1. حاصل شدہ آمدن و کرایہ جات' : '1. Freight Earnings & Incomes'}
                 </h2>
                 <p className="text-[11px] text-emerald-700 font-medium">
-                  ہر پارٹی، مال یا چکر کا کرایہ اور نام الگ الگ درج کریں
+                  {isUrdu ? 'ہر پارٹی، مال یا چکر کا کرایہ اور نام الگ الگ درج کریں' : 'Record separate freight contracts and trip legs'}
                 </p>
               </div>
             </div>
@@ -615,7 +615,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>+ نیا کرایہ شامل کریں</span>
+              <span>{isUrdu ? '+ نیا کرایہ شامل کریں' : '+ Add Freight Income'}</span>
             </button>
           </div>
 
@@ -633,10 +633,10 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
                         <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>کرایہ / مال / پارٹی کا نام:</span>
+                        <span>{isUrdu ? 'کرایہ / مال / پارٹی کا نام:' : 'Freight / Cargo / Party Name:'}</span>
                       </label>
                       <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-md">
-                        کلک کر کے نام تبدیل کریں
+                        {isUrdu ? 'کلک کر کے نام تبدیل کریں' : 'Click to edit name'}
                       </span>
                     </div>
                     <div className="relative">
@@ -645,7 +645,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                         value={item.label}
                         onChange={(e) => handleUpdateIncomeLabel(item.id, e.target.value)}
                         className="w-full bg-[#fdfbf7] border-2 border-emerald-600/30 hover:border-emerald-600 focus:border-emerald-600 focus:bg-white rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold text-[#2d3748] focus:outline-none transition-all shadow-2xs"
-                        placeholder={`مثلاً: کرایہ ${idx + 1} (لاہور تا کراچی سیمنٹ)`}
+                        placeholder={isUrdu ? `مثلاً: کرایہ ${idx + 1} (لاہور تا کراچی سیمنٹ)` : `e.g. Freight ${idx + 1} (Cement Load)`}
                       />
                     </div>
                   </div>
@@ -653,7 +653,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                   {/* FREIGHT AMOUNT INPUT BOX */}
                   <div className="sm:col-span-4 space-y-1">
                     <label className="text-xs font-bold text-emerald-900 block">
-                      کرایہ رقم (PKR):
+                      {isUrdu ? 'کرایہ رقم (PKR):' : 'Freight Amount (PKR):'}
                     </label>
                     <div className="flex items-center bg-[#fdfbf7] border-2 border-emerald-600/30 hover:border-emerald-600 focus-within:border-emerald-600 focus-within:bg-white rounded-xl px-3 py-2 transition-all shadow-2xs">
                       <input
@@ -671,7 +671,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                     </div>
                     {/* Quick amount chips for income */}
                     <div className="flex items-center gap-1 pt-1 flex-wrap">
-                      <span className="text-[10px] text-emerald-800 font-bold">فوری:</span>
+                      <span className="text-[10px] text-emerald-800 font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                       {[10000, 25000, 50000, 100000].map((amt) => (
                         <button
                           key={amt}
@@ -692,7 +692,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                         type="button"
                         onClick={() => handleRemoveIncome(item.id)}
                         className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
-                        title="حذف کریں"
+                        title={isUrdu ? 'حذف کریں' : 'Remove'}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -706,7 +706,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
 
           {/* Income Total Bar */}
           <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-emerald-600/20 font-bold text-sm sm:text-base text-emerald-900">
-            <span>کل حاصل شدہ آمدن و کرایہ جات:</span>
+            <span>{isUrdu ? 'کل حاصل شدہ آمدن و کرایہ جات:' : 'Total Freight Earnings:'}</span>
             <span className="font-mono text-base sm:text-lg text-emerald-800 dir-ltr">
               PKR {totalIncome.toLocaleString('en-US')}
             </span>
@@ -722,10 +722,10 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
               </div>
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-[#4a4a35]">
-                  2. تمام سفری اخراجات کی تفصیل
+                  {isUrdu ? '2. تمام سفری اخراجات کی تفصیل' : '2. Detailed Trip Expenses'}
                 </h2>
                 <p className="text-[11px] text-[#8e8e75] font-medium">
-                  ڈیزل، ٹول پلازہ، چالان، روٹی، مرمت اور ڈرائیور کمیشن درج کریں
+                  {isUrdu ? 'ڈیزل، ٹول پلازہ، چالان، روٹی، مرمت اور ڈرائیور کمیشن درج کریں' : 'Fuel, motorway tolls, fines, driver meals, repairs & commission'}
                 </p>
               </div>
             </div>
@@ -735,7 +735,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#4a4a35] hover:bg-[#383827] text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>+ اضافی خرچہ شامل کریں</span>
+              <span>{isUrdu ? '+ اضافی خرچہ شامل کریں' : '+ Add Custom Expense'}</span>
             </button>
           </div>
 
@@ -743,7 +743,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {/* 1. Diesel */}
             <div className="bg-white p-3.5 rounded-2xl border border-[#ecece0] space-y-1">
               <label className="block text-xs font-bold text-[#4a4a35]">
-                1. ڈیزل خرچہ (ایندھن / فیول)
+                {isUrdu ? '1. ڈیزل خرچہ (ایندھن / فیول)' : '1. Diesel Fuel Expense'}
               </label>
               <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-2 focus-within:border-[#8b9d77]">
                 <input
@@ -758,7 +758,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
               <div className="flex items-center gap-1 pt-1 flex-wrap">
-                <span className="text-[10px] text-[#8e8e75] font-bold">فوری:</span>
+                <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                 {[1000, 2000, 5000, 10000].map((amt) => (
                   <button
                     key={amt}
@@ -771,11 +771,10 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 ))}
               </div>
             </div>
-
             {/* 2. Toll Plaza */}
             <div className="bg-white p-3.5 rounded-2xl border border-[#ecece0] space-y-1">
               <label className="block text-xs font-bold text-[#4a4a35]">
-                2. ٹول پلازہ و موٹروے ٹیکس
+                {isUrdu ? '2. ٹول پلازہ و موٹروے ٹیکس' : '2. Toll Plaza & Motorway Tax'}
               </label>
               <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-2 focus-within:border-[#8b9d77]">
                 <input
@@ -790,7 +789,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
               <div className="flex items-center gap-1 pt-1 flex-wrap">
-                <span className="text-[10px] text-[#8e8e75] font-bold">فوری:</span>
+                <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                 {[500, 1000, 2000, 3000].map((amt) => (
                   <button
                     key={amt}
@@ -807,7 +806,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {/* 3. Challan */}
             <div className="bg-white p-3.5 rounded-2xl border border-[#ecece0] space-y-1">
               <label className="block text-xs font-bold text-[#4a4a35]">
-                3. ٹریفک چالان و جرمانہ
+                {isUrdu ? '3. ٹریفک چالان و جرمانہ' : '3. Traffic Challan & Penalties'}
               </label>
               <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-2 focus-within:border-[#8b9d77]">
                 <input
@@ -822,7 +821,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
               <div className="flex items-center gap-1 pt-1 flex-wrap">
-                <span className="text-[10px] text-[#8e8e75] font-bold">فوری:</span>
+                <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                 {[500, 1000, 2500, 5000].map((amt) => (
                   <button
                     key={amt}
@@ -839,7 +838,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {/* 4. Roti Kharcha */}
             <div className="bg-white p-3.5 rounded-2xl border border-[#ecece0] space-y-1">
               <label className="block text-xs font-bold text-[#4a4a35]">
-                4. روٹی، خوراک و روزانہ الاؤنس
+                {isUrdu ? '4. روٹی، خوراک و روزانہ الاؤنس' : '4. Driver Meals & Daily Allowance'}
               </label>
               <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-2 focus-within:border-[#8b9d77]">
                 <input
@@ -854,7 +853,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
               <div className="flex items-center gap-1 pt-1 flex-wrap">
-                <span className="text-[10px] text-[#8e8e75] font-bold">فوری:</span>
+                <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                 {[300, 500, 1000, 2000].map((amt) => (
                   <button
                     key={amt}
@@ -871,7 +870,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {/* 5. Chowkidara / Parking */}
             <div className="bg-white p-3.5 rounded-2xl border border-[#ecece0] space-y-1">
               <label className="block text-xs font-bold text-[#4a4a35]">
-                5. اڈا چوکیداری و پارکنگ فیس
+                {isUrdu ? '5. اڈا چوکیداری و پارکنگ فیس' : '5. Parking & Terminal Chowkidari'}
               </label>
               <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-2 focus-within:border-[#8b9d77]">
                 <input
@@ -886,7 +885,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
               <div className="flex items-center gap-1 pt-1 flex-wrap">
-                <span className="text-[10px] text-[#8e8e75] font-bold">فوری:</span>
+                <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                 {[200, 500, 1000].map((amt) => (
                   <button
                     key={amt}
@@ -903,7 +902,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {/* 6. Gari Kaam / Repair */}
             <div className="bg-white p-3.5 rounded-2xl border border-[#ecece0] space-y-1">
               <label className="block text-xs font-bold text-[#4a4a35]">
-                6. گاڑی کا کام، مرمت و مستری خرچہ
+                {isUrdu ? '6. گاڑی کا کام، مرمت و مستری خرچہ' : '6. Vehicle Maintenance & Repairs'}
               </label>
               <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-2 focus-within:border-[#8b9d77]">
                 <input
@@ -918,7 +917,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
               <div className="flex items-center gap-1 pt-1 flex-wrap">
-                <span className="text-[10px] text-[#8e8e75] font-bold">فوری:</span>
+                <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                 {[1000, 2000, 5000, 10000].map((amt) => (
                   <button
                     key={amt}
@@ -935,7 +934,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {/* 7. Driver Commission */}
             <div className="bg-white p-3.5 rounded-2xl border border-[#ecece0] space-y-1 sm:col-span-2">
               <label className="block text-xs font-bold text-[#4a4a35]">
-                7. ڈرائیور کمیشن و اجرت
+                {isUrdu ? '7. ڈرائیور کمیشن و اجرت' : '7. Driver Commission / Wages'}
               </label>
               <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-2 focus-within:border-[#8b9d77]">
                 <input
@@ -950,7 +949,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
               <div className="flex items-center gap-1 pt-1 flex-wrap">
-                <span className="text-[10px] text-[#8e8e75] font-bold">فوری:</span>
+                <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                 {[2000, 5000, 10000, 15000].map((amt) => (
                   <button
                     key={amt}
@@ -969,7 +968,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
           {customExpenses.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-[#ecece0]">
               <span className="text-xs font-bold text-[#8e8e75] block">
-                اضافی اخراجات (Custom Expenses):
+                {isUrdu ? 'اضافی اخراجات (Custom Expenses):' : 'Custom Trip Expenses:'}
               </span>
               {customExpenses.map((c) => (
                 <div key={c.id} className="flex items-center gap-2 bg-white p-3 rounded-2xl border border-[#ecece0]">
@@ -978,7 +977,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                     value={c.label}
                     onChange={(e) => handleUpdateCustomLabel(c.id, e.target.value)}
                     className="flex-1 bg-transparent text-xs sm:text-sm font-bold text-[#4a4a35] focus:outline-none px-1"
-                    placeholder="خرچہ کا نام (مثلاً: پینچر، وائرنگ، وغیرہ)"
+                    placeholder={isUrdu ? 'خرچہ کا نام (مثلاً: پینچر، وائرنگ، وغیرہ)' : 'Expense title (e.g. puncture, repair)'}
                   />
                   <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-1.5 w-36 sm:w-44">
                     <input
@@ -996,7 +995,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                     type="button"
                     onClick={() => handleRemoveCustomExpense(c.id)}
                     className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
-                    title="حذف کریں"
+                    title={isUrdu ? 'حذف کریں' : 'Remove'}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -1007,7 +1006,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
 
           {/* Total Expenses Bar */}
           <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-[#ecece0] font-bold text-sm sm:text-base text-[#4a4a35]">
-            <span>کل سفری اخراجات:</span>
+            <span>{isUrdu ? 'کل سفری اخراجات:' : 'Total Trip Expenses:'}</span>
             <span className="font-mono text-base sm:text-lg dir-ltr">
               PKR {grandTotalExpenses.toLocaleString('en-US')}
             </span>
@@ -1023,11 +1022,15 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-amber-300" />
                 <span className="text-base sm:text-lg font-bold">
-                  {netProfit >= 0 ? 'خالص بچت و منافع (Net Profit)' : 'خسارہ / بقایا خرچہ (Net Deficit)'}
+                  {netProfit >= 0 
+                    ? (isUrdu ? 'خالص بچت و منافع (Net Profit)' : 'Net Profit (Earnings)') 
+                    : (isUrdu ? 'خسارہ / بقایا خرچہ (Net Deficit)' : 'Net Deficit (Loss)')}
                 </span>
               </div>
               <p className="text-xs opacity-90 mt-1">
-                کل حاصل شدہ آمدن (PKR {totalIncome.toLocaleString()}) منفی کل سفری اخراجات (PKR {grandTotalExpenses.toLocaleString()})
+                {isUrdu 
+                  ? `کل حاصل شدہ آمدن (PKR ${totalIncome.toLocaleString()}) منفی کل سفری اخراجات (PKR ${grandTotalExpenses.toLocaleString()})`
+                  : `Total Freight Revenue (PKR ${totalIncome.toLocaleString()}) minus Total Trip Expenses (PKR ${grandTotalExpenses.toLocaleString()})`}
               </p>
             </div>
             <div className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-left sm:text-right dir-ltr">
@@ -1040,7 +1043,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
         {savedSuccess && (
           <div className="bg-[#eef4ea] border border-[#8b9d77] text-[#3d5a2d] p-3.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-2xs animate-in fade-in">
             <CheckCircle2 className="w-5 h-5 text-[#8b9d77]" />
-            <span>گاڑی کا حساب سفر ڈائری لاگز میں کامیابی سے محفوظ ہو گیا ہے۔</span>
+            <span>{isUrdu ? 'گاڑی کا حساب سفر ڈائری لاگز میں کامیابی سے محفوظ ہو گیا ہے۔' : 'Vehicle trip account has been saved to Safar Diary logs.'}</span>
           </div>
         )}
 
@@ -1048,7 +1051,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
         {copyToast && (
           <div className="bg-emerald-50 border-2 border-emerald-400 text-emerald-950 p-3.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm animate-in fade-in">
             <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            <span>واٹس ایپ ٹیکسٹ میسج کاپی ہو گیا اور واٹس ایپ اوپن ہو رہا ہے! 📲</span>
+            <span>{isUrdu ? 'واٹس ایپ ٹیکسٹ میسج کاپی ہو گیا اور واٹس ایپ اوپن ہو رہا ہے! 📲' : 'WhatsApp report copied and WhatsApp opening! 📲'}</span>
           </div>
         )}
 
@@ -1061,7 +1064,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             className="min-h-[48px] py-2.5 px-3 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
           >
             <Share2 className="w-4 h-4" />
-            <span>واٹس ایپ میسج 📲</span>
+            <span>{isUrdu ? 'واٹس ایپ میسج 📲' : 'WhatsApp 📲'}</span>
           </button>
 
           {/* 2. PDF Download */}
@@ -1074,7 +1077,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             }`}
           >
             <FileDown className={`w-4 h-4 text-amber-300 ${isExportingPdf ? 'animate-bounce' : ''}`} />
-            <span>{isExportingPdf ? 'پی ڈی ایف بن رہی ہے...' : 'پی ڈی ایف رسید 📄'}</span>
+            <span>{isExportingPdf ? (isUrdu ? 'پی ڈی ایف بن رہی ہے...' : 'Generating...') : (isUrdu ? 'پی ڈی ایف رسید 📄' : 'PDF Ledger 📄')}</span>
           </button>
 
           {/* 3. Save to Diary */}
@@ -1084,7 +1087,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             className="min-h-[48px] py-2.5 px-3 bg-white border-2 border-[#8b9d77] text-[#4a4a35] hover:bg-[#eef4ea] rounded-2xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
           >
             <BookmarkPlus className="w-4 h-4 text-[#8b9d77]" />
-            <span>ڈائری محفوظ 💾</span>
+            <span>{isUrdu ? 'ڈائری محفوظ 💾' : 'Save Diary 💾'}</span>
           </button>
 
           {/* 4. Reset */}
@@ -1094,7 +1097,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             className="min-h-[48px] py-2.5 px-3 bg-white border border-[#ecece0] text-[#8e8e75] hover:bg-[#f6f5ee] rounded-2xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
           >
             <RotateCcw className="w-4 h-4" />
-            <span>خانے خالی کریں</span>
+            <span>{isUrdu ? 'خانے خالی کریں' : 'Reset All'}</span>
           </button>
         </div>
       </div>

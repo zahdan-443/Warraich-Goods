@@ -59,8 +59,15 @@ export default function App() {
   const MASTER_EMAILS = ['warraichgoods43@gmail.com'];
 
   const [lang, setLang] = useState<Language>(() => {
-    const saved = localStorage.getItem('ah-lang');
-    return (saved === 'en' || saved === 'ur') ? saved : 'ur';
+    try {
+      const explicitChoice = localStorage.getItem('ah-lang-user-explicit');
+      if (explicitChoice === 'ur' || explicitChoice === 'en') {
+        return explicitChoice;
+      }
+      // Strictly default to Urdu ('ur')
+      localStorage.setItem('ah-lang', 'ur');
+    } catch {}
+    return 'ur';
   });
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   // Show official Driver Dost splash screen on initial app launch (bypass on deep-links)
@@ -286,6 +293,7 @@ export default function App() {
     setLang(nextLang);
     try {
       localStorage.setItem('ah-lang', nextLang);
+      localStorage.setItem('ah-lang-user-explicit', nextLang);
     } catch {}
     document.documentElement.lang = nextLang;
     document.documentElement.dir = nextLang === 'ur' ? 'rtl' : 'ltr';
@@ -532,7 +540,6 @@ export default function App() {
 
   // Sync lang class to body
   useEffect(() => {
-    localStorage.setItem('ah-lang', lang);
     if (lang === 'ur') {
       document.body.classList.add('urdu');
     } else {

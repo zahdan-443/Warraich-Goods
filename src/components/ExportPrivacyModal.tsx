@@ -61,7 +61,10 @@ export const ExportPrivacyModal: React.FC<ExportPrivacyModalProps> = ({ isOpen, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl flex flex-col overflow-hidden border border-[#e5e5dc]">
+      <div 
+        dir={lang === 'ur' ? 'rtl' : 'ltr'}
+        className={`bg-white rounded-3xl max-w-lg w-full shadow-2xl flex flex-col overflow-hidden border border-[#e5e5dc] ${lang === 'ur' ? 'text-right' : 'text-left'}`}
+      >
         
         {/* Modal Header */}
         <div className="p-5 bg-[#fdfbf7] border-b border-[#ecece0] flex items-center justify-between">
@@ -87,7 +90,7 @@ export const ExportPrivacyModal: React.FC<ExportPrivacyModalProps> = ({ isOpen, 
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 space-y-4 overflow-y-auto max-h-[75vh] text-left">
+        <div className="p-5 space-y-4 overflow-y-auto max-h-[75vh]">
           
           {/* Feedback banner */}
           {exportFeedback && (
@@ -256,7 +259,7 @@ export const ExportPrivacyModal: React.FC<ExportPrivacyModalProps> = ({ isOpen, 
             onClick={onClose}
             className="px-5 py-2 bg-[#8b9d77] hover:bg-[#798a67] text-white font-bold text-xs rounded-xl cursor-pointer"
           >
-            {lang === 'ur' ? 'مکمل (Done)' : 'Close'}
+            {lang === 'ur' ? 'مکمل' : 'Done'}
           </button>
         </div>
 
