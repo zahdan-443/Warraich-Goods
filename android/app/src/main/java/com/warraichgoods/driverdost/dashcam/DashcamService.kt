@@ -1,13 +1,12 @@
 /*
  * CameraX background recording pattern adapted from xxxifan/DashCam (Apache License, Version 2.0).
  * Reference project: https://github.com/xxxifan/DashCam
- * Secondary reference for dual/concurrent structure: cairn-labworks/Sentry dashcam foreground service.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *     http://www.apache.org/licenses/LICENSE-2.0
  * 
- * Modifications for Driver Dost:
+ * Modifications for Driver Dost (Phase 1 Fix):
  * - Fixed screen-lock video pausing bug: CameraX is bound to a custom CameraLifecycleOwner
  *   managed directly by this Foreground Service and maintained in Lifecycle.State.RESUMED
  *   throughout the entire recording duration, completely decoupled from Activity/UI lifecycle
@@ -15,8 +14,8 @@
  * - Single Recording session: Audio and Video are both driven by the same CameraX VideoCapture
  *   recording session (withAudioEnabled), writing continuous synchronized video + audio into
  *   a single timestamped MP4 file.
- * - Loop-recording disabled; clips are permanent fixed files.
- * - Concurrent dual camera capability check via CameraManager.getConcurrentCameraIds().
+ * - Foreground Service with FOREGROUND_SERVICE_TYPE_CAMERA and FOREGROUND_SERVICE_TYPE_MICROPHONE.
+ * - PARTIAL_WAKE_LOCK to prevent CPU sleep during screen lock.
  */
 
 package com.warraichgoods.driverdost.dashcam
@@ -25,19 +24,16 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraManager
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.ConcurrentCamera
-import androidx.camera.core.UseCaseGroup
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.FallbackStrategy
 import androidx.camera.video.FileOutputOptions
@@ -52,7 +48,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
-import androidx.lifecycle.LifecycleService
 import com.warraichgoods.driverdost.MainActivity
 import java.io.File
 import java.text.SimpleDateFormat
@@ -61,34 +56,58 @@ import java.util.Locale
 
 /**
  * Custom LifecycleOwner dedicated exclusively to CameraX background recording.
- * Kept strictly in Lifecycle.State.RESUMED for the entire active recording period,
- * ensuring camera buffers continue feeding the video encoder without pausing when
- * the device screen is locked or the user navigates away from the app.
+ * Controlled and kept in Lifecycle.State.RESUMED by DashcamService for the entire
+ * duration recording is active — independent of whatever state the Activity/UI is in.
+ *
+ * When screen locks, Activity enters onPause/onStop, but this CameraLifecycleOwner
+ * stays firmly in RESUMED, keeping CameraX camera pipelines and video encoders active.
  */
 class CameraLifecycleOwner : LifecycleOwner {
-    private val lifecycleRegistry = LifecycleRegistry(this)
+    private val lifecycleRegistry: LifecycleRegistry = LifecycleRegistry(this)
 
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
 
     init {
-        lifecycleRegistry.currentState = Lifecycle.State.INITIALIZED
+        // Initialize at CREATED state
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
     }
 
+    /**
+     * Advances lifecycle to STARTED and RESUMED.
+     * Must be called so CameraX activates the capture session.
+     */
     fun startAndResume() {
-        lifecycleRegistry.currentState = Lifecycle.State.CREATED
-        lifecycleRegistry.currentState = Lifecycle.State.STARTED
-        lifecycleRegistry.currentState = Lifecycle.State.RESUMED
-        Log.i("CameraLifecycleOwner", "Custom camera lifecycle transitioned to RESUMED")
+        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        }
+        if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        }
+        Log.i("CameraLifecycleOwner", "Custom camera lifecycle transitioned to RESUMED (state=${lifecycleRegistry.currentState})")
     }
 
+    /**
+     * Transitions lifecycle through ON_PAUSE, ON_STOP, ON_DESTROY
+     * to safely release camera hardware when recording actually stops.
+     */
     fun stopAndDestroy() {
-        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+        }
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        }
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         Log.i("CameraLifecycleOwner", "Custom camera lifecycle transitioned to DESTROYED")
     }
 }
 
-class DashcamService : LifecycleService() {
+/**
+ * Foreground Service for background dashcam recording.
+ * Holds its own CameraLifecycleOwner, Wakelock, and single VideoCapture session.
+ */
+class DashcamService : Service() {
 
     companion object {
         private const val TAG = "DashcamService"
@@ -96,7 +115,7 @@ class DashcamService : LifecycleService() {
         const val NOTIFICATION_ID = 4321
         const val ACTION_START = "ACTION_START_RECORDING"
         const val ACTION_STOP = "ACTION_STOP_RECORDING"
-        const val EXTRA_RECORDING_MODE = "EXTRA_RECORDING_MODE" // "auto", "dual", "rear"
+        const val EXTRA_RECORDING_MODE = "EXTRA_RECORDING_MODE"
     }
 
     private val binder = LocalBinder()
@@ -105,25 +124,15 @@ class DashcamService : LifecycleService() {
     // Custom LifecycleOwner held in RESUMED state independent of Activity
     private var cameraLifecycleOwner: CameraLifecycleOwner? = null
 
-    // Rear camera recording
+    // Rear camera recording session
     private var rearVideoCapture: VideoCapture<Recorder>? = null
     private var rearRecording: Recording? = null
     private var currentRearFile: File? = null
 
-    // Front (Cabin) camera recording
-    private var frontVideoCapture: VideoCapture<Recorder>? = null
-    private var frontRecording: Recording? = null
-    private var currentFrontFile: File? = null
-
-    // Dual-camera status
-    private var isDualActive = false
-    private var isDualHardwareSupported = false
-    private var dualFallbackReason: String? = null
-    
     private var isRecording = false
     private var startTimeMillis: Long = 0L
 
-    // Status listener callback
+    // Status listener callback to communicate with DashcamPlugin
     private var statusListener: ((
         isRecording: Boolean, 
         elapsedSeconds: Long, 
@@ -138,7 +147,6 @@ class DashcamService : LifecycleService() {
     }
 
     override fun onBind(intent: Intent): IBinder {
-        super.onBind(intent)
         return binder
     }
 
@@ -146,19 +154,13 @@ class DashcamService : LifecycleService() {
         super.onCreate()
         createNotificationChannel()
         acquireWakeLock()
-        // Pre-evaluate concurrent camera support on service create
-        val (supported, reason) = checkConcurrentCameraSupport(this)
-        isDualHardwareSupported = supported
-        dualFallbackReason = reason
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        super.onStartCommand(intent, flags, startId)
         when (intent?.action) {
             ACTION_START -> {
-                val mode = intent.getStringExtra(EXTRA_RECORDING_MODE) ?: "auto"
-                startForegroundServiceNotification(isDual = false)
-                startDashcamRecording(mode)
+                startForegroundServiceNotification()
+                startSingleRearRecording()
             }
             ACTION_STOP -> {
                 stopDashcamRecording()
@@ -175,12 +177,6 @@ class DashcamService : LifecycleService() {
 
     fun isCurrentlyRecording(): Boolean = isRecording
 
-    fun isDualModeActive(): Boolean = isDualActive
-
-    fun isDualSupported(): Boolean = isDualHardwareSupported
-
-    fun getFallbackReason(): String? = dualFallbackReason
-
     fun getElapsedSeconds(): Long {
         if (!isRecording || startTimeMillis == 0L) return 0L
         return (System.currentTimeMillis() - startTimeMillis) / 1000L
@@ -188,19 +184,17 @@ class DashcamService : LifecycleService() {
 
     fun getCurrentRearFilePath(): String? = currentRearFile?.absolutePath
 
-    fun getCurrentFrontFilePath(): String? = currentFrontFile?.absolutePath
-
     private fun acquireWakeLock() {
         try {
-            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
             if (wakeLock == null) {
-                wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "DriverDost:DashcamRecordingWakeLock").apply {
+                wakeLock = powerManager?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "DriverDost:DashcamRecordingWakeLock")?.apply {
                     setReferenceCounted(false)
                 }
             }
-            if (wakeLock?.isHeld == false) {
+            if (wakeLock?.isHeld != true) {
                 wakeLock?.acquire(4 * 60 * 60 * 1000L) // 4 hours safety timeout
-                Log.i(TAG, "Acquired WakeLock for continuous background recording")
+                Log.i(TAG, "Acquired PARTIAL_WAKE_LOCK for continuous recording during screen lock")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to acquire wake lock", e)
@@ -225,7 +219,7 @@ class DashcamService : LifecycleService() {
                 "Driver Dost Dashcam Recording",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows persistent status while road and cabin dashcam is actively recording."
+                description = "Shows persistent status while road dashcam is actively recording in background."
                 enableVibration(false)
                 setShowBadge(false)
             }
@@ -234,7 +228,7 @@ class DashcamService : LifecycleService() {
         }
     }
 
-    private fun buildNotification(elapsedText: String = "Recording active", isDual: Boolean = false): Notification {
+    private fun buildNotification(elapsedText: String = "Recording active"): Notification {
         val launchIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
@@ -245,17 +239,8 @@ class DashcamService : LifecycleService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val title = if (isDual) {
-            "Driver Dost - ڈوئل ڈیش کیم آن ہے (Dual Dashcam)"
-        } else {
-            "Driver Dost - ڈیش کیم آن ہے (Road Dashcam)"
-        }
-
-        val content = if (isDual) {
-            "روڈ اور کیبن ریکارڈنگ جاری ہے • $elapsedText"
-        } else {
-            "روڈ ویڈیو اور آڈیو ریکارڈنگ جاری ہے • $elapsedText"
-        }
+        val title = "Driver Dost - ڈیش کیم آن ہے (Road Dashcam)"
+        val content = "روڈ ویڈیو اور آڈیو ریکارڈنگ جاری ہے • $elapsedText"
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
@@ -270,8 +255,8 @@ class DashcamService : LifecycleService() {
             .build()
     }
 
-    private fun startForegroundServiceNotification(isDual: Boolean) {
-        val notification = buildNotification(isDual = isDual)
+    private fun startForegroundServiceNotification() {
+        val notification = buildNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
@@ -288,129 +273,85 @@ class DashcamService : LifecycleService() {
         val minutes = elapsedSeconds / 60
         val seconds = elapsedSeconds % 60
         val timeStr = String.format(Locale.US, "%02d:%02d", minutes, seconds)
-        val notification = buildNotification(elapsedText = timeStr, isDual = isDualActive)
+        val notification = buildNotification(elapsedText = timeStr)
         val manager = getSystemService(NotificationManager::class.java)
         manager?.notify(NOTIFICATION_ID, notification)
     }
 
     /**
-     * Checks if the device hardware supports concurrent dual-camera streaming.
-     * Evaluates CameraManager.getConcurrentCameraIds() on Android 11+ (API 30+).
+     * Phase 1 Fix: Single Road Camera Recording bound strictly to the custom
+     * CameraLifecycleOwner. Both audio and video are driven by the SAME Recording
+     * session from rearVideoCapture, ensuring uninterrupted recording across screen locks.
      */
-    fun checkConcurrentCameraSupport(ctx: Context): Pair<Boolean, String?> {
-        val cameraManager = ctx.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
-            ?: return Pair(false, "CameraManager service not available on device")
-
-        var hasFront = false
-        var hasBack = false
-        try {
-            for (id in cameraManager.cameraIdList) {
-                val chars = cameraManager.getCameraCharacteristics(id)
-                val facing = chars.get(CameraCharacteristics.LENS_FACING)
-                if (facing == CameraCharacteristics.LENS_FACING_FRONT) hasFront = true
-                if (facing == CameraCharacteristics.LENS_FACING_BACK) hasBack = true
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking camera lens facing", e)
-            return Pair(false, "Failed to inspect camera characteristics: ${e.message}")
-        }
-
-        if (!hasFront || !hasBack) {
-            return Pair(false, "Device hardware lacks required dual sensors (Front cabin + Rear road cameras are not both present).")
-        }
-
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            return Pair(false, "Concurrent dual-camera streams require Android 11 (API 30) or above. Current device is Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}).")
-        }
-
-        try {
-            val concurrentSets = cameraManager.concurrentCameraIds
-            if (concurrentSets.isEmpty()) {
-                return Pair(false, "Device camera driver does not support concurrent camera sessions (CameraManager.getConcurrentCameraIds() returned empty).")
-            }
-
-            var supportsFrontAndBack = false
-            for (combo in concurrentSets) {
-                var comboHasFront = false
-                var comboHasBack = false
-                for (id in combo) {
-                    val chars = cameraManager.getCameraCharacteristics(id)
-                    val facing = chars.get(CameraCharacteristics.LENS_FACING)
-                    if (facing == CameraCharacteristics.LENS_FACING_FRONT) comboHasFront = true
-                    if (facing == CameraCharacteristics.LENS_FACING_BACK) comboHasBack = true
-                }
-                if (comboHasFront && comboHasBack) {
-                    supportsFrontAndBack = true
-                    break
-                }
-            }
-
-            if (!supportsFrontAndBack) {
-                return Pair(false, "Device hardware supports concurrent cameras for secondary lenses, but not simultaneous Front + Rear road capture.")
-            }
-
-            return Pair(true, null)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error querying CameraManager concurrent camera IDs", e)
-            return Pair(false, "Hardware query error: ${e.message}")
-        }
-    }
-
-    private fun startDashcamRecording(mode: String) {
+    private fun startSingleRearRecording() {
         if (isRecording) return
 
         acquireWakeLock()
 
-        val shouldAttemptDual = (mode == "dual" || mode == "auto")
-        val (supported, reason) = checkConcurrentCameraSupport(this)
-        isDualHardwareSupported = supported
-        dualFallbackReason = reason
-
-        // Instantiate and activate our custom CameraLifecycleOwner held in RESUMED
+        // Clean up any previous lifecycle
         cameraLifecycleOwner?.stopAndDestroy()
-        cameraLifecycleOwner = CameraLifecycleOwner().apply {
-            startAndResume()
-        }
+        val lifecycleOwner = CameraLifecycleOwner()
+        cameraLifecycleOwner = lifecycleOwner
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
             try {
                 val cameraProvider = cameraProviderFuture.get()
+                cameraProvider.unbindAll()
 
-                // Check CameraX concurrent camera capability
-                var canUseDual = false
-                if (shouldAttemptDual && supported) {
-                    try {
-                        val availableConcurrent = cameraProvider.availableConcurrentCameraInfos
-                        if (availableConcurrent.isNotEmpty()) {
-                            canUseDual = true
-                        } else {
-                            dualFallbackReason = "CameraX concurrent camera bindings not supported by current camera HAL."
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "CameraX concurrent check exception", e)
-                        dualFallbackReason = "CameraX concurrent camera query failed: ${e.message}"
-                    }
-                } else if (shouldAttemptDual && !supported) {
-                    Log.i(TAG, "Dual camera requested but hardware not supported: $reason. Falling back to single rear camera.")
+                val qualitySelector = QualitySelector.from(
+                    Quality.HD,
+                    FallbackStrategy.lowerQualityOrHigherThan(Quality.SD)
+                )
+
+                val recorder = Recorder.Builder()
+                    .setQualitySelector(qualitySelector)
+                    .build()
+
+                rearVideoCapture = VideoCapture.withOutput(recorder)
+
+                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+                // 1. Bind to our custom CameraLifecycleOwner (in CREATED state)
+                cameraProvider.bindToLifecycle(
+                    lifecycleOwner,
+                    cameraSelector,
+                    rearVideoCapture
+                )
+
+                // 2. Advance custom lifecycle to STARTED and RESUMED
+                lifecycleOwner.startAndResume()
+
+                // 3. Prepare permanent output file in external app storage
+                val videosDir = File(getExternalFilesDir(null), "dashcam").apply {
+                    if (!exists()) mkdirs()
                 }
 
-                if (canUseDual) {
-                    val dualSuccess = startDualRecording(cameraProvider)
-                    if (!dualSuccess) {
-                        Log.w(TAG, "Dual recording setup failed; falling back gracefully to single rear camera.")
-                        dualFallbackReason = "Dual camera binding failed; defaulted to single road camera."
-                        startSingleRearRecording(cameraProvider)
-                    }
-                } else {
-                    // Standard Single Rear Camera Recording (Phase 1 behavior)
-                    startSingleRearRecording(cameraProvider)
+                val timestamp = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(Date())
+                val outputFile = File(videosDir, "dashcam_rear_$timestamp.mp4")
+                currentRearFile = outputFile
+
+                val outputOptions = FileOutputOptions.Builder(outputFile).build()
+
+                // 4. Single Recording session handles BOTH video and audio together
+                val pendingRecording = rearVideoCapture?.output
+                    ?.prepareRecording(this, outputOptions)
+                    ?.withAudioEnabled()
+
+                startTimeMillis = System.currentTimeMillis()
+                isRecording = true
+
+                // 5. Start unified recording session
+                rearRecording = pendingRecording?.start(ContextCompat.getMainExecutor(this)) { event ->
+                    handleRecordEvent(event, outputFile)
                 }
+
+                startForegroundServiceNotification()
+                Log.i(TAG, "Single road dashcam recording started with custom CameraLifecycleOwner: ${outputFile.name}")
 
             } catch (e: Exception) {
                 Log.e(TAG, "CameraX initialization failed", e)
                 isRecording = false
-                isDualActive = false
                 cameraLifecycleOwner?.stopAndDestroy()
                 cameraLifecycleOwner = null
                 statusListener?.invoke(false, 0L, null, null, false, e.message)
@@ -418,170 +359,30 @@ class DashcamService : LifecycleService() {
         }, ContextCompat.getMainExecutor(this))
     }
 
-    /**
-     * Dual Concurrent Recording using the custom CameraLifecycleOwner.
-     */
-    private fun startDualRecording(cameraProvider: ProcessCameraProvider): Boolean {
-        try {
-            val lifecycleOwner = cameraLifecycleOwner ?: return false
-
-            val qualitySelector = QualitySelector.from(
-                Quality.HD,
-                FallbackStrategy.lowerQualityOrHigherThan(Quality.SD)
-            )
-
-            // 1. Rear Video Capture
-            val rearRecorder = Recorder.Builder().setQualitySelector(qualitySelector).build()
-            rearVideoCapture = VideoCapture.withOutput(rearRecorder)
-
-            // 2. Front Video Capture
-            val frontRecorder = Recorder.Builder().setQualitySelector(qualitySelector).build()
-            frontVideoCapture = VideoCapture.withOutput(frontRecorder)
-
-            val rearConfig = ConcurrentCamera.SingleCameraConfig(
-                CameraSelector.DEFAULT_BACK_CAMERA,
-                UseCaseGroup.Builder().addUseCase(rearVideoCapture!!).build(),
-                lifecycleOwner // Bound to service's CameraLifecycleOwner (RESUMED)
-            )
-
-            val frontConfig = ConcurrentCamera.SingleCameraConfig(
-                CameraSelector.DEFAULT_FRONT_CAMERA,
-                UseCaseGroup.Builder().addUseCase(frontVideoCapture!!).build(),
-                lifecycleOwner // Bound to service's CameraLifecycleOwner (RESUMED)
-            )
-
-            cameraProvider.unbindAll()
-            cameraProvider.bindToLifecycle(listOf(rearConfig, frontConfig))
-
-            // Output files
-            val videosDir = File(getExternalFilesDir(null), "dashcam").apply {
-                if (!exists()) mkdirs()
-            }
-            val timestamp = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(Date())
-            val rearFile = File(videosDir, "dashcam_rear_$timestamp.mp4")
-            val frontFile = File(videosDir, "dashcam_front_$timestamp.mp4")
-
-            currentRearFile = rearFile
-            currentFrontFile = frontFile
-
-            val rearOutputOptions = FileOutputOptions.Builder(rearFile).build()
-            val frontOutputOptions = FileOutputOptions.Builder(frontFile).build()
-
-            // Rear records road video + microphone audio in a SINGLE Recording session
-            val pendingRear = rearVideoCapture?.output?.prepareRecording(this, rearOutputOptions)
-                ?.withAudioEnabled()
-
-            // Front records cabin video
-            val pendingFront = frontVideoCapture?.output?.prepareRecording(this, frontOutputOptions)
-
-            startTimeMillis = System.currentTimeMillis()
-            isRecording = true
-            isDualActive = true
-
-            // Start rear recording
-            rearRecording = pendingRear?.start(ContextCompat.getMainExecutor(this)) { event ->
-                handleRecordEvent(event, rearFile, isRear = true)
-            }
-
-            // Start front recording
-            frontRecording = pendingFront?.start(ContextCompat.getMainExecutor(this)) { event ->
-                handleRecordEvent(event, frontFile, isRear = false)
-            }
-
-            startForegroundServiceNotification(isDual = true)
-            Log.i(TAG, "Dual dashcam recording started: Rear=${rearFile.name}, Front=${frontFile.name}")
-            return true
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start dual concurrent recording", e)
-            return false
-        }
-    }
-
-    /**
-     * Single Rear Camera Recording (Phase 1) using the custom CameraLifecycleOwner.
-     * Both audio and video are driven by the SAME Recording session from rearVideoCapture.
-     */
-    private fun startSingleRearRecording(cameraProvider: ProcessCameraProvider) {
-        val lifecycleOwner = cameraLifecycleOwner ?: return
-
-        val qualitySelector = QualitySelector.from(
-            Quality.HD,
-            FallbackStrategy.lowerQualityOrHigherThan(Quality.SD)
-        )
-
-        val recorder = Recorder.Builder()
-            .setQualitySelector(qualitySelector)
-            .build()
-
-        rearVideoCapture = VideoCapture.withOutput(recorder)
-        frontVideoCapture = null
-        currentFrontFile = null
-        isDualActive = false
-
-        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-        cameraProvider.unbindAll()
-        // Bound to the custom CameraLifecycleOwner kept strictly in RESUMED state!
-        cameraProvider.bindToLifecycle(
-            lifecycleOwner,
-            cameraSelector,
-            rearVideoCapture
-        )
-
-        val videosDir = File(getExternalFilesDir(null), "dashcam").apply {
-            if (!exists()) mkdirs()
-        }
-
-        val timestamp = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US).format(Date())
-        val outputFile = File(videosDir, "dashcam_rear_$timestamp.mp4")
-        currentRearFile = outputFile
-
-        val outputOptions = FileOutputOptions.Builder(outputFile).build()
-
-        // Single Recording session handles BOTH video and audio together
-        val pendingRecording = rearVideoCapture?.output?.prepareRecording(this, outputOptions)
-            ?.withAudioEnabled()
-
-        startTimeMillis = System.currentTimeMillis()
-        isRecording = true
-
-        rearRecording = pendingRecording?.start(ContextCompat.getMainExecutor(this)) { event ->
-            handleRecordEvent(event, outputFile, isRear = true)
-        }
-
-        startForegroundServiceNotification(isDual = false)
-        Log.i(TAG, "Single road dashcam recording started with custom CameraLifecycleOwner: ${outputFile.name}")
-    }
-
-    private fun handleRecordEvent(event: VideoRecordEvent, file: File, isRear: Boolean) {
+    private fun handleRecordEvent(event: VideoRecordEvent, file: File) {
         when (event) {
             is VideoRecordEvent.Start -> {
-                Log.i(TAG, "Clip recording start: ${file.name} (isRear: $isRear)")
-                if (isRear) {
-                    statusListener?.invoke(
-                        true, 
-                        0L, 
-                        currentRearFile?.absolutePath, 
-                        currentFrontFile?.absolutePath, 
-                        isDualActive, 
-                        dualFallbackReason
-                    )
-                }
+                Log.i(TAG, "Clip recording start: ${file.name}")
+                statusListener?.invoke(
+                    true, 
+                    0L, 
+                    currentRearFile?.absolutePath, 
+                    null, 
+                    false, 
+                    null
+                )
             }
             is VideoRecordEvent.Status -> {
                 val elapsed = getElapsedSeconds()
-                if (isRear) {
-                    updateNotification(elapsed)
-                    statusListener?.invoke(
-                        true, 
-                        elapsed, 
-                        currentRearFile?.absolutePath, 
-                        currentFrontFile?.absolutePath, 
-                        isDualActive, 
-                        dualFallbackReason
-                    )
-                }
+                updateNotification(elapsed)
+                statusListener?.invoke(
+                    true, 
+                    elapsed, 
+                    currentRearFile?.absolutePath, 
+                    null, 
+                    false, 
+                    null
+                )
             }
             is VideoRecordEvent.Finalize -> {
                 if (event.hasError()) {
@@ -589,17 +390,15 @@ class DashcamService : LifecycleService() {
                 } else {
                     Log.i(TAG, "Clip finalized: ${file.name} (size: ${file.length()} bytes)")
                 }
-                if (isRear) {
-                    isRecording = false
-                    statusListener?.invoke(
-                        false, 
-                        getElapsedSeconds(), 
-                        currentRearFile?.absolutePath, 
-                        currentFrontFile?.absolutePath, 
-                        isDualActive, 
-                        dualFallbackReason
-                    )
-                }
+                isRecording = false
+                statusListener?.invoke(
+                    false, 
+                    getElapsedSeconds(), 
+                    currentRearFile?.absolutePath, 
+                    null, 
+                    false, 
+                    null
+                )
             }
         }
     }
@@ -610,13 +409,6 @@ class DashcamService : LifecycleService() {
             rearRecording = null
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping rear recording", e)
-        }
-
-        try {
-            frontRecording?.stop()
-            frontRecording = null
-        } catch (e: Exception) {
-            Log.e(TAG, "Error stopping front recording", e)
         }
 
         // Transition our custom CameraLifecycleOwner to DESTROYED to release camera hardware
@@ -631,9 +423,9 @@ class DashcamService : LifecycleService() {
             false, 
             elapsed, 
             currentRearFile?.absolutePath, 
-            currentFrontFile?.absolutePath, 
-            isDualActive, 
-            dualFallbackReason
+            null, 
+            false, 
+            null
         )
     }
 
