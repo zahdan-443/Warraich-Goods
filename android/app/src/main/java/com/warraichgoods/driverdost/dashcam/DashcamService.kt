@@ -3,8 +3,6 @@
  * Reference project: https://github.com/xxxifan/DashCam
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *     http://www.apache.org/licenses/LICENSE-2.0
  * 
  * Modifications for Driver Dost (Phase 1 Fix):
  * - Fixed screen-lock video pausing bug: CameraX is bound to a custom CameraLifecycleOwner
@@ -75,7 +73,7 @@ class CameraLifecycleOwner : LifecycleOwner {
 
     /**
      * Advances lifecycle to STARTED and RESUMED.
-     * Must be called so CameraX activates the capture session.
+     * Must be called so CameraX activates and keeps the capture session open.
      */
     fun startAndResume() {
         if (!lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
@@ -287,10 +285,13 @@ class DashcamService : Service() {
         if (isRecording) return
 
         acquireWakeLock()
+        startForegroundServiceNotification()
 
         // Clean up any previous lifecycle
         cameraLifecycleOwner?.stopAndDestroy()
-        val lifecycleOwner = CameraLifecycleOwner()
+        val lifecycleOwner = CameraLifecycleOwner().apply {
+            startAndResume()
+        }
         cameraLifecycleOwner = lifecycleOwner
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
@@ -312,17 +313,14 @@ class DashcamService : Service() {
 
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-                // 1. Bind to our custom CameraLifecycleOwner (in CREATED state)
+                // 1. Bind to our custom CameraLifecycleOwner (maintained in RESUMED state)
                 cameraProvider.bindToLifecycle(
                     lifecycleOwner,
                     cameraSelector,
                     rearVideoCapture
                 )
 
-                // 2. Advance custom lifecycle to STARTED and RESUMED
-                lifecycleOwner.startAndResume()
-
-                // 3. Prepare permanent output file in external app storage
+                // 2. Prepare permanent output file in external app storage
                 val videosDir = File(getExternalFilesDir(null), "dashcam").apply {
                     if (!exists()) mkdirs()
                 }
@@ -333,7 +331,7 @@ class DashcamService : Service() {
 
                 val outputOptions = FileOutputOptions.Builder(outputFile).build()
 
-                // 4. Single Recording session handles BOTH video and audio together
+                // 3. Single Recording session handles BOTH video and audio synchronously
                 val pendingRecording = rearVideoCapture?.output
                     ?.prepareRecording(this, outputOptions)
                     ?.withAudioEnabled()
@@ -341,12 +339,11 @@ class DashcamService : Service() {
                 startTimeMillis = System.currentTimeMillis()
                 isRecording = true
 
-                // 5. Start unified recording session
+                // 4. Start unified recording session
                 rearRecording = pendingRecording?.start(ContextCompat.getMainExecutor(this)) { event ->
                     handleRecordEvent(event, outputFile)
                 }
 
-                startForegroundServiceNotification()
                 Log.i(TAG, "Single road dashcam recording started with custom CameraLifecycleOwner: ${outputFile.name}")
 
             } catch (e: Exception) {
