@@ -45,8 +45,8 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/index-BTvUnyW-.css',
-  './assets/index-Dd0DWY8k.js',
+    './assets/index-BNSB-zG4.css',
+  './assets/index-RVdmVJiw.js',
   './assets/vendor-firebase-BLfGgOwF.js',
   './assets/vendor-pdf-eGmvk4x-.js',
   './assets/vendor-react-DZHmpvVC.js'
