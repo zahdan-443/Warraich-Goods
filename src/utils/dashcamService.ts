@@ -8,6 +8,8 @@ export interface DashcamClip {
   durationSeconds: number;
   dateFormatted: string;
   timestamp: number;
+  cameraType?: 'rear' | 'front' | 'single';
+  pairId?: string;
   blobUrl?: string;
   thumbnailUrl?: string;
 }
@@ -16,17 +18,39 @@ export interface DashcamStatus {
   isRecording: boolean;
   elapsedSeconds: number;
   currentFile?: string;
+  currentRearFile?: string;
+  currentFrontFile?: string;
+  isDualMode?: boolean;
+  dualSupported?: boolean;
+  fallbackReason?: string;
+}
+
+export interface DualCameraCapability {
+  supported: boolean;
+  reason?: string;
+  apiLevel?: number;
+  androidVersion?: string;
 }
 
 interface NativeDashcamPlugin {
-  startRecording(): Promise<{ started: boolean; message: string }>;
+  startRecording(options?: { mode?: string }): Promise<{ started: boolean; mode?: string; dualSupported?: boolean; fallbackReason?: string; message: string }>;
   stopRecording(): Promise<{ stopped: boolean; message: string }>;
-  getStatus(): Promise<{ isRecording: boolean; elapsedSeconds: number; currentFile: string }>;
+  getStatus(): Promise<{
+    isRecording: boolean;
+    elapsedSeconds: number;
+    currentFile: string;
+    currentRearFile?: string;
+    currentFrontFile?: string;
+    isDualMode?: boolean;
+    dualSupported?: boolean;
+    fallbackReason?: string;
+  }>;
   listClips(): Promise<{ clips: DashcamClip[]; totalCount: number }>;
   deleteClip(options: { path?: string; filename?: string }): Promise<{ success: boolean }>;
   playClip(options: { path?: string; filename?: string }): Promise<{ success: boolean }>;
   checkPermissions(): Promise<{ camera: string; microphone: string }>;
   requestPermissions(): Promise<{ camera: string; microphone: string }>;
+  checkDualCameraSupport(): Promise<DualCameraCapability>;
   addListener(eventName: 'recordingStatusChange', listenerFunc: (status: DashcamStatus) => void): Promise<any>;
 }
 
@@ -40,7 +64,7 @@ export const isNativeDashcamAvailable = (): boolean => {
 // IndexedDB Storage for Web/Preview Fallback
 // ==========================================
 const DB_NAME = 'driver_dost_dashcam_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'clips';
 
 interface StoredWebClip {
@@ -50,6 +74,8 @@ interface StoredWebClip {
   durationSeconds: number;
   dateFormatted: string;
   timestamp: number;
+  cameraType: 'rear' | 'front' | 'single';
+  pairId?: string;
   blob: Blob;
 }
 
@@ -112,10 +138,54 @@ let webRecordingStartTime = 0;
 let webRecordingTimer: any = null;
 let webElapsedSeconds = 0;
 let webStatusListeners: ((status: DashcamStatus) => void)[] = [];
+let webIsDualMode = false;
+let webDualFallbackReason = '';
 
 // ==========================================
 // Public Dashcam Service API
 // ==========================================
+
+export async function checkDualCameraCapability(): Promise<DualCameraCapability> {
+  if (isNativeDashcamAvailable()) {
+    try {
+      return await NativeDashcam.checkDualCameraSupport();
+    } catch (e: any) {
+      return {
+        supported: false,
+        reason: e?.message || 'Native dual camera check unavailable',
+      };
+    }
+  }
+
+  // Web check
+  if (typeof navigator !== 'undefined' && navigator.mediaDevices?.enumerateDevices) {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices.filter((d) => d.kind === 'videoinput');
+      if (videoInputs.length >= 2) {
+        return {
+          supported: true,
+          reason: undefined,
+        };
+      } else {
+        return {
+          supported: false,
+          reason: 'Only one video camera sensor was detected on this device. Dual-camera requires both front and rear hardware sensors.',
+        };
+      }
+    } catch (e: any) {
+      return {
+        supported: false,
+        reason: 'Unable to query browser media devices: ' + e?.message,
+      };
+    }
+  }
+
+  return {
+    supported: false,
+    reason: 'Device environment does not support media device enumeration.',
+  };
+}
 
 export async function checkDashcamPermissions(): Promise<{ camera: boolean; microphone: boolean }> {
   if (isNativeDashcamAvailable()) {
@@ -172,12 +242,27 @@ export async function requestDashcamPermissions(): Promise<{ camera: boolean; mi
 }
 
 export async function startDashcamRecording(options?: {
+  mode?: 'auto' | 'dual' | 'rear';
   videoElement?: HTMLVideoElement | null;
-}): Promise<{ success: boolean; message?: string }> {
+}): Promise<{
+  success: boolean;
+  message?: string;
+  isDualMode?: boolean;
+  dualSupported?: boolean;
+  fallbackReason?: string;
+}> {
+  const mode = options?.mode || 'auto';
+
   if (isNativeDashcamAvailable()) {
     try {
-      const res = await NativeDashcam.startRecording();
-      return { success: res.started, message: res.message };
+      const res = await NativeDashcam.startRecording({ mode });
+      return {
+        success: res.started,
+        message: res.message,
+        isDualMode: res.dualSupported && mode !== 'rear',
+        dualSupported: res.dualSupported,
+        fallbackReason: res.fallbackReason,
+      };
     } catch (err: any) {
       return { success: false, message: err?.message || 'Failed to start native recording' };
     }
@@ -188,6 +273,11 @@ export async function startDashcamRecording(options?: {
     if (webMediaRecorder && webMediaRecorder.state === 'recording') {
       return { success: true, message: 'Already recording' };
     }
+
+    const dualCheck = await checkDualCameraCapability();
+    const canDoDual = mode !== 'rear' && dualCheck.supported;
+    webIsDualMode = canDoDual;
+    webDualFallbackReason = canDoDual ? '' : (dualCheck.reason || 'Single camera mode active');
 
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
@@ -234,17 +324,29 @@ export async function startDashcamRecording(options?: {
       notifyStatusListeners({
         isRecording: true,
         elapsedSeconds: webElapsedSeconds,
-        currentFile: 'Live Recording (Camera)',
+        currentFile: 'Live Recording (Road Camera)',
+        isDualMode: webIsDualMode,
+        dualSupported: dualCheck.supported,
+        fallbackReason: webDualFallbackReason,
       });
     }, 1000);
 
     notifyStatusListeners({
       isRecording: true,
       elapsedSeconds: 0,
-      currentFile: 'Live Recording (Camera)',
+      currentFile: 'Live Recording (Road Camera)',
+      isDualMode: webIsDualMode,
+      dualSupported: dualCheck.supported,
+      fallbackReason: webDualFallbackReason,
     });
 
-    return { success: true, message: 'Web dashcam recording started' };
+    return {
+      success: true,
+      message: 'Dashcam recording started',
+      isDualMode: webIsDualMode,
+      dualSupported: dualCheck.supported,
+      fallbackReason: webDualFallbackReason,
+    };
   } catch (err: any) {
     console.error('Web dashcam recording error:', err);
     return { success: false, message: err?.message || 'Could not access camera/microphone.' };
@@ -266,7 +368,7 @@ export async function stopDashcamRecording(): Promise<{ success: boolean; clip?:
   return new Promise((resolve) => {
     if (!webMediaRecorder || webMediaRecorder.state === 'inactive') {
       clearInterval(webRecordingTimer);
-      notifyStatusListeners({ isRecording: false, elapsedSeconds: 0 });
+      notifyStatusListeners({ isRecording: false, elapsedSeconds: 0, isDualMode: false });
       resolve({ success: false });
       return;
     }
@@ -287,7 +389,8 @@ export async function stopDashcamRecording(): Promise<{ success: boolean; clip?:
 
         const now = new Date();
         const pad = (n: number) => String(n).padStart(2, '0');
-        const filename = `dashcam_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.mp4`;
+        const timestampStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+        const filename = `dashcam_rear_${timestampStr}.mp4`;
         const dateFormatted = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
         const storedItem: StoredWebClip = {
@@ -297,6 +400,8 @@ export async function stopDashcamRecording(): Promise<{ success: boolean; clip?:
           durationSeconds: durationSec,
           dateFormatted,
           timestamp: now.getTime(),
+          cameraType: 'rear',
+          pairId: timestampStr,
           blob,
         };
 
@@ -310,10 +415,12 @@ export async function stopDashcamRecording(): Promise<{ success: boolean; clip?:
           durationSeconds: storedItem.durationSeconds,
           dateFormatted: storedItem.dateFormatted,
           timestamp: storedItem.timestamp,
+          cameraType: 'rear',
+          pairId: timestampStr,
           blobUrl: URL.createObjectURL(blob),
         };
 
-        notifyStatusListeners({ isRecording: false, elapsedSeconds: 0 });
+        notifyStatusListeners({ isRecording: false, elapsedSeconds: 0, isDualMode: false });
         resolve({ success: true, clip });
       } catch (err) {
         console.error('Error saving web clip', err);
@@ -336,6 +443,11 @@ export async function getDashcamStatus(): Promise<DashcamStatus> {
         isRecording: res.isRecording,
         elapsedSeconds: res.elapsedSeconds,
         currentFile: res.currentFile,
+        currentRearFile: res.currentRearFile,
+        currentFrontFile: res.currentFrontFile,
+        isDualMode: res.isDualMode,
+        dualSupported: res.dualSupported,
+        fallbackReason: res.fallbackReason,
       };
     } catch {
       return { isRecording: false, elapsedSeconds: 0 };
@@ -345,7 +457,10 @@ export async function getDashcamStatus(): Promise<DashcamStatus> {
   return {
     isRecording: !!(webMediaRecorder && webMediaRecorder.state === 'recording'),
     elapsedSeconds: webElapsedSeconds,
-    currentFile: webMediaRecorder ? 'Live Recording (Camera)' : undefined,
+    currentFile: webMediaRecorder ? 'Live Recording (Road Camera)' : undefined,
+    isDualMode: webIsDualMode,
+    dualSupported: false,
+    fallbackReason: webDualFallbackReason,
   };
 }
 
@@ -371,6 +486,8 @@ export async function listDashcamClips(): Promise<DashcamClip[]> {
       durationSeconds: s.durationSeconds,
       dateFormatted: s.dateFormatted,
       timestamp: s.timestamp,
+      cameraType: s.cameraType || (s.filename.includes('_front_') ? 'front' : s.filename.includes('_rear_') ? 'rear' : 'single'),
+      pairId: s.pairId,
       blobUrl: URL.createObjectURL(s.blob),
     }));
   } catch (err) {

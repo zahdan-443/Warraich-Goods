@@ -2,10 +2,12 @@
  * DashcamPlugin for Capacitor - Driver Dost
  * Adapted from xxxifan/DashCam (Apache License 2.0).
  * Reference project: https://github.com/xxxifan/DashCam
+ * Secondary reference for dual camera foreground service: cairn-labworks/Sentry
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * 
  * Exposes native continuous background camera-recording to the Web UI via Capacitor.
+ * PHASE 2: Concurrent Dual-Camera streaming (Front Cabin + Rear Road) using CameraManager.getConcurrentCameraIds().
  */
 
 package com.warraichgoods.driverdost.dashcam
@@ -29,7 +31,6 @@ import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
-import com.getcapacitor.annotation.PermissionCallback
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -59,11 +60,16 @@ class DashcamPlugin : Plugin() {
             dashcamService = localBinder?.getService()
             isBound = true
 
-            dashcamService?.setStatusListener { isRecording, elapsedSeconds, currentFile ->
+            dashcamService?.setStatusListener { isRecording, elapsedSeconds, rearFile, frontFile, isDual, fallbackReason ->
                 val data = JSObject().apply {
                     put("isRecording", isRecording)
                     put("elapsedSeconds", elapsedSeconds)
-                    put("currentFile", currentFile ?: "")
+                    put("currentFile", rearFile ?: "")
+                    put("currentRearFile", rearFile ?: "")
+                    put("currentFrontFile", frontFile ?: "")
+                    put("isDualMode", isDual)
+                    put("dualSupported", dashcamService?.isDualSupported() ?: false)
+                    put("fallbackReason", fallbackReason ?: "")
                 }
                 notifyListeners("recordingStatusChange", data)
             }
@@ -89,13 +95,44 @@ class DashcamPlugin : Plugin() {
         }
     }
 
+    /**
+     * Phase 2: Runtime capability check for concurrent dual camera support.
+     * Evaluates CameraManager.getConcurrentCameraIds() on Android 11+ (API 30+).
+     */
+    @PluginMethod
+    fun checkDualCameraSupport(call: PluginCall) {
+        val service = dashcamService
+        val result = JSObject()
+        if (service != null) {
+            val (supported, reason) = service.checkConcurrentCameraSupport(context)
+            result.put("supported", supported)
+            result.put("reason", reason ?: "")
+            result.put("apiLevel", Build.VERSION.SDK_INT)
+            result.put("androidVersion", Build.VERSION.RELEASE)
+        } else {
+            // Standalone check without bound service
+            val tempService = DashcamService()
+            val (supported, reason) = tempService.checkConcurrentCameraSupport(context)
+            result.put("supported", supported)
+            result.put("reason", reason ?: "")
+            result.put("apiLevel", Build.VERSION.SDK_INT)
+            result.put("androidVersion", Build.VERSION.RELEASE)
+        }
+        call.resolve(result)
+    }
+
     @PluginMethod
     fun getStatus(call: PluginCall) {
         val service = dashcamService
         val result = JSObject().apply {
             put("isRecording", service?.isCurrentlyRecording() ?: false)
             put("elapsedSeconds", service?.getElapsedSeconds() ?: 0L)
-            put("currentFile", service?.getCurrentFilePath() ?: "")
+            put("currentFile", service?.getCurrentRearFilePath() ?: "")
+            put("currentRearFile", service?.getCurrentRearFilePath() ?: "")
+            put("currentFrontFile", service?.getCurrentFrontFilePath() ?: "")
+            put("isDualMode", service?.isDualModeActive() ?: false)
+            put("dualSupported", service?.isDualSupported() ?: false)
+            put("fallbackReason", service?.getFallbackReason() ?: "")
         }
         call.resolve(result)
     }
@@ -111,9 +148,12 @@ class DashcamPlugin : Plugin() {
             return
         }
 
+        val mode = call.getString("mode") ?: "auto"
+
         try {
             val intent = Intent(context, DashcamService::class.java).apply {
                 action = DashcamService.ACTION_START
+                putExtra(DashcamService.EXTRA_RECORDING_MODE, mode)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -122,9 +162,15 @@ class DashcamPlugin : Plugin() {
             }
             bindDashcamService()
 
+            val service = dashcamService
+            val isDualSupp = service?.isDualSupported() ?: false
+
             val result = JSObject().apply {
                 put("started", true)
-                put("message", "Dashcam recording started")
+                put("mode", mode)
+                put("dualSupported", isDualSupp)
+                put("fallbackReason", service?.getFallbackReason() ?: "")
+                put("message", if (isDualSupp && mode != "rear") "Dual-camera dashcam recording initiated" else "Road dashcam recording initiated")
             }
             call.resolve(result)
         } catch (e: Exception) {
@@ -172,14 +218,30 @@ class DashcamPlugin : Plugin() {
                         durationMs = durationStr?.toLongOrNull() ?: 0L
                     } catch (_: Exception) {}
 
+                    val filename = file.name
+                    val cameraType = when {
+                        filename.contains("_front_") -> "front"
+                        filename.contains("_rear_") -> "rear"
+                        else -> "single"
+                    }
+
+                    // Extract synced timestamp ID if available e.g. dashcam_rear_2026-10-04_14-32-10.mp4 -> 2026-10-04_14-32-10
+                    val pairId = filename
+                        .replace("dashcam_rear_", "")
+                        .replace("dashcam_front_", "")
+                        .replace("dashcam_", "")
+                        .replace(".mp4", "")
+
                     val item = JSObject().apply {
-                        put("id", file.name)
-                        put("filename", file.name)
+                        put("id", filename)
+                        put("filename", filename)
                         put("path", file.absolutePath)
                         put("sizeBytes", file.length())
                         put("durationSeconds", durationMs / 1000L)
                         put("dateFormatted", dateFormat.format(Date(file.lastModified())))
                         put("timestamp", file.lastModified())
+                        put("cameraType", cameraType)
+                        put("pairId", pairId)
                     }
                     clipsArray.put(item)
                 }
