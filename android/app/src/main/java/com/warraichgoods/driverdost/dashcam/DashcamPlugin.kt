@@ -290,6 +290,54 @@ class DashcamPlugin : Plugin() {
         }
     }
 
+    @PluginMethod
+    fun shareClip(call: PluginCall) {
+        val path = call.getString("path")
+        val filename = call.getString("filename")
+
+        val targetFile = if (!path.isNullOrEmpty()) {
+            File(path)
+        } else if (!filename.isNullOrEmpty()) {
+            File(File(context.getExternalFilesDir(null), "dashcam"), filename)
+        } else null
+
+        if (targetFile == null || !targetFile.exists()) {
+            call.reject("FILE_NOT_FOUND", "Video file not found")
+            return
+        }
+
+        try {
+            // content:// URI generated securely via FileProvider
+            val contentUri: Uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                targetFile
+            )
+
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "video/mp4"
+                putExtra(Intent.EXTRA_STREAM, contentUri)
+                putExtra(Intent.EXTRA_SUBJECT, "Driver Dost Dashcam: ${targetFile.name}")
+                putExtra(Intent.EXTRA_TEXT, "Driver Dost Dashcam Video (${targetFile.name})")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            val chooser = Intent.createChooser(shareIntent, "Share Dashcam Video").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(chooser)
+
+            val result = JSObject().apply {
+                put("success", true)
+                put("contentUri", contentUri.toString())
+            }
+            call.resolve(result)
+        } catch (e: Exception) {
+            call.reject("SHARE_FAILED", e.localizedMessage, e)
+        }
+    }
+
     override fun handleOnDestroy() {
         if (isBound) {
             try {

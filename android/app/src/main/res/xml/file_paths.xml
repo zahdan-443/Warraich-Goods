@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- App-specific external storage for dashcam recordings (context.getExternalFilesDir) -->
+    <external-files-path name="dashcam_videos" path="dashcam" />
+    <external-files-path name="external_files" path="." />
+    <!-- Secondary paths for shared media and cached files -->
     <external-path name="my_images" path="." />
     <cache-path name="my_cache_images" path="." />
+    <files-path name="internal_files" path="." />
 </paths>

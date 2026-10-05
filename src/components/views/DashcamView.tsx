@@ -40,6 +40,7 @@ import {
   listDashcamClips, 
   deleteDashcamClip, 
   playDashcamClip, 
+  shareDashcamClip, 
   checkDashcamPermissions, 
   requestDashcamPermissions,
   checkDualCameraCapability,
@@ -80,6 +81,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
   const [loadingClips, setLoadingClips] = useState(true);
   const [selectedClipToPlay, setSelectedClipToPlay] = useState<DashcamClip | null>(null);
   const [clipToDelete, setClipToDelete] = useState<DashcamClip | null>(null);
+  const [sharingClipId, setSharingClipId] = useState<string | null>(null);
   const [clipFilter, setClipFilter] = useState<'all' | 'rear' | 'front'>('all');
 
   // Permissions & Explanation Modal
@@ -261,6 +263,18 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
     } else {
       // In web, open playback modal
       setSelectedClipToPlay(clip);
+    }
+  };
+
+  const handleShareClip = async (clip: DashcamClip) => {
+    setSharingClipId(clip.id);
+    try {
+      await shareDashcamClip(clip);
+    } catch (err) {
+      console.warn('Share error', err);
+      setErrorMessage(isUrdu ? 'ویڈیو شیئر کرنے میں مسئلہ پیش آیا۔' : 'Failed to share video clip.');
+    } finally {
+      setSharingClipId(null);
     }
   };
 
@@ -798,7 +812,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                       <span className="text-[11px] text-gray-400">{clip.dateFormatted}</span>
                     </div>
 
-                    {/* Actions: Play & Delete */}
+                    {/* Actions: Play, Share & Delete */}
                     <div className="flex items-center justify-between gap-2 pt-1">
                       <button
                         onClick={() => handlePlayClip(clip)}
@@ -806,6 +820,21 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                       >
                         <Play className="w-3.5 h-3.5 fill-current" />
                         <span>{isUrdu ? 'چلائیں (Play)' : 'Play Video'}</span>
+                      </button>
+
+                      {/* Share Video Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleShareClip(clip)}
+                        disabled={sharingClipId === clip.id}
+                        className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-colors flex items-center justify-center active:scale-95"
+                        title={isUrdu ? 'ویڈیو شیئر کریں (WhatsApp/Email)' : 'Share Video'}
+                      >
+                        {sharingClipId === clip.id ? (
+                          <RefreshCw className="w-4 h-4 animate-spin text-emerald-700" />
+                        ) : (
+                          <Share2 className="w-4 h-4" />
+                        )}
                       </button>
 
                       {clip.blobUrl && (

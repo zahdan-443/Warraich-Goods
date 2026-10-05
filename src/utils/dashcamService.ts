@@ -1,4 +1,5 @@
 import { registerPlugin, Capacitor } from '@capacitor/core';
+import { Share } from '@capacitor/share';
 
 export interface DashcamClip {
   id: string;
@@ -48,6 +49,7 @@ interface NativeDashcamPlugin {
   listClips(): Promise<{ clips: DashcamClip[]; totalCount: number }>;
   deleteClip(options: { path?: string; filename?: string }): Promise<{ success: boolean }>;
   playClip(options: { path?: string; filename?: string }): Promise<{ success: boolean }>;
+  shareClip(options: { path?: string; filename?: string }): Promise<{ success: boolean; contentUri?: string }>;
   checkPermissions(): Promise<{ camera: string; microphone: string }>;
   requestPermissions(): Promise<{ camera: string; microphone: string }>;
   checkDualCameraSupport(): Promise<DualCameraCapability>;
@@ -568,6 +570,68 @@ export async function playDashcamClip(clip: DashcamClip): Promise<void> {
   if (clip.blobUrl) {
     window.open(clip.blobUrl, '_blank');
   }
+}
+
+export async function shareDashcamClip(clip: DashcamClip): Promise<boolean> {
+  // 1. In native Android environment: use FileProvider content:// URI with native share intent
+  if (isNativeDashcamAvailable()) {
+    try {
+      const res = await NativeDashcam.shareClip({ path: clip.path, filename: clip.filename });
+      if (res.success) return true;
+    } catch (pluginErr) {
+      console.warn('NativeDashcam.shareClip error, falling back to @capacitor/share:', pluginErr);
+    }
+
+    try {
+      await Share.share({
+        title: 'Driver Dost Dashcam Clip',
+        text: `Driver Dost Dashcam Video (${clip.filename})`,
+        url: clip.path,
+        dialogTitle: 'Share Dashcam Video Clip',
+      });
+      return true;
+    } catch (capErr: any) {
+      if (capErr?.message?.includes('canceled') || capErr?.message?.includes('dismissed')) {
+        return true;
+      }
+      console.warn('@capacitor/share error:', capErr);
+      return false;
+    }
+  }
+
+  // 2. Web fallback: use Web Share API with File object or download fallback
+  try {
+    const storedClips = await getWebClipsFromDB();
+    const target = storedClips.find((c) => c.id === clip.id);
+    const blob = target?.blob;
+
+    if (blob && typeof navigator !== 'undefined' && navigator.share) {
+      const file = new File([blob], clip.filename, { type: blob.type || 'video/mp4' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Driver Dost Dashcam Video',
+          text: `Driver Dost Dashcam Video (${clip.filename})`,
+        });
+        return true;
+      }
+    }
+
+    // Direct download fallback
+    if (clip.blobUrl) {
+      const a = document.createElement('a');
+      a.href = clip.blobUrl;
+      a.download = clip.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return true;
+    }
+  } catch (err: any) {
+    if (err?.name === 'AbortError') return true;
+    console.warn('Web clip sharing error:', err);
+  }
+  return false;
 }
 
 export function subscribeDashcamStatus(listener: (status: DashcamStatus) => void): () => void {
