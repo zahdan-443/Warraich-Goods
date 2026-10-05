@@ -57,8 +57,46 @@ interface NativeDashcamPlugin {
 const NativeDashcam = registerPlugin<NativeDashcamPlugin>('Dashcam');
 
 export const isNativeDashcamAvailable = (): boolean => {
-  return Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Dashcam');
+  return Capacitor.isNativePlatform();
 };
+
+export const getDashcamPlatform = (): 'native' | 'web' => {
+  return Capacitor.isNativePlatform() ? 'native' : 'web';
+};
+
+// Screen Wake Lock API to prevent display sleep / screen lock while recording in browser
+let webScreenWakeLock: any = null;
+
+async function requestWebScreenWakeLock() {
+  if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+    try {
+      webScreenWakeLock = await (navigator as any).wakeLock.request('screen');
+      webScreenWakeLock.addEventListener('release', () => {
+        webScreenWakeLock = null;
+      });
+      console.log('Screen Wake Lock acquired: display will remain awake during dashcam recording.');
+    } catch (err) {
+      console.warn('Screen Wake Lock request failed:', err);
+    }
+  }
+}
+
+function releaseWebScreenWakeLock() {
+  if (webScreenWakeLock) {
+    try {
+      webScreenWakeLock.release();
+    } catch {}
+    webScreenWakeLock = null;
+  }
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && webMediaRecorder && webMediaRecorder.state === 'recording') {
+      await requestWebScreenWakeLock();
+    }
+  });
+}
 
 // ==========================================
 // IndexedDB Storage for Web/Preview Fallback
@@ -314,6 +352,7 @@ export async function startDashcamRecording(options?: {
       }
     };
 
+    await requestWebScreenWakeLock();
     webRecordingStartTime = Date.now();
     webElapsedSeconds = 0;
     webMediaRecorder.start(1000); // chunk every 1s
@@ -375,6 +414,7 @@ export async function stopDashcamRecording(): Promise<{ success: boolean; clip?:
 
     const durationSec = Math.max(1, Math.floor((Date.now() - webRecordingStartTime) / 1000));
     clearInterval(webRecordingTimer);
+    releaseWebScreenWakeLock();
 
     webMediaRecorder.onstop = async () => {
       try {

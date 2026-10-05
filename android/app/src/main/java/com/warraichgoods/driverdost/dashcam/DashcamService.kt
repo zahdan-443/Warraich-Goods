@@ -166,7 +166,7 @@ class DashcamService : LifecycleService() {
                 stopSelf()
             }
         }
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     fun setStatusListener(listener: ((Boolean, Long, String?, String?, Boolean, String?) -> Unit)?) {
@@ -260,8 +260,10 @@ class DashcamService : LifecycleService() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(content)
-            .setSmallIcon(android.R.drawable.ic_menu_camera)
+            .setSmallIcon(android.R.drawable.presence_video_online)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
@@ -276,7 +278,7 @@ class DashcamService : LifecycleService() {
             } else {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
             }
-            startForeground(NOTIFICATION_ID, notification, serviceType)
+            androidx.core.app.ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, serviceType)
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }

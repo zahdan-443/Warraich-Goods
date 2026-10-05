@@ -26,7 +26,8 @@ import {
   ChevronDown,
   ChevronUp,
   Sliders,
-  Sparkles
+  Sparkles,
+  Moon
 } from 'lucide-react';
 import { Language, ActiveTab } from '../../types';
 import { 
@@ -43,7 +44,8 @@ import {
   requestDashcamPermissions,
   checkDualCameraCapability,
   subscribeDashcamStatus,
-  isNativeDashcamAvailable
+  isNativeDashcamAvailable,
+  getDashcamPlatform
 } from '../../utils/dashcamService';
 
 interface DashcamViewProps {
@@ -59,6 +61,11 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [loadingAction, setLoadingAction] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Platform & Power Save State
+  const platform = getDashcamPlatform();
+  const [oledBlackoutMode, setOledBlackoutMode] = useState(false);
+  const [showBrowserBackgroundWarning, setShowBrowserBackgroundWarning] = useState(false);
 
   // Dual-Camera State
   const [dualCapability, setDualCapability] = useState<DualCameraCapability>({ supported: false });
@@ -140,6 +147,17 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
       unsubscribe();
     };
   }, []);
+
+  // Monitor visibility state: if in browser and phone screen is turned off by power button, warn user to use OLED Saver
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden' && isRecording && platform === 'web') {
+        setShowBrowserBackgroundWarning(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [isRecording, platform]);
 
   const refreshClips = async () => {
     setLoadingClips(true);
@@ -336,6 +354,29 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
           </div>
         )}
 
+        {/* Mobile Browser Power Button Lock Warning */}
+        {showBrowserBackgroundWarning && (
+          <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-2xl flex items-start justify-between gap-3 text-amber-900 text-xs animate-in fade-in">
+            <div className="flex items-start gap-2.5">
+              <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">{isUrdu ? 'موبائل براؤزر نوٹس (Mobile Browser Notice)' : 'Mobile Web Browser Screen Lock Notice'}</p>
+                <p className="mt-0.5 leading-relaxed">
+                  {isUrdu
+                    ? 'جب آپ موبائل براؤزر میں پاور بٹن دباتے ہیں، تو براؤزر سیکیورٹی کے تحت کیمرہ ویڈیو وقتی طور پر فریز کر دیتا ہے۔ ڈرائیونگ کے دوران اسکرین خودکار طور پر بند نہیں ہوگی (ویک لاک فعال ہے)۔ اگر آپ اسکرین کو ڈارک کر کے بیٹری بچانا چاہتے ہیں تو نیچے "سکرین ڈارک کریں" کا بٹن دبائیں۔'
+                    : 'Mobile web browsers pause camera video when the physical power button is pressed. Screen WakeLock keeps the screen awake while driving. To dim the display and save battery without freezing the camera, tap "Black Screen Mode" below!'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowBrowserBackgroundWarning(false)}
+              className="p-1 text-amber-600 hover:text-amber-800 rounded-lg hover:bg-amber-100"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Phase 2: Dual Camera Hardware Support Banner (Explaining why dual is or isn't supported) */}
         {!dualCapability.supported && !showDualNoticeDismissed && (
           <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 shadow-sm text-amber-900 animate-in fade-in">
@@ -417,6 +458,21 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
 
         {/* Main Recorder Card */}
         <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-[#e2e8d8] space-y-5">
+          {/* Active Recording Engine Badge */}
+          <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-gray-50 rounded-2xl border border-gray-200 text-xs">
+            <div className="flex items-center gap-2">
+              <span className={`w-2.5 h-2.5 rounded-full ${platform === 'native' ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'}`} />
+              <span className="font-semibold text-gray-800">
+                {platform === 'native'
+                  ? (isUrdu ? 'پلیٹ فارم: اینڈرائیڈ فار گراؤنڈ سروس (Native CameraX Background Service)' : 'Platform: Native Android Foreground Service (Screen Lock Continuous)')
+                  : (isUrdu ? 'پلیٹ فارم: ویب موڈ (اسکرین ویک لاک فعال ہے تاکہ ڈرائیونگ کے دوران ڈسپلے سلیپ نہ ہو)' : 'Platform: Web Mode (Screen WakeLock Active • Display Keeps Awake)')}
+              </span>
+            </div>
+            <span className="text-[11px] font-semibold text-gray-500 bg-white px-2 py-0.5 rounded border border-gray-200">
+              {platform === 'native' ? 'Capacitor Native' : 'Web / Browser'}
+            </span>
+          </div>
+
           {/* Mode Selector (When Dual is available or when selecting) */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
             <div className="flex items-center gap-2">
@@ -586,6 +642,18 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                 </>
               )}
             </button>
+
+            {/* OLED Black Screen Saver Button */}
+            {isRecording && (
+              <button
+                type="button"
+                onClick={() => setOledBlackoutMode(true)}
+                className="mt-3 px-4 py-2.5 rounded-2xl bg-gray-900 hover:bg-black text-white text-xs font-bold flex items-center gap-2 active:scale-95 transition-all shadow-md"
+              >
+                <Moon className="w-4 h-4 text-amber-300" />
+                <span>{isUrdu ? 'سکرین ڈارک کریں (OLED بیٹری سیور)' : 'Black Screen Mode (OLED Battery Saver)'}</span>
+              </button>
+            )}
 
             {/* Operational notice */}
             <p className="text-center text-xs text-gray-500 mt-2.5">
@@ -918,6 +986,33 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
               <span>{selectedClipToPlay.dateFormatted}</span>
               <span>{formatFileSize(selectedClipToPlay.sizeBytes)}</span>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen Pure Black OLED Saver */}
+      {oledBlackoutMode && isRecording && (
+        <div 
+          onClick={() => setOledBlackoutMode(false)}
+          className="fixed inset-0 z-[100] bg-black text-white flex flex-col justify-between items-center p-8 select-none cursor-pointer animate-in fade-in"
+        >
+          <div className="flex items-center gap-2 text-xs text-red-500 animate-pulse pt-4">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
+            <span className="font-mono font-bold tracking-wider">REC {formatTime(elapsedSeconds)}</span>
+          </div>
+
+          <div className="text-center space-y-2 max-w-xs">
+            <Moon className="w-8 h-8 text-amber-400 mx-auto opacity-70" />
+            <p className="text-xs text-gray-400 font-medium">
+              {isUrdu ? 'OLED اسکرین سیور فعال ہے • کیمرہ مسلسل ویڈیو ریکارڈ کر رہا ہے' : 'OLED Saver Active • Continuous Video Recording'}
+            </p>
+            <p className="text-[11px] text-gray-600">
+              {isUrdu ? 'کنٹرولز واپس دیکھنے کے لیے اسکرین پر کہیں بھی ٹیپ کریں' : 'Tap anywhere on screen to restore controls'}
+            </p>
+          </div>
+
+          <div className="text-[10px] text-gray-700 pb-4 font-mono">
+            Driver Dost Dashcam
           </div>
         </div>
       )}
