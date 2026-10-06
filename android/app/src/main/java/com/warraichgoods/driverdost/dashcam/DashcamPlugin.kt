@@ -15,6 +15,7 @@
 package com.warraichgoods.driverdost.dashcam
 
 import android.Manifest
+import android.content.ClipData
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -317,6 +318,7 @@ class DashcamPlugin : Plugin() {
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "video/mp4"
                 putExtra(Intent.EXTRA_STREAM, contentUri)
+                clipData = ClipData.newRawUri("Driver Dost Dashcam", contentUri)
                 putExtra(Intent.EXTRA_SUBJECT, "Driver Dost Dashcam: ${targetFile.name}")
                 putExtra(Intent.EXTRA_TEXT, "Driver Dost Dashcam Video (${targetFile.name})")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -326,6 +328,14 @@ class DashcamPlugin : Plugin() {
             val chooser = Intent.createChooser(shareIntent, "Share Dashcam Video").apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
+
+            // Explicitly grant read URI permission to apps resolving the share intent
+            val resInfoList = context.packageManager.queryIntentActivities(chooser, PackageManager.MATCH_DEFAULT_ONLY)
+            for (resolveInfo in resInfoList) {
+                val pkgName = resolveInfo.activityInfo.packageName
+                context.grantUriPermission(pkgName, contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+
             context.startActivity(chooser)
 
             val result = JSObject().apply {

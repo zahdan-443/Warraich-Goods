@@ -18,6 +18,7 @@
 
 package com.warraichgoods.driverdost.dashcam
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -25,10 +26,13 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Binder
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import androidx.camera.core.CameraSelector
@@ -154,16 +158,18 @@ class DashcamService : Service() {
         acquireWakeLock()
     }
 
+    private var stopSelfPending = false
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
+                stopSelfPending = false
                 startForegroundServiceNotification()
                 startSingleRearRecording()
             }
             ACTION_STOP -> {
-                stopDashcamRecording()
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
+                stopDashcamRecording(stopSelfAfter = true)
             }
         }
         return START_STICKY
@@ -332,9 +338,18 @@ class DashcamService : Service() {
                 val outputOptions = FileOutputOptions.Builder(outputFile).build()
 
                 // 3. Single Recording session handles BOTH video and audio synchronously
-                val pendingRecording = rearVideoCapture?.output
-                    ?.prepareRecording(this, outputOptions)
-                    ?.withAudioEnabled()
+                val prepared = rearVideoCapture?.output?.prepareRecording(this, outputOptions)
+                val hasAudioPerm = ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.RECORD_AUDIO
+                ) == PackageManager.PERMISSION_GRANTED
+
+                val pendingRecording = if (hasAudioPerm) {
+                    prepared?.withAudioEnabled()
+                } else {
+                    Log.w(TAG, "Audio permission missing; proceeding with video-only recording")
+                    prepared
+                }
 
                 startTimeMillis = System.currentTimeMillis()
                 isRecording = true
@@ -388,6 +403,8 @@ class DashcamService : Service() {
                     Log.i(TAG, "Clip finalized: ${file.name} (size: ${file.length()} bytes)")
                 }
                 isRecording = false
+                cleanUpRecordingResources()
+
                 statusListener?.invoke(
                     false, 
                     getElapsedSeconds(), 
@@ -396,25 +413,55 @@ class DashcamService : Service() {
                     false, 
                     null
                 )
+
+                if (stopSelfPending) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
             }
         }
     }
 
-    private fun stopDashcamRecording() {
-        try {
-            rearRecording?.stop()
-            rearRecording = null
-        } catch (e: Exception) {
-            Log.e(TAG, "Error stopping rear recording", e)
-        }
-
-        // Transition our custom CameraLifecycleOwner to DESTROYED to release camera hardware
+    private fun cleanUpRecordingResources() {
         cameraLifecycleOwner?.stopAndDestroy()
         cameraLifecycleOwner = null
-
         releaseWakeLock()
+    }
 
-        isRecording = false
+    fun stopDashcamRecording(stopSelfAfter: Boolean = false) {
+        stopSelfPending = stopSelfAfter
+
+        if (rearRecording != null) {
+            try {
+                // Signal recording stop. CameraX will flush data and emit VideoRecordEvent.Finalize
+                rearRecording?.stop()
+                rearRecording = null
+            } catch (e: Exception) {
+                Log.e(TAG, "Error stopping rear recording", e)
+                cleanUpRecordingResources()
+            }
+
+            // Fallback safety timeout (3.5s) in case VideoRecordEvent.Finalize does not arrive
+            mainHandler.postDelayed({
+                if (isRecording || cameraLifecycleOwner != null) {
+                    Log.w(TAG, "Finalize safety timeout triggered; cleaning up resources")
+                    isRecording = false
+                    cleanUpRecordingResources()
+                    if (stopSelfPending) {
+                        stopForeground(STOP_FOREGROUND_REMOVE)
+                        stopSelf()
+                    }
+                }
+            }, 3500L)
+        } else {
+            cleanUpRecordingResources()
+            isRecording = false
+            if (stopSelfPending) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
+        }
+
         val elapsed = getElapsedSeconds()
         statusListener?.invoke(
             false, 
@@ -427,7 +474,7 @@ class DashcamService : Service() {
     }
 
     override fun onDestroy() {
-        stopDashcamRecording()
+        stopDashcamRecording(stopSelfAfter = false)
         super.onDestroy()
     }
 }

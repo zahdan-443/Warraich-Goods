@@ -618,13 +618,17 @@ export async function shareDashcamClip(clip: DashcamClip): Promise<boolean> {
     }
 
     // Direct download fallback
-    if (clip.blobUrl) {
+    const downloadUrl = clip.blobUrl || (blob ? URL.createObjectURL(blob) : null);
+    if (downloadUrl) {
       const a = document.createElement('a');
-      a.href = clip.blobUrl;
+      a.href = downloadUrl;
       a.download = clip.filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      if (!clip.blobUrl) {
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 10000);
+      }
       return true;
     }
   } catch (err: any) {
