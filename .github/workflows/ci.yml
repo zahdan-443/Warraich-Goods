@@ -10,7 +10,7 @@ on:
 jobs:
   validate:
     name: Lint, Test & Build Validation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout Source Code
@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Dependencies
