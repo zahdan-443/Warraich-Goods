@@ -70,16 +70,21 @@ jobs:
           # Safety cleanup: remove any corrupt/non-standard land-hdpi splash that can fail aapt2 compilation
           rm -rf android/app/src/main/res/drawable-land-hdpi || true
 
-      - name: Prepare Release Keystore (Secrets or Auto-Generate)
+      - name: Prepare Release Keystores (Secrets or Auto-Generate)
         if: ${{ inputs.build_type == 'release' }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_LEGACY_BASE64: ${{ secrets.ANDROID_KEYSTORE_LEGACY_BASE64 }}
+          ANDROID_KEYSTORE_LEGACY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_LEGACY_PASSWORD }}
+          ANDROID_KEY_LEGACY_ALIAS: ${{ secrets.ANDROID_KEY_LEGACY_ALIAS }}
+          ANDROID_KEY_LEGACY_PASSWORD: ${{ secrets.ANDROID_KEY_LEGACY_PASSWORD }}
         run: |
+          # 1. Modern Keystore (com.warraichgoods.driverdost)
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "Using custom Keystore from GitHub Secrets..."
+            echo "Using custom Modern Keystore from GitHub Secrets..."
             echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release-keystore.jks
             echo "ANDROID_KEYSTORE_PATH=release-keystore.jks" >> $GITHUB_ENV
           else
@@ -102,27 +107,68 @@ jobs:
             echo "ANDROID_KEY_PASSWORD=$KEY_PW" >> $GITHUB_ENV
           fi
 
+          # 2. Legacy Keystore (io.github.zahdan_443.twa - temporary Palm Store flavor)
+          if [ -n "$ANDROID_KEYSTORE_LEGACY_BASE64" ]; then
+            echo "Using custom Legacy Keystore from GitHub Secrets..."
+            echo "$ANDROID_KEYSTORE_LEGACY_BASE64" | base64 --decode > android/app/legacy-keystore.jks
+            echo "ANDROID_KEYSTORE_LEGACY_PATH=legacy-keystore.jks" >> $GITHUB_ENV
+            echo "ANDROID_KEYSTORE_LEGACY_PASSWORD=$ANDROID_KEYSTORE_LEGACY_PASSWORD" >> $GITHUB_ENV
+            echo "ANDROID_KEY_LEGACY_ALIAS=$ANDROID_KEY_LEGACY_ALIAS" >> $GITHUB_ENV
+            echo "ANDROID_KEY_LEGACY_PASSWORD=$ANDROID_KEY_LEGACY_PASSWORD" >> $GITHUB_ENV
+          else
+            echo "No custom Legacy Keystore provided. Generating legacy key on the fly..."
+            LEGACY_KEY_PW="${ANDROID_KEYSTORE_LEGACY_PASSWORD:-DriverDostLegacy2026}"
+            LEGACY_KEY_AL="${ANDROID_KEY_LEGACY_ALIAS:-driverdostlegacy}"
+            keytool -genkeypair -v \
+              -keystore android/app/legacy-keystore.jks \
+              -alias "$LEGACY_KEY_AL" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass "$LEGACY_KEY_PW" \
+              -keypass "$LEGACY_KEY_PW" \
+              -dname "CN=Driver Dost Legacy, OU=Warraich Goods Transport Company, O=Warraich Goods, L=Gujranwala, ST=Punjab, C=PK"
+
+            echo "ANDROID_KEYSTORE_LEGACY_PATH=legacy-keystore.jks" >> $GITHUB_ENV
+            echo "ANDROID_KEYSTORE_LEGACY_PASSWORD=$LEGACY_KEY_PW" >> $GITHUB_ENV
+            echo "ANDROID_KEY_LEGACY_ALIAS=$LEGACY_KEY_AL" >> $GITHUB_ENV
+            echo "ANDROID_KEY_LEGACY_PASSWORD=$LEGACY_KEY_PW" >> $GITHUB_ENV
+          fi
+
       - name: Build Android APK via Gradle
         env:
           ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
           ANDROID_KEYSTORE_PASSWORD: ${{ env.ANDROID_KEYSTORE_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ env.ANDROID_KEY_ALIAS || secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ env.ANDROID_KEY_PASSWORD || secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_LEGACY_PATH: ${{ env.ANDROID_KEYSTORE_LEGACY_PATH }}
+          ANDROID_KEYSTORE_LEGACY_PASSWORD: ${{ env.ANDROID_KEYSTORE_LEGACY_PASSWORD || secrets.ANDROID_KEYSTORE_LEGACY_PASSWORD }}
+          ANDROID_KEY_LEGACY_ALIAS: ${{ env.ANDROID_KEY_LEGACY_ALIAS || secrets.ANDROID_KEY_LEGACY_ALIAS }}
+          ANDROID_KEY_LEGACY_PASSWORD: ${{ env.ANDROID_KEY_LEGACY_PASSWORD || secrets.ANDROID_KEY_LEGACY_PASSWORD }}
         run: |
           cd android
-          if [ "${{ inputs.build_type }}" = "release" ] && [ -f "app/release-keystore.jks" ]; then
-            echo "Building officially signed Release APK..."
-            gradle assembleRelease --no-daemon
+          if [ "${{ inputs.build_type }}" = "release" ]; then
+            echo "Building officially signed Modern and Legacy Release APKs..."
+            gradle assembleModernRelease assembleLegacyRelease --no-daemon
           else
-            echo "Building Debug APK..."
-            gradle assembleDebug --no-daemon
+            echo "Building Debug APKs for Modern and Legacy flavors..."
+            gradle assembleModernDebug assembleLegacyDebug --no-daemon
           fi
 
-      - name: Upload APK Artifact
+      - name: Upload Modern APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: warraich-goods-apk-${{ inputs.build_type }}
+          name: warraich-goods-apk-modern-${{ inputs.build_type }}
           path: |
-            android/app/build/outputs/apk/release/*.apk
-            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/modern/release/*.apk
+            android/app/build/outputs/apk/modern/debug/*.apk
+          retention-days: 14
+
+      - name: Upload Legacy APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: warraich-goods-apk-legacy-${{ inputs.build_type }}
+          path: |
+            android/app/build/outputs/apk/legacy/release/*.apk
+            android/app/build/outputs/apk/legacy/debug/*.apk
           retention-days: 14

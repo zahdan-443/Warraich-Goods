@@ -1,5 +1,16 @@
+import groovy.json.JsonSlurper
+
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
+
+def packageJsonFile = file('../../package.json')
+def packageJson = packageJsonFile.exists() ? new JsonSlurper().parseText(packageJsonFile.text) : null
+def appVersionName = packageJson?.version ?: "1.2.0"
+def versionParts = appVersionName.tokenize('.')
+def computedVersionCode = ((versionParts.size() > 0 ? versionParts[0].toInteger() : 0) * 10000) + 
+                          ((versionParts.size() > 1 ? versionParts[1].toInteger() : 0) * 100) + 
+                          (versionParts.size() > 2 ? versionParts[2].toInteger() : 0)
+def appVersionCode = Math.max(computedVersionCode, 6)
 
 android {
     namespace = "com.warraichgoods.driverdost"
@@ -8,8 +19,8 @@ android {
         applicationId "com.warraichgoods.driverdost"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "1.2.0"
+        versionCode appVersionCode
+        versionName appVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -17,9 +28,10 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
     signingConfigs {
         release {
-            def keystorePath = System.getenv("ANDROID_KEYSTORE_PATH") ?: project.findProperty("RELEASE_STORE_FILE")
+            def keystorePath = System.getenv("ANDROID_KEYSTORE_PATH") ?: project.findProperty("RELEASE_STORE_FILE") ?: "release-keystore.jks"
             def keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: project.findProperty("RELEASE_STORE_PASSWORD")
             def keyAliasVal = System.getenv("ANDROID_KEY_ALIAS") ?: project.findProperty("RELEASE_KEY_ALIAS")
             def keyPasswordVal = System.getenv("ANDROID_KEY_PASSWORD") ?: project.findProperty("RELEASE_KEY_PASSWORD")
@@ -31,16 +43,56 @@ android {
                 keyPassword keyPasswordVal
             }
         }
+        legacyRelease {
+            def legacyPath = System.getenv("ANDROID_KEYSTORE_LEGACY_PATH") ?: project.findProperty("RELEASE_STORE_LEGACY_FILE") ?: "legacy-keystore.jks"
+            def legacyPassword = System.getenv("ANDROID_KEYSTORE_LEGACY_PASSWORD") ?: project.findProperty("RELEASE_STORE_LEGACY_PASSWORD")
+            def legacyAlias = System.getenv("ANDROID_KEY_LEGACY_ALIAS") ?: project.findProperty("RELEASE_KEY_LEGACY_ALIAS")
+            def legacyKeyPassword = System.getenv("ANDROID_KEY_LEGACY_PASSWORD") ?: project.findProperty("RELEASE_KEY_LEGACY_PASSWORD")
+
+            if (legacyPath && file(legacyPath).exists() && legacyPassword && legacyAlias && legacyKeyPassword) {
+                storeFile file(legacyPath)
+                storePassword legacyPassword
+                keyAlias legacyAlias
+                keyPassword legacyKeyPassword
+            }
+        }
     }
+
+    /*
+     * TEMPORARY FLAVOR SETUP:
+     * Two flavors exist because of a temporary Palm Store package-name mismatch 
+     * (old listing io.github.zahdan_443.twa, new listing com.warraichgoods.driverdost). 
+     * Once Dlightek support resolves the old listing's package name, delete the 'legacy' 
+     * flavor, the legacyRelease signing config, and the corresponding build-apk.yml changes, 
+     * and revert to a single applicationId.
+     */
+    flavorDimensions "store"
+    productFlavors {
+        modern {
+            dimension "store"
+            applicationId "com.warraichgoods.driverdost"
+            versionCode appVersionCode
+            versionName appVersionName
+            signingConfig signingConfigs.release
+        }
+        legacy {
+            dimension "store"
+            applicationId "io.github.zahdan_443.twa"
+            // TEMPORARY FLAVOR — remove once Dlightek updates the old Palm Store 
+            // listing's package name. The old published version was versionCode 1, 
+            // so this flavor's versionCode (inherited from the shared 
+            // appVersionCode) must always stay higher than 1, which it already is.
+            versionCode appVersionCode
+            versionName appVersionName
+            signingConfig signingConfigs.legacyRelease
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            def keystorePath = System.getenv("ANDROID_KEYSTORE_PATH") ?: project.findProperty("RELEASE_STORE_FILE")
-            if (keystorePath && file(keystorePath).exists()) {
-                signingConfig signingConfigs.release
-            }
         }
     }
     compileOptions {
