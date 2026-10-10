@@ -77,14 +77,6 @@ interface HomeViewProps {
   onLogFuelPrice?: (diesel?: number, petrol?: number, cng?: number) => void;
 }
 
-interface CalendarEvent {
-  id: string;
-  dateStr: string; // YYYY-MM-DD
-  title: string;
-  type: 'load' | 'maintenance' | 'dispatch' | 'other';
-  status: 'pending' | 'active' | 'completed';
-}
-
 const QuickActionButton: React.FC<{
   onClick: () => void;
   imgSrc: string;
@@ -231,17 +223,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
     }
   })();
 
-  // Calendar navigation states
-  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
-  const [currentMonth, setCurrentMonth] = useState<number>(new Date().getMonth());
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  
-  // Custom interactive calendar events state
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [showAddEvent, setShowAddEvent] = useState(false);
-  const [newEventTitle, setNewEventTitle] = useState('');
-  const [newEventType, setNewEventType] = useState<'load' | 'maintenance' | 'dispatch' | 'other'>('load');
-
   useEffect(() => {
     const handleBack = (e: Event) => {
       if (showTollCalculatorModal) {
@@ -256,270 +237,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
       } else if (showRecentLogs) {
         setShowRecentLogs(false);
         e.preventDefault();
-      } else if (showAddEvent) {
-        setShowAddEvent(false);
-        e.preventDefault();
       }
     };
     window.addEventListener('app-back-button', handleBack);
     return () => window.removeEventListener('app-back-button', handleBack);
-  }, [showTollCalculatorModal, showSafarDiaryModal, showQuickOpsModal, showRecentLogs, showAddEvent]);
+  }, [showTollCalculatorModal, showSafarDiaryModal, showQuickOpsModal, showRecentLogs]);
 
   const openModalWithHistory = (setter: React.Dispatch<React.SetStateAction<boolean>>) => {
     window.history.pushState({ modal: true }, '');
     setter(true);
   };
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('ah-calendar-events');
-      if (stored) {
-        setEvents(JSON.parse(stored));
-        return;
-      }
-    } catch {
-      // Fall back to seed events if corrupted
-    }
 
-    const y = new Date().getFullYear();
-    const m = new Date().getMonth();
-    const seed: CalendarEvent[] = [
-      {
-        id: 'seed-1',
-        dateStr: `${y}-${String(m + 1).padStart(2, '0')}-08`,
-        title: lang === 'ur' ? 'لاہور سے راولپنڈی گندم کی ڈیلیوری' : 'Lahore to Rawalpindi Wheat Delivery',
-        type: 'load',
-        status: 'active'
-      },
-      {
-        id: 'seed-2',
-        dateStr: `${y}-${String(m + 1).padStart(2, '0')}-15`,
-        title: lang === 'ur' ? 'گاڑی نمبر LHR-7860 ٹیوننگ اور آئل تبدیلی' : 'Vehicle LHR-7860 Tuning & Oil Change',
-        type: 'maintenance',
-        status: 'pending'
-      },
-      {
-        id: 'seed-3',
-        dateStr: `${y}-${String(m + 1).padStart(2, '0')}-22`,
-        title: lang === 'ur' ? 'ملتان سے کراچی چاول لوڈ روانگی' : 'Multan to Karachi Rice Load Dispatch',
-        type: 'dispatch',
-        status: 'pending'
-      }
-    ];
-    setEvents(seed);
-    try {
-      localStorage.setItem('ah-calendar-events', JSON.stringify(seed));
-    } catch {
-      // ignore storage write errors
-    }
-  }, [lang]);
-
-  const handleAddEvent = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newEventTitle.trim()) return;
-    
-    const yearStr = selectedDate.getFullYear();
-    const monthStr = String(selectedDate.getMonth() + 1).padStart(2, '0');
-    const dayStr = String(selectedDate.getDate()).padStart(2, '0');
-    const dateStr = `${yearStr}-${monthStr}-${dayStr}`;
-    
-    const newEvent: CalendarEvent = {
-      id: 'evt-' + Date.now(),
-      dateStr,
-      title: newEventTitle.trim(),
-      type: newEventType,
-      status: 'pending'
-    };
-    
-    const updated = [...events, newEvent];
-    setEvents(updated);
-    localStorage.setItem('ah-calendar-events', JSON.stringify(updated));
-    setNewEventTitle('');
-    setShowAddEvent(false);
-  };
-
-  const handleDeleteEvent = (id: string) => {
-    const updated = events.filter(evt => evt.id !== id);
-    setEvents(updated);
-    localStorage.setItem('ah-calendar-events', JSON.stringify(updated));
-  };
-
-  const handlePrevMonth = () => {
-    if (currentMonth === 0) {
-      setCurrentMonth(11);
-      setCurrentYear(currentYear - 1);
-    } else {
-      setCurrentMonth(currentMonth - 1);
-    }
-  };
-
-  const handleNextMonth = () => {
-    if (currentMonth === 11) {
-      setCurrentMonth(0);
-      setCurrentYear(currentYear + 1);
-    } else {
-      setCurrentMonth(currentMonth + 1);
-    }
-  };
-
-  const handleDayClick = (day: any) => {
-    setSelectedDate(new Date(day.year, day.month, day.dayNum));
-    if (day.month !== currentMonth) {
-      setCurrentMonth(day.month);
-      setCurrentYear(day.year);
-    }
-  };
-
-  // Helper to generate days of the 6-week grid
-  const getDaysInMonth = (year: number, month: number) => {
-    const date = new Date(year, month, 1);
-    const days = [];
-    
-    const firstDayIndex = date.getDay();
-    
-    const prevMonth = month === 0 ? 11 : month - 1;
-    const prevYear = month === 0 ? year - 1 : year;
-    const daysInPrevMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
-    
-    for (let i = firstDayIndex - 1; i >= 0; i--) {
-      days.push({
-        dayNum: daysInPrevMonth - i,
-        month: prevMonth,
-        year: prevYear,
-        isCurrentMonth: false,
-      });
-    }
-    
-    const daysInCurrentMonth = new Date(year, month + 1, 0).getDate();
-    for (let i = 1; i <= daysInCurrentMonth; i++) {
-      days.push({
-        dayNum: i,
-        month,
-        year,
-        isCurrentMonth: true,
-      });
-    }
-    
-    const totalSlots = 42;
-    const remainingSlots = totalSlots - days.length;
-    const nextMonth = month === 11 ? 0 : month + 1;
-    const nextYear = month === 11 ? year + 1 : year;
-    
-    for (let i = 1; i <= remainingSlots; i++) {
-      days.push({
-        dayNum: i,
-        month: nextMonth,
-        year: nextYear,
-        isCurrentMonth: false,
-      });
-    }
-    
-    return days;
-  };
-
-  const matchTripWithDate = (trip: Trip, d: Date) => {
-    try {
-      const targetStr = d.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
-      const monthsShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      const fallbackStr = `${String(d.getDate()).padStart(2, '0')} ${monthsShort[d.getMonth()]}, ${d.getFullYear()}`;
-      
-      const tripDateLower = trip.date.toLowerCase();
-      return tripDateLower.includes(targetStr.toLowerCase()) || tripDateLower.includes(fallbackStr.toLowerCase());
-    } catch(e) {
-      return false;
-    }
-  };
-
-  const daysInGrid = getDaysInMonth(currentYear, currentMonth);
-
-  const getDayEventsAndTrips = (dayNum: number, monthNum: number, yearNum: number) => {
-    const mStr = String(monthNum + 1).padStart(2, '0');
-    const dStr = String(dayNum).padStart(2, '0');
-    const targetDateStr = `${yearNum}-${mStr}-${dStr}`;
-    const dObj = new Date(yearNum, monthNum, dayNum);
-    
-    const dayCustomEvents = events.filter(evt => evt.dateStr === targetDateStr);
-    const dayTrips = trips.filter(trip => matchTripWithDate(trip, dObj));
-    
-    return { dayCustomEvents, dayTrips, totalCount: dayCustomEvents.length + dayTrips.length };
-  };
-
-  const selectedDateEvents = events.filter(evt => {
-    const yearStr = selectedDate.getFullYear();
-    const monthStr = String(selectedDate.getMonth() + 1).padStart(2, '0');
-    const dayStr = String(selectedDate.getDate()).padStart(2, '0');
-    const dateStr = `${yearStr}-${monthStr}-${dayStr}`;
-    return evt.dateStr === dateStr;
-  });
-
-  const selectedDateTrips = trips.filter(trip => matchTripWithDate(trip, selectedDate));
-
-  const monthNamesEN = [
-    "January", "February", "March", "April", "May", "June", 
-    "July", "August", "September", "October", "November", "December"
-  ];
-  const monthNamesUR = [
-    "جنوری", "فروری", "مارچ", "اپریل", "مئی", "جون", 
-    "جولائی", "اگست", "ستمبر", "اکتوبر", "نومبر", "دسمبر"
-  ];
-  
-  const currentMonthName = lang === 'ur' ? monthNamesUR[currentMonth] : monthNamesEN[currentMonth];
-  const urduDayNames = ['اتوار', 'پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ'];
-  const englishDayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  const quickItems: { id: string; title: string; desc: string; icon: React.ReactNode }[] = [
-    { 
-      id: 'dashcam', 
-      title: lang === 'ur' ? 'ڈیش کیم ویڈیو ریکارڈر' : 'Dashcam Video Recorder', 
-      desc: lang === 'ur' ? 'محفوظ روڈ ویڈیو اور آڈیو ریکارڈنگ (اسکرین آف موڈ)' : 'Background road video & audio recording with screen-off support', 
-      icon: <Camera className="w-5 h-5 text-[#8b9d77]" /> 
-    },
-    { 
-      id: 'map', 
-      title: lang === 'ur' ? 'نقشہ و روٹ موسم' : 'Map & Route Weather', 
-      desc: lang === 'ur' ? 'موٹروے روٹ نقشہ، حدِ نگاہ اور لائیو موسم' : 'Highway corridors, visibility & live weather', 
-      icon: <MapPin className="w-5 h-5 text-[#8b9d77]" /> 
-    },
-    { 
-      id: 'safarDiary', 
-      title: lang === 'ur' ? 'سفر ڈائری لاگز' : 'Safar Diary Logs', 
-      desc: lang === 'ur' ? 'روزانہ ٹرپ اور اخراجات کا ریکارڈ' : 'Daily trip & expense records', 
-      icon: <BookOpen className="w-5 h-5 text-[#8b9d77]" /> 
-    },
-    { 
-      id: 'vehicle', 
-      title: t.nav.vehicle, 
-      desc: lang === 'ur' ? "اپنے ٹرکوں، ٹریلرز اور مائلیج کا ریکارڈ رکھیں" : "Manage fleet trucks, trailers & mileage", 
-      icon: <Truck className="w-5 h-5 text-[#8b9d77]" /> 
-    },
-    { 
-      id: 'drivers', 
-      title: t.nav.drivers, 
-      desc: lang === 'ur' ? "ڈرائیوروں کے واٹس ایپ نمبر اور لائسنس کی معلومات" : "Access WhatsApp contacts & license status", 
-      icon: <Users className="w-5 h-5 text-[#8b9d77]" /> 
-    },
-    { 
-      id: 'routes', 
-      title: t.nav.routes, 
-      desc: lang === 'ur' ? "محفوظ موٹروے راستے اور ٹول ٹیکس ریٹ" : "Saved motorway corridors & toll tariffs", 
-      icon: <MapPin className="w-5 h-5 text-[#8b9d77]" /> 
-    },
-    { 
-      id: 'fuel', 
-      title: t.nav.fuel, 
-      desc: lang === 'ur' ? "ڈیلی ڈیزل اور پیٹرول کی مارکیٹ قیمتیں" : "Log daily diesel & petrol market prices", 
-      icon: <Fuel className="w-5 h-5 text-[#8b9d77]" /> 
-    },
-    { 
-      id: 'recentLogs', 
-      title: lang === 'ur' ? 'حالیہ لاگز کھولیں' : 'Open Recent Logs', 
-      desc: lang === 'ur' ? 'حالیہ سفری لاگز اور تفصیل دیکھیں' : 'View recent trip history logs', 
-      icon: <History className="w-5 h-5 text-[#8b9d77]" /> 
-    },
-  ];
 
   return (
-    <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 md:p-10 max-w-7xl mx-auto w-full">
+    <div className="flex-1 flex flex-col gap-6 p-4 sm:p-6 md:p-8 max-w-5xl mx-auto w-full">
       {/* Primary Semantic H1 Heading for SEO & Screen Readers */}
       <h1 className="sr-only">
         {lang === 'ur' 
@@ -527,8 +259,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
           : 'Driver Dost - Road Freight, Trip Cost Calculator & Fleet Management'}
       </h1>
       
-      {/* Left Column (7 cols): Core Tools & Live Fuel Prices */}
-      <div className="lg:col-span-7 flex flex-col gap-6 sm:gap-8">
+      {/* Main Single Stream Content (Ergonomic Mobile App Layout) */}
+      <div className="flex flex-col gap-5 sm:gap-6 w-full">
         
         {/* Authenticated App Owner Control Panel Quick Link */}
         {(userEmail?.toLowerCase() === 'warraichgoods43@gmail.com') && onOpenBiltyAccess && (
@@ -802,21 +534,22 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         )}
 
-        {/* SECTION 1: Primary Transport, Route & Trip Calculation Tools (4 Core Buttons) */}
-        <div className="bg-white p-4 sm:p-6 md:p-7 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-[#ecece0]">
+        {/* UNIFIED APP LAUNCHER: All 9 Core Transport & Verification Tools (Zero Deleted, Ergonomic Mobile Grid) */}
+        <div className="bg-white p-4 sm:p-5 md:p-6 rounded-[28px] sm:rounded-[32px] shadow-sm border border-[#ecece0] space-y-3.5">
+          <div className="flex items-center justify-between pb-2.5 border-b border-[#ecece0]">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#8b9d77] animate-pulse"></span>
               <h2 className="font-serif font-bold text-sm sm:text-base text-[#4a4a35]">
-                {lang === 'ur' ? '🚛 ٹرانسپورٹ روٹ و حساب ٹولز' : '🚛 Transport, Route & Trip Tools'}
+                {lang === 'ur' ? '🚛 ڈرائیور دوست سروسز و ٹولز' : '🚛 Driver Dost Services & Tools'}
               </h2>
             </div>
-            <span className="text-[10px] font-bold text-[#8b9d77] bg-[#8b9d77]/10 px-2 py-0.5 rounded-full border border-[#8b9d77]/20">
-              {lang === 'ur' ? 'بنیادی ٹولز' : 'Core Tools'}
+            <span className="text-[10px] font-bold text-[#8b9d77] bg-[#8b9d77]/10 px-2.5 py-0.5 rounded-full border border-[#8b9d77]/20 font-mono">
+              9 {lang === 'ur' ? 'سروسز' : 'Apps'}
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-3.5">
+          {/* Unified Responsive 9-Tool Grid */}
+          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-2.5 sm:gap-3">
             {/* 1. Trip Expense Calculator */}
             <QuickActionButton
               href="#calculator"
@@ -871,25 +604,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
               subtitle={lang === 'ur' ? 'روڈ ویڈیو و آڈیو کیمرہ لاگ' : 'Road video & audio recording'}
               highlight={true}
             />
-          </div>
-        </div>
 
-        {/* SECTION 2: Official Portals, Verifications & Quick Ops (4 Buttons) */}
-        <div className="bg-white p-4 sm:p-6 md:p-7 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-[#ecece0]">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#5a5a40]"></span>
-              <h2 className="font-serif font-bold text-sm sm:text-base text-[#4a4a35]">
-                {lang === 'ur' ? '🏛️ سرکاری ریکارڈ، تصدیقات و مزید سروسز' : '🏛️ Govt Portals, Checks & Quick Ops'}
-              </h2>
-            </div>
-            <span className="text-[10px] font-bold text-[#5a5a40] bg-[#ecece0] px-2 py-0.5 rounded-full border border-[#d8d8c0]">
-              {lang === 'ur' ? 'آن لائن ریکارڈ' : 'Online Portals'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-3.5">
-            {/* 5. Vehicles Verification */}
+            {/* 6. Vehicles Verification */}
             <QuickActionButton
               href="#verify"
               onClick={() => onNavigate('verify', 'vehicle')}
@@ -899,7 +615,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               subtitle={lang === 'ur' ? 'رجسٹریشن، ٹوکن ٹیکس و ایکسائز' : 'MTMIS Punjab & Token Tax'}
             />
 
-            {/* 6. License Verification */}
+            {/* 7. License Verification */}
             <QuickActionButton
               href="#verify"
               onClick={() => onNavigate('verify', 'license')}
@@ -909,7 +625,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               subtitle={lang === 'ur' ? 'DLIMS لائسنس و موٹروے پولیس' : 'DLIMS Punjab License Checks'}
             />
 
-            {/* 7. E-Challan Check */}
+            {/* 8. E-Challan Check */}
             <QuickActionButton
               href="#verify"
               onClick={() => onNavigate('verify', 'challan')}
@@ -919,7 +635,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               subtitle={lang === 'ur' ? 'PSCA سیف سٹی و جرمانہ آڈٹ' : 'PSCA Safe City Traffic Audits'}
             />
 
-            {/* 8. End Button: Mazeed Sahulatain / Quick Operations */}
+            {/* 9. More Services & Quick Operations */}
             <QuickActionButton
               href="#quickops"
               onClick={() => openModalWithHistory(setShowQuickOpsModal)}
@@ -932,7 +648,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
 
           {/* Official Government Disclaimer (Google Play & Palm Store Government Apps Policy Compliance) */}
-          <div className="pt-2.5 border-t border-[#ecece0] flex items-start gap-2 text-[10.5px] text-[#8e8e75] leading-relaxed">
+          <div className="pt-2 border-t border-[#ecece0] flex items-start gap-2 text-[10.5px] text-[#8e8e75] leading-relaxed">
             <Info className="w-3.5 h-3.5 text-[#8b9d77] shrink-0 mt-0.5" />
             <span>
               {lang === 'ur'
@@ -943,7 +659,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           {/* Bilty Form & Ledger (ONLY visible when authenticated owner) */}
           {isBiltyAuthorized && (
-            <div className="pt-2.5 border-t border-[#ecece0] flex items-center justify-between gap-3 flex-wrap">
+            <div className="pt-2 border-t border-[#ecece0] flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2.5">
                 <img
                   src="./bilty-official-icon.png"
@@ -977,221 +693,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
         {/* Merged Date, Live Weather & Pakistan POL Rates Monitor (Minimalist & Beautiful) */}
         <HomeWeatherFuelCard lang={lang} onApplyRates={onLogFuelPrice ? (diesel, petrol, cng) => { onLogFuelPrice(typeof diesel === 'number' ? diesel : (diesel ? Number(diesel) : undefined), typeof petrol === 'number' ? petrol : (petrol ? Number(petrol) : undefined), typeof cng === 'number' ? cng : (cng ? Number(cng) : undefined)); } : undefined} onOpenTerms={() => setShowTermsModal(true)} onOpenPrivacy={() => setShowHomePrivacyModal(true)} />
-
-      </div>
-
-      {/* Right Column (5 cols): Motivation Wisdom & Calendar */}
-      <div className="lg:col-span-5 flex flex-col gap-8">
-        
-        {/* Wisdom Sage Green Accent Card */}
-        <div className="bg-[#8b9d77] text-white p-8 rounded-[40px] shadow-sm relative overflow-hidden group">
-          <Quote className="w-10 h-10 mb-4 opacity-40 text-white" />
-          <p className="text-lg font-serif italic mb-4 font-light leading-relaxed">
-            "{lang === 'ur' 
-              ? 'آگے بڑھنے کا راز بس پہلا قدم اٹھانا ہے۔ محنت میں عظمت ہے۔'
-              : 'Agay barhnay ka raaz bas pehla qadam uthana hai. Punjab ki sarak aur mehnat ki barkat.'}"
-          </p>
-          <p className="text-xs uppercase tracking-widest opacity-80 font-sans font-semibold">
-            {lang === 'ur' ? '- ڈرائیور دوست رہنمائی' : '- Driver Dost Wisdom'}
-          </p>
-          <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-white/10 rounded-full pointer-events-none group-hover:scale-110 transition-transform"></div>
-        </div>
-
-        {/* Dynamic, Workable, Fully Interactive Freight Schedule Calendar */}
-        <div className="bg-white p-8 rounded-[40px] shadow-sm border border-[#ecece0] flex-1 flex flex-col">
-          <header className="flex items-center justify-between mb-6">
-            <button 
-              onClick={handlePrevMonth}
-              aria-label={lang === 'ur' ? 'پچھلا مہینہ' : 'Previous Month'}
-              className="p-1.5 rounded-full border border-[#ecece0] hover:border-[#8b9d77] text-[#5a5a40] hover:text-[#2d2d20] transition-all cursor-pointer"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <h2 className="font-serif font-bold text-sm text-[#4a4a35] uppercase tracking-wider text-center">
-              {currentMonthName} {currentYear}
-            </h2>
-            <button 
-              onClick={handleNextMonth}
-              aria-label={lang === 'ur' ? 'اگلا مہینہ' : 'Next Month'}
-              className="p-1.5 rounded-full border border-[#ecece0] hover:border-[#8b9d77] text-[#5a5a40] hover:text-[#2d2d20] transition-all cursor-pointer"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </header>
-          
-          <div dir="ltr" className="select-none">
-            <div className="grid grid-cols-7 gap-1 text-center mb-3 text-[#8b9d77]">
-              {(lang === 'ur' ? urduDayNames : englishDayNames).map((day, idx) => (
-                <div 
-                  key={idx} 
-                  title={day}
-                  className={`w-full py-0.5 text-center leading-tight ${lang === 'ur' ? 'font-nastaliq text-[10px] sm:text-[11.5px] font-bold text-[#62774f]' : 'text-[10px] font-bold uppercase tracking-wider'}`}
-                >
-                  {day}
-                </div>
-              ))}
-            </div>
-            
-            <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-medium text-[#4a4a35] items-center mb-6">
-              {daysInGrid.map((day, idx) => {
-                const isSelected = selectedDate.getDate() === day.dayNum && 
-                                   selectedDate.getMonth() === day.month && 
-                                   selectedDate.getFullYear() === day.year;
-                                   
-                const { totalCount } = getDayEventsAndTrips(day.dayNum, day.month, day.year);
-                
-                const isToday = new Date().getDate() === day.dayNum && 
-                                new Date().getMonth() === day.month && 
-                                new Date().getFullYear() === day.year;
-
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => handleDayClick(day)}
-                    aria-label={`${day.dayNum} ${monthNamesEN[day.month]} ${day.year}`}
-                    className={`relative p-1.5 w-7 h-7 mx-auto rounded-full flex flex-col items-center justify-center cursor-pointer transition-all ${
-                      isSelected 
-                        ? 'bg-[#8b9d77] text-white font-bold shadow-2xs' 
-                        : isToday
-                          ? 'border border-[#8b9d77] text-[#4a4a35] font-bold'
-                          : day.isCurrentMonth 
-                            ? 'text-[#4a4a35] hover:bg-[#f9f9f2]' 
-                            : 'text-[#8e8e75]/60 hover:bg-[#f9f9f2]/50'
-                    }`}
-                  >
-                    <span>{day.dayNum}</span>
-                    {totalCount > 0 && !isSelected && (
-                      <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-[#C59B27]"></span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Schedule Events List for Selected Day */}
-          <div dir={lang === 'ur' ? 'rtl' : 'ltr'} className="mt-4 pt-4 border-t border-[#ecece0] flex-1 flex flex-col">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs uppercase tracking-wider font-bold text-[#5a5a40] flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-[#8b9d77]" />
-                <span>
-                  {lang === 'ur' 
-                    ? `${selectedDate.getDate()} ${monthNamesUR[selectedDate.getMonth()]} کے شیڈول`
-                    : `Schedule for ${selectedDate.getDate()} ${monthNamesEN[selectedDate.getMonth()]}`}
-                </span>
-              </h3>
-              <button 
-                onClick={() => setShowAddEvent(!showAddEvent)}
-                className="p-1 rounded-full bg-[#f0f0e4] text-[#8b9d77] hover:bg-[#8b9d77] hover:text-white transition-all cursor-pointer"
-                title={lang === 'ur' ? "شیڈول شامل کریں" : "Add Event"}
-                aria-label={lang === 'ur' ? "شیڈول شامل کریں" : "Add Event"}
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Inline Event Creation Form */}
-            {showAddEvent && (
-              <form onSubmit={handleAddEvent} className="bg-[#f9f9f2] p-3 rounded-2xl border border-[#ecece0] mb-4 space-y-2.5">
-                <div>
-                  <input 
-                    type="text"
-                    required
-                    value={newEventTitle}
-                    onChange={(e) => setNewEventTitle(e.target.value)}
-                    aria-label={lang === 'ur' ? 'شیڈول عنوان' : 'Event Title'}
-                    placeholder={lang === 'ur' ? 'مثال: لاہور گندم لوڈ روانگی' : 'e.g., Lahore Wheat Cargo'}
-                    className="w-full text-xs px-2.5 py-1.5 bg-white border border-[#ecece0] rounded-lg focus:outline-none focus:border-[#8b9d77]"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={newEventType}
-                    onChange={(e: any) => setNewEventType(e.target.value)}
-                    aria-label={lang === 'ur' ? 'ایونٹ کی قسم' : 'Event Type'}
-                    className="flex-1 text-[11px] px-2 py-1.5 bg-white border border-[#ecece0] rounded-lg text-[#4a4a35] focus:outline-none focus:border-[#8b9d77]"
-                  >
-                    <option value="load">{lang === 'ur' ? 'مال برداری' : 'Cargo Load'}</option>
-                    <option value="maintenance">{lang === 'ur' ? 'مرمت و دیکھ بھال' : 'Maintenance'}</option>
-                    <option value="dispatch">{lang === 'ur' ? 'روانگی' : 'Dispatch'}</option>
-                    <option value="other">{lang === 'ur' ? 'دیگر' : 'Other'}</option>
-                  </select>
-                  <button 
-                    type="submit"
-                    aria-label={lang === 'ur' ? 'محفوظ کریں' : 'Save Event'}
-                    className="px-3 py-1.5 bg-[#8b9d77] text-white text-[11px] font-bold rounded-lg hover:bg-[#7a8c66] transition-all cursor-pointer"
-                  >
-                    {lang === 'ur' ? 'شامل کریں' : 'Save'}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            <div className="space-y-2.5 max-h-[180px] overflow-y-auto pr-1">
-              {/* Display custom schedule events */}
-              {selectedDateEvents.map(evt => (
-                <div key={evt.id} className="flex items-start justify-between p-2.5 rounded-xl bg-[#fdfbf7] border border-[#ecece0] text-xs">
-                  <div className="flex items-start gap-2">
-                    <span className="text-sm mt-0.5">
-                      {evt.type === 'load' ? '📦' : evt.type === 'maintenance' ? '🔧' : evt.type === 'dispatch' ? '🚚' : '📝'}
-                    </span>
-                    <div>
-                      <p className="font-semibold text-[#4a4a35] leading-snug">{evt.title}</p>
-                      <span className="text-[9px] uppercase tracking-wider font-bold text-[#8b9d77]">
-                        {lang === 'ur' 
-                          ? evt.type === 'load' ? 'کارگو لوڈ' : evt.type === 'maintenance' ? 'دیکھ بھال' : evt.type === 'dispatch' ? 'روانگی' : 'دیگر'
-                          : evt.type}
-                      </span>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => handleDeleteEvent(evt.id)}
-                    className="text-[#8e8e75]/60 hover:text-red-600 transition-colors p-0.5"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-
-              {/* Display actual recorded Trips matching this day */}
-              {selectedDateTrips.map(trip => (
-                <div key={trip.id} className="flex items-start justify-between p-2.5 rounded-xl bg-white border-l-4 border-[#8b9d77] border-y border-r border-[#ecece0] text-xs">
-                  <div className="flex items-start gap-2">
-                    <span className="text-sm mt-0.5">🚛</span>
-                    <div>
-                      <p className="font-semibold text-[#4a4a35] leading-snug">{trip.name}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5 text-[9px] text-[#8e8e75]">
-                        <span className="font-bold text-[#5a5a40]">PKR {trip.total.toLocaleString()}</span>
-                        <span>·</span>
-                        <span>{trip.dist} km</span>
-                      </div>
-                    </div>
-                  </div>
-                  <span className="text-[8px] bg-[#8b9d77]/10 text-[#5a5a40] px-1.5 py-0.5 rounded-full uppercase tracking-tighter font-bold">
-                    {lang === 'ur' ? 'سفر لاگ' : 'Trip Log'}
-                  </span>
-                </div>
-              ))}
-
-              {/* Empty state for the selected day */}
-              {selectedDateEvents.length === 0 && selectedDateTrips.length === 0 && (
-                <div className="py-8 text-center text-xs italic text-[#8e8e75] bg-[#fdfbf7]/50 rounded-2xl border border-dashed border-[#ecece0]">
-                  {lang === 'ur' ? 'اس دن کوئی لوڈ یا شیڈول نہیں ہے۔' : 'No schedules saved for this day.'}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-[#ecece0] flex items-center justify-between text-[10px] text-[#8e8e75]">
-              <span className="flex items-center gap-1.5 font-sans">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#C59B27]"></span> 
-                {lang === 'ur' ? 'فعال شیڈول' : 'Active Schedule'}
-              </span>
-              <span className="font-serif italic font-semibold">
-                {selectedDateEvents.length + selectedDateTrips.length} {lang === 'ur' ? 'ٹوٹل' : 'Total'}
-              </span>
-            </div>
-          </div>
-        </div>
 
       </div>
 
