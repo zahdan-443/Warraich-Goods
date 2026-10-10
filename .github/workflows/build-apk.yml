@@ -85,10 +85,14 @@ jobs:
           # 1. Modern Keystore (com.warraichgoods.driverdost)
           if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
             echo "Using custom Modern Keystore from GitHub Secrets..."
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release-keystore.jks
+            echo "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > android/app/release-keystore.jks
+            echo "Decoded release-keystore.jks ($(wc -c < android/app/release-keystore.jks) bytes)"
             echo "ANDROID_KEYSTORE_PATH=release-keystore.jks" >> $GITHUB_ENV
+            echo "ANDROID_KEYSTORE_PASSWORD=${ANDROID_KEYSTORE_PASSWORD}" >> $GITHUB_ENV
+            echo "ANDROID_KEY_ALIAS=${ANDROID_KEY_ALIAS}" >> $GITHUB_ENV
+            echo "ANDROID_KEY_PASSWORD=${ANDROID_KEY_PASSWORD}" >> $GITHUB_ENV
           else
-            echo "No custom Keystore provided. Generating official persistent release key on the fly..."
+            echo "::warning::ANDROID_KEYSTORE_BASE64 secret was not provided or empty. Generating temporary release key on the fly..."
             KEY_PW="${ANDROID_KEYSTORE_PASSWORD:-DriverDostWarraich2026}"
             KEY_AL="${ANDROID_KEY_ALIAS:-driverdost}"
             keytool -genkeypair -v \
@@ -110,13 +114,14 @@ jobs:
           # 2. Legacy Keystore (io.github.zahdan_443.twa - temporary Palm Store flavor)
           if [ -n "$ANDROID_KEYSTORE_LEGACY_BASE64" ]; then
             echo "Using custom Legacy Keystore from GitHub Secrets..."
-            echo "$ANDROID_KEYSTORE_LEGACY_BASE64" | base64 --decode > android/app/legacy-keystore.jks
+            echo "$ANDROID_KEYSTORE_LEGACY_BASE64" | tr -d '\r\n ' | base64 -d > android/app/legacy-keystore.jks
+            echo "Decoded legacy-keystore.jks ($(wc -c < android/app/legacy-keystore.jks) bytes)"
             echo "ANDROID_KEYSTORE_LEGACY_PATH=legacy-keystore.jks" >> $GITHUB_ENV
-            echo "ANDROID_KEYSTORE_LEGACY_PASSWORD=$ANDROID_KEYSTORE_LEGACY_PASSWORD" >> $GITHUB_ENV
-            echo "ANDROID_KEY_LEGACY_ALIAS=$ANDROID_KEY_LEGACY_ALIAS" >> $GITHUB_ENV
-            echo "ANDROID_KEY_LEGACY_PASSWORD=$ANDROID_KEY_LEGACY_PASSWORD" >> $GITHUB_ENV
+            echo "ANDROID_KEYSTORE_LEGACY_PASSWORD=${ANDROID_KEYSTORE_LEGACY_PASSWORD}" >> $GITHUB_ENV
+            echo "ANDROID_KEY_LEGACY_ALIAS=${ANDROID_KEY_LEGACY_ALIAS}" >> $GITHUB_ENV
+            echo "ANDROID_KEY_LEGACY_PASSWORD=${ANDROID_KEY_LEGACY_PASSWORD}" >> $GITHUB_ENV
           else
-            echo "No custom Legacy Keystore provided. Generating legacy key on the fly..."
+            echo "::warning::ANDROID_KEYSTORE_LEGACY_BASE64 secret was not provided or empty. Generating legacy key on the fly..."
             LEGACY_KEY_PW="${ANDROID_KEYSTORE_LEGACY_PASSWORD:-DriverDostLegacy2026}"
             LEGACY_KEY_AL="${ANDROID_KEY_LEGACY_ALIAS:-driverdostlegacy}"
             keytool -genkeypair -v \

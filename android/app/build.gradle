@@ -16,7 +16,6 @@ android {
     namespace = "com.warraichgoods.driverdost"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.warraichgoods.driverdost"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode appVersionCode
@@ -36,8 +35,9 @@ android {
             def keyAliasVal = System.getenv("ANDROID_KEY_ALIAS") ?: project.findProperty("RELEASE_KEY_ALIAS")
             def keyPasswordVal = System.getenv("ANDROID_KEY_PASSWORD") ?: project.findProperty("RELEASE_KEY_PASSWORD")
 
-            if (keystorePath && file(keystorePath).exists() && keystorePassword && keyAliasVal && keyPasswordVal) {
-                storeFile file(keystorePath)
+            def kFile = keystorePath ? (file(keystorePath).exists() ? file(keystorePath) : (rootProject.file(keystorePath).exists() ? rootProject.file(keystorePath) : null)) : null
+            if (kFile && keystorePassword && keyAliasVal && keyPasswordVal) {
+                storeFile kFile
                 storePassword keystorePassword
                 keyAlias keyAliasVal
                 keyPassword keyPasswordVal
@@ -49,8 +49,9 @@ android {
             def legacyAlias = System.getenv("ANDROID_KEY_LEGACY_ALIAS") ?: project.findProperty("RELEASE_KEY_LEGACY_ALIAS")
             def legacyKeyPassword = System.getenv("ANDROID_KEY_LEGACY_PASSWORD") ?: project.findProperty("RELEASE_KEY_LEGACY_PASSWORD")
 
-            if (legacyPath && file(legacyPath).exists() && legacyPassword && legacyAlias && legacyKeyPassword) {
-                storeFile file(legacyPath)
+            def kFile = legacyPath ? (file(legacyPath).exists() ? file(legacyPath) : (rootProject.file(legacyPath).exists() ? rootProject.file(legacyPath) : null)) : null
+            if (kFile && legacyPassword && legacyAlias && legacyKeyPassword) {
+                storeFile kFile
                 storePassword legacyPassword
                 keyAlias legacyAlias
                 keyPassword legacyKeyPassword
