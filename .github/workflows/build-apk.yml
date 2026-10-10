@@ -140,6 +140,19 @@ jobs:
             echo "ANDROID_KEY_LEGACY_PASSWORD=$LEGACY_KEY_PW" >> $GITHUB_ENV
           fi
 
+      - name: Print Keystore Fingerprints (diagnostic only, no secrets exposed)
+        if: ${{ inputs.build_type == 'release' }}
+        run: |
+          echo "=== Modern keystore fingerprint ==="
+          keytool -list -v -keystore "android/app/$ANDROID_KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" 2>/dev/null | grep "SHA256:" || echo "Could not read Modern Keystore fingerprint"
+          echo "=== Legacy keystore fingerprint ==="
+          keytool -list -v -keystore "android/app/$ANDROID_KEYSTORE_LEGACY_PATH" -storepass "$ANDROID_KEYSTORE_LEGACY_PASSWORD" 2>/dev/null | grep "SHA256:" || echo "Could not read Legacy Keystore fingerprint"
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ env.ANDROID_KEYSTORE_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEYSTORE_LEGACY_PATH: ${{ env.ANDROID_KEYSTORE_LEGACY_PATH }}
+          ANDROID_KEYSTORE_LEGACY_PASSWORD: ${{ env.ANDROID_KEYSTORE_LEGACY_PASSWORD || secrets.ANDROID_KEYSTORE_LEGACY_PASSWORD }}
+
       - name: Build Android APK via Gradle
         env:
           ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
