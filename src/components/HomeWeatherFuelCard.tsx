@@ -45,7 +45,7 @@ interface OperationalSummaryItem {
 
 interface HomeWeatherFuelCardProps {
   lang: Language;
-  onApplyRates?: ((diesel?: number, petrol?: number, cng?: number) => void) | ((diesel: string, petrol: string, cng?: string) => void);
+  onApplyRates?: (diesel?: any, petrol?: any, cng?: any) => void;
   onOpenTerms?: () => void;
   onOpenPrivacy?: () => void;
 }
