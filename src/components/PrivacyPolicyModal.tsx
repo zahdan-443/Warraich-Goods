@@ -1,5 +1,4 @@
-import React from 'react';
-import { X, ShieldCheck, Lock, Eye, Database, MapPin, Mail, Phone, Building2, CheckCircle2, FileText, AlertCircle } from 'lucide-react';
+import { X, ShieldCheck, Lock, Eye, Database, MapPin, Mail, Phone, Building2, CheckCircle2, FileText, AlertCircle, Bell } from 'lucide-react';
 import { Language } from '../types';
 
 interface PrivacyPolicyModalProps {
@@ -100,7 +99,22 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             </p>
           </div>
 
-          {/* Section 3: Data Security & Encryption */}
+          {/* Section 3: Push Notifications & Device Alerts */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#ecece0] space-y-2.5 shadow-2xs">
+            <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
+              <Bell className="w-4 h-4 text-amber-600" />
+              <h3 className="font-serif font-bold text-sm">
+                {isUrdu ? '3. پش نوٹیفکیشنز اور ڈیوائس الرٹس' : '3. Push Notifications & Status Alerts'}
+              </h3>
+            </div>
+            <p className="text-xs text-[#5a5a40] leading-relaxed">
+              {isUrdu
+                ? 'ایپ روزانہ پیٹرولیم نرخوں، موسمی حدِ نگاہ، اور روڈ صورتحال کے مفید خلاصے (Daily Digest) کے لیے اینڈرائیڈ 13+ کی رضامندی کے تحت نوٹیفکیشن بھیجتی ہے۔ یہ نوٹیفکیشنز اینٹی سپیم ضابطے کے تحت دن میں زیادہ سے زیادہ ایک مرتبہ موصول ہوتے ہیں، جن میں کوئی اشتہار شامل نہیں ہوتا۔ صارف کسی بھی وقت ایپ سیٹنگز سے الرٹس بند کر سکتا ہے۔'
+                : 'The app dispatches informational status bar alerts for daily fuel benchmark changes, weather visibility, and road advisories under Android 13+ POST_NOTIFICATIONS consent. These are rate-limited to 1 daily digest with zero marketing spam, and can be disabled anytime.'}
+            </p>
+          </div>
+
+          {/* Section 4: Data Security & Encryption */}
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#ecece0] space-y-2.5 shadow-2xs">
             <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
               <Lock className="w-4 h-4 text-[#8b9d77]" />
@@ -120,7 +134,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
               <FileText className="w-4 h-4 text-[#8b9d77]" />
               <h3 className="font-serif font-bold text-sm">
-                {isUrdu ? '4. ڈیٹا کنٹرول، ایکسپورٹ اور ڈیلیشن' : '4. User Data Ownership & Deletion'}
+                {isUrdu ? '5. ڈیٹا کنٹرول، ایکسپورٹ اور ڈیلیشن' : '5. User Data Ownership & Deletion'}
               </h3>
             </div>
             <p className="text-xs text-[#5a5a40] leading-relaxed">
@@ -130,12 +144,12 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             </p>
           </div>
 
-          {/* Section 5: Developer Contact & Legal Compliance */}
+          {/* Section 6: Developer Contact & Legal Compliance */}
           <div className="bg-gradient-to-br from-[#f7f5ed] to-white p-4 sm:p-5 rounded-2xl border border-[#ecece0] space-y-3 shadow-2xs">
             <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
               <Building2 className="w-4 h-4 text-emerald-600" />
               <h3 className="font-serif font-bold text-sm">
-                {isUrdu ? '5. رابطہ برائے پرائیویسی سوالات' : '5. Contact & Administrator Details'}
+                {isUrdu ? '6. رابطہ برائے پرائیویسی سوالات' : '6. Contact & Administrator Details'}
               </h3>
             </div>
             <div className="text-xs text-[#5a5a40] space-y-2">

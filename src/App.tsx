@@ -54,6 +54,7 @@ import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
 import { Home, ArrowLeft } from 'lucide-react';
 import { checkExpiringDocuments, processExpiryNotifications } from './utils/documentExpiry';
+import { dispatchDailyDigestNotification } from './utils/dailyDigestNotification';
 
 export default function App() {
   const OWNER_EMAIL = 'warraichgoods43@gmail.com';
@@ -457,6 +458,11 @@ export default function App() {
       processExpiryNotifications(expiring, lang);
     }
   }, [vehicles, drivers, lang]);
+
+  // Daily Fuel Prices, Weather & Road Conditions Digest Notification (Play Store & PalmStore Compliant)
+  useEffect(() => {
+    dispatchDailyDigestNotification(lang, false).catch(() => {});
+  }, [lang]);
 
   // Firebase auth & bilty access real-time sync
   useEffect(() => {

@@ -14,6 +14,7 @@ import {
   sendSystemNotification, 
   isNotificationSupported 
 } from '../utils/notifications';
+import { dispatchDailyDigestNotification } from '../utils/dailyDigestNotification';
 
 interface HeaderProps {
   lang: Language;
@@ -87,10 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleSendTestNotification = async () => {
     setTestSent(true);
-    await sendSystemNotification(
-      lang === 'ur' ? 'ڈرائیور دوست ٹیسٹ نوٹیفکیشن 🚚' : 'Driver Dost Test Alert 🚚',
-      lang === 'ur' ? 'یہ نوٹیفکیشن آپ کے فون کے اسٹیٹس بار اور نوٹیفکیشن پینل پر کامیابی سے موصول ہوا۔' : 'This test notification was delivered to your device status bar & notification shade.'
-    );
+    await dispatchDailyDigestNotification(lang, true);
     setTimeout(() => setTestSent(false), 3000);
   };
 
