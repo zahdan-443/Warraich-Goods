@@ -24,7 +24,8 @@ import {
   X,
   Navigation,
   Loader2,
-  HelpCircle
+  HelpCircle,
+  ArrowRight
 } from 'lucide-react';
 import { Language } from '../types';
 import { 
@@ -44,7 +45,7 @@ interface OperationalSummaryItem {
 
 interface HomeWeatherFuelCardProps {
   lang: Language;
-  onApplyRates?: (diesel: string, petrol: string, cng?: string) => void;
+  onApplyRates?: ((diesel?: number, petrol?: number, cng?: number) => void) | ((diesel: string, petrol: string, cng?: string) => void);
   onOpenTerms?: () => void;
   onOpenPrivacy?: () => void;
 }
@@ -56,6 +57,16 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
   onOpenPrivacy
 }) => {
   const isUrdu = lang === 'ur';
+
+  const handleApplyFuelBenchmark = () => {
+    if (onApplyRates) {
+      (onApplyRates as any)(dieselPrice, petrolPrice, hiOctanePrice);
+      setFuelStatusMsg({
+        type: 'success',
+        text: isUrdu ? 'سرکاری ریٹس کامیابی سے ٹرپ کیلکولیٹر اور کھاتہ پر لاگو ہو گئے' : 'Official rates applied to Trip Calculator'
+      });
+    }
+  };
 
   // --- Fuel Prices State ---
   const initialFuel = getStoredFuelPrices();
@@ -603,98 +614,170 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
         </div>
       </div>
 
-      {/* Fuel Rate Cards (Pakistan POL Monitor) - Streamlined, Big Font & Clear Indicators */}
-      <div className="space-y-3 pt-1">
-        <div className="flex items-center justify-between">
+      {/* Fuel Rate Cards (Pakistan POL Monitor) - Minimized, Clear & Official OGRA/PSO */}
+      <div className="space-y-2.5 pt-1">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <Fuel className="w-4 h-4 text-[#8b9d77]" />
-            <h3 className="font-serif font-bold text-sm text-[#4a4a35]">
-              {isUrdu ? 'پاکستان پول ریٹ مانیٹر (سرکاری پی ایس او / اوگرا)' : 'Pakistan Live POL Fuel Rates (PSO / OGRA)'}
+            <span className="px-2 py-0.5 rounded-md bg-emerald-900/10 text-emerald-900 font-bold text-[10px] tracking-wide border border-emerald-900/20 flex items-center gap-1.5 font-sans">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-700 animate-pulse"></span>
+              OGRA / PSO
+            </span>
+            <h3 className="font-serif font-bold text-xs sm:text-sm text-[#4a4a35]">
+              {isUrdu ? 'پاکستان پول ریٹ مانیٹر (سرکاری پی ایس او / اوگرا)' : 'Official POL Fuel Benchmark (PSO / OGRA)'}
             </h3>
           </div>
-          <span className="text-[10px] font-mono text-[#8e8e75]">
-            {isUrdu ? 'مؤثر از:' : 'Effective:'} <b>{effectiveDate}</b>
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono text-[#8e8e75]">
+              {isUrdu ? 'مؤثر از:' : 'Effective:'} <b className="text-slate-700">{effectiveDate}</b>
+            </span>
+            <button
+              type="button"
+              onClick={() => fetchFuel(true)}
+              disabled={fuelLoading}
+              title={isUrdu ? 'تازہ ترین سرکاری نرخ حاصل کریں' : 'Refresh official rates'}
+              className="p-1 rounded-md hover:bg-[#ecece0] text-[#5a5a40] transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={'w-3 h-3 ' + (fuelLoading ? 'animate-spin text-emerald-600' : '')} />
+            </button>
+          </div>
         </div>
 
-        {/* Primary High-Impact Rates: High Speed Diesel & Super Petrol */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Primary Rates: High Speed Diesel & Super Petrol - Minimized & High Contrast */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {/* High Speed Diesel Card (Primary Freight Driver) */}
-          <div className="bg-gradient-to-br from-emerald-50/90 via-[#fdfbf7] to-emerald-50/50 p-3.5 sm:p-4 rounded-2xl border-2 border-emerald-500/80 shadow-2xs space-y-1">
+          <div className="bg-gradient-to-br from-emerald-50/90 via-[#fdfbf7] to-emerald-50/50 p-2.5 sm:p-3 rounded-xl border border-emerald-500/70 shadow-2xs hover:border-emerald-600 transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5 font-serif">
+              <span className="text-[11.5px] font-bold uppercase tracking-wider text-emerald-950 flex items-center gap-1.5 font-serif">
                 <span>🛢️</span>
                 <span>{isUrdu ? 'ہائی اسپیڈ ڈیزل (HSD)' : 'High Speed Diesel (HSD)'}</span>
               </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-600 text-white shadow-2xs">
+              <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-emerald-700 text-white shadow-2xs">
                 {isUrdu ? 'فریٹ پرائمری' : 'Freight Benchmark'}
               </span>
             </div>
             
-            <div className="flex items-baseline gap-1.5 pt-0.5">
-              <span className="text-xs font-bold text-emerald-700 font-mono">Rs.</span>
-              <span className="text-2xl sm:text-3xl font-extrabold font-mono text-emerald-800 tracking-tight">
-                {dieselPrice}
-              </span>
-              <span className="text-xs font-medium text-emerald-700/80">/ {isUrdu ? 'لیٹر' : 'Ltr'}</span>
+            <div className="flex items-baseline justify-between mt-1">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xs font-bold text-emerald-800 font-mono">Rs.</span>
+                <span className="text-xl sm:text-2xl font-black font-mono text-emerald-900 tracking-tight">
+                  {dieselPrice}
+                </span>
+                <span className="text-[11px] font-medium text-emerald-800/80">/ {isUrdu ? 'لیٹر' : 'Ltr'}</span>
+              </div>
+              {onApplyRates && (
+                <button
+                  type="button"
+                  onClick={handleApplyFuelBenchmark}
+                  className="text-[10.5px] font-bold text-emerald-800 hover:text-emerald-950 hover:underline flex items-center gap-1 cursor-pointer bg-emerald-100/70 hover:bg-emerald-200/70 px-2 py-0.5 rounded-md transition-colors active:scale-95"
+                >
+                  <span>{isUrdu ? 'ٹرپ میں لگائیں' : 'Use in Trip'}</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              )}
             </div>
-            
-            <p className="text-[10.5px] text-emerald-800/80 pt-0.5">
-              {isUrdu 
-                ? 'تمام روڈ ٹرپس اور گاڑی کھاتہ کے لیے مرکزی سرکاری ریٹ' 
-                : 'Primary official benchmark for all trips & vehicle fuel accounts'}
+            <p className="text-[10px] text-emerald-800/80 pt-0.5">
+              {isUrdu ? 'تمام روڈ ٹرپس اور گاڑی کھاتہ کے لیے مرکزی سرکاری ریٹ' : 'Primary official benchmark for all trips & vehicle fuel accounts'}
             </p>
           </div>
 
           {/* Premier Petrol (PMG) */}
-          <div className="bg-[#fdfbf7] p-3.5 sm:p-4 rounded-2xl border border-[#ecece0] hover:border-[#8b9d77] transition-all shadow-2xs space-y-1">
+          <div className="bg-[#fdfbf7] p-2.5 sm:p-3 rounded-xl border border-[#ecece0] hover:border-[#8b9d77] transition-all shadow-2xs">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5 font-serif">
+              <span className="text-[11.5px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5 font-serif">
                 <span>⛽</span>
                 <span>{isUrdu ? 'پریمیئر موٹر پٹرول (PMG)' : 'Premier Petrol (PMG)'}</span>
               </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+              <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
                 Super Petrol
               </span>
             </div>
 
-            <div className="flex items-baseline gap-1.5 pt-0.5">
-              <span className="text-xs font-bold text-slate-500 font-mono">Rs.</span>
-              <span className="text-2xl sm:text-3xl font-extrabold font-mono text-slate-800 tracking-tight">
-                {petrolPrice}
+            <div className="flex items-baseline justify-between mt-1">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xs font-bold text-slate-600 font-mono">Rs.</span>
+                <span className="text-xl sm:text-2xl font-black font-mono text-slate-900 tracking-tight">
+                  {petrolPrice}
+                </span>
+                <span className="text-[11px] font-medium text-slate-500">/ {isUrdu ? 'لیٹر' : 'Ltr'}</span>
+              </div>
+              <span className="text-[10px] text-slate-500 font-medium">
+                {isUrdu ? 'اوپن مارکیٹ ریٹ' : 'Official Retail'}
               </span>
-              <span className="text-xs font-medium text-slate-500">/ {isUrdu ? 'لیٹر' : 'Ltr'}</span>
             </div>
-
-            <p className="text-[10.5px] text-slate-500 pt-0.5">
-              {isUrdu 
-                ? 'اوگرا حکومتِ پاکستان کی طرف سے مقرر کردہ اوپن مارکیٹ ریٹ' 
-                : 'Official retail rate notified by OGRA / Government of Pakistan'}
+            <p className="text-[10px] text-slate-500 pt-0.5">
+              {isUrdu ? 'اوگرا حکومتِ پاکستان کی طرف سے مقرر کردہ اوپن مارکیٹ ریٹ' : 'Official retail rate notified by OGRA / Government of Pakistan'}
             </p>
           </div>
         </div>
 
-        {/* Secondary Compact Row: Hi-Octane, Light Diesel & Kerosene */}
-        <div className="grid grid-cols-3 gap-2 bg-[#f9f9f2] p-2.5 rounded-2xl border border-[#ecece0] text-center text-xs">
-          <div className="p-0.5">
-            <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] block">Altron X 97</span>
-            <span className="text-xs sm:text-sm font-bold font-mono text-[#4a4a35] mt-0.5 block">Rs. {hiOctanePrice}</span>
+        {/* Secondary Products: Hi-Octane, Light Diesel, Kerosene & CNG - 4-Column Minimized Grid */}
+        <div>
+          <div className="flex items-center justify-between mb-1 px-0.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8e8e75] font-serif">
+              {isUrdu ? 'دیگر سرکاری پیٹرولیم مصنوعات' : 'Other Petroleum Products (OGRA / PSO)'}
+            </span>
+            <span className="text-[9.5px] text-[#8e8e75]">
+              OGRA Standard
+            </span>
           </div>
-          <div className="border-x border-[#ecece0] p-0.5">
-            <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] block">Light Diesel (LDO)</span>
-            <span className="text-xs sm:text-sm font-bold font-mono text-[#4a4a35] mt-0.5 block">Rs. {ldoPrice}</span>
-          </div>
-          <div className="p-0.5">
-            <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] block">Kerosene (SKO)</span>
-            <span className="text-xs sm:text-sm font-bold font-mono text-[#4a4a35] mt-0.5 block">Rs. {skoPrice}</span>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-[#f9f9f2] p-2 rounded-xl border border-[#ecece0]">
+            {/* Hi-Octane 97 */}
+            <div className="bg-white/80 p-1.5 rounded-lg border border-[#ecece0]/80 text-center shadow-2xs">
+              <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] block truncate">
+                {isUrdu ? 'الٹران 97 (Hi-Octane)' : 'Altron 97 (Octane)'}
+              </span>
+              <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] mt-0.5 block">
+                Rs. {hiOctanePrice}
+              </span>
+            </div>
+
+            {/* Light Diesel (LDO) */}
+            <div className="bg-white/80 p-1.5 rounded-lg border border-[#ecece0]/80 text-center shadow-2xs">
+              <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] block truncate">
+                {isUrdu ? 'لائٹ ڈیزل (LDO)' : 'Light Diesel (LDO)'}
+              </span>
+              <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] mt-0.5 block">
+                Rs. {ldoPrice}
+              </span>
+            </div>
+
+            {/* Kerosene (SKO) */}
+            <div className="bg-white/80 p-1.5 rounded-lg border border-[#ecece0]/80 text-center shadow-2xs">
+              <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] block truncate">
+                {isUrdu ? 'مٹی کا تیل (SKO)' : 'Kerosene (SKO)'}
+              </span>
+              <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] mt-0.5 block">
+                Rs. {skoPrice}
+              </span>
+            </div>
+
+            {/* CNG */}
+            <div className="bg-white/80 p-1.5 rounded-lg border border-[#ecece0]/80 text-center shadow-2xs">
+              <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] block truncate">
+                {isUrdu ? 'سی این جی (CNG)' : 'CNG (Region)'}
+              </span>
+              <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] mt-0.5 block">
+                Rs. 200<span className="text-[9px] font-sans font-normal text-slate-500">/kg</span>
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Status Msg */}
         {fuelStatusMsg && (
-          <div className="p-2 rounded-xl text-xs font-medium flex items-center gap-1.5 bg-[#f9f9f2] text-[#5a5a40] border border-[#8b9d77]">
-            <CheckCircle2 className="w-3.5 h-3.5 text-[#8b9d77] shrink-0" />
-            <span>{fuelStatusMsg.text}</span>
+          <div className="p-2 rounded-xl text-xs font-medium flex items-center justify-between gap-1.5 bg-[#f9f9f2] text-[#5a5a40] border border-[#8b9d77] animate-in fade-in">
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#8b9d77] shrink-0" />
+              <span>{fuelStatusMsg.text}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFuelStatusMsg(null)}
+              className="p-0.5 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+            >
+              <X className="w-3 h-3" />
+            </button>
           </div>
         )}
       </div>
