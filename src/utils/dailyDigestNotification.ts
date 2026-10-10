@@ -157,6 +157,11 @@ export async function dispatchDailyDigestNotification(
     currentTemp
   );
 
+  // Update last sent date immediately to prevent race conditions on app mount
+  if (!force) {
+    saveDailyDigestSettings({ lastDigestDate: todayStr });
+  }
+
   // Send native system notification
   const sent = await sendSystemNotification(title, body, {
     tag: 'driver-dost-daily-digest', // Replaces previous day's notification in drawer

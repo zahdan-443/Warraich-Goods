@@ -37,12 +37,6 @@ import {
 } from '../utils/fuelPrice';
 import { PAKISTAN_CITIES_MASTER } from '../utils/pakistanCitiesData';
 import { findNearestCity } from '../utils/hazardReports';
-import {
-  getDailyDigestSettings,
-  saveDailyDigestSettings,
-  dispatchDailyDigestNotification,
-  DailyDigestSettings
-} from '../utils/dailyDigestNotification';
 
 interface OperationalSummaryItem {
   id: string;
@@ -152,61 +146,6 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
   const [showAddSummaryModal, setShowAddSummaryModal] = useState(false);
   const [newSummaryText, setNewSummaryText] = useState('');
   const [newSummaryCategory, setNewSummaryCategory] = useState<'alert' | 'note' | 'trip'>('note');
-
-  // --- Daily Push Notification Settings & Test State ---
-  const [digestSettings, setDigestSettings] = useState<DailyDigestSettings>(() => getDailyDigestSettings());
-  const [digestSending, setDigestSending] = useState(false);
-
-  const handleToggleDigest = () => {
-    const nextState = !digestSettings.enabled;
-    const updated = saveDailyDigestSettings({ enabled: nextState });
-    setDigestSettings(updated);
-    setFuelStatusMsg({
-      type: 'success',
-      text: isUrdu
-        ? (nextState ? 'روزانہ صبح الرٹس فعال ہو گئے ہیں' : 'روزانہ الرٹس بند کر دیے گئے ہیں')
-        : (nextState ? 'Daily morning alerts enabled' : 'Daily alerts disabled')
-    });
-  };
-
-  const handleTestDigest = async () => {
-    setDigestSending(true);
-    try {
-      const res = await dispatchDailyDigestNotification(
-        lang,
-        true,
-        selectedCity ? { ur: selectedCity.nameUr, en: selectedCity.nameEn } : undefined,
-        weatherData?.temp
-      );
-      if (res.success) {
-        setFuelStatusMsg({
-          type: 'success',
-          text: isUrdu
-            ? 'روزانہ نوٹیفکیشن ڈیوائس اسٹیٹس بار میں کامیابی سے بھیج دیا گیا ہے'
-            : 'Daily digest notification delivered to device status bar'
-        });
-      } else if (res.reason === 'permission_denied') {
-        setFuelStatusMsg({
-          type: 'error',
-          text: isUrdu
-            ? 'نوٹیفکیشن کی اجازت نہیں ملی۔ براؤزر یا اینڈرائیڈ ایپ سیٹنگز سے اجازت دیں'
-            : 'Notification permission denied in browser/system settings'
-        });
-      } else {
-        setFuelStatusMsg({
-          type: 'success',
-          text: isUrdu ? 'الرٹ تیار اور محفوظ کر لیا گیا ہے' : 'Digest alert prepared and saved'
-        });
-      }
-    } catch {
-      setFuelStatusMsg({
-        type: 'error',
-        text: isUrdu ? 'نوٹیفکیشن ارسال نہ ہو سکا' : 'Could not send test notification'
-      });
-    } finally {
-      setDigestSending(false);
-    }
-  };
 
   // Find active city in predefined master list
   const selectedCity = PAKISTAN_CITIES_MASTER.find(c => c.id === selectedCityId) || 
@@ -427,9 +366,6 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
           type: 'success',
           text: isUrdu ? 'سرکاری ریٹس کامیابی سے ہم آہنگ ہو گئے' : 'Official rates synced'
         });
-      }
-      if (onApplyRates) {
-        onApplyRates(data.diesel, data.petrol);
       }
     } catch {
       const fallback = getStoredFuelPrices();
@@ -816,53 +752,6 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
           </div>
         )}
 
-        {/* Daily Fuel, Weather & Road Alert Control (Store Policy Compliant, Anti-Spam) */}
-        <div className="bg-[#f7f5ed] border border-[#ecece0] rounded-xl p-2.5 flex items-center justify-between flex-wrap gap-2 text-xs">
-          <div className="flex items-center gap-2">
-            <div className={`p-1.5 rounded-lg shrink-0 ${digestSettings.enabled ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-500'}`}>
-              <Bell className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <span className="font-bold text-[#4a4a35] block text-[11px] sm:text-xs">
-                {isUrdu ? 'روزانہ صبح الرٹ (فیول، موسم اور روڈ صورتحال)' : 'Daily Morning Alert (Fuel, Weather & Roads)'}
-              </span>
-              <span className="text-[10px] text-[#7a7a60] block">
-                {isUrdu 
-                  ? (digestSettings.enabled ? 'فعال • دن میں صرف 1 بار اسٹیٹس بار نوٹیفکیشن' : 'غیر فعال • الرٹس بند ہیں')
-                  : (digestSettings.enabled ? 'Active • 1 daily status bar digest' : 'Disabled')}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleToggleDigest}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors cursor-pointer ${
-                digestSettings.enabled
-                  ? 'bg-emerald-700 text-white border-emerald-800'
-                  : 'bg-white text-slate-600 border-[#d0d0be] hover:bg-slate-50'
-              }`}
-            >
-              {digestSettings.enabled ? (isUrdu ? 'آن (Active)' : 'ON') : (isUrdu ? 'آف (Off)' : 'OFF')}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleTestDigest}
-              disabled={digestSending}
-              title={isUrdu ? 'ابھی ڈیوائس پر ٹیسٹ نوٹیفکیشن بھیجیں' : 'Send test digest to status bar'}
-              className="px-2.5 py-1 bg-white hover:bg-slate-50 text-[#1e3a68] border border-[#d0d0be] rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
-            >
-              {digestSending ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <BellRing className="w-3 h-3 text-amber-600" />
-              )}
-              <span>{isUrdu ? 'ٹیسٹ الرٹ' : 'Test Alert'}</span>
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* --- OPERATIONAL SUMMARY SECTION --- */}

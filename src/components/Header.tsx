@@ -14,7 +14,12 @@ import {
   sendSystemNotification, 
   isNotificationSupported 
 } from '../utils/notifications';
-import { dispatchDailyDigestNotification } from '../utils/dailyDigestNotification';
+import { 
+  dispatchDailyDigestNotification, 
+  getDailyDigestSettings, 
+  saveDailyDigestSettings, 
+  DailyDigestSettings 
+} from '../utils/dailyDigestNotification';
 
 interface HeaderProps {
   lang: Language;
@@ -84,6 +89,20 @@ export const Header: React.FC<HeaderProps> = ({
         lang === 'ur' ? 'تمام ٹرانسپورٹ الرٹس اب آپ کے فون کے اسٹیٹس بار پر آئیں گے۔' : 'Transport alerts will now appear in your device status bar.'
       );
     }
+  };
+
+  const [digestSettings, setDigestSettings] = useState<DailyDigestSettings>(() => getDailyDigestSettings());
+
+  useEffect(() => {
+    if (showNotifs) {
+      setDigestSettings(getDailyDigestSettings());
+    }
+  }, [showNotifs]);
+
+  const handleToggleDailyDigest = () => {
+    const nextState = !digestSettings.enabled;
+    const updated = saveDailyDigestSettings({ enabled: nextState });
+    setDigestSettings(updated);
   };
 
   const handleSendTestNotification = async () => {
@@ -669,8 +688,8 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
 
-            {/* Mobile Status Bar Permission Action Banner */}
-            <div className="p-3.5 bg-gradient-to-r from-amber-500/15 via-[#fdfbf7] to-amber-500/10 border-b border-amber-200 text-xs">
+            {/* Mobile Status Bar Permission & Daily Digest Controls */}
+            <div className="p-3.5 bg-gradient-to-r from-amber-500/15 via-[#fdfbf7] to-amber-500/10 border-b border-amber-200 text-xs space-y-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Bell className="w-4 h-4 text-amber-700 shrink-0" />
@@ -682,7 +701,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     onClick={handleSendTestNotification}
                     disabled={testSent}
-                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1 shrink-0"
+                    className="px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1 shrink-0"
                   >
                     <Send className="w-2.5 h-2.5" />
                     <span>{testSent ? (lang === 'ur' ? 'بھیج دیا!' : 'Sent!') : (lang === 'ur' ? 'ٹیسٹ الرٹ' : 'Test Alert')}</span>
@@ -697,10 +716,36 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 )}
               </div>
-              <p className="text-[10px] text-amber-900/80 mt-1 leading-snug">
+
+              {/* Daily Morning Digest (Fuel, Weather, Roads) Toggle */}
+              <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between gap-2">
+                <div>
+                  <span className="font-semibold text-amber-950 text-[10.5px] block leading-tight">
+                    {lang === 'ur' ? 'روزانہ صبح فیول و موسم الرٹ' : 'Daily Fuel & Weather Alert'}
+                  </span>
+                  <span className="text-[9.5px] text-amber-900/70 block">
+                    {lang === 'ur' 
+                      ? (digestSettings.enabled ? 'فعال • 24 گھنٹے میں صرف 1 بار' : 'بند ہے • نوٹیفکیشن نہیں آئے گا')
+                      : (digestSettings.enabled ? 'Enabled • 1x daily status bar' : 'Disabled')}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleDailyDigest}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer shrink-0 ${
+                    digestSettings.enabled
+                      ? 'bg-emerald-700 text-white border-emerald-800 shadow-2xs'
+                      : 'bg-white text-slate-600 border-[#d0d0be] hover:bg-slate-50'
+                  }`}
+                >
+                  {digestSettings.enabled ? (lang === 'ur' ? 'آن (ON)' : 'ON') : (lang === 'ur' ? 'آف (OFF)' : 'OFF')}
+                </button>
+              </div>
+
+              <p className="text-[9.5px] text-amber-900/80 leading-snug">
                 {notifPerm === 'granted'
-                  ? (lang === 'ur' ? '✅ موبائل نوٹیفکیشن کی منظوری فعال ہے۔ تمام نوٹسز فون پر موصول ہوں گے۔' : '✅ Status bar notifications are enabled on this device.')
-                  : (lang === 'ur' ? 'تمام نوٹسز موبائل کے اسٹیٹس بار اور نوٹیفکیشن پینل پر پانے کے لیے منظوری دیں۔' : 'Allow notifications to receive transport updates in your device status bar.')}
+                  ? (lang === 'ur' ? '✅ موبائل نوٹیفکیشن فعال ہے۔ ضروری آپریشنل الرٹس فون پر موصول ہوں گے۔' : '✅ Status bar notifications are enabled on this device.')
+                  : (lang === 'ur' ? 'تمام نوٹسز موبائل کے اسٹیٹس بار پر پانے کے لیے اوپر بٹن سے منظوری دیں۔' : 'Allow notifications to receive transport updates in your device status bar.')}
               </p>
             </div>
 
