@@ -203,6 +203,10 @@ export const Footer: React.FC<FooterProps> = ({
           <span className="font-semibold text-[#4a4a35]">Driver Dost · Pakistan Road Freight Manager v1.0.2</span>
           <span>·</span>
           <span>© 2026 Driver Dost. All Rights Reserved.</span>
+          <span>·</span>
+          <a href="./terms.html" target="_blank" rel="noopener noreferrer" className="text-[#5a5a40] hover:text-[#1e3a68] underline decoration-slate-300">Terms & Conditions</a>
+          <span>·</span>
+          <a href="./privacy.html" target="_blank" rel="noopener noreferrer" className="text-[#5a5a40] hover:text-[#1e3a68] underline decoration-slate-300">Privacy Policy</a>
         </div>
         <div className="flex items-center gap-1 text-[11px] font-medium">
           <span>{isUrdu ? 'ڈرائیورز کے لیے خلوص کے ساتھ' : 'Dedicated to Pakistan Logistics'}</span>

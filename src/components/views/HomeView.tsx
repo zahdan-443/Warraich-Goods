@@ -38,7 +38,9 @@ import {
   Camera,
   Info
 } from 'lucide-react';
-import { LiveFuelPriceWidget } from '../LiveFuelPriceWidget';
+import { HomeWeatherFuelCard } from '../HomeWeatherFuelCard';
+import { TermsModal } from '../TermsModal';
+import { PrivacyPolicyModal } from '../PrivacyPolicyModal';
 import { TollCalculatorModal } from '../TollCalculatorModal';
 import { checkExpiringDocuments, processExpiryNotifications, ExpiringDocumentItem } from '../../utils/documentExpiry';
 
@@ -162,6 +164,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
 }) => {
   const t = DICTIONARY[lang];
   const [showRecentLogs, setShowRecentLogs] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showHomePrivacyModal, setShowHomePrivacyModal] = useState(false);
   const [showSafarDiaryModal, setShowSafarDiaryModal] = useState(false);
   const [showQuickOpsModal, setShowQuickOpsModal] = useState(false);
   const [showTollCalculatorModal, setShowTollCalculatorModal] = useState(false);
@@ -971,19 +975,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
 
 
-        {/* Live Fuel Prices Monitor Card */}
-        <div className="bg-white p-6 sm:p-8 rounded-[40px] shadow-sm border border-[#ecece0]">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-serif font-bold text-lg text-[#4a4a35] flex items-center gap-2">
-              <Fuel className="w-5 h-5 text-[#8b9d77]" />
-              <span>{lang === 'ur' ? 'پاکستان پول ریٹ مانیٹر' : 'Live POL Rates Monitor'}</span>
-            </h2>
-            <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-[#10B981]/15 text-[#10B981] uppercase tracking-wider">
-              {lang === 'ur' ? 'لائیو اپڈیٹ' : 'Live Updated'}
-            </span>
-          </div>
-          <LiveFuelPriceWidget lang={lang} compact />
-        </div>
+        {/* Merged Date, Live Weather & Pakistan POL Rates Monitor (Minimalist & Beautiful) */}
+        <HomeWeatherFuelCard lang={lang} onApplyRates={onLogFuelPrice} onOpenTerms={() => setShowTermsModal(true)} onOpenPrivacy={() => setShowHomePrivacyModal(true)} />
 
       </div>
 
@@ -1571,6 +1564,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
         }}
       />
 
+
+      {/* Terms and Privacy Modals for Store Policy Compliance */}
+      <TermsModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        lang={lang}
+      />
+      <PrivacyPolicyModal
+        isOpen={showHomePrivacyModal}
+        onClose={() => setShowHomePrivacyModal(false)}
+        lang={lang}
+      />
     </div>
   );
 };
