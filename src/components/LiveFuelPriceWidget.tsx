@@ -101,68 +101,134 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
 
   if (compact) {
     return (
-      <div className="bg-white rounded-3xl border border-[#ecece0] p-5 shadow-2xs space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white rounded-3xl border border-[#ecece0] p-5 sm:p-6 shadow-2xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#ecece0]">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-[#f0f0e4] rounded-xl text-[#5a5a40]">
-              <Fuel className="w-4 h-4 text-[#8b9d77]" />
+            <div className="p-2.5 bg-emerald-50 rounded-2xl text-emerald-800 border border-emerald-200/60 shadow-2xs">
+              <Fuel className="w-5 h-5 text-emerald-700" />
             </div>
             <div>
-              <div className="font-serif font-bold text-sm text-[#4a4a35]">
-                {lang === 'ur' ? 'پی ایس او (PSO) پول ریٹ مانیٹر' : 'PSO POL Official Rates'}
+              <div className="font-serif font-bold text-base text-[#4a4a35] flex items-center gap-2">
+                <span>{lang === 'ur' ? 'پاکستان سرکاری پول ریٹس (PSO / OGRA)' : 'Official Pakistan Fuel Rates (PSO / OGRA)'}</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
+                  {lang === 'ur' ? 'سرکاری نوٹیفکیشن' : 'Official'}
+                </span>
               </div>
-              <a 
-                href="https://psopk.com/fuel-prices/pol/archives" 
-                target="_blank" 
-                rel="noreferrer"
-                className="text-[10px] text-[#8b9d77] hover:underline flex items-center gap-1 font-mono"
-              >
-                <span>psopk.com/fuel-prices/pol/archives</span>
-                <ExternalLink className="w-2.5 h-2.5" />
-              </a>
+              <div className="flex items-center gap-2 text-[11px] text-[#8e8e75] mt-0.5">
+                <span className="flex items-center gap-1 font-mono">
+                  <Calendar className="w-3 h-3 text-[#8b9d77]" />
+                  <span>{lang === 'ur' ? 'مؤثر از:' : 'Effective:'} <b>{effectiveDate}</b></span>
+                </span>
+                <span>·</span>
+                <a 
+                  href="https://psopk.com/fuel-prices/pol/archives" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="text-emerald-700 hover:underline flex items-center gap-0.5 font-mono"
+                >
+                  <span>psopk.com</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              </div>
             </div>
           </div>
+
           <button
             onClick={handleUpdatePrices}
             disabled={loading}
-            className="px-3.5 py-1.5 bg-[#5a5a40] hover:bg-[#4a4a35] disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            className="px-3.5 py-1.5 bg-[#4a5e38] hover:bg-[#394a2b] disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>{loading ? (lang === 'ur' ? 'اپڈیٹ...' : 'Updating...') : (lang === 'ur' ? 'تازہ کریں' : 'Update Rates')}</span>
+            <span>{loading ? (lang === 'ur' ? 'اپڈیٹ ہو رہا ہے...' : 'Updating...') : (lang === 'ur' ? 'ریٹس تازہ کریں' : 'Sync Live Rates')}</span>
           </button>
         </div>
 
-        {/* Primary Row: High Speed Diesel & Super Petrol */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="bg-[#fdfbf7] p-3.5 rounded-2xl border-2 border-[#8b9d77]/60">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#5a5a40] block">🛢️ High Speed Diesel (HSD)</span>
-            <div className="text-2xl font-bold font-mono text-green-700 mt-0.5">
-              Rs. {dieselPrice} <span className="text-xs font-normal text-[#8e8e75]">/ Ltr</span>
+        {/* Primary High-Impact Rates: High Speed Diesel & Super Petrol */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          {/* High Speed Diesel Card (Primary Freight Driver) */}
+          <div className="bg-gradient-to-br from-emerald-50/80 via-[#fdfbf7] to-emerald-50/40 p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/80 shadow-2xs space-y-1 relative overflow-hidden group">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5 font-serif">
+                <span>🛢️</span>
+                <span>{lang === 'ur' ? 'ہائی اسپیڈ ڈیزل (HSD)' : 'High Speed Diesel (HSD)'}</span>
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-600 text-white shadow-2xs">
+                {lang === 'ur' ? 'روڈ فریٹ پرائمری' : 'Freight Benchmark'}
+              </span>
             </div>
+            
+            <div className="flex items-baseline gap-1.5 pt-1">
+              <span className="text-xs font-bold text-emerald-700 font-mono">Rs.</span>
+              <span className="text-3xl sm:text-4xl font-extrabold font-mono text-emerald-800 tracking-tight">
+                {dieselPrice}
+              </span>
+              <span className="text-xs font-medium text-emerald-700/80">/ {lang === 'ur' ? 'لیٹر' : 'Ltr'}</span>
+            </div>
+            
+            <p className="text-[11px] text-emerald-800/80 pt-1">
+              {lang === 'ur' 
+                ? 'تمام ٹرپ کیلکولیشنز اور گاڑی حساب کے لیے نافذ العمل ریٹ' 
+                : 'Primary active benchmark for all trip calculations & vehicle ledger'}
+            </p>
           </div>
-          <div className="bg-[#fdfbf7] p-3.5 rounded-2xl border border-[#ecece0]">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8e8e75] block">⛽ Premier Petrol (PMG)</span>
-            <div className="text-2xl font-bold font-mono text-[#4a4a35] mt-0.5">
-              Rs. {petrolPrice} <span className="text-xs font-normal text-[#8e8e75]">/ Ltr</span>
+
+          {/* Premier Petrol (PMG) */}
+          <div className="bg-[#fdfbf7] p-4 sm:p-5 rounded-2xl border border-[#ecece0] hover:border-[#8b9d77] transition-all shadow-2xs space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5 font-serif">
+                <span>⛽</span>
+                <span>{lang === 'ur' ? 'پریمیئر موٹر پٹرول (PMG)' : 'Premier Petrol (PMG)'}</span>
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                Super Petrol
+              </span>
             </div>
+
+            <div className="flex items-baseline gap-1.5 pt-1">
+              <span className="text-xs font-bold text-slate-500 font-mono">Rs.</span>
+              <span className="text-3xl sm:text-4xl font-extrabold font-mono text-slate-800 tracking-tight">
+                {petrolPrice}
+              </span>
+              <span className="text-xs font-medium text-slate-500">/ {lang === 'ur' ? 'لیٹر' : 'Ltr'}</span>
+            </div>
+
+            <p className="text-[11px] text-slate-500 pt-1">
+              {lang === 'ur' 
+                ? 'اوگرا کی جانب سے مقرر کردہ اوپن مارکیٹ فیول ریٹ' 
+                : 'Official retail rate notified by OGRA / Government of Pakistan'}
+            </p>
           </div>
         </div>
 
         {/* Secondary Row: Altron Hi-Octane, Light Diesel Oil, Kerosene Oil */}
         <div className="grid grid-cols-3 gap-2 bg-[#f9f9f2] p-3 rounded-2xl border border-[#ecece0] text-center">
-          <div>
-            <span className="text-[9px] font-bold uppercase text-[#8e8e75] block">Altron X 97</span>
-            <span className="text-xs sm:text-sm font-bold font-mono text-[#4a4a35]">Rs. {hiOctanePrice}</span>
+          <div className="p-1">
+            <span className="text-[10px] font-bold uppercase text-[#8e8e75] block">Altron X 97</span>
+            <span className="text-sm sm:text-base font-bold font-mono text-[#4a4a35] mt-0.5 block">Rs. {hiOctanePrice}</span>
           </div>
-          <div className="border-x border-[#ecece0] px-1">
-            <span className="text-[9px] font-bold uppercase text-[#8e8e75] block">Light Diesel (LDO)</span>
-            <span className="text-xs sm:text-sm font-bold font-mono text-[#4a4a35]">Rs. {ldoPrice}</span>
+          <div className="border-x border-[#ecece0] p-1">
+            <span className="text-[10px] font-bold uppercase text-[#8e8e75] block">Light Diesel (LDO)</span>
+            <span className="text-sm sm:text-base font-bold font-mono text-[#4a4a35] mt-0.5 block">Rs. {ldoPrice}</span>
           </div>
-          <div>
-            <span className="text-[9px] font-bold uppercase text-[#8e8e75] block">Kerosene (SKO)</span>
-            <span className="text-xs sm:text-sm font-bold font-mono text-[#4a4a35]">Rs. {skoPrice}</span>
+          <div className="p-1">
+            <span className="text-[10px] font-bold uppercase text-[#8e8e75] block">Kerosene (SKO)</span>
+            <span className="text-sm sm:text-base font-bold font-mono text-[#4a4a35] mt-0.5 block">Rs. {skoPrice}</span>
           </div>
         </div>
+
+        {/* Action button to apply rate to Trip Calculator if callback provided */}
+        {onApplyRates && (
+          <div className="pt-1 flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => onApplyRates(dieselPrice, petrolPrice)}
+              className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-2xs active:scale-95"
+            >
+              <span>{lang === 'ur' ? 'یہ ریٹ ٹرپ کیلکولیٹر میں لگائیں' : 'Apply to Trip Calculator'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {statusMsg && (
           <div className={`p-2.5 rounded-xl text-xs font-medium flex items-center gap-2 ${

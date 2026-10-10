@@ -35,7 +35,8 @@ import {
   Clock,
   AlertCircle,
   ShieldAlert,
-  Camera
+  Camera,
+  Info
 } from 'lucide-react';
 import { LiveFuelPriceWidget } from '../LiveFuelPriceWidget';
 import { TollCalculatorModal } from '../TollCalculatorModal';
@@ -706,18 +707,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 return (
                   <div
                     key={item.id}
-                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
+                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between gap-3 shadow-2xs ${
                       isCritical
-                        ? 'bg-rose-50/70 border-rose-300 hover:border-rose-400'
+                        ? 'bg-rose-50/90 border-2 border-rose-500 ring-1 ring-rose-300'
                         : isWarningUrgent
-                        ? 'bg-orange-50/60 border-orange-300 hover:border-orange-400'
-                        : 'bg-amber-50/60 border-amber-300 hover:border-amber-400'
+                        ? 'bg-orange-50/80 border-2 border-orange-400'
+                        : 'bg-amber-50/70 border border-amber-300'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2.5">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                          isCritical ? 'bg-rose-600 text-white' : 'bg-amber-600 text-white'
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
+                          isCritical ? 'bg-rose-600 text-white animate-pulse' : isWarningUrgent ? 'bg-orange-600 text-white' : 'bg-amber-600 text-white'
                         }`}>
                           {item.type === 'driver_license' ? (
                             <Users className="w-4 h-4" />
@@ -727,60 +728,67 @@ export const HomeView: React.FC<HomeViewProps> = ({
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono font-bold text-xs uppercase px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-800">
+                            <span className="font-mono font-bold text-xs uppercase px-2 py-0.5 rounded-md bg-white border border-slate-300 text-slate-900 shadow-2xs">
                               {item.identifier}
                             </span>
-                            <span className="text-xs font-bold text-slate-700">
+                            <span className="text-xs font-bold text-slate-800">
                               {lang === 'ur' ? item.docNameUr : item.docNameEn}
                             </span>
                           </div>
                           {item.subIdentifier && (
-                            <p className="text-[11px] text-slate-500 mt-0.5">
+                            <p className="text-[11px] text-slate-600 mt-0.5 font-medium">
                               {item.subIdentifier}
                             </p>
                           )}
                         </div>
                       </div>
 
-                      {/* Expiry Badge */}
-                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 font-sans ${
+                      {/* Expiry Emergency Badge */}
+                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 font-sans shadow-2xs ${
                         isCritical
-                          ? 'bg-rose-600 text-white'
+                          ? 'bg-rose-600 text-white ring-2 ring-rose-200'
                           : isWarningUrgent
                           ? 'bg-orange-600 text-white'
-                          : 'bg-amber-600 text-white'
+                          : 'bg-amber-700 text-white'
                       }`}>
                         {item.isExpired
-                          ? (lang === 'ur' ? 'میعاد ختم!' : 'EXPIRED')
-                          : (lang === 'ur' ? `${item.daysLeft} دن باقی` : `${item.daysLeft} days left`)}
+                          ? (lang === 'ur' ? '🚨 میعاد ختم (EXPIRED)' : '🚨 EXPIRED')
+                          : (lang === 'ur' ? `⚠️ ${item.daysLeft} دن باقی` : `⚠️ ${item.daysLeft} days left`)}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-slate-600 pt-2 border-t border-slate-200/80">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-700 pt-2.5 border-t border-slate-200">
                       <div className="flex items-center gap-1 font-mono">
-                        <Clock className="w-3 h-3 text-slate-400" />
-                        <span>{lang === 'ur' ? 'آخری تاریخ:' : 'Due:'} <b>{item.expiryDateStr}</b></span>
+                        <Clock className="w-3.5 h-3.5 text-slate-500" />
+                        <span>{lang === 'ur' ? 'آخری تاریخ:' : 'Due Date:'} <b>{item.expiryDateStr}</b></span>
                       </div>
 
-                      {/* Direct Links to Government Portals (Requirement 5) */}
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => onNavigate('verify', item.inAppSubSection)}
-                          className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 font-bold text-[11px] transition-colors cursor-pointer shadow-2xs"
-                        >
-                          {item.portalType === 'mtmis' ? 'MTMIS' : 'DLIMS'}
-                        </button>
-
+                      {/* Direct Links to Government Portals & In-App Audit */}
+                      <div className="flex items-center gap-2">
                         <a
                           href={item.portalUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer shadow-2xs"
-                          title={lang === 'ur' ? 'سرکاری ویب سائٹ کھولیں' : 'Open Official Portal'}
+                          className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-2xs no-underline active:scale-95 ${
+                            isCritical
+                              ? 'bg-rose-700 hover:bg-rose-800 text-white'
+                              : isWarningUrgent
+                              ? 'bg-orange-700 hover:bg-orange-800 text-white'
+                              : 'bg-amber-800 hover:bg-amber-900 text-white'
+                          }`}
+                          title={lang === 'ur' ? 'آفیشل سرکاری پورٹل پر جائیں' : 'Open Official Govt Portal'}
                         >
-                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>{item.portalType === 'mtmis' ? 'آفیشل MTMIS ↗' : 'آفیشل DLIMS ↗'}</span>
+                          <ExternalLink className="w-3 h-3 text-white/90" />
                         </a>
+
+                        <button
+                          type="button"
+                          onClick={() => onNavigate('verify', item.inAppSubSection)}
+                          className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 font-bold text-xs transition-colors cursor-pointer shadow-2xs active:scale-95"
+                        >
+                          {lang === 'ur' ? 'ان-ایپ آڈٹ' : 'Audit'}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -919,6 +927,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
             />
           </div>
 
+          {/* Official Government Disclaimer (Google Play & Palm Store Government Apps Policy Compliance) */}
+          <div className="pt-2.5 border-t border-[#ecece0] flex items-start gap-2 text-[10.5px] text-[#8e8e75] leading-relaxed">
+            <Info className="w-3.5 h-3.5 text-[#8b9d77] shrink-0 mt-0.5" />
+            <span>
+              {lang === 'ur'
+                ? 'قانونی آگاہی: ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ سسٹم ہے اور حکومتِ پاکستان یا کسی صوبائی ادارے سے الحاق نہیں رکھتا۔ تمام بیرونی لنکس متعلقہ سرکاری اداروں (MTMIS, DLIMS, PSCA) کے آفیشل پورٹلز ہیں۔'
+                : 'Notice: Driver Dost is an independent fleet management utility and does not represent any government entity. All external links point to public official government portals.'}
+            </span>
+          </div>
+
           {/* Bilty Form & Ledger (ONLY visible when authenticated owner) */}
           {isBiltyAuthorized && (
             <div className="pt-2.5 border-t border-[#ecece0] flex items-center justify-between gap-3 flex-wrap">
@@ -951,8 +969,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
           )}
         </div>
 
+
+
         {/* Live Fuel Prices Monitor Card */}
-        <div className="bg-white p-8 md:p-10 rounded-[40px] shadow-sm border border-[#ecece0]">
+        <div className="bg-white p-6 sm:p-8 rounded-[40px] shadow-sm border border-[#ecece0]">
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-serif font-bold text-lg text-[#4a4a35] flex items-center gap-2">
               <Fuel className="w-5 h-5 text-[#8b9d77]" />

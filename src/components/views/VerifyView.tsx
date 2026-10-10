@@ -660,6 +660,58 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
         {/* TAB 1: VEHICLE REGISTRATION CHECK */}
         {activeSubTab === 'vehicle' && (
           <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Pinned Official Portal Link Banner & Google Play Policy Disclaimer */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 shadow-xs space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5 text-emerald-700" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-serif font-bold text-sm sm:text-base text-slate-800">
+                        {isUrdu ? 'آفیشل ایکسائز و وہیکل رجسٹریشن پورٹل (MTMIS)' : 'Official MTMIS Vehicle Registration Portal'}
+                      </h3>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                        {vehicleProvince === 'punjab' ? 'mtmis.excise.punjab.gov.pk' : vehicleProvince === 'sindh' ? 'excise.gos.pk' : 'islamabadexcise.gov.pk'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {isUrdu 
+                        ? 'سرکاری ایکسائز ریکارڈ، ٹوکن ٹیکس اور روٹ پرمٹ کی براہ راست تصدیق'
+                        : 'Direct official verification of ownership, token tax and fitness on government database'}
+                    </p>
+                  </div>
+                </div>
+
+                <a
+                  href={
+                    vehicleProvince === 'punjab'
+                      ? 'https://mtmis.excise.punjab.gov.pk'
+                      : vehicleProvince === 'sindh'
+                      ? 'https://excise.gos.pk/vehicle/vehicle_search'
+                      : 'https://islamabadexcise.gov.pk'
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-2xs no-underline shrink-0 active:scale-95"
+                >
+                  <span>{isUrdu ? 'آفیشل پورٹل کھولیں' : 'Open Official Portal'}</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-white/90" />
+                </a>
+              </div>
+
+              {/* Policy Disclaimer Banner (Play Store / Palm Store Anti-Impersonation Compliance) */}
+              <div className="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-[10.5px] text-slate-600 flex items-start gap-2">
+                <Info className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+                <span>
+                  {isUrdu
+                    ? 'قانونی وضاحت: ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ سسٹم ہے اور کسی سرکاری ادارے کی نمائندگی نہیں کرتا۔ سرکاری ریکارڈ کی حتمی تصدیق اوپر دیے گئے آفیشل پورٹل سے حاصل کی جاتی ہے۔'
+                    : 'Notice: Driver Dost is an independent fleet management application and does not represent any government entity. Government records are verified via the official portal above.'}
+                </span>
+              </div>
+            </div>
+
             <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ecece0] space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
@@ -829,6 +881,52 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
         {/* TAB 2: DRIVER LICENSE CHECK */}
         {activeSubTab === 'license' && (
           <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Pinned Official Portal Link Banner & Google Play Policy Disclaimer */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 shadow-xs space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                    <CreditCard className="w-5 h-5 text-emerald-700" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-serif font-bold text-sm sm:text-base text-slate-800">
+                        {isUrdu ? 'آفیشل ڈی ایل آئی ایم ایس (DLIMS) ڈرائیونگ لائسنس پورٹل' : 'Official DLIMS Punjab Driving License Portal'}
+                      </h3>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                        dlims.punjab.gov.pk/verify
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {isUrdu 
+                        ? 'پنجاب و موٹروے پولیس کے کمپیوٹرائزڈ کمرشل HTV / LTV لائسنس کی سرکاری تصدیق'
+                        : 'Official verification of computerized commercial HTV/LTV driving license records'}
+                    </p>
+                  </div>
+                </div>
+
+                <a
+                  href="https://dlims.punjab.gov.pk/verify"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-2xs no-underline shrink-0 active:scale-95"
+                >
+                  <span>{isUrdu ? 'آفیشل پورٹل کھولیں' : 'Open Official Portal'}</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-white/90" />
+                </a>
+              </div>
+
+              {/* Policy Disclaimer Banner */}
+              <div className="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-[10.5px] text-slate-600 flex items-start gap-2">
+                <Info className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+                <span>
+                  {isUrdu
+                    ? 'قانونی وضاحت: ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ سسٹم ہے اور کسی پولیس یا لائسنسنگ اتھارٹی کی نمائندگی نہیں کرتا۔ آفیشل جانچ کے لیے اوپر دیے گئے سرکاری پورٹل کا استعمال کریں۔'
+                    : 'Notice: Driver Dost is an independent transport fleet system and does not represent any police or licensing authority. Official license status is verified via the portal above.'}
+                </span>
+              </div>
+            </div>
+
             <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ecece0] space-y-5">
               <div>
                 <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35]">
@@ -977,6 +1075,52 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
         {/* TAB 3: E-CHALLAN CHECK */}
         {activeSubTab === 'challan' && (
           <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Pinned Official Portal Link Banner & Google Play Policy Disclaimer */}
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 shadow-xs space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-5 h-5 text-emerald-700" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-serif font-bold text-sm sm:text-base text-slate-800">
+                        {isUrdu ? 'آفیشل سیف سٹی ای چالان پورٹل (PSCA پنجاب)' : 'Official PSCA Safe City E-Challan Portal'}
+                      </h3>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                        echallan.psca.gop.pk
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {isUrdu 
+                        ? 'پنجاب سیف سٹی اتھارٹی (PSCA) کے کیمرہ چالان و جرمانہ کی آفیشل تصدیق'
+                        : 'Official camera speed, signal & violation penalty verification on PSCA portal'}
+                    </p>
+                  </div>
+                </div>
+
+                <a
+                  href="https://echallan.psca.gop.pk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-2xs no-underline shrink-0 active:scale-95"
+                >
+                  <span>{isUrdu ? 'آفیشل پورٹل کھولیں' : 'Open Official Portal'}</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-white/90" />
+                </a>
+              </div>
+
+              {/* Policy Disclaimer Banner */}
+              <div className="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-[10.5px] text-slate-600 flex items-start gap-2">
+                <Info className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+                <span>
+                  {isUrdu
+                    ? 'قانونی وضاحت: ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ سسٹم ہے اور پنجاب سیف سٹی اتھارٹی یا ٹریفک پولیس کی نمائندگی نہیں کرتا۔ سرکاری چالان چیکنگ کے لیے اوپر دیے گئے آفیشل پورٹل کا استعمال کریں۔'
+                    : 'Notice: Driver Dost is an independent fleet management application and does not represent PSCA or traffic police. E-challan status is verified via the official portal above.'}
+                </span>
+              </div>
+            </div>
+
             <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ecece0] space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
