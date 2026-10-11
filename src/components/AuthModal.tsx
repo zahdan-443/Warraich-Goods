@@ -31,8 +31,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
   const handleStartGoogle = async () => {
     // TEMP DEBUG - remove after sign-in issue is fixed
-    alert('Sign-in button clicked');
-    // TEMP DEBUG - remove after sign-in issue is fixed
     console.log('Sign-in button clicked');
     setLoading(true);
     setError(null);

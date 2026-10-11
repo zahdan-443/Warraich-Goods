@@ -45,7 +45,7 @@ const firebaseConfig = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'warraich-goods.firebasestorage.app',
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '805249879186',
   appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:805249879186:web:0ccfeaa631bb1a07e5ea4b',
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-DDF96N9636'
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-Y1LF9N2VQT'
 };
 
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -67,8 +67,6 @@ export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export const loginWithGoogleRedirect = async (): Promise<void> => {
-  // TEMP DEBUG - remove after sign-in issue is fixed
-  alert('DEBUG: Starting Google Sign-In with Redirect (Direct URL flow)...');
   await signInWithRedirect(auth, googleProvider);
 };
 
@@ -97,8 +95,6 @@ export const loginWithGoogle = async (): Promise<User | null> => {
   // Capacitor native platform (Android APK WebView)
   if (Capacitor.isNativePlatform()) {
     try {
-      // TEMP DEBUG - remove after sign-in issue is fixed
-      alert('DEBUG: Native platform detected. Opening Android Google Account Picker...');
       const result = await FirebaseAuthentication.signInWithGoogle();
       if (result.credential?.idToken) {
         const credential = GoogleAuthProvider.credential(
@@ -120,49 +116,23 @@ export const loginWithGoogle = async (): Promise<User | null> => {
     }
   }
 
-  // Mobile Web Browser Flow: Mobile browsers block popups silently.
-  // Use Firebase signInWithRedirect directly for seamless Google authentication.
-  if (isMobileBrowser()) {
-    try {
-      // TEMP DEBUG - remove after sign-in issue is fixed
-      alert('DEBUG: Mobile browser detected. Redirecting directly to Google login...');
-      await signInWithRedirect(auth, googleProvider);
-      return null;
-    } catch (error: any) {
-      console.error("Mobile Google Sign-In Redirect Error:", error);
-      // TEMP DEBUG - remove after sign-in issue is fixed
-      alert(`Sign-in error: ${error?.code || 'unknown'} - ${error?.message || error}`);
-      throw error;
-    }
-  }
-
-  // Desktop Web Browser Flow
+  // Web Browser Flow:
+  // Note: Must invoke signInWithPopup immediately during user gesture without preceding blocking alerts
   try {
-    // TEMP DEBUG - remove after sign-in issue is fixed
-    alert('DEBUG: Opening Google Sign-In popup window...');
-
-    // Race signInWithPopup against a 5s timeout to catch silent browser popup suppression
-    const popupPromise = signInWithPopup(auth, googleProvider);
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('POPUP_TIMEOUT_OR_BLOCKED')), 5000)
-    );
-
-    const result = await Promise.race([popupPromise, timeoutPromise]);
+    const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
     console.error("Google Sign-In Error:", error);
     // TEMP DEBUG - remove after sign-in issue is fixed
     alert(`Sign-in error: ${error?.code || 'unknown'} - ${error?.message || error}`);
 
-    // If popup was blocked or timed out or closed by browser, automatically fallback to redirect!
+    // If popup was blocked or closed or unsupported, fallback to redirect
     if (
-      error?.message === 'POPUP_TIMEOUT_OR_BLOCKED' ||
       error?.code === 'auth/popup-blocked' ||
-      error?.code === 'auth/popup-closed-by-user' ||
-      error?.code === 'auth/cancelled-popup-request'
+      error?.code === 'auth/cancelled-popup-request' ||
+      error?.code === 'auth/operation-not-supported-in-this-environment'
     ) {
-      // TEMP DEBUG - remove after sign-in issue is fixed
-      alert('DEBUG: Popup did not complete or was blocked by browser. Automatically redirecting directly to Google login...');
+      console.warn("Popup blocked or unsupported. Falling back to signInWithRedirect...");
       await signInWithRedirect(auth, googleProvider);
       return null;
     }
