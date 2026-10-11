@@ -1,7 +1,7 @@
 {
   "name": "driver-dost",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.1",
   "versionNote": "Keep in sync with android/app/build.gradle (versionName / versionCode) on every release bump",
   "type": "module",
   "scripts": {

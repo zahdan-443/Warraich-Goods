@@ -5,7 +5,7 @@ apply plugin: 'kotlin-android'
 
 def packageJsonFile = file('../../package.json')
 def packageJson = packageJsonFile.exists() ? new JsonSlurper().parseText(packageJsonFile.text) : null
-def appVersionName = packageJson?.version ?: "1.2.0"
+def appVersionName = packageJson?.version ?: "1.2.1"
 def versionParts = appVersionName.tokenize('.')
 def computedVersionCode = ((versionParts.size() > 0 ? versionParts[0].toInteger() : 0) * 10000) + 
                           ((versionParts.size() > 1 ? versionParts[1].toInteger() : 0) * 100) + 

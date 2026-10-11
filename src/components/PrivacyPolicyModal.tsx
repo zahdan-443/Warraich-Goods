@@ -1,5 +1,6 @@
 import { X, ShieldCheck, Lock, Eye, Database, MapPin, Mail, Phone, Building2, CheckCircle2, FileText, AlertCircle, Bell } from 'lucide-react';
 import { Language } from '../types';
+import { APP_VERSION } from '../constants/version';
 
 interface PrivacyPolicyModalProps {
   isOpen: boolean;
@@ -184,7 +185,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
         {/* Footer */}
         <div className="p-4 bg-[#f0f0e4] border-t border-[#ecece0] flex items-center justify-between shrink-0">
           <span className="text-[11px] text-[#7a7a60] font-medium">
-            {isUrdu ? 'ڈرائیور دوست • ورژن 1.0.3 • مستند و محفوظ' : 'Driver Dost • Version 1.0.3 • Verified & Compliant'}
+            {isUrdu ? `ڈرائیور دوست • ورژن ${APP_VERSION} • مستند و محفوظ` : `Driver Dost • Version ${APP_VERSION} • Verified & Compliant`}
           </span>
           <button
             onClick={onClose}

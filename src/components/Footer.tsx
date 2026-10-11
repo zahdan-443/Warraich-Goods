@@ -2,6 +2,7 @@ import React from 'react';
 import { ActiveTab, Language } from '../types';
 import { Truck, Calculator, Fuel, MapPin, Users, ShieldCheck, Receipt, ExternalLink, Heart, Camera } from 'lucide-react';
 import { CompanyLogo } from './CompanyLogo';
+import { APP_VERSION } from '../constants/version';
 
 interface FooterProps {
   lang?: Language;
@@ -200,7 +201,7 @@ export const Footer: React.FC<FooterProps> = ({
       {/* Bottom Bar with Credits and Quick Anchors */}
       <div className="max-w-7xl mx-auto pt-4 border-t border-[#e2e2d5] flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#5a5a40] gap-3">
         <div className="flex items-center gap-2 flex-wrap text-center sm:text-left">
-          <span className="font-semibold text-[#4a4a35]">Driver Dost · Pakistan Road Freight Manager v1.0.2</span>
+          <span className="font-semibold text-[#4a4a35]">Driver Dost · Pakistan Road Freight Manager v{APP_VERSION}</span>
           <span>·</span>
           <span>© 2026 Driver Dost. All Rights Reserved.</span>
           <span>·</span>

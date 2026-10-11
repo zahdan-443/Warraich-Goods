@@ -20,6 +20,7 @@ import {
   saveDailyDigestSettings, 
   DailyDigestSettings 
 } from '../utils/dailyDigestNotification';
+import { APP_VERSION } from '../constants/version';
 
 interface HeaderProps {
   lang: Language;
@@ -525,7 +526,7 @@ export const Header: React.FC<HeaderProps> = ({
                           {lang === 'ur' ? 'ڈرائیور دوست (آفیشل اینڈرائیڈ ایپ)' : 'Driver Dost (Official App)'}
                         </div>
                         <div className="text-[11px] text-emerald-700">
-                          {lang === 'ur' ? 'ورژن 1.0.2 • فعال و مستند' : 'Version 1.0.2 • Verified Native App'}
+                          {lang === 'ur' ? `ورژن ${APP_VERSION} • فعال و مستند` : `Version ${APP_VERSION} • Verified Native App`}
                         </div>
                       </div>
                     </div>
@@ -628,7 +629,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Drawer Footer */}
             <div className="p-4 bg-[#f0f0e4] border-t border-[#ecece0] text-center text-xs text-[#8e8e75]">
-              Driver Dost · Pakistan Logistics & Transport Manager v1.0.2
+              Driver Dost · Pakistan Logistics & Transport Manager v{APP_VERSION}
             </div>
           </div>
         </div>

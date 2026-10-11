@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, FileText, ShieldAlert, CheckCircle2, MapPin, Building2, ExternalLink, Bell, AlertTriangle, Fuel, ShieldCheck } from 'lucide-react';
 import { Language } from '../types';
+import { APP_VERSION } from '../constants/version';
 
 interface TermsModalProps {
   isOpen: boolean;
@@ -174,7 +175,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({
         {/* Footer */}
         <div className="p-4 bg-[#f0f0e4] border-t border-[#ecece0] flex items-center justify-between shrink-0">
           <span className="text-[11px] text-[#7a7a60] font-medium">
-            {isUrdu ? 'ڈرائیور دوست • بااعتماد شرائط (ورژن 1.2.0)' : 'Driver Dost • Standard Terms (v1.2.0)'}
+            {isUrdu ? `ڈرائیور دوست • بااعتماد شرائط (ورژن ${APP_VERSION})` : `Driver Dost • Standard Terms (v${APP_VERSION})`}
           </span>
           <button
             type="button"
