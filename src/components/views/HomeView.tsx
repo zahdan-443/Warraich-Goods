@@ -401,32 +401,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
           )
         )}
 
-        {/* Guest Mode Quick Sign-In Prompt */}
-        {!userEmail && onOpenSignIn && (
-          <div className="bg-gradient-to-r from-[#162a4d]/5 via-[#1e3a68]/5 to-[#8b9d77]/10 p-3.5 sm:p-4 rounded-2xl border border-[#1e3a68]/20 flex items-center justify-between gap-3 shadow-2xs animate-in fade-in">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-[#1e3a68] text-white flex items-center justify-center shrink-0 shadow-2xs">
-                <ShieldCheck className="w-4 h-4 text-[#c59b27]" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs font-bold text-[#1e3a68] font-serif truncate">
-                  {lang === 'ur' ? 'گوگل اکاؤنٹ سے لاگ ان کریں' : 'Sign In with Google'}
-                </div>
-                <div className="text-[11px] text-[#5a5a40] truncate">
-                  {lang === 'ur' ? 'فلیٹ ڈیٹا کلاؤڈ پر محفوظ کریں اور آنر فیچرز فعال کریں' : 'Sync fleet data to cloud & unlock owner tools'}
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenSignIn}
-              className="px-3.5 py-1.5 bg-[#1e3a68] hover:bg-[#162a4d] text-white text-xs font-bold rounded-xl shrink-0 cursor-pointer shadow-xs active:scale-95 transition-all flex items-center gap-1.5"
-            >
-              <span>{lang === 'ur' ? 'لاگ ان' : 'Sign In'}</span>
-            </button>
-          </div>
-        )}
-
         {/* Documents Expiring Soon Reminder Section (Feature A) */}
         {expiringDocs.length > 0 && !isExpiryBannerDismissed && (
           <div className="bg-white p-5 sm:p-6 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] space-y-4 animate-in fade-in duration-200">
