@@ -1151,7 +1151,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
       )}
 
       {/* SEARCHABLE CITY SELECTION BOX (From City & To City) */}
-      <section className="bg-white p-5 sm:p-6 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] space-y-4">
+      <section className="bg-white p-3.5 sm:p-5 rounded-[24px] sm:rounded-[28px] shadow-sm border border-[#ecece0] space-y-3">
         
         <div className="flex flex-wrap items-center justify-between border-b border-[#ecece0] pb-3 gap-2">
           <div className="flex items-center gap-2">

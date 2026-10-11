@@ -592,11 +592,11 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   if (viewMode === 'input') {
     return (
       <div 
-        className={`w-full max-w-xl mx-auto flex flex-col p-3.5 sm:p-6 pb-48 sm:pb-40 md:pb-20 font-sans ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} 
+        className={`w-full max-w-xl mx-auto flex flex-col p-3 sm:p-5 pb-10 sm:pb-16 font-sans ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} 
         dir={isUrdu ? 'rtl' : 'ltr'}
       >
         {/* Top Header with Trip Icon */}
-        <div className="w-full flex items-center justify-between pb-3 shrink-0 border-b border-[#e0e0d2]">
+        <div className="w-full flex items-center justify-between pb-2.5 shrink-0 border-b border-[#e0e0d2]">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
               <PublicImage
@@ -630,13 +630,13 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
         </div>
 
         {/* 7 Inputs - Smooth scrollable sequence with generous spacing */}
-        <div className="w-full flex-1 flex flex-col space-y-3 sm:space-y-3.5 py-4">
+        <div className="w-full flex-1 flex flex-col space-y-3 sm:space-y-3.5 py-3">
           
           {/* Field 1: Origin City / از (روانگی - ڈراپ ڈاؤن) */}
           <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
             <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1.5 flex items-center gap-1.5">
               <MapPin className="w-4 h-4 text-[#8b9d77]" />
-              <span>{isUrdu ? 'از (روانگی - ڈراپ ڈاؤن)' : 'From City (Origin)'}</span>
+              <span>{isUrdu ? 'از (روانگی کا شہر)' : 'From City (Origin)'}</span>
             </label>
             <select
               value={originCity}
@@ -651,11 +651,28 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
             </select>
           </div>
 
+          {/* Quick Swap Route Button */}
+          <div className="flex justify-center -my-1.5 z-10">
+            <button
+              type="button"
+              onClick={() => {
+                const temp = originCity;
+                setOriginCity(destCity);
+                setDestCity(temp);
+              }}
+              className="px-3.5 py-1 bg-white hover:bg-slate-50 border-2 border-[#8b9d77]/60 text-[#4a5a3a] rounded-full text-xs font-bold transition-all shadow-2xs active:scale-95 flex items-center gap-1.5 cursor-pointer select-none"
+              title={isUrdu ? 'شہروں کو آپس میں بدلیں' : 'Swap Cities'}
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5 text-[#8b9d77]" />
+              <span className="text-[11px]">{isUrdu ? 'روٹ بدلیں (Swap)' : 'Swap Route'}</span>
+            </button>
+          </div>
+
           {/* Field 2: Destination City / تا (منزل - ڈراپ ڈاؤن) */}
           <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
             <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1.5 flex items-center gap-1.5">
               <Navigation className="w-4 h-4 text-[#8b9d77]" />
-              <span>{isUrdu ? 'تا (منزل - ڈراپ ڈاؤن)' : 'To City (Destination)'}</span>
+              <span>{isUrdu ? 'تا (منزل کا شہر)' : 'To City (Destination)'}</span>
             </label>
             <select
               value={destCity}
@@ -1103,7 +1120,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 
   return (
     <div 
-      className={`w-full max-w-xl mx-auto flex flex-col p-3.5 sm:p-6 pb-48 sm:pb-40 md:pb-20 font-sans ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} 
+      className={`w-full max-w-xl mx-auto flex flex-col p-3 sm:p-5 pb-12 sm:pb-16 font-sans ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} 
       dir={isUrdu ? 'rtl' : 'ltr'}
     >
       {/* Top Header */}
