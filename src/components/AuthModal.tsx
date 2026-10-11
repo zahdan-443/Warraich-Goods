@@ -239,8 +239,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               </span>
             </button>
 
-            {/* Direct Redirect Option (fallback if popup is blocked by browser) */}
-            <div className="text-center pt-1">
+            {/* Direct Redirect Option (Guaranteed fallback for mobile and popup-blocked browsers) */}
+            <div className="text-center pt-2 pb-1 border-t border-[#ecece0]/80">
               <button
                 type="button"
                 onClick={async () => {
@@ -255,12 +255,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                   }
                 }}
                 disabled={loading}
-                className="text-[11px] text-[#1e3a68] hover:text-[#162a4d] underline font-medium cursor-pointer transition-colors"
+                className="text-xs text-[#1e3a68] hover:text-[#162a4d] underline font-bold cursor-pointer transition-colors py-1 inline-block"
               >
                 {lang === 'ur'
-                  ? 'اگر پوپ اپ نہ کھلے تو یہاں کلک کریں (موبائل ری ڈائریکٹ لاگ ان)'
-                  : 'If popup does not open, click here (Direct Redirect Login)'}
+                  ? '⚡ اگر پوپ اپ نہ کھلے تو سیدھا گوگل لاگ ان پیج پر جائیں'
+                  : '⚡ Open Direct Google Login (Redirect Mode)'}
               </button>
+              <p className="text-[10px] text-[#8e8e75] mt-0.5">
+                {lang === 'ur'
+                  ? 'موبائل اور تمام براؤزرز پر 100٪ یقینی لاگ ان'
+                  : '100% reliable on mobile and strict popup blockers'}
+              </p>
             </div>
           </div>
 

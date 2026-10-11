@@ -39,13 +39,13 @@ if (missingEnvVars.length > 0) {
 }
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyB2i8AWa0O2fr2CtMvd5HWR94hOzCYBUls',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'warraich-goods.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'warraich-goods',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'warraich-goods.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '805249879186',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:805249879186:web:0ccfeaa631bb1a07e5ea4b',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-DDF96N9636'
 };
 
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -88,6 +88,11 @@ export const checkRedirectAuthResult = async (): Promise<User | null> => {
   return null;
 };
 
+export const isMobileBrowser = (): boolean => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent);
+};
+
 export const loginWithGoogle = async (): Promise<User | null> => {
   // Capacitor native platform (Android APK WebView)
   if (Capacitor.isNativePlatform()) {
@@ -115,15 +120,31 @@ export const loginWithGoogle = async (): Promise<User | null> => {
     }
   }
 
-  // Web Browser Flow
+  // Mobile Web Browser Flow: Mobile browsers block popups silently.
+  // Use Firebase signInWithRedirect directly for seamless Google authentication.
+  if (isMobileBrowser()) {
+    try {
+      // TEMP DEBUG - remove after sign-in issue is fixed
+      alert('DEBUG: Mobile browser detected. Redirecting directly to Google login...');
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    } catch (error: any) {
+      console.error("Mobile Google Sign-In Redirect Error:", error);
+      // TEMP DEBUG - remove after sign-in issue is fixed
+      alert(`Sign-in error: ${error?.code || 'unknown'} - ${error?.message || error}`);
+      throw error;
+    }
+  }
+
+  // Desktop Web Browser Flow
   try {
     // TEMP DEBUG - remove after sign-in issue is fixed
     alert('DEBUG: Opening Google Sign-In popup window...');
 
-    // Race signInWithPopup against a 7s timeout to catch silent browser popup suppression
+    // Race signInWithPopup against a 5s timeout to catch silent browser popup suppression
     const popupPromise = signInWithPopup(auth, googleProvider);
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('POPUP_TIMEOUT_OR_BLOCKED')), 7000)
+      setTimeout(() => reject(new Error('POPUP_TIMEOUT_OR_BLOCKED')), 5000)
     );
 
     const result = await Promise.race([popupPromise, timeoutPromise]);
