@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "805249879186",
+    "project_id": "warraich-goods",
+    "storage_bucket": "warraich-goods.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:805249879186:android:341518d401d90735e5ea4b",
+        "android_client_info": {
+          "package_name": "com.warraichgoods.driverdost"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "805249879186-ragamo9rp1srk8bmd3tboskfbe4s8hik.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxp0Q7e5hZPgLCjSa32iG5d05tyTsAASY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "805249879186-ragamo9rp1srk8bmd3tboskfbe4s8hik.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
