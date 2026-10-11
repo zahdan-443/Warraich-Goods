@@ -16,6 +16,7 @@ android {
     namespace = "com.warraichgoods.driverdost"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
+        applicationId "com.warraichgoods.driverdost"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode appVersionCode
@@ -43,54 +44,11 @@ android {
                 keyPassword keyPasswordVal
             }
         }
-        legacyRelease {
-            def legacyPath = System.getenv("ANDROID_KEYSTORE_LEGACY_PATH") ?: project.findProperty("RELEASE_STORE_LEGACY_FILE") ?: "legacy-keystore.jks"
-            def legacyPassword = System.getenv("ANDROID_KEYSTORE_LEGACY_PASSWORD") ?: project.findProperty("RELEASE_STORE_LEGACY_PASSWORD")
-            def legacyAlias = System.getenv("ANDROID_KEY_LEGACY_ALIAS") ?: project.findProperty("RELEASE_KEY_LEGACY_ALIAS")
-            def legacyKeyPassword = System.getenv("ANDROID_KEY_LEGACY_PASSWORD") ?: project.findProperty("RELEASE_KEY_LEGACY_PASSWORD")
-
-            def kFile = legacyPath ? (file(legacyPath).exists() ? file(legacyPath) : (rootProject.file(legacyPath).exists() ? rootProject.file(legacyPath) : null)) : null
-            if (kFile && legacyPassword && legacyAlias && legacyKeyPassword) {
-                storeFile kFile
-                storePassword legacyPassword
-                keyAlias legacyAlias
-                keyPassword legacyKeyPassword
-            }
-        }
-    }
-
-    /*
-     * TEMPORARY FLAVOR SETUP:
-     * Two flavors exist because of a temporary Palm Store package-name mismatch 
-     * (old listing io.github.zahdan_443.twa, new listing com.warraichgoods.driverdost). 
-     * Once Dlightek support resolves the old listing's package name, delete the 'legacy' 
-     * flavor, the legacyRelease signing config, and the corresponding build-apk.yml changes, 
-     * and revert to a single applicationId.
-     */
-    flavorDimensions "store"
-    productFlavors {
-        modern {
-            dimension "store"
-            applicationId "com.warraichgoods.driverdost"
-            versionCode appVersionCode
-            versionName appVersionName
-            signingConfig signingConfigs.release
-        }
-        legacy {
-            dimension "store"
-            applicationId "io.github.zahdan_443.twa"
-            // TEMPORARY FLAVOR — remove once Dlightek updates the old Palm Store 
-            // listing's package name. The old published version was versionCode 1, 
-            // so this flavor's versionCode (inherited from the shared 
-            // appVersionCode) must always stay higher than 1, which it already is.
-            versionCode appVersionCode
-            versionName appVersionName
-            signingConfig signingConfigs.legacyRelease
-        }
     }
 
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
