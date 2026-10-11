@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, LogIn, X, AlertCircle, Copy, Check, Cloud, Sparkles } from 'lucide-react';
+import { ShieldCheck, X, AlertCircle, Copy, Check, Cloud } from 'lucide-react';
 import { Language } from '../types';
 import { loginWithGoogle, loginWithGoogleRedirect } from '../utils/firebase';
 
@@ -30,26 +30,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   };
 
   const handleStartGoogle = async () => {
-    // TEMP DEBUG - remove after sign-in issue is fixed
-    console.log('Sign-in button clicked');
     setLoading(true);
     setError(null);
     setIsUnauthorizedDomain(false);
     try {
       const user = await loginWithGoogle();
       const extractedEmail = user?.email || (user as any)?.providerData?.[0]?.email || '';
-      
+
       if (user && extractedEmail) {
         try {
           await onSuccess(extractedEmail);
           if (onClose) onClose();
         } catch (postAuthError: any) {
-          // TEMP DEBUG - remove after sign-in issue is fixed
-          alert(`Sign-in error: ${postAuthError?.code || 'unknown'} - ${postAuthError?.message || postAuthError}`);
+          console.error('Post-auth error:', postAuthError);
           throw postAuthError;
         }
       } else if (!user) {
-        // Redirect in progress or waiting
         console.log('Redirecting to Google Sign-In...');
       } else {
         setError(
@@ -60,10 +56,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       }
     } catch (err: any) {
       console.error('Google Sign-In failed:', err);
-      // TEMP DEBUG - remove after sign-in issue is fixed
-      alert(`Sign-in error: ${err?.code || 'unknown'} - ${err?.message || err}`);
       const isUnauth = err?.code === 'auth/unauthorized-domain' || (err?.message && err.message.includes('auth/unauthorized-domain'));
-      
+
       if (isUnauth) {
         setIsUnauthorizedDomain(true);
         setError(
@@ -74,7 +68,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       } else if (err?.code === 'auth/popup-blocked') {
         setError(
           lang === 'ur'
-            ? 'براؤزر نے گوگل پوپ اپ ونڈو بلاک کر دی۔ براہ کرم پوپ اپ کی اجازت دیں۔'
+            ? 'براؤزر نے گوگل پوپ اپ ونڈو بل��ک کر دی۔ براہ کرم پوپ اپ کی اجازت دیں۔'
             : 'Google Sign-In popup was blocked by your browser. Please allow popups.'
         );
       } else if (err?.code === 'auth/popup-closed-by-user') {
@@ -97,7 +91,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   return (
     <div className={`fixed inset-0 z-50 ${fullScreen ? 'bg-[#f5f2eb]' : 'bg-black/50 backdrop-blur-sm'} flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200`}>
       <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl border border-[#ecece0] overflow-hidden my-auto">
-        {/* Header banner */}
         <div className="bg-gradient-to-r from-[#162a4d] via-[#1e3a68] to-[#162a4d] p-6 text-white relative">
           {onClose && !fullScreen && (
             <button
@@ -123,10 +116,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           </div>
         </div>
 
-        {/* Modal Body */}
         <div className="p-6 sm:p-7 space-y-5 bg-[#fdfbf7]">
-          
-          {/* Cloud Sync Benefit Note */}
           <div className="p-3.5 bg-emerald-50/80 border border-emerald-200 rounded-2xl flex items-start gap-2.5 text-emerald-900 text-xs">
             <Cloud className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
             <div>
@@ -135,25 +125,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               </span>
               <p className="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
                 {lang === 'ur'
-                  ? 'اپنے آفیشل جی میل اکاؤنٹ کے ذریعے سائن ان کریں تاکہ آپ کا ریکارڈ کلاؤڈ میں خودکار طور پر بیک اپ رہے۔'
+                  ? 'اپنے آفیشل جی میل اکاؤنٹ کے ذریعے سائن ان کریں تاکہ آپ کا ریکارڈ کلاؤڈ میں خودکار طور پر بیک اپ ہو۔'
                   : 'Sign in with your official Google Account to automatically synchronize and safeguard your fleet records.'}
               </p>
             </div>
           </div>
 
-          {/* Detailed Error / Unauthorized Domain Banner */}
           {error && (
             <div className={`p-4 rounded-2xl text-xs space-y-3 ${
-              isUnauthorizedDomain 
-                ? 'bg-amber-50/90 border border-amber-300 text-amber-950' 
+              isUnauthorizedDomain
+                ? 'bg-amber-50/90 border border-amber-300 text-amber-950'
                 : 'bg-red-50 border border-red-200 text-red-800'
             }`}>
               <div className="flex items-start gap-2.5">
                 <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${isUnauthorizedDomain ? 'text-amber-600' : 'text-red-600'}`} />
                 <div className="space-y-1">
                   <div className="font-bold text-xs">
-                    {isUnauthorizedDomain 
-                      ? (lang === 'ur' ? 'فائر بیس ڈومین تصدیق درکار ہے' : 'Firebase Domain Authorization Notice') 
+                    {isUnauthorizedDomain
+                      ? (lang === 'ur' ? 'فائر بیس ڈومین تصدیق درکار ہے' : 'Firebase Domain Authorization Notice')
                       : (lang === 'ur' ? 'سیکیورٹی و لاگ ان الرٹ' : 'Authentication Alert')}
                   </div>
                   <p className="text-[11px] leading-relaxed text-[#5a5a40]">
@@ -162,7 +151,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 </div>
               </div>
 
-              {/* Actionable Fallback Helpers for Unauthorized Domain */}
               {isUnauthorizedDomain && (
                 <div className="space-y-2 pt-2 border-t border-amber-200/80">
                   <div className="flex items-center justify-between gap-2 bg-amber-100/70 p-2 rounded-xl">
@@ -192,7 +180,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             </div>
           )}
 
-          {/* GOOGLE AUTH BUTTON */}
           <div className="space-y-4 pt-1">
             <div className="text-center space-y-1">
               <h3 className="font-serif font-bold text-base text-[#4a4a35]">
@@ -205,30 +192,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               </p>
             </div>
 
-            {/* Google Sign In Button */}
             <button
               type="button"
               onClick={handleStartGoogle}
               disabled={loading}
-              className="w-full py-3.5 px-4 bg-white hover:bg-slate-50 border-2 border-[#ecece0] hover:border-[#8b9d77] rounded-2xl font-semibold text-xs text-[#4a4a35] flex items-center justify-center gap-3 transition-all shadow-xs cursor-pointer active:scale-98 disabled:opacity-60"
+              className="w-full py-3.5 px-4 bg-white hover:bg-slate-50 border-2 border-[#ecece0] hover:border-[#8b9d77] rounded-2xl font-semibold text-xs text-[#4a4a35] flex items-center justify-center gap-3 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                />
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
               </svg>
               <span>
                 {loading
@@ -237,23 +211,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               </span>
             </button>
 
-            {/* Direct Redirect Option (Guaranteed fallback for mobile and popup-blocked browsers) */}
             <div className="text-center pt-2 pb-1 border-t border-[#ecece0]/80">
               <button
                 type="button"
                 onClick={async () => {
-                  // TEMP DEBUG - remove after sign-in issue is fixed
-                  alert('Direct redirect button clicked');
                   setLoading(true);
                   try {
                     await loginWithGoogleRedirect();
                   } catch (e: any) {
-                    alert(`Sign-in error: ${e?.code || 'unknown'} - ${e?.message || e}`);
+                    console.error('Redirect login error:', e);
+                    setError(
+                      lang === 'ur'
+                        ? `لاگ ان میں خرابی: ${e?.message || 'نامعلوم خرابی'}`
+                        : `Sign-in error: ${e?.message || 'unknown error'}`
+                    );
                     setLoading(false);
                   }
                 }}
                 disabled={loading}
-                className="text-xs text-[#1e3a68] hover:text-[#162a4d] underline font-bold cursor-pointer transition-colors py-1 inline-block"
+                className="text-xs text-[#1e3a68] hover:text-[#162a4d] underline font-bold cursor-pointer transition-colors py-1 inline-block disabled:opacity-60"
               >
                 {lang === 'ur'
                   ? '⚡ اگر پوپ اپ نہ کھلے تو سیدھا گوگل لاگ ان پیج پر جائیں'
@@ -266,10 +242,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               </p>
             </div>
           </div>
-
         </div>
 
-        {/* Footer info */}
         <div className="px-6 py-3.5 bg-[#f0f0e4] border-t border-[#ecece0] flex items-center justify-between text-[11px] text-[#8e8e75]">
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-[#1e3a68]" />
