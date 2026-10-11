@@ -3,6 +3,8 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithCredential,
   signOut,
   onAuthStateChanged,
@@ -64,10 +66,34 @@ export const db = (() => {
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
+export const loginWithGoogleRedirect = async (): Promise<void> => {
+  // TEMP DEBUG - remove after sign-in issue is fixed
+  alert('DEBUG: Starting Google Sign-In with Redirect (Direct URL flow)...');
+  await signInWithRedirect(auth, googleProvider);
+};
+
+export const checkRedirectAuthResult = async (): Promise<User | null> => {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result?.user) {
+      // TEMP DEBUG - remove after sign-in issue is fixed
+      alert(`Sign-in success via redirect: ${result.user.email}`);
+      return result.user;
+    }
+  } catch (error: any) {
+    console.error("Redirect Auth Error:", error);
+    // TEMP DEBUG - remove after sign-in issue is fixed
+    alert(`Sign-in error: ${error?.code || 'unknown'} - ${error?.message || error}`);
+  }
+  return null;
+};
+
 export const loginWithGoogle = async (): Promise<User | null> => {
   // Capacitor native platform (Android APK WebView)
   if (Capacitor.isNativePlatform()) {
     try {
+      // TEMP DEBUG - remove after sign-in issue is fixed
+      alert('DEBUG: Native platform detected. Opening Android Google Account Picker...');
       const result = await FirebaseAuthentication.signInWithGoogle();
       if (result.credential?.idToken) {
         const credential = GoogleAuthProvider.credential(
@@ -91,12 +117,34 @@ export const loginWithGoogle = async (): Promise<User | null> => {
 
   // Web Browser Flow
   try {
-    const result = await signInWithPopup(auth, googleProvider);
+    // TEMP DEBUG - remove after sign-in issue is fixed
+    alert('DEBUG: Opening Google Sign-In popup window...');
+
+    // Race signInWithPopup against a 7s timeout to catch silent browser popup suppression
+    const popupPromise = signInWithPopup(auth, googleProvider);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('POPUP_TIMEOUT_OR_BLOCKED')), 7000)
+    );
+
+    const result = await Promise.race([popupPromise, timeoutPromise]);
     return result.user;
   } catch (error: any) {
     console.error("Google Sign-In Error:", error);
     // TEMP DEBUG - remove after sign-in issue is fixed
     alert(`Sign-in error: ${error?.code || 'unknown'} - ${error?.message || error}`);
+
+    // If popup was blocked or timed out or closed by browser, automatically fallback to redirect!
+    if (
+      error?.message === 'POPUP_TIMEOUT_OR_BLOCKED' ||
+      error?.code === 'auth/popup-blocked' ||
+      error?.code === 'auth/popup-closed-by-user' ||
+      error?.code === 'auth/cancelled-popup-request'
+    ) {
+      // TEMP DEBUG - remove after sign-in issue is fixed
+      alert('DEBUG: Popup did not complete or was blocked by browser. Automatically redirecting directly to Google login...');
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    }
     throw error;
   }
 };

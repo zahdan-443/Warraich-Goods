@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck, LogIn, X, AlertCircle, Copy, Check, Cloud, Sparkles } from 'lucide-react';
 import { Language } from '../types';
-import { loginWithGoogle } from '../utils/firebase';
+import { loginWithGoogle, loginWithGoogleRedirect } from '../utils/firebase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -31,6 +31,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
   const handleStartGoogle = async () => {
     // TEMP DEBUG - remove after sign-in issue is fixed
+    alert('Sign-in button clicked');
+    // TEMP DEBUG - remove after sign-in issue is fixed
     console.log('Sign-in button clicked');
     setLoading(true);
     setError(null);
@@ -48,6 +50,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           alert(`Sign-in error: ${postAuthError?.code || 'unknown'} - ${postAuthError?.message || postAuthError}`);
           throw postAuthError;
         }
+      } else if (!user) {
+        // Redirect in progress or waiting
+        console.log('Redirecting to Google Sign-In...');
       } else {
         setError(
           lang === 'ur'
@@ -233,6 +238,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                   : (lang === 'ur' ? 'گوگل اکاؤنٹ کے ذریعے لاگ ان کریں' : 'Sign In with Google Account')}
               </span>
             </button>
+
+            {/* Direct Redirect Option (fallback if popup is blocked by browser) */}
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={async () => {
+                  // TEMP DEBUG - remove after sign-in issue is fixed
+                  alert('Direct redirect button clicked');
+                  setLoading(true);
+                  try {
+                    await loginWithGoogleRedirect();
+                  } catch (e: any) {
+                    alert(`Sign-in error: ${e?.code || 'unknown'} - ${e?.message || e}`);
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="text-[11px] text-[#1e3a68] hover:text-[#162a4d] underline font-medium cursor-pointer transition-colors"
+              >
+                {lang === 'ur'
+                  ? 'اگر پوپ اپ نہ کھلے تو یہاں کلک کریں (موبائل ری ڈائریکٹ لاگ ان)'
+                  : 'If popup does not open, click here (Direct Redirect Login)'}
+              </button>
+            </div>
           </div>
 
         </div>
