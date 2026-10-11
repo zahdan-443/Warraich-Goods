@@ -32,20 +32,20 @@ const requiredEnvVars = [
 
 const missingEnvVars = requiredEnvVars.filter((key) => !import.meta.env[key]);
 if (missingEnvVars.length > 0) {
-  console.error(
+  throw new Error(
     `[Firebase Error] Missing required Firebase environment variables: ${missingEnvVars.join(', ')}. ` +
     `Please check your .env file or project configuration.`
   );
 }
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyB2i8AWa0O2fr2CtMvd5HWR94hOzCYBUls',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'warraich-goods.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'warraich-goods',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'warraich-goods.firebasestorage.app',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '805249879186',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:805249879186:web:0ccfeaa631bb1a07e5ea4b',
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-Y1LF9N2VQT'
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || undefined
 };
 
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -74,14 +74,11 @@ export const checkRedirectAuthResult = async (): Promise<User | null> => {
   try {
     const result = await getRedirectResult(auth);
     if (result?.user) {
-      // TEMP DEBUG - remove after sign-in issue is fixed
-      alert(`Sign-in success via redirect: ${result.user.email}`);
       return result.user;
     }
   } catch (error: any) {
-    console.error("Redirect Auth Error:", error);
-    // TEMP DEBUG - remove after sign-in issue is fixed
-    alert(`Sign-in error: ${error?.code || 'unknown'} - ${error?.message || error}`);
+    console.error('Redirect Auth Error:', error);
+    throw error;
   }
   return null;
 };
@@ -109,9 +106,7 @@ export const loginWithGoogle = async (): Promise<User | null> => {
       }
       return auth.currentUser;
     } catch (error: any) {
-      console.error("Native Google Sign-In Error:", error);
-      // TEMP DEBUG - remove after sign-in issue is fixed
-      alert(`Sign-in error: ${error?.code || 'unknown'} - ${error?.message || error}`);
+      console.error('Native Google Sign-In Error:', error);
       throw error;
     }
   }
@@ -122,9 +117,7 @@ export const loginWithGoogle = async (): Promise<User | null> => {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
-    console.error("Google Sign-In Error:", error);
-    // TEMP DEBUG - remove after sign-in issue is fixed
-    alert(`Sign-in error: ${error?.code || 'unknown'} - ${error?.message || error}`);
+    console.error('Google Sign-In Error:', error);
 
     // If popup was blocked or closed or unsupported, fallback to redirect
     if (
@@ -132,7 +125,7 @@ export const loginWithGoogle = async (): Promise<User | null> => {
       error?.code === 'auth/cancelled-popup-request' ||
       error?.code === 'auth/operation-not-supported-in-this-environment'
     ) {
-      console.warn("Popup blocked or unsupported. Falling back to signInWithRedirect...");
+      console.warn('Popup blocked or unsupported. Falling back to signInWithRedirect...');
       await signInWithRedirect(auth, googleProvider);
       return null;
     }
@@ -149,10 +142,9 @@ export const logoutUser = async (): Promise<void> => {
     }
     await signOut(auth);
   } catch (error) {
-    console.error("Sign-Out Error:", error);
+    console.error('Sign-Out Error:', error);
   }
 };
 
 export { onAuthStateChanged };
 export type { User };
-
