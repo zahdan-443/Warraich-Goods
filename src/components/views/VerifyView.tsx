@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { BiltyVerificationCard } from './BiltyVerificationCard';
 import { PodConfirmationModal } from './PodConfirmationModal';
+import { PublicImage } from '../PublicImage';
 import { getStoredBilties } from '../../utils/storage';
 import { getBiltyVerificationUrl, decodeBiltyPayload } from '../../utils/biltyHelpers';
 import { doc, getDoc } from 'firebase/firestore';
@@ -554,22 +555,42 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
       <div className="bg-white p-4 sm:p-6 rounded-[28px] sm:rounded-[32px] shadow-sm border border-[#ecece0] space-y-4">
         <header className="border-b border-[#ecece0] pb-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#8b9d77]/25 to-[#8b9d77]/10 border border-[#8b9d77]/30 flex items-center justify-center text-[#8b9d77] shadow-2xs shrink-0">
-              <ShieldCheck className="w-5 h-5 text-[#4a5e38]" />
+            <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center text-[#8b9d77] shadow-2xs shrink-0 overflow-hidden">
+              <PublicImage
+                fileName={
+                  activeSubTab === 'license' 
+                    ? 'license-icon.png' 
+                    : activeSubTab === 'challan' 
+                    ? 'echallan-icon.png' 
+                    : 'vehicle-icon.png'
+                }
+                alt="Verification Tool"
+                width={40}
+                height={40}
+                fitMode="contain"
+                className="w-full h-full"
+                fallbackIcon={<ShieldCheck className="w-5 h-5 text-[#4a5e38]" />}
+              />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base sm:text-lg font-serif font-bold text-[#4a4a35]">
-                  {isUrdu ? 'گاڑی و ڈرائیور تصدیقی مرکز' : 'Vehicle & Driver Verification Hub'}
+                  {activeSubTab === 'license'
+                    ? (isUrdu ? 'لائسنس کی تصدیق (DLIMS)' : 'Driver License Verification (DLIMS)')
+                    : activeSubTab === 'challan'
+                    ? (isUrdu ? 'ای چالان چیکنگ (PSCA Safe City)' : 'E-Challan Verification (Safe City)')
+                    : (isUrdu ? 'گاڑیوں کی تصدیق (MTMIS Excise)' : 'Vehicle Verification (MTMIS Excise)')}
                 </h1>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#8b9d77]/15 text-[#4a5e38] border border-[#8b9d77]/30">
                   {isUrdu ? 'ان-ایپ سسٹم' : 'In-App Hub'}
                 </span>
               </div>
               <p className="text-[11px] text-[#8e8e75] font-sans mt-0.5">
-                {isUrdu 
-                  ? 'گاڑیوں کی رجسٹریشن، ٹوکن ٹیکس، ڈرائیور لائسنس اور ای چالان کا لائیو ریکارڈ' 
-                  : 'Live registration audits, token taxes, DLIMS checks & e-challan compliance'}
+                {activeSubTab === 'license'
+                  ? (isUrdu ? 'ٹریفک پولیس ڈی ایل آئی ایم ایس لائسنس ریکارڈ تصدیق' : 'Traffic police driving license verification & audit')
+                  : activeSubTab === 'challan'
+                  ? (isUrdu ? 'پنجاب سیف سٹی اتھارٹی الیکٹرانک چالان ریکارڈ' : 'Punjab Safe City electronic traffic violation records')
+                  : (isUrdu ? 'ایکسائز وہیکل رجسٹریشن اور ٹوکن ٹیکس کی لائیو جانچ' : 'Excise vehicle registration & token tax inspection')}
               </p>
             </div>
           </div>

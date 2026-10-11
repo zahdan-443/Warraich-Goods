@@ -3,11 +3,14 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithCredential,
   signOut,
   onAuthStateChanged,
   User
 } from 'firebase/auth';
 import { initializeFirestore, memoryLocalCache, getFirestore, setLogLevel } from 'firebase/firestore';
+import { Capacitor } from '@capacitor/core';
+import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
 
 // Silence verbose internal Firestore offline connection retry logs
 try {
@@ -62,17 +65,49 @@ export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export const loginWithGoogle = async (): Promise<User | null> => {
+  // Capacitor native platform (Android APK WebView)
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const result = await FirebaseAuthentication.signInWithGoogle();
+      if (result.credential?.idToken) {
+        const credential = GoogleAuthProvider.credential(
+          result.credential.idToken,
+          result.credential.accessToken
+        );
+        const userCredential = await signInWithCredential(auth, credential);
+        return userCredential.user;
+      }
+      if (result.user) {
+        return (auth.currentUser || (result.user as unknown as User));
+      }
+      return auth.currentUser;
+    } catch (error: any) {
+      console.error("Native Google Sign-In Error:", error);
+      // TEMP DEBUG - remove after sign-in issue is fixed
+      alert(`Sign-in error: ${error?.code || 'unknown'} - ${error?.message || error}`);
+      throw error;
+    }
+  }
+
+  // Web Browser Flow
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Google Sign-In Error:", error);
+    // TEMP DEBUG - remove after sign-in issue is fixed
+    alert(`Sign-in error: ${error?.code || 'unknown'} - ${error?.message || error}`);
     throw error;
   }
 };
 
 export const logoutUser = async (): Promise<void> => {
   try {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await FirebaseAuthentication.signOut();
+      } catch {}
+    }
     await signOut(auth);
   } catch (error) {
     console.error("Sign-Out Error:", error);

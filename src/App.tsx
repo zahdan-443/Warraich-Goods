@@ -378,27 +378,34 @@ export default function App() {
   };
 
   const handleAuthSuccess = async (email: string) => {
-    const isOwnerEmail = email.toLowerCase() === OWNER_EMAIL.toLowerCase();
-    const finalRole: UserRole = isOwnerEmail ? 'owner' : 'driver';
-    setUserEmail(email);
-    setRole(finalRole);
-    saveStoredRole(finalRole);
-    localStorage.setItem('ah-gmail-user', email);
+    try {
+      const isOwnerEmail = email.toLowerCase() === OWNER_EMAIL.toLowerCase();
+      const finalRole: UserRole = isOwnerEmail ? 'owner' : 'driver';
+      setUserEmail(email);
+      setRole(finalRole);
+      saveStoredRole(finalRole);
+      localStorage.setItem('ah-gmail-user', email);
 
-    const uid = currentUid || `user_${Date.now()}`;
-    setCurrentUid(uid);
+      const uid = currentUid || `user_${Date.now()}`;
+      setCurrentUid(uid);
 
-    // Refresh bilty access immediately
-    const config = await getBiltyAccessConfig();
-    setBiltyAllowedUIDs(config.allowedUIDs);
-    setBiltyAllowedEmails(config.allowedEmails);
+      // Refresh bilty access immediately
+      const config = await getBiltyAccessConfig();
+      setBiltyAllowedUIDs(config.allowedUIDs);
+      setBiltyAllowedEmails(config.allowedEmails);
 
-    await saveUserProfileInFirestore({
-      uid,
-      email,
-      role: finalRole,
-      name: isOwnerEmail ? 'Driver Dost Owner' : email.split('@')[0]
-    });
+      await saveUserProfileInFirestore({
+        uid,
+        email,
+        role: finalRole,
+        name: isOwnerEmail ? 'Driver Dost Owner' : email.split('@')[0]
+      });
+    } catch (profileError: any) {
+      console.error("Firestore user profile save error:", profileError);
+      // TEMP DEBUG - remove after sign-in issue is fixed
+      alert(`Sign-in error: ${profileError?.code || 'unknown'} - ${profileError?.message || profileError}`);
+      throw profileError;
+    }
   };
 
   const handleSignOut = () => {

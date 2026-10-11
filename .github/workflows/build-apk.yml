@@ -70,6 +70,19 @@ jobs:
           # Safety cleanup: remove any corrupt/non-standard land-hdpi splash that can fail aapt2 compilation
           rm -rf android/app/src/main/res/drawable-land-hdpi || true
 
+      - name: Inject google-services.json (if provided via GitHub Secret)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+            echo "✅ Successfully configured android/app/google-services.json from GitHub Secrets"
+          elif [ -f "android/app/google-services.json" ]; then
+            echo "✅ android/app/google-services.json exists in workspace"
+          else
+            echo "⚠️ Notice: google-services.json not found in repository or secrets. Place it at android/app/google-services.json or add GOOGLE_SERVICES_JSON secret."
+          fi
+
       - name: Prepare Release Keystore (Secrets or Auto-Generate)
         if: ${{ inputs.build_type == 'release' }}
         env:
@@ -106,11 +119,11 @@ jobs:
             echo "ANDROID_KEY_PASSWORD=$KEY_PW" >> $GITHUB_ENV
           fi
 
-      - name: Print Keystore Fingerprint (diagnostic only, no secrets exposed)
+      - name: Print Keystore Fingerprints (SHA-1 & SHA-256 for Firebase)
         if: ${{ inputs.build_type == 'release' }}
         run: |
-          echo "=== Release Keystore Fingerprint ==="
-          keytool -list -v -keystore "android/app/$ANDROID_KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" 2>/dev/null | grep "SHA256:" || echo "Could not read Keystore fingerprint"
+          echo "=== Release Keystore Fingerprints (Add both SHA-1 and SHA-256 to Firebase Console) ==="
+          keytool -list -v -keystore "android/app/$ANDROID_KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" 2>/dev/null | grep -E "SHA1:|SHA256:" || echo "Could not read Keystore fingerprint"
         env:
           ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
           ANDROID_KEYSTORE_PASSWORD: ${{ env.ANDROID_KEYSTORE_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}

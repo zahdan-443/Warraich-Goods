@@ -232,12 +232,16 @@ export const DefaultServiceVector: React.FC<{ name: string; className?: string }
 export interface PublicImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   fileName: string;
   fallbackIcon?: React.ReactNode;
+  fitMode?: 'contain' | 'cover' | 'fill';
+  imgClassName?: string;
 }
 
 export const PublicImage: React.FC<PublicImageProps> = ({
   fileName,
   fallbackIcon,
   className,
+  fitMode = 'contain',
+  imgClassName = '',
   alt = '',
   width = 400,
   height = 400,
@@ -290,20 +294,25 @@ export const PublicImage: React.FC<PublicImageProps> = ({
       )}
 
       {/* Primary User Image (smoothly displays as soon as ready) */}
-      <img
-        src={candidates[candidateIndex]}
-        alt={computedAlt}
-        loading={rest.loading || "eager"}
-        decoding="async"
-        width={width}
-        height={height}
-        className={`w-full h-full object-cover transition-opacity duration-200 ${
-          loaded ? 'opacity-100 relative z-10' : 'opacity-0'
-        }`}
-        onError={handleError}
-        onLoad={handleLoad}
-        {...rest}
-      />
+      {(() => {
+        const fitClass = fitMode === 'cover' ? 'object-cover' : fitMode === 'fill' ? 'object-fill' : 'object-contain';
+        return (
+          <img
+            src={candidates[candidateIndex]}
+            alt={computedAlt}
+            loading={rest.loading || "eager"}
+            decoding="async"
+            width={width}
+            height={height}
+            className={`w-full h-full ${fitClass} transition-opacity duration-200 ${
+              loaded ? 'opacity-100 relative z-10' : 'opacity-0'
+            } ${imgClassName || ''}`}
+            onError={handleError}
+            onLoad={handleLoad}
+            {...rest}
+          />
+        );
+      })()}
     </div>
   );
 };

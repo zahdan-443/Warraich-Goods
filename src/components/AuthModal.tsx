@@ -30,16 +30,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   };
 
   const handleStartGoogle = async () => {
+    // TEMP DEBUG - remove after sign-in issue is fixed
+    console.log('Sign-in button clicked');
     setLoading(true);
     setError(null);
     setIsUnauthorizedDomain(false);
     try {
       const user = await loginWithGoogle();
-      const extractedEmail = user?.email || user?.providerData?.[0]?.email || '';
+      const extractedEmail = user?.email || (user as any)?.providerData?.[0]?.email || '';
       
       if (user && extractedEmail) {
-        onSuccess(extractedEmail);
-        if (onClose) onClose();
+        try {
+          await onSuccess(extractedEmail);
+          if (onClose) onClose();
+        } catch (postAuthError: any) {
+          // TEMP DEBUG - remove after sign-in issue is fixed
+          alert(`Sign-in error: ${postAuthError?.code || 'unknown'} - ${postAuthError?.message || postAuthError}`);
+          throw postAuthError;
+        }
       } else {
         setError(
           lang === 'ur'
@@ -49,6 +57,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       }
     } catch (err: any) {
       console.error('Google Sign-In failed:', err);
+      // TEMP DEBUG - remove after sign-in issue is fixed
+      alert(`Sign-in error: ${err?.code || 'unknown'} - ${err?.message || err}`);
       const isUnauth = err?.code === 'auth/unauthorized-domain' || (err?.message && err.message.includes('auth/unauthorized-domain'));
       
       if (isUnauth) {

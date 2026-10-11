@@ -95,18 +95,20 @@ const QuickActionButton: React.FC<{
   fallbackIcon 
 }) => {
   const commonClasses = `w-full aspect-square bg-white border-2 ${
-    highlight ? 'border-[#8b9d77]/60 shadow-sm' : 'border-[#e4e1cf] shadow-2xs'
-  } hover:border-[#8b9d77] hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-200 cursor-pointer rounded-2xl sm:rounded-3xl p-0 overflow-hidden flex items-center justify-center group no-underline select-none relative`;
+    highlight ? 'border-[#8b9d77]/70 shadow-sm' : 'border-[#e4e1cf] shadow-2xs'
+  } hover:border-[#8b9d77] hover:shadow-md hover:scale-[1.015] active:scale-[0.96] transition-all duration-200 cursor-pointer rounded-2xl sm:rounded-3xl p-1 sm:p-1.5 overflow-hidden flex items-center justify-center group no-underline select-none relative`;
 
   const innerContent = (
-    <div className="w-full h-full bg-[#fdfbf7] flex items-center justify-center overflow-hidden rounded-2xl sm:rounded-3xl">
+    <div className="w-full h-full bg-[#fdfbf7] flex items-center justify-center overflow-hidden rounded-xl sm:rounded-2xl">
       <PublicImage
         fileName={imgSrc}
         fallbackIcon={fallbackIcon}
         alt={fullName}
         width={400}
         height={400}
-        className="w-full h-full object-contain rounded-2xl sm:rounded-3xl transition-transform duration-200 group-hover:scale-[1.04]"
+        fitMode="contain"
+        className="w-full h-full"
+        imgClassName="w-full h-full object-contain rounded-xl sm:rounded-2xl transition-transform duration-200 group-hover:scale-[1.02]"
       />
     </div>
   );
@@ -259,7 +261,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
 
   return (
-    <div className="flex-1 flex flex-col gap-4 sm:gap-6 p-2.5 sm:p-5 md:p-6 max-w-4xl mx-auto w-full">
+    <div className="flex-1 flex flex-col gap-3.5 sm:gap-5 px-3 sm:px-6 py-2.5 sm:py-4 max-w-4xl mx-auto w-full">
       {/* Primary Semantic H1 Heading for SEO & Screen Readers */}
       <h1 className="sr-only">
         {lang === 'ur' 
@@ -543,7 +545,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         )}
 
         {/* FULL DISPLAY APP LAUNCHER: 8 Core Transport Icon Image Buttons (2 Columns x 4 Rows, Huge Single-Tap, Full Screen Grid, Zero Text Names) */}
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:gap-5 w-full">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-5 w-full">
           {/* 1. Trip Expense Calculator */}
           <QuickActionButton
             href="#calculator"

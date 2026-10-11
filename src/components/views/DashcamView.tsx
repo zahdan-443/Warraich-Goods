@@ -73,7 +73,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
   const [selectedMode, setSelectedMode] = useState<'auto' | 'dual' | 'rear'>('auto');
   const [isDualActive, setIsDualActive] = useState(false);
   const [fallbackReason, setFallbackReason] = useState<string | null>(null);
-  const [showDualNoticeDismissed, setShowDualNoticeDismissed] = useState(false);
+  const [showDualNoticeDismissed, setShowDualNoticeDismissed] = useState(true);
   const [showHardwareDetails, setShowHardwareDetails] = useState(false);
 
   // Clips State
