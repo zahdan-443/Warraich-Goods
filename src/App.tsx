@@ -762,7 +762,7 @@ export default function App() {
         />
       )}
 
-      {activeTab !== 'calculator' && (
+      {activeTab === 'home' && (
         <Header
           lang={lang}
           onToggleLang={handleToggleLang}

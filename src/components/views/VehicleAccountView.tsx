@@ -519,9 +519,9 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
   };
 
   return (
-    <div className={`flex-1 p-3 sm:p-6 md:p-8 pb-36 md:pb-16 max-w-4xl mx-auto w-full font-sans ${isUrdu ? 'text-right' : 'text-left'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
+    <div className={`flex-1 p-3 sm:p-5 md:p-6 pb-28 md:pb-16 max-w-4xl mx-auto w-full font-sans ${isUrdu ? 'text-right' : 'text-left'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
       {/* Top Header with Back to Dashboard Button */}
-      <div className="w-full flex items-center justify-between pb-1 mb-3 shrink-0">
+      <div className="w-full flex items-center justify-between pb-2 mb-3 shrink-0 border-b border-[#ecece0]">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
             <PublicImage
@@ -534,10 +534,10 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             />
           </div>
           <div>
-            <h1 className="text-sm sm:text-base font-bold text-[#4a4a35] leading-tight">
+            <h1 className="text-base sm:text-lg font-bold text-[#4a4a35] leading-tight">
               {isUrdu ? 'گاڑی کا حساب و منافع لیجر' : 'Vehicle Account & Net Profit Ledger'}
             </h1>
-            <p className="text-[10px] text-[#8e8e75]">
+            <p className="text-[11px] text-[#8e8e75]">
               {isUrdu ? 'آمدن، اخراجات اور خالص بچت کا کھاتہ' : 'Trip earnings, operational expenses and profit ledger'}
             </p>
           </div>
@@ -568,13 +568,16 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
       )}
 
       {/* Main Container Card */}
-      <div className="bg-white p-5 sm:p-7 rounded-[28px] shadow-sm border border-[#ecece0] mb-6 space-y-6">
+      <div className="bg-white p-4 sm:p-6 rounded-[28px] shadow-sm border border-[#ecece0] mb-6 space-y-5">
         
         {/* Vehicle Selector bar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#ecece0] pb-4">
-          <p className="text-xs text-[#8e8e75]">
-            {isUrdu ? 'گاڑی کے تمام کرایہ جات اور سفری اخراجات درج کر کے خالص بچت کا حساب لگائیں' : 'Enter all freight revenues and trip operational expenses to calculate net margin'}
-          </p>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-[#ecece0] pb-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#8b9d77]"></span>
+            <span className="text-xs font-bold text-[#4a4a35]">
+              {isUrdu ? 'گاڑی کا انتخاب اور کرایہ / خرچہ کھاتہ' : 'Select Vehicle and Ledger Entries'}
+            </span>
+          </div>
 
           {/* Vehicle Selector */}
           <div className="w-full sm:w-auto flex items-center gap-2">

@@ -548,25 +548,25 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
   };
 
   return (
-    <div className="flex-1 p-4 sm:p-6 md:p-10 max-w-6xl mx-auto w-full space-y-6">
+    <div className="flex-1 p-3 sm:p-5 max-w-5xl mx-auto w-full space-y-4">
       
       {/* Top Header Card */}
-      <div className="bg-white p-6 sm:p-8 md:p-9 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] space-y-6">
-        <header className="border-b border-[#ecece0] pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#8b9d77]/25 to-[#8b9d77]/10 border border-[#8b9d77]/30 flex items-center justify-center text-[#8b9d77] shadow-2xs shrink-0">
-              <ShieldCheck className="w-6 h-6 text-[#4a5e38]" />
+      <div className="bg-white p-4 sm:p-6 rounded-[28px] sm:rounded-[32px] shadow-sm border border-[#ecece0] space-y-4">
+        <header className="border-b border-[#ecece0] pb-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#8b9d77]/25 to-[#8b9d77]/10 border border-[#8b9d77]/30 flex items-center justify-center text-[#8b9d77] shadow-2xs shrink-0">
+              <ShieldCheck className="w-5 h-5 text-[#4a5e38]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#4a4a35]">
+                <h1 className="text-base sm:text-lg font-serif font-bold text-[#4a4a35]">
                   {isUrdu ? 'گاڑی و ڈرائیور تصدیقی مرکز' : 'Vehicle & Driver Verification Hub'}
                 </h1>
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#8b9d77]/15 text-[#4a5e38] border border-[#8b9d77]/30">
-                  {isUrdu ? 'ان-ایپ سسٹم' : 'In-App Fleet Hub'}
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#8b9d77]/15 text-[#4a5e38] border border-[#8b9d77]/30">
+                  {isUrdu ? 'ان-ایپ سسٹم' : 'In-App Hub'}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-[#8e8e75] font-sans mt-0.5">
+              <p className="text-[11px] text-[#8e8e75] font-sans mt-0.5">
                 {isUrdu 
                   ? 'گاڑیوں کی رجسٹریشن، ٹوکن ٹیکس، ڈرائیور لائسنس اور ای چالان کا لائیو ریکارڈ' 
                   : 'Live registration audits, token taxes, DLIMS checks & e-challan compliance'}
@@ -579,7 +579,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('home')}
-                className="px-3.5 py-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                className="px-3 py-1.5 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
                 title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
               >
                 <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />

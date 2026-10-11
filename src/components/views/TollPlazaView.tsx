@@ -244,9 +244,12 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
             />
           </div>
           <div>
-            <h1 className="text-sm sm:text-base font-bold text-[#4a4a35] leading-tight">
+            <h1 className="text-base sm:text-lg font-bold text-[#4a4a35] leading-tight">
               {isUrdu ? 'موٹروے ٹول ٹیکس' : 'Motorway Toll Tax'}
             </h1>
+            <p className="text-[11px] text-[#8e8e75]">
+              {isUrdu ? 'این ایچ اے موٹرویز اور ہائی ویز ٹول ریٹس' : 'NHA Motorways & Highway Toll Rates'}
+            </p>
           </div>
         </div>
 

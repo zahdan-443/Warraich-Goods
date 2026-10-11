@@ -309,22 +309,23 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
   return (
     <div className={`min-h-screen bg-[#F4F6F0] pb-24 ${isUrdu ? 'rtl font-urdu' : 'ltr font-sans'}`}>
       {/* Top Header Bar */}
-      <div className="bg-[#1b4332] text-white shadow-lg sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-between">
+      <div className="bg-[#1b4332] text-white shadow-md sticky top-0 z-40">
+        <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => onNavigate('home')}
-              className="p-2 -ml-2 rounded-full hover:bg-white/10 active:scale-95 transition-all text-white/90"
-              aria-label={isUrdu ? 'واپس ہوم' : 'Back to Home'}
+              className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+              aria-label={isUrdu ? 'واپس ڈیش بورڈ' : 'Back to Dashboard'}
             >
-              <ArrowLeft className={`w-5 h-5 ${isUrdu ? 'rotate-180' : ''}`} />
+              <ArrowLeft className={`w-4 h-4 ${isUrdu ? 'rotate-180' : ''}`} />
+              <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
             </button>
             <div>
               <div className="flex items-center gap-2">
                 <span className="p-1.5 bg-[#40916c] rounded-lg shadow-sm">
-                  <Video className="w-5 h-5 text-white" />
+                  <Video className="w-4 h-4 text-white" />
                 </span>
-                <h1 className="text-xl font-bold tracking-tight text-white">
+                <h1 className="text-base sm:text-lg font-bold tracking-tight text-white">
                   {isUrdu ? 'ڈیش کیم ویڈیو ریکارڈر' : 'Transport Dashcam'}
                 </h1>
               </div>

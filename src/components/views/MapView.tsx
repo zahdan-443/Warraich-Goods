@@ -1094,10 +1094,10 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
   };
 
   return (
-    <div className={`flex-1 flex flex-col max-w-7xl mx-auto w-full p-3 sm:p-6 lg:p-8 gap-5 sm:gap-6 animate-in fade-in ${isUrdu ? 'text-right' : 'text-left'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
+    <div className={`flex-1 flex flex-col max-w-7xl mx-auto w-full p-3 sm:p-5 lg:p-6 gap-3.5 sm:gap-4.5 animate-in fade-in ${isUrdu ? 'text-right' : 'text-left'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
       
       {/* Top Header - Matching TripCostView Style & Placement */}
-      <div className="w-full flex items-center justify-between pb-1 shrink-0">
+      <div className="w-full flex items-center justify-between pb-2 shrink-0 border-b border-[#ecece0]">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
             <PublicImage
@@ -1110,10 +1110,10 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
             />
           </div>
           <div>
-            <h1 className="text-sm sm:text-base font-bold text-[#4a4a35] leading-tight">
+            <h1 className="text-base sm:text-lg font-bold text-[#4a4a35] leading-tight">
               {isUrdu ? 'نقشہ و روٹ موسم' : 'Map & Route Weather'}
             </h1>
-            <p className="text-[10px] text-[#8e8e75]">
+            <p className="text-[11px] text-[#8e8e75]">
               {isUrdu ? 'موٹروے روٹ نقشہ، حدِ نگاہ اور لائیو موسم' : 'Highway corridors, visibility & live weather'}
             </p>
           </div>

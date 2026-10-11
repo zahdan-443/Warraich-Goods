@@ -82,24 +82,31 @@ const QuickActionButton: React.FC<{
   imgSrc: string;
   fallbackIcon?: React.ReactNode;
   fullName: string;
-  subtitle?: string;
   highlight?: boolean;
   href?: string;
   external?: boolean;
-}> = ({ onClick, imgSrc, fullName, highlight, href, external, fallbackIcon }) => {
-  const commonClasses = `p-1.5 sm:p-2 bg-white border ${
-    highlight ? 'border-2 border-[#8b9d77] shadow-sm' : 'border-[#ecece0]'
-  } hover:border-[#8b9d77] hover:shadow-md rounded-2xl sm:rounded-3xl transition-all active:scale-95 cursor-pointer flex items-center justify-center text-center group w-full aspect-square min-h-[110px] sm:min-h-[135px] no-underline`;
+}> = ({ 
+  onClick, 
+  imgSrc, 
+  fullName, 
+  highlight, 
+  href, 
+  external, 
+  fallbackIcon 
+}) => {
+  const commonClasses = `w-full aspect-square bg-white border-2 ${
+    highlight ? 'border-[#8b9d77]/60 shadow-sm' : 'border-[#e4e1cf] shadow-2xs'
+  } hover:border-[#8b9d77] hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-200 cursor-pointer rounded-2xl sm:rounded-3xl p-1 sm:p-2 overflow-hidden flex items-center justify-center group no-underline select-none relative`;
 
   const innerContent = (
-    <div className="w-full h-full bg-[#fdfbf7] rounded-xl sm:rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs flex items-center justify-center transition-transform group-hover:scale-105 overflow-hidden">
+    <div className="w-full h-full bg-[#fdfbf7] flex items-center justify-center overflow-hidden rounded-xl sm:rounded-2xl">
       <PublicImage
         fileName={imgSrc}
         fallbackIcon={fallbackIcon}
-        alt={`Driver Dost Transport Tool: ${fullName}`}
-        width={140}
-        height={140}
-        className="w-full h-full object-cover rounded-xl"
+        alt={fullName}
+        width={400}
+        height={400}
+        className="w-full h-full object-contain rounded-xl sm:rounded-2xl transition-transform duration-200 group-hover:scale-[1.04]"
       />
     </div>
   );
@@ -137,6 +144,7 @@ const QuickActionButton: React.FC<{
     </button>
   );
 };
+
 
 export const HomeView: React.FC<HomeViewProps> = ({ 
   lang, 
@@ -534,128 +542,128 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         )}
 
-        {/* UNIFIED APP LAUNCHER: All 9 Core Transport & Verification Tools (Zero Deleted, Ergonomic Mobile Grid) */}
-        <div className="bg-white p-4 sm:p-5 md:p-6 rounded-[28px] sm:rounded-[32px] shadow-sm border border-[#ecece0] space-y-3.5">
-          <div className="flex items-center justify-between pb-2.5 border-b border-[#ecece0]">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#8b9d77] animate-pulse"></span>
-              <h2 className="font-serif font-bold text-sm sm:text-base text-[#4a4a35]">
-                {lang === 'ur' ? '🚛 ڈرائیور دوست سروسز و ٹولز' : '🚛 Driver Dost Services & Tools'}
-              </h2>
+        {/* FULL DISPLAY APP LAUNCHER: 8 Core Transport Icon Image Buttons (2 Columns x 4 Rows, Huge Single-Tap, Full Screen Grid, Zero Text Names) */}
+        <div className="grid grid-cols-2 gap-3.5 sm:gap-5 md:gap-6 w-full">
+          {/* 1. Trip Expense Calculator */}
+          <QuickActionButton
+            href="#calculator"
+            onClick={() => onNavigate('calculator')}
+            imgSrc={tripIconData}
+            fallbackIcon={<Calculator className="w-12 h-12 text-[#8b9d77]" />}
+            fullName={lang === 'ur' ? 'سفر اخراجات کیلکولیٹر' : 'Trip Expense Calculator'}
+            highlight={true}
+          />
+
+          {/* 2. Vehicle Account / Ledger */}
+          <QuickActionButton
+            href="#vehicleAccount"
+            onClick={() => onNavigate('vehicleAccount')}
+            imgSrc={gariHisaabIconData}
+            fallbackIcon={<Calculator className="w-12 h-12 text-[#8b9d77]" />}
+            fullName={lang === 'ur' ? 'گاڑی کا حساب' : 'Vehicle Account'}
+            highlight={true}
+          />
+
+          {/* 3. Motorway Toll Tax Calculator */}
+          <QuickActionButton
+            href="#toll"
+            onClick={() => onNavigate('toll')}
+            imgSrc={tollIconData}
+            fallbackIcon={<Milestone className="w-12 h-12 text-[#8b9d77]" />}
+            fullName={lang === 'ur' ? 'موٹروے ٹول ٹیکس' : 'Motorway Toll Tax'}
+            highlight={true}
+          />
+
+          {/* 4. Map & Route Weather */}
+          <QuickActionButton
+            href="#map"
+            onClick={() => onNavigate('map')}
+            imgSrc={mapIconData}
+            fallbackIcon={<MapPin className="w-12 h-12 text-[#8b9d77]" />}
+            fullName={lang === 'ur' ? 'نقشہ و روٹ موسم' : 'Map & Route Weather'}
+            highlight={true}
+          />
+
+          {/* 5. Dashcam Video Recorder */}
+          <QuickActionButton
+            href="#dashcam"
+            onClick={() => onNavigate('dashcam')}
+            imgSrc={dashcamIconData}
+            fallbackIcon={<Camera className="w-12 h-12 text-[#8b9d77]" />}
+            fullName={lang === 'ur' ? 'ڈیش کیم ریکارڈر' : 'Dashcam Recorder'}
+            highlight={true}
+          />
+
+          {/* 6. Vehicles Verification */}
+          <QuickActionButton
+            href="#verify"
+            onClick={() => onNavigate('verify', 'vehicle')}
+            imgSrc={vehicleIconData}
+            fallbackIcon={<Truck className="w-12 h-12 text-[#8b9d77]" />}
+            fullName={lang === 'ur' ? 'گاڑیوں کی تصدیق' : 'Vehicles Verification'}
+          />
+
+          {/* 7. License Verification */}
+          <QuickActionButton
+            href="#verify"
+            onClick={() => onNavigate('verify', 'license')}
+            imgSrc={licenseIconData}
+            fallbackIcon={<ShieldCheck className="w-12 h-12 text-[#8b9d77]" />}
+            fullName={lang === 'ur' ? 'لائسنس کی تصدیق' : 'License Verification'}
+          />
+
+          {/* 8. E-Challan Check */}
+          <QuickActionButton
+            href="#verify"
+            onClick={() => onNavigate('verify', 'challan')}
+            imgSrc={echallanIconData}
+            fallbackIcon={<AlertTriangle className="w-12 h-12 text-[#8b9d77]" />}
+            fullName={lang === 'ur' ? 'ای چالان چیکنگ' : 'E-Challan Checking'}
+          />
+        </div>
+
+        {/* 9. NEW STYLE "MORE" BUTTON (Beneath 8 Icons, Wide Modern Styling, No Icon Image Needed) */}
+        <button
+          type="button"
+          onClick={() => openModalWithHistory(setShowQuickOpsModal)}
+          className="w-full py-3.5 sm:py-4 px-4 sm:px-6 bg-gradient-to-r from-[#28382b] via-[#3d5541] to-[#28382b] hover:from-[#1e2b20] hover:to-[#1e2b20] text-white rounded-2xl sm:rounded-3xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex items-center justify-between group active:scale-[0.99] border-2 border-[#4a634e]/50 select-none"
+          aria-label={lang === 'ur' ? 'مزید سہولتیں و آپریشنز' : 'More Services & Operations'}
+        >
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/15 backdrop-blur-xs flex items-center justify-center text-emerald-200 group-hover:scale-105 group-hover:bg-white/25 transition-all shadow-2xs">
+              <Wrench className="w-6 h-6 text-emerald-300" />
             </div>
-            <span className="text-[10px] font-bold text-[#8b9d77] bg-[#8b9d77]/10 px-2.5 py-0.5 rounded-full border border-[#8b9d77]/20 font-mono">
-              9 {lang === 'ur' ? 'سروسز' : 'Apps'}
-            </span>
+            <div className={lang === 'ur' ? 'text-right' : 'text-left'}>
+              <div className="flex items-center gap-2">
+                <span className="text-base sm:text-lg font-bold font-serif text-white tracking-wide">
+                  {lang === 'ur' ? 'مزید سہولتیں و آپریشنز' : 'More Tools & Operations'}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-400/25 text-emerald-200 border border-emerald-400/40">
+                  {lang === 'ur' ? '۶+ ٹولز' : '6+ Tools'}
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-emerald-100/80 font-sans mt-0.5">
+                {lang === 'ur'
+                  ? 'سفر ڈائری، روٹس گائیڈ، فلیٹ گاڑیاں، ڈرائیورز و ڈیزل لاگز'
+                  : 'Safar Diary, Routes, Vehicles, Drivers & Fuel Logs'}
+              </p>
+            </div>
           </div>
-
-          {/* Unified Responsive 9-Tool Grid */}
-          <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-2.5 sm:gap-3">
-            {/* 1. Trip Expense Calculator */}
-            <QuickActionButton
-              href="#calculator"
-              onClick={() => onNavigate('calculator')}
-              imgSrc={tripIconData}
-              fallbackIcon={<Calculator className="w-7 h-7 text-[#8b9d77]" />}
-              fullName={lang === 'ur' ? 'سفر اخراجات کیلکولیٹر' : 'Trip Expense Calculator'}
-              subtitle={lang === 'ur' ? 'کرایہ اور فیول منافع کا تخمینہ' : 'Freight cost & profit estimate'}
-              highlight={true}
-            />
-
-            {/* 2. Vehicle Account / Ledger */}
-            <QuickActionButton
-              href="#vehicleAccount"
-              onClick={() => onNavigate('vehicleAccount')}
-              imgSrc={gariHisaabIconData}
-              fallbackIcon={<Calculator className="w-7 h-7 text-[#8b9d77]" />}
-              fullName={lang === 'ur' ? 'گاڑی کا حساب' : 'Vehicle Account'}
-              subtitle={lang === 'ur' ? 'ڈیزل، ٹول، چالان و دیگر اخراجات' : 'Post-trip vehicle expense account'}
-              highlight={true}
-            />
-
-            {/* 3. Motorway Toll Tax Calculator */}
-            <QuickActionButton
-              href="#toll"
-              onClick={() => onNavigate('toll')}
-              imgSrc={tollIconData}
-              fallbackIcon={<Milestone className="w-7 h-7 text-[#8b9d77]" />}
-              fullName={lang === 'ur' ? 'موٹروے ٹول ٹیکس' : 'Motorway Toll Tax'}
-              subtitle={lang === 'ur' ? 'این ایچ اے ٹول و ایم ٹیگ تخمینہ' : 'NHA toll & M-Tag calculator'}
-              highlight={true}
-            />
-
-            {/* 4. Map & Route Weather */}
-            <QuickActionButton
-              href="#map"
-              onClick={() => onNavigate('map')}
-              imgSrc={mapIconData}
-              fallbackIcon={<MapPin className="w-7 h-7 text-[#8b9d77]" />}
-              fullName={lang === 'ur' ? 'نقشہ و روٹ موسم' : 'Map & Route Weather'}
-              subtitle={lang === 'ur' ? 'لائیو موٹروے میپ، دھند و موسم' : 'Highway map & live weather'}
-              highlight={true}
-            />
-
-            {/* 5. Dashcam Video Recorder */}
-            <QuickActionButton
-              href="#dashcam"
-              onClick={() => onNavigate('dashcam')}
-              imgSrc={dashcamIconData}
-              fallbackIcon={<Camera className="w-7 h-7 text-[#8b9d77]" />}
-              fullName={lang === 'ur' ? 'ڈیش کیم ریکارڈر' : 'Dashcam Recorder'}
-              subtitle={lang === 'ur' ? 'روڈ ویڈیو و آڈیو کیمرہ لاگ' : 'Road video & audio recording'}
-              highlight={true}
-            />
-
-            {/* 6. Vehicles Verification */}
-            <QuickActionButton
-              href="#verify"
-              onClick={() => onNavigate('verify', 'vehicle')}
-              imgSrc={vehicleIconData}
-              fallbackIcon={<Truck className="w-7 h-7 text-[#8b9d77]" />}
-              fullName={lang === 'ur' ? 'گاڑیوں کی تصدیق' : 'Vehicles Verification'}
-              subtitle={lang === 'ur' ? 'رجسٹریشن، ٹوکن ٹیکس و ایکسائز' : 'MTMIS Punjab & Token Tax'}
-            />
-
-            {/* 7. License Verification */}
-            <QuickActionButton
-              href="#verify"
-              onClick={() => onNavigate('verify', 'license')}
-              imgSrc={licenseIconData}
-              fallbackIcon={<ShieldCheck className="w-7 h-7 text-[#8b9d77]" />}
-              fullName={lang === 'ur' ? 'لائسنس کی تصدیق' : 'License Verification'}
-              subtitle={lang === 'ur' ? 'DLIMS لائسنس و موٹروے پولیس' : 'DLIMS Punjab License Checks'}
-            />
-
-            {/* 8. E-Challan Check */}
-            <QuickActionButton
-              href="#verify"
-              onClick={() => onNavigate('verify', 'challan')}
-              imgSrc={echallanIconData}
-              fallbackIcon={<AlertTriangle className="w-7 h-7 text-[#8b9d77]" />}
-              fullName={lang === 'ur' ? 'ای چالان چیکنگ' : 'E-Challan Checking'}
-              subtitle={lang === 'ur' ? 'PSCA سیف سٹی و جرمانہ آڈٹ' : 'PSCA Safe City Traffic Audits'}
-            />
-
-            {/* 9. More Services & Quick Operations */}
-            <QuickActionButton
-              href="#quickops"
-              onClick={() => openModalWithHistory(setShowQuickOpsModal)}
-              imgSrc={quickOpsIconData}
-              fallbackIcon={<Wrench className="w-7 h-7 text-[#8b9d77]" />}
-              fullName={lang === 'ur' ? 'مزید سہولتیں و آپریشنز' : 'More Services & Quick Ops'}
-              subtitle={lang === 'ur' ? 'گاڑیاں، ڈرائیورز، پورٹلز و ٹولز' : 'Fleet tools & shortcut portals'}
-              highlight={true}
-            />
+          <div className="flex items-center gap-1.5 text-emerald-200 font-bold text-xs sm:text-sm bg-white/10 group-hover:bg-white/20 px-3.5 py-2 rounded-xl transition-all shrink-0">
+            <span>{lang === 'ur' ? 'کھولیں' : 'Open'}</span>
+            <ChevronLeft className={`w-4 h-4 transition-transform group-hover:-translate-x-1 ${lang === 'ur' ? '' : 'rotate-180'}`} />
           </div>
+        </button>
 
-          {/* Official Government Disclaimer (Google Play & Palm Store Government Apps Policy Compliance) */}
-          <div className="pt-2 border-t border-[#ecece0] flex items-start gap-2 text-[10.5px] text-[#8e8e75] leading-relaxed">
-            <Info className="w-3.5 h-3.5 text-[#8b9d77] shrink-0 mt-0.5" />
-            <span>
-              {lang === 'ur'
-                ? 'قانونی آگاہی: ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ سسٹم ہے اور حکومتِ پاکستان یا کسی صوبائی ادارے سے الحاق نہیں رکھتا۔ تمام بیرونی لنکس متعلقہ سرکاری اداروں (MTMIS, DLIMS, PSCA) کے آفیشل پورٹلز ہیں۔'
-                : 'Notice: Driver Dost is an independent fleet management utility and does not represent any government entity. All external links point to public official government portals.'}
-            </span>
-          </div>
+        {/* Official Government Disclaimer (Google Play & Palm Store Government Apps Policy Compliance) */}
+        <div className="px-1 py-0.5 flex items-start gap-2 text-[10.5px] text-[#8e8e75] leading-relaxed">
+          <Info className="w-3.5 h-3.5 text-[#8b9d77] shrink-0 mt-0.5" />
+          <span>
+            {lang === 'ur'
+              ? 'قانونی آگاہی: ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ سسٹم ہے اور حکومتِ پاکستان یا کسی صوبائی ادارے سے الحاق نہیں رکھتا۔ تمام بیرونی لنکس متعلقہ سرکاری اداروں (MTMIS, DLIMS, PSCA) کے آفیشل پورٹلز ہیں۔'
+              : 'Notice: Driver Dost is an independent fleet management utility and does not represent any government entity. All external links point to public official government portals.'}
+          </span>
+        </div>
 
           {/* Bilty Form & Ledger (ONLY visible when authenticated owner) */}
           {isBiltyAuthorized && (
@@ -687,9 +695,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </button>
             </div>
           )}
-        </div>
-
-
 
         {/* Merged Date, Live Weather & Pakistan POL Rates Monitor (Minimalist & Beautiful) */}
         <HomeWeatherFuelCard lang={lang} onApplyRates={onLogFuelPrice ? (diesel, petrol, cng) => { onLogFuelPrice(typeof diesel === 'number' ? diesel : (diesel ? Number(diesel) : undefined), typeof petrol === 'number' ? petrol : (petrol ? Number(petrol) : undefined), typeof cng === 'number' ? cng : (cng ? Number(cng) : undefined)); } : undefined} onOpenTerms={() => setShowTermsModal(true)} onOpenPrivacy={() => setShowHomePrivacyModal(true)} />
