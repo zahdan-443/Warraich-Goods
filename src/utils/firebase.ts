@@ -21,18 +21,18 @@ try {
   // ignore
 }
 
-import appletConfig from '../../firebase-applet-config.json';
+import { ACTIVE_FIREBASE_CONFIG } from './firebaseConfig';
 import { doc, getDocFromServer } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || appletConfig.apiKey || 'AIzaSyB2i8AWa0O2fr2CtMvd5HWR94hOzCYBUls',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || appletConfig.authDomain || 'warraich-goods.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || appletConfig.projectId || 'warraich-goods',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || appletConfig.storageBucket || 'warraich-goods.firebasestorage.app',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || appletConfig.messagingSenderId || '805249879186',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || appletConfig.appId || '1:805249879186:web:0ccfeaa631bb1a07e5ea4b',
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || appletConfig.measurementId || 'G-Y1LF9N2VQT',
-  firestoreDatabaseId: (appletConfig as any).firestoreDatabaseId || '(default)'
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || ACTIVE_FIREBASE_CONFIG.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || ACTIVE_FIREBASE_CONFIG.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || ACTIVE_FIREBASE_CONFIG.projectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || ACTIVE_FIREBASE_CONFIG.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || ACTIVE_FIREBASE_CONFIG.messagingSenderId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || ACTIVE_FIREBASE_CONFIG.appId,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ACTIVE_FIREBASE_CONFIG.measurementId || '',
+  firestoreDatabaseId: ACTIVE_FIREBASE_CONFIG.firestoreDatabaseId || '(default)'
 };
 
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
