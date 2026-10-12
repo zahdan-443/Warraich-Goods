@@ -871,10 +871,11 @@ export async function getBiltyAccessConfig(): Promise<BiltyAccessConfigData> {
         safeStorage.setItem('wg_global_bilty_allowed_emails', JSON.stringify(config.allowedEmails));
         safeStorage.setItem('ah-bilty-allowed-emails', JSON.stringify(config.allowedEmails));
         safeStorage.setItem('ah-bilty-allowed-uids', JSON.stringify(config.allowedUIDs));
-        return config;
       }
-    } catch (err) {
-      console.warn("Could not fetch remote bilty access config, using local cache:", err);
+    } catch (err: any) {
+      if (err?.code !== 'permission-denied') {
+        console.warn("Could not fetch remote bilty access config, using local cache:", err);
+      }
     }
   }
   try {
@@ -915,7 +916,10 @@ export function subscribeToBiltyAccess(
         }
       },
       (err) => {
-        console.warn('Bilty access real-time subscription error:', err);
+        // Suppress warning if offline or permissions pending; gracefully rely on local cache
+        if (err?.code !== 'permission-denied') {
+          console.warn('Bilty access real-time subscription error:', err);
+        }
       }
     );
   } catch (err) {
