@@ -51,6 +51,11 @@
 -dontwarn com.google.firebase.**
 -keep class com.google.android.gms.** { *; }
 -dontwarn com.google.android.gms.**
+-dontwarn com.facebook.**
+-dontwarn com.microsoft.**
+-dontwarn com.twitter.**
+-dontwarn com.yahoo.**
+-dontwarn com.google.android.gms.games.**
 
 # 6. Keep native activity entry point
 -keep class com.warraichgoods.driverdost.MainActivity { *; }

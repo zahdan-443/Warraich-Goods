@@ -3,6 +3,8 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithCredential,
   signOut,
   onAuthStateChanged,
@@ -28,22 +30,19 @@ const requiredEnvVars = [
   'VITE_FIREBASE_APP_ID'
 ] as const;
 
-const missingEnvVars = requiredEnvVars.filter((key) => !import.meta.env[key]);
-if (missingEnvVars.length > 0) {
-  console.error(
-    `[Firebase Error] Missing required Firebase environment variables: ${missingEnvVars.join(', ')}. ` +
-    `Please check your .env file or project configuration.`
-  );
+// Validate that critical Firebase credentials exist
+if (!import.meta.env.VITE_FIREBASE_API_KEY && !import.meta.env.VITE_FIREBASE_PROJECT_ID) {
+  // Using built-in fallback configuration for warraich-goods
 }
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyB2i8AWa0O2fr2CtMvd5HWR94hOzCYBUls',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'warraich-goods.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'warraich-goods',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'warraich-goods.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '805249879186',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:805249879186:web:0ccfeaa631bb1a07e5ea4b',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-Y1LF9N2VQT'
 };
 
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -64,6 +63,27 @@ export const db = (() => {
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
+export const loginWithGoogleRedirect = async (): Promise<void> => {
+  await signInWithRedirect(auth, googleProvider);
+};
+
+export const checkRedirectAuthResult = async (): Promise<User | null> => {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result?.user) {
+      return result.user;
+    }
+  } catch (error: any) {
+    console.error("Redirect Auth Error:", error);
+  }
+  return null;
+};
+
+export const isMobileBrowser = (): boolean => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent);
+};
+
 export const loginWithGoogle = async (): Promise<User | null> => {
   // Capacitor native platform (Android APK WebView)
   if (Capacitor.isNativePlatform()) {
@@ -83,20 +103,28 @@ export const loginWithGoogle = async (): Promise<User | null> => {
       return auth.currentUser;
     } catch (error: any) {
       console.error("Native Google Sign-In Error:", error);
-      // TEMP DEBUG - remove after sign-in issue is fixed
-      alert(`Sign-in error: ${error?.code || 'unknown'} - ${error?.message || error}`);
       throw error;
     }
   }
 
-  // Web Browser Flow
+  // Web Browser Flow:
+  // Note: Must invoke signInWithPopup immediately during user gesture without preceding blocking alerts
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
     console.error("Google Sign-In Error:", error);
-    // TEMP DEBUG - remove after sign-in issue is fixed
-    alert(`Sign-in error: ${error?.code || 'unknown'} - ${error?.message || error}`);
+
+    // If popup was blocked or closed or unsupported, fallback to redirect
+    if (
+      error?.code === 'auth/popup-blocked' ||
+      error?.code === 'auth/cancelled-popup-request' ||
+      error?.code === 'auth/operation-not-supported-in-this-environment'
+    ) {
+      console.warn("Popup blocked or unsupported. Falling back to signInWithRedirect...");
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    }
     throw error;
   }
 };

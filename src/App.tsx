@@ -26,7 +26,7 @@ import {
   saveUserProfileInFirestore,
   processOfflineQueue
 } from './utils/storage';
-import { auth, onAuthStateChanged, logoutUser } from './utils/firebase';
+import { auth, onAuthStateChanged, logoutUser, checkRedirectAuthResult } from './utils/firebase';
 import { Header } from './components/Header';
 import { HomeView } from './components/views/HomeView';
 import { SplashScreen } from './components/SplashScreen';
@@ -402,8 +402,6 @@ export default function App() {
       });
     } catch (profileError: any) {
       console.error("Firestore user profile save error:", profileError);
-      // TEMP DEBUG - remove after sign-in issue is fixed
-      alert(`Sign-in error: ${profileError?.code || 'unknown'} - ${profileError?.message || profileError}`);
       throw profileError;
     }
   };
@@ -487,6 +485,13 @@ export default function App() {
     const unsubBilty = subscribeToBiltyAccess((config) => {
       setBiltyAllowedUIDs(config.allowedUIDs);
       setBiltyAllowedEmails(config.allowedEmails);
+    });
+
+    // Check for Google Sign-In redirect completion on page load
+    checkRedirectAuthResult().then((user) => {
+      if (user && user.email) {
+        handleAuthSuccess(user.email);
+      }
     });
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {

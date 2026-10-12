@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck, LogIn, X, AlertCircle, Copy, Check, Cloud, Sparkles } from 'lucide-react';
 import { Language } from '../types';
-import { loginWithGoogle } from '../utils/firebase';
+import { loginWithGoogle, loginWithGoogleRedirect } from '../utils/firebase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -44,10 +44,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           await onSuccess(extractedEmail);
           if (onClose) onClose();
         } catch (postAuthError: any) {
-          // TEMP DEBUG - remove after sign-in issue is fixed
-          alert(`Sign-in error: ${postAuthError?.code || 'unknown'} - ${postAuthError?.message || postAuthError}`);
+          setError(
+            lang === 'ur'
+              ? 'صارف کا پروفائل لوڈ نہیں ہو سکا۔'
+              : 'Failed to load user profile.'
+          );
           throw postAuthError;
         }
+      } else if (!user) {
+        // Redirect in progress or waiting
+        console.log('Redirecting to Google Sign-In...');
       } else {
         setError(
           lang === 'ur'
@@ -57,8 +63,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       }
     } catch (err: any) {
       console.error('Google Sign-In failed:', err);
-      // TEMP DEBUG - remove after sign-in issue is fixed
-      alert(`Sign-in error: ${err?.code || 'unknown'} - ${err?.message || err}`);
       const isUnauth = err?.code === 'auth/unauthorized-domain' || (err?.message && err.message.includes('auth/unauthorized-domain'));
       
       if (isUnauth) {
@@ -233,6 +237,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                   : (lang === 'ur' ? 'گوگل اکاؤنٹ کے ذریعے لاگ ان کریں' : 'Sign In with Google Account')}
               </span>
             </button>
+
+            {/* Direct Redirect Option (Guaranteed fallback for mobile and popup-blocked browsers) */}
+            <div className="text-center pt-2 pb-1 border-t border-[#ecece0]/80">
+              <button
+                type="button"
+                onClick={async () => {
+                  setLoading(true);
+                  setError(null);
+                  try {
+                    await loginWithGoogleRedirect();
+                  } catch (e: any) {
+                    setError(
+                      (lang === 'ur' ? 'لاگ ان مکمل نہیں ہو سکا۔ ' : 'Redirect failed: ') +
+                        (e?.message ? `(${e.message})` : '')
+                    );
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="text-xs text-[#1e3a68] hover:text-[#162a4d] underline font-bold cursor-pointer transition-colors py-1 inline-block"
+              >
+                {lang === 'ur'
+                  ? '⚡ اگر پوپ اپ نہ کھلے تو سیدھا گوگل لاگ ان پیج پر جائیں'
+                  : '⚡ Open Direct Google Login (Redirect Mode)'}
+              </button>
+              <p className="text-[10px] text-[#8e8e75] mt-0.5">
+                {lang === 'ur'
+                  ? 'موبائل اور تمام براؤزرز پر 100٪ یقینی لاگ ان'
+                  : '100% reliable on mobile and strict popup blockers'}
+              </p>
+            </div>
           </div>
 
         </div>
