@@ -45,12 +45,12 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/index-BRtc2MtJ.css',
-  './assets/index-CP-yp1NS.js',
-  './assets/vendor-firebase-D3pg2XaG.js',
-  './assets/vendor-pdf-DgBIy36U.js',
-  './assets/vendor-react-BT4V0q6a.js',
-  './assets/web-doYGeNIz.js'
+    './assets/index-BzFHgL64.js',
+  './assets/index-CxCs-nWA.css',
+  './assets/vendor-firebase-DomZ3pqZ.js',
+  './assets/vendor-pdf-DXlY6IyQ.js',
+  './assets/vendor-react-CGRU2lyw.js',
+  './assets/web-CkUnwxV_.js'
 ];
 
 // 1. Install Event: Precache All Shell Assets + Parse HTML for Vite Bundles
