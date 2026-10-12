@@ -42,15 +42,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       if (user && extractedEmail) {
         try {
           await onSuccess(extractedEmail);
-          if (onClose) onClose();
         } catch (postAuthError: any) {
-          setError(
-            lang === 'ur'
-              ? 'صارف کا پروفائل لوڈ نہیں ہو سکا۔'
-              : 'Failed to load user profile.'
-          );
-          throw postAuthError;
+          console.warn("Post-auth error:", postAuthError);
         }
+        if (onClose) onClose();
       } else if (!user) {
         // Redirect in progress or waiting
         console.log('Redirecting to Google Sign-In...');

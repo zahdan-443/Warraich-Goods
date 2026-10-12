@@ -390,19 +390,26 @@ export default function App() {
       setCurrentUid(uid);
 
       // Refresh bilty access immediately
-      const config = await getBiltyAccessConfig();
-      setBiltyAllowedUIDs(config.allowedUIDs);
-      setBiltyAllowedEmails(config.allowedEmails);
+      try {
+        const config = await getBiltyAccessConfig();
+        setBiltyAllowedUIDs(config.allowedUIDs);
+        setBiltyAllowedEmails(config.allowedEmails);
+      } catch (accessErr) {
+        console.warn("Could not load bilty access config on login:", accessErr);
+      }
 
-      await saveUserProfileInFirestore({
-        uid,
-        email,
-        role: finalRole,
-        name: isOwnerEmail ? 'Driver Dost Owner' : email.split('@')[0]
-      });
-    } catch (profileError: any) {
-      console.error("Firestore user profile save error:", profileError);
-      throw profileError;
+      try {
+        await saveUserProfileInFirestore({
+          uid,
+          email,
+          role: finalRole,
+          name: isOwnerEmail ? 'Driver Dost Owner' : email.split('@')[0]
+        });
+      } catch (profileError: any) {
+        console.warn("Firestore user profile save warning (fallback to local cache):", profileError);
+      }
+    } catch (generalAuthError: any) {
+      console.error("Auth success handler error:", generalAuthError);
     }
   };
 

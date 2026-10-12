@@ -24,16 +24,29 @@ try {
 import { ACTIVE_FIREBASE_CONFIG } from './firebaseConfig';
 import { doc, getDocFromServer } from 'firebase/firestore';
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || ACTIVE_FIREBASE_CONFIG.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || ACTIVE_FIREBASE_CONFIG.authDomain,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || ACTIVE_FIREBASE_CONFIG.projectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || ACTIVE_FIREBASE_CONFIG.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || ACTIVE_FIREBASE_CONFIG.messagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || ACTIVE_FIREBASE_CONFIG.appId,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ACTIVE_FIREBASE_CONFIG.measurementId || '',
-  firestoreDatabaseId: ACTIVE_FIREBASE_CONFIG.firestoreDatabaseId || '(default)'
-};
+const isRunApp = typeof window !== 'undefined' && window.location.hostname.includes('.run.app');
+
+const firebaseConfig = isRunApp
+  ? {
+      apiKey: ACTIVE_FIREBASE_CONFIG.apiKey,
+      authDomain: ACTIVE_FIREBASE_CONFIG.authDomain,
+      projectId: ACTIVE_FIREBASE_CONFIG.projectId,
+      storageBucket: ACTIVE_FIREBASE_CONFIG.storageBucket,
+      messagingSenderId: ACTIVE_FIREBASE_CONFIG.messagingSenderId,
+      appId: ACTIVE_FIREBASE_CONFIG.appId,
+      measurementId: ACTIVE_FIREBASE_CONFIG.measurementId || '',
+      firestoreDatabaseId: ACTIVE_FIREBASE_CONFIG.firestoreDatabaseId || '(default)'
+    }
+  : {
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY || ACTIVE_FIREBASE_CONFIG.apiKey,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || ACTIVE_FIREBASE_CONFIG.authDomain,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || ACTIVE_FIREBASE_CONFIG.projectId,
+      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || ACTIVE_FIREBASE_CONFIG.storageBucket,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || ACTIVE_FIREBASE_CONFIG.messagingSenderId,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID || ACTIVE_FIREBASE_CONFIG.appId,
+      measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ACTIVE_FIREBASE_CONFIG.measurementId || '',
+      firestoreDatabaseId: ACTIVE_FIREBASE_CONFIG.firestoreDatabaseId || '(default)'
+    };
 
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
@@ -107,23 +120,24 @@ export const loginWithGoogle = async (): Promise<User | null> => {
   }
 
   // Web Browser Flow:
-  // Note: Must invoke signInWithPopup immediately during user gesture without preceding blocking alerts
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
     console.error("Google Sign-In Error:", error);
 
-    // If popup was blocked or closed or unsupported, fallback to redirect
+    // If outside iframe and popup was explicitly blocked by browser, try redirect fallback
+    const isIframe = typeof window !== 'undefined' && window.self !== window.top;
     if (
-      error?.code === 'auth/popup-blocked' ||
-      error?.code === 'auth/cancelled-popup-request' ||
-      error?.code === 'auth/operation-not-supported-in-this-environment'
+      !isIframe &&
+      (error?.code === 'auth/popup-blocked' ||
+       error?.code === 'auth/operation-not-supported-in-this-environment')
     ) {
-      console.warn("Popup blocked or unsupported. Falling back to signInWithRedirect...");
+      console.warn("Popup blocked outside iframe. Falling back to signInWithRedirect...");
       await signInWithRedirect(auth, googleProvider);
       return null;
     }
+    // Propagate error to let UI provide immediate feedback
     throw error;
   }
 };
