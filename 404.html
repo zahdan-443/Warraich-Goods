@@ -96,11 +96,12 @@
         if (!('serviceWorker' in navigator)) return;
 
         // In native Android Capacitor or Cordova, local APK assets are served directly from device storage.
-        // Bypassing service workers on native localhost prevents network errors when device is offline.
+        // Bypassing service workers on native localhost and preview domains prevents network errors and stale chunk caching.
         var isCapacitor = window.Capacitor !== undefined ||
                           window.location.protocol === 'capacitor:' ||
                           window.location.hostname === 'localhost' ||
                           window.location.hostname === '127.0.0.1' ||
+                          window.location.hostname.endsWith('.run.app') ||
                           /;\s*wv|capacitor/i.test(navigator.userAgent);
 
         if (isCapacitor) {
@@ -125,11 +126,11 @@
         });
       })();
     </script>
-    <script type="module" crossorigin src="./assets/index-Dd6yas4d.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/vendor-react-BT4V0q6a.js">
+    <script type="module" crossorigin src="./assets/index-H3XE6Qqh.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/vendor-react-BYujvrvJ.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor-firebase-D3pg2XaG.js">
-    <link rel="modulepreload" crossorigin href="./assets/vendor-pdf-DgBIy36U.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-BRtc2MtJ.css">
+    <link rel="modulepreload" crossorigin href="./assets/vendor-pdf-Yt2xFU1T.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-CAsbQbs6.css">
   </head>
   <body class="bg-[#fdfbf7] text-[#4a4a35] font-sans antialiased min-h-full selection:bg-[#8b9d77] selection:text-white">
     <div id="root" class="min-h-screen flex flex-col"></div>

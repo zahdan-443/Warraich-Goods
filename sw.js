@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v21';
+const CACHE_NAME = 'driver-dost-v22';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 
 // Core static assets always available locally
@@ -45,11 +45,11 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/index-BRtc2MtJ.css',
-  './assets/index-Dd6yas4d.js',
+    './assets/index-CAsbQbs6.css',
+  './assets/index-H3XE6Qqh.js',
   './assets/vendor-firebase-D3pg2XaG.js',
-  './assets/vendor-pdf-DgBIy36U.js',
-  './assets/vendor-react-BT4V0q6a.js',
+  './assets/vendor-pdf-Yt2xFU1T.js',
+  './assets/vendor-react-BYujvrvJ.js',
   './assets/web-doYGeNIz.js'
 ];
 
