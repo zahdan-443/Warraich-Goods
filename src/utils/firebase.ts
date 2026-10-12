@@ -3,8 +3,6 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   signInWithCredential,
   signOut,
   onAuthStateChanged,
@@ -39,13 +37,13 @@ if (missingEnvVars.length > 0) {
 }
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyB2i8AWa0O2fr2CtMvd5HWR94hOzCYBUls',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'warraich-goods.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'warraich-goods',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'warraich-goods.firebasestorage.app',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '805249879186',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:805249879186:web:0ccfeaa631bb1a07e5ea4b',
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-Y1LF9N2VQT'
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -65,31 +63,6 @@ export const db = (() => {
 
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
-
-export const loginWithGoogleRedirect = async (): Promise<void> => {
-  await signInWithRedirect(auth, googleProvider);
-};
-
-export const checkRedirectAuthResult = async (): Promise<User | null> => {
-  try {
-    const result = await getRedirectResult(auth);
-    if (result?.user) {
-      // TEMP DEBUG - remove after sign-in issue is fixed
-      alert(`Sign-in success via redirect: ${result.user.email}`);
-      return result.user;
-    }
-  } catch (error: any) {
-    console.error("Redirect Auth Error:", error);
-    // TEMP DEBUG - remove after sign-in issue is fixed
-    alert(`Sign-in error: ${error?.code || 'unknown'} - ${error?.message || error}`);
-  }
-  return null;
-};
-
-export const isMobileBrowser = (): boolean => {
-  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent);
-};
 
 export const loginWithGoogle = async (): Promise<User | null> => {
   // Capacitor native platform (Android APK WebView)
@@ -116,8 +89,7 @@ export const loginWithGoogle = async (): Promise<User | null> => {
     }
   }
 
-  // Web Browser Flow:
-  // Note: Must invoke signInWithPopup immediately during user gesture without preceding blocking alerts
+  // Web Browser Flow
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
@@ -125,17 +97,6 @@ export const loginWithGoogle = async (): Promise<User | null> => {
     console.error("Google Sign-In Error:", error);
     // TEMP DEBUG - remove after sign-in issue is fixed
     alert(`Sign-in error: ${error?.code || 'unknown'} - ${error?.message || error}`);
-
-    // If popup was blocked or closed or unsupported, fallback to redirect
-    if (
-      error?.code === 'auth/popup-blocked' ||
-      error?.code === 'auth/cancelled-popup-request' ||
-      error?.code === 'auth/operation-not-supported-in-this-environment'
-    ) {
-      console.warn("Popup blocked or unsupported. Falling back to signInWithRedirect...");
-      await signInWithRedirect(auth, googleProvider);
-      return null;
-    }
     throw error;
   }
 };

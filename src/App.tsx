@@ -26,7 +26,7 @@ import {
   saveUserProfileInFirestore,
   processOfflineQueue
 } from './utils/storage';
-import { auth, onAuthStateChanged, logoutUser, checkRedirectAuthResult } from './utils/firebase';
+import { auth, onAuthStateChanged, logoutUser } from './utils/firebase';
 import { Header } from './components/Header';
 import { HomeView } from './components/views/HomeView';
 import { SplashScreen } from './components/SplashScreen';
@@ -487,13 +487,6 @@ export default function App() {
     const unsubBilty = subscribeToBiltyAccess((config) => {
       setBiltyAllowedUIDs(config.allowedUIDs);
       setBiltyAllowedEmails(config.allowedEmails);
-    });
-
-    // Check for Google Sign-In redirect completion on page load
-    checkRedirectAuthResult().then((user) => {
-      if (user && user.email) {
-        handleAuthSuccess(user.email);
-      }
     });
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck, LogIn, X, AlertCircle, Copy, Check, Cloud, Sparkles } from 'lucide-react';
 import { Language } from '../types';
-import { loginWithGoogle, loginWithGoogleRedirect } from '../utils/firebase';
+import { loginWithGoogle } from '../utils/firebase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -48,9 +48,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           alert(`Sign-in error: ${postAuthError?.code || 'unknown'} - ${postAuthError?.message || postAuthError}`);
           throw postAuthError;
         }
-      } else if (!user) {
-        // Redirect in progress or waiting
-        console.log('Redirecting to Google Sign-In...');
       } else {
         setError(
           lang === 'ur'
@@ -236,35 +233,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                   : (lang === 'ur' ? 'گوگل اکاؤنٹ کے ذریعے لاگ ان کریں' : 'Sign In with Google Account')}
               </span>
             </button>
-
-            {/* Direct Redirect Option (Guaranteed fallback for mobile and popup-blocked browsers) */}
-            <div className="text-center pt-2 pb-1 border-t border-[#ecece0]/80">
-              <button
-                type="button"
-                onClick={async () => {
-                  // TEMP DEBUG - remove after sign-in issue is fixed
-                  alert('Direct redirect button clicked');
-                  setLoading(true);
-                  try {
-                    await loginWithGoogleRedirect();
-                  } catch (e: any) {
-                    alert(`Sign-in error: ${e?.code || 'unknown'} - ${e?.message || e}`);
-                    setLoading(false);
-                  }
-                }}
-                disabled={loading}
-                className="text-xs text-[#1e3a68] hover:text-[#162a4d] underline font-bold cursor-pointer transition-colors py-1 inline-block"
-              >
-                {lang === 'ur'
-                  ? '⚡ اگر پوپ اپ نہ کھلے تو سیدھا گوگل لاگ ان پیج پر جائیں'
-                  : '⚡ Open Direct Google Login (Redirect Mode)'}
-              </button>
-              <p className="text-[10px] text-[#8e8e75] mt-0.5">
-                {lang === 'ur'
-                  ? 'موبائل اور تمام براؤزرز پر 100٪ یقینی لاگ ان'
-                  : '100% reliable on mobile and strict popup blockers'}
-              </p>
-            </div>
           </div>
 
         </div>

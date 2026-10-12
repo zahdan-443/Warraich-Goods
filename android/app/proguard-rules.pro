@@ -52,15 +52,5 @@
 -keep class com.google.android.gms.** { *; }
 -dontwarn com.google.android.gms.**
 
-# 6. @capacitor-firebase/authentication unused provider SDKs
-# This app only uses Google Sign-In. Suppress R8 warnings for the unused provider SDKs
-# (Facebook, Apple, Microsoft, Twitter, Yahoo, GameCenter, OpenID Connect, Play Games)
-# that are not included as dependencies but are optional handlers in the plugin.
--dontwarn com.facebook.**
--dontwarn com.microsoft.**
--dontwarn com.twitter.**
--dontwarn com.yahoo.**
--dontwarn com.google.android.gms.games.**
-
-# 7. Keep native activity entry point
+# 6. Keep native activity entry point
 -keep class com.warraichgoods.driverdost.MainActivity { *; }
