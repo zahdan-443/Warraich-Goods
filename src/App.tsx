@@ -763,7 +763,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] text-[#4a4a35] flex flex-col font-sans relative">
-      {showSplash && (
+      {showSplash ? (
         <SplashScreen
           onDismiss={handleDismissSplash}
           onSelectTab={(tab) => {
@@ -772,64 +772,64 @@ export default function App() {
           }}
           isBiltyAuthorized={isBiltyAuthorized}
         />
-      )}
-
-      {activeTab === 'home' && (
-        <Header
-          lang={lang}
-          onToggleLang={handleToggleLang}
-          userEmail={userEmail}
-          onSignIn={handleSignIn}
-          onSignOut={handleSignOut}
-          role={role}
-          onSelectRole={handleRoleChange}
-          notifications={notifications}
-          onMarkAllRead={handleMarkAllRead}
-          offlineCount={offlineQueue.length}
-          isOffline={isOffline}
-          onToggleOffline={handleToggleOffline}
-          onSyncOffline={handleSyncOffline}
-          isDashboard={activeTab === 'home'}
-          showTopMenuExternal={showTopMenu}
-          onOpenTopMenu={() => {
-            window.history.pushState({ modal: true }, '');
-            setShowTopMenu(true);
-          }}
-          onCloseTopMenu={() => setShowTopMenu(false)}
-          onOpenBiltyAccess={() => setShowBiltyAccessModal(true)}
-        />
-      )}
-
-      <main className="flex-1 flex flex-col w-full min-h-0 pb-10 md:pb-12">
-        <React.Suspense
-          fallback={
-            <div className="flex-1 flex items-center justify-center p-12 text-[#8e8e75] text-sm">
-              <div className="w-6 h-6 border-2 border-[#8b9d77] border-t-transparent rounded-full animate-spin inline-block mr-2" />
-              <span>{lang === 'ur' ? 'لوڈ ہو رہا ہے...' : 'Loading...'}</span>
-            </div>
-          }
-        >
-          {activeTab === 'home' && (
-            <HomeView
+      ) : (
+        <>
+          {(!activeTab || activeTab === 'home') && (
+            <Header
               lang={lang}
-              trips={trips}
-              vehicles={vehicles}
-              drivers={drivers}
-              bilties={bilties}
-              userRole={role}
+              onToggleLang={handleToggleLang}
               userEmail={userEmail}
-              isBiltyAuthorized={isBiltyAuthorized}
-              onNavigate={handleNavigate}
-              onOpenMenu={() => {
+              onSignIn={handleSignIn}
+              onSignOut={handleSignOut}
+              role={role}
+              onSelectRole={handleRoleChange}
+              notifications={notifications}
+              onMarkAllRead={handleMarkAllRead}
+              offlineCount={offlineQueue.length}
+              isOffline={isOffline}
+              onToggleOffline={handleToggleOffline}
+              onSyncOffline={handleSyncOffline}
+              isDashboard={!activeTab || activeTab === 'home'}
+              showTopMenuExternal={showTopMenu}
+              onOpenTopMenu={() => {
                 window.history.pushState({ modal: true }, '');
                 setShowTopMenu(true);
               }}
-              onOpenSignIn={handleSignIn}
+              onCloseTopMenu={() => setShowTopMenu(false)}
               onOpenBiltyAccess={() => setShowBiltyAccessModal(true)}
-              onSaveTrip={handleSaveTrip}
-              onLogFuelPrice={handleLogFuelPrice}
             />
           )}
+
+          <main className="flex-1 flex flex-col w-full min-h-0 pb-10 md:pb-12">
+            <React.Suspense
+              fallback={
+                <div className="flex-1 flex items-center justify-center p-12 text-[#8e8e75] text-sm">
+                  <div className="w-6 h-6 border-2 border-[#8b9d77] border-t-transparent rounded-full animate-spin inline-block mr-2" />
+                  <span>{lang === 'ur' ? 'لوڈ ہو رہا ہے...' : 'Loading...'}</span>
+                </div>
+              }
+            >
+              {(!activeTab || activeTab === 'home') && (
+                <HomeView
+                  lang={lang}
+                  trips={trips}
+                  vehicles={vehicles}
+                  drivers={drivers}
+                  bilties={bilties}
+                  userRole={role}
+                  userEmail={userEmail}
+                  isBiltyAuthorized={isBiltyAuthorized}
+                  onNavigate={handleNavigate}
+                  onOpenMenu={() => {
+                    window.history.pushState({ modal: true }, '');
+                    setShowTopMenu(true);
+                  }}
+                  onOpenSignIn={handleSignIn}
+                  onOpenBiltyAccess={() => setShowBiltyAccessModal(true)}
+                  onSaveTrip={handleSaveTrip}
+                  onLogFuelPrice={handleLogFuelPrice}
+                />
+              )}
 
           {activeTab === 'calculator' && (
             <TripCostView
@@ -1007,6 +1007,8 @@ export default function App() {
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-[#4a4a35] text-white rounded-full text-xs font-bold shadow-xl border border-[#8b9d77] animate-bounce">
           {lang === 'ur' ? 'ایپ بند کرنے کے لئے دوبارہ بیک دبائیں' : 'Press back again within 2 seconds to exit app'}
         </div>
+      )}
+        </>
       )}
     </div>
   );

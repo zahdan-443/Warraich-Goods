@@ -36,7 +36,12 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
 
   // Single mount effect: strictly timed display that CANNOT be cancelled by parent re-renders
   useEffect(() => {
+    // Clean up initial HTML loader if still present
     try {
+      const initialLoader = document.getElementById('app-initial-loader');
+      if (initialLoader) {
+        initialLoader.remove();
+      }
       document.body.style.overflow = 'hidden';
       document.documentElement.style.overflow = 'hidden';
     } catch {}
@@ -70,6 +75,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
       className="fixed inset-0 w-screen h-screen z-[99999] bg-white flex flex-col items-center justify-center overflow-hidden cursor-pointer select-none"
       style={{
         opacity: fadeOut ? 0 : 1,
+        pointerEvents: fadeOut ? 'none' : 'auto',
         transition: 'opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
         touchAction: 'manipulation',
       }}

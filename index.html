@@ -96,11 +96,12 @@
         if (!('serviceWorker' in navigator)) return;
 
         // In native Android Capacitor or Cordova, local APK assets are served directly from device storage.
-        // Bypassing service workers on native localhost prevents network errors when device is offline.
+        // Bypassing service workers on native localhost and preview domains prevents network errors and stale chunk caching.
         var isCapacitor = window.Capacitor !== undefined ||
                           window.location.protocol === 'capacitor:' ||
                           window.location.hostname === 'localhost' ||
                           window.location.hostname === '127.0.0.1' ||
+                          window.location.hostname.endsWith('.run.app') ||
                           /;\s*wv|capacitor/i.test(navigator.userAgent);
 
         if (isCapacitor) {

@@ -204,7 +204,11 @@ export async function checkRateLimit(reporterUid: string): Promise<{ allowed: bo
   try {
     const reportsRef = collection(db, 'hazardReports');
     const userQuery = query(reportsRef, where('reporterUid', '==', reporterUid));
-    const querySnap = await getDocs(userQuery);
+    const firestorePromise = getDocs(userQuery);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 1500)
+    );
+    const querySnap = await Promise.race([firestorePromise, timeoutPromise]);
 
     let mostRecentMs = 0;
     querySnap.forEach((docSnap) => {

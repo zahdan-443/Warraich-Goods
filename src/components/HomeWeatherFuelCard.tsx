@@ -651,17 +651,6 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
                 <span>🛢️</span>
                 <span>{isUrdu ? 'ڈیزل (HSD)' : 'Diesel (HSD)'}</span>
               </span>
-              {onApplyRates && (
-                <button
-                  type="button"
-                  onClick={handleApplyFuelBenchmark}
-                  className="text-[9.5px] font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-0.5 cursor-pointer bg-emerald-100/70 hover:bg-emerald-200/80 px-1.5 py-0.5 rounded transition-colors active:scale-95 shrink-0"
-                  title={isUrdu ? 'ٹرپ کیلکولیٹر میں لگائیں' : 'Use in Trip'}
-                >
-                  <span>{isUrdu ? 'ٹرپ میں لگائیں' : 'Apply'}</span>
-                  <ArrowRight className="w-2.5 h-2.5" />
-                </button>
-              )}
             </div>
             
             <div className="flex items-baseline gap-1 mt-1">

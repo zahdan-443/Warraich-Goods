@@ -210,18 +210,9 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Right: Sign In / User Status & Notification Bell */}
+          {/* Right: User Status & Notification Bell */}
           <div className="flex items-center gap-2 shrink-0">
-            {!userEmail ? (
-              <button
-                onClick={onSignIn}
-                className="py-1.5 px-3 rounded-xl bg-[#1e3a68] hover:bg-[#162a4d] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
-                title={lang === 'ur' ? 'گوگل اکاؤنٹ لاگ ان' : 'Sign In with Google'}
-              >
-                <LogIn className="w-3.5 h-3.5 text-[#c59b27]" />
-                <span className="inline">{lang === 'ur' ? 'لاگ ان' : 'Sign In'}</span>
-              </button>
-            ) : (
+            {userEmail && (
               <button
                 onClick={handleOpenMenu}
                 className="py-1.5 px-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
