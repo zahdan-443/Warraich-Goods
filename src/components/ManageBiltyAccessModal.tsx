@@ -52,6 +52,7 @@ interface ManageBiltyAccessModalProps {
   onClose: () => void;
   lang: Language;
   currentUserUid?: string | null;
+  currentUserEmail?: string | null;
   onUpdated?: (config: { allowedUIDs: string[]; allowedEmails: string[] }) => void;
 }
 
@@ -62,8 +63,16 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
   onClose,
   lang,
   currentUserUid,
+  currentUserEmail,
   onUpdated
 }) => {
+  const isOwner = currentUserEmail?.toLowerCase().trim() === 'warraichgoods43@gmail.com';
+
+  // Strictly block and hide confidential bilty access and registered user list from non-owners
+  if (!isOpen || !isOwner) {
+    return null;
+  }
+
   const [activeTab, setActiveTab] = useState<PanelTab>('access');
 
   // Bilty Access State
@@ -106,6 +115,7 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
   }, [isOpen]);
 
   const loadInitialData = async () => {
+    if (!isOwner) return;
     // Load Access Config & Registered Users
     setLoadingUsers(true);
     try {

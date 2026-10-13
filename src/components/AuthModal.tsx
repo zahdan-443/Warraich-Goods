@@ -13,6 +13,7 @@ interface AuthModalProps {
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess, lang, fullScreen = false }) => {
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
   const [domainCopied, setDomainCopied] = useState(false);
@@ -30,9 +31,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   };
 
   const handleStartGoogle = async () => {
-    // TEMP DEBUG - remove after sign-in issue is fixed
-    console.log('Sign-in button clicked');
     setLoading(true);
+    setRedirecting(false);
     setError(null);
     setIsUnauthorizedDomain(false);
     try {
@@ -47,8 +47,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         }
         if (onClose) onClose();
       } else if (!user) {
-        // Redirect in progress or waiting
-        console.log('Redirecting to Google Sign-In...');
+        // Redirect initiated: keep loading active so user sees that navigation is underway
+        setRedirecting(true);
+        setLoading(true);
+        return;
       } else {
         setError(
           lang === 'ur'
@@ -70,8 +72,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       } else if (err?.code === 'auth/popup-blocked') {
         setError(
           lang === 'ur'
-            ? 'براؤزر نے گوگل پوپ اپ ونڈو بلاک کر دی۔ براہ کرم پوپ اپ کی اجازت دیں۔'
-            : 'Google Sign-In popup was blocked by your browser. Please allow popups.'
+            ? 'براؤزر نے گوگل پوپ اپ ونڈو بلاک کر دی۔ براہ کرم پوپ اپ کی اجازت دیں یا نیچے دیے گئے ڈائریکٹ بٹن پر کلک کریں۔'
+            : 'Google Sign-In popup was blocked by your browser. Please allow popups or click the direct redirect option below.'
         );
       } else if (err?.code === 'auth/popup-closed-by-user') {
         setError(
@@ -86,7 +88,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         );
       }
     } finally {
-      setLoading(false);
+      if (!redirecting) {
+        setLoading(false);
+      }
     }
   };
 
@@ -227,7 +231,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 />
               </svg>
               <span>
-                {loading
+                {redirecting
+                  ? (lang === 'ur' ? 'گوگل لاگ ان پیج پر منتقل ہو رہے ہیں...' : 'Redirecting to Google...')
+                  : loading
                   ? (lang === 'ur' ? 'گوگل سے منسلک ہو رہا ہے...' : 'Connecting Google...')
                   : (lang === 'ur' ? 'گوگل اکاؤنٹ کے ذریعے لاگ ان کریں' : 'Sign In with Google Account')}
               </span>
@@ -239,6 +245,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 type="button"
                 onClick={async () => {
                   setLoading(true);
+                  setRedirecting(true);
                   setError(null);
                   try {
                     await loginWithGoogleRedirect();
@@ -248,9 +255,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                         (e?.message ? `(${e.message})` : '')
                     );
                     setLoading(false);
+                    setRedirecting(false);
                   }
                 }}
-                disabled={loading}
+                disabled={loading || redirecting}
                 className="text-xs text-[#1e3a68] hover:text-[#162a4d] underline font-bold cursor-pointer transition-colors py-1 inline-block"
               >
                 {lang === 'ur'

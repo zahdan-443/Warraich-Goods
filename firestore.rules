@@ -49,10 +49,9 @@ service cloud.firestore {
       }
     }
 
-    // Access configuration for Bilty Generator authorization (Anyone can read public whitelist to check permissions; ONLY Fleet Owner can write)
+    // Access configuration for Bilty Generator authorization (Confidential: ONLY Fleet Owner warraichgoods43@gmail.com can read or write)
     match /access/biltyAccess {
-      allow read: if true;
-      allow write: if isOwner();
+      allow read, write: if isOwner();
     }
 
     // Public bilty verification copy (Read allowed for anyone for QR code validation; write restricted to bilty-authorized or safe public verification doc)

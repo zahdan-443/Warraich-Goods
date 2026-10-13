@@ -479,27 +479,16 @@ export default function App() {
   // Firebase auth & bilty access real-time sync
   useEffect(() => {
     // Initial fetch of bilty access configuration
-    getBiltyAccessConfig()
-      .then((config) => {
-        setBiltyAllowedUIDs(config.allowedUIDs);
-        setBiltyAllowedEmails(config.allowedEmails);
-      })
-      .catch((err) => {
-        console.warn('Initial offline bilty access config loaded from cache:', err);
-      });
-
-    // Real-time listener for Bilty access changes in Firestore
-    const unsubBilty = subscribeToBiltyAccess((config) => {
-      setBiltyAllowedUIDs(config.allowedUIDs);
-      setBiltyAllowedEmails(config.allowedEmails);
-    });
-
     // Check for Google Sign-In redirect completion on page load
     checkRedirectAuthResult().then((user) => {
       if (user && user.email) {
         handleAuthSuccess(user.email);
       }
+    }).catch((err) => {
+      console.warn("Redirect auth check skipped:", err);
     });
+
+    let unsubBilty: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -512,6 +501,19 @@ export default function App() {
         const activeRole: UserRole = isOwnerEmail ? 'owner' : 'driver';
         setRole(activeRole);
         saveStoredRole(activeRole);
+
+        // Strictly Fleet Owner warraichgoods43@gmail.com can fetch and subscribe to confidential bilty access config
+        if (isOwnerEmail && !unsubBilty) {
+          unsubBilty = subscribeToBiltyAccess((config) => {
+            setBiltyAllowedUIDs(config.allowedUIDs);
+            setBiltyAllowedEmails(config.allowedEmails);
+          });
+        } else if (!isOwnerEmail && unsubBilty) {
+          unsubBilty();
+          unsubBilty = null;
+          setBiltyAllowedUIDs([]);
+          setBiltyAllowedEmails([]);
+        }
 
         // Sync user profile in Firestore
         saveUserProfileInFirestore({
@@ -533,6 +535,12 @@ export default function App() {
         setFuelLogs(getStoredFuelLog());
         setBilties(getStoredBilties());
       } else {
+        if (unsubBilty) {
+          unsubBilty();
+          unsubBilty = null;
+        }
+        setBiltyAllowedUIDs([]);
+        setBiltyAllowedEmails([]);
         setUserEmail(null);
         setCurrentUid(null);
         localStorage.removeItem('ah-gmail-user');
@@ -972,9 +980,10 @@ export default function App() {
         />
 
         <ManageBiltyAccessModal
-          isOpen={showBiltyAccessModal}
+          isOpen={showBiltyAccessModal && (userEmail?.toLowerCase().trim() === 'warraichgoods43@gmail.com')}
           onClose={() => setShowBiltyAccessModal(false)}
           currentUserUid={currentUid}
+          currentUserEmail={userEmail}
           onUpdated={({ allowedUIDs, allowedEmails }) => {
             setBiltyAllowedUIDs(allowedUIDs);
             setBiltyAllowedEmails(allowedEmails);

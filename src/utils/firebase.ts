@@ -24,9 +24,10 @@ try {
 import { ACTIVE_FIREBASE_CONFIG } from './firebaseConfig';
 import { doc, getDocFromServer } from 'firebase/firestore';
 
-const isRunApp = typeof window !== 'undefined' && window.location.hostname.includes('.run.app');
+const isBrowser = typeof window !== 'undefined';
+const isGithubPages = isBrowser && window.location.hostname.includes('github.io');
 
-const firebaseConfig = isRunApp
+const firebaseConfig = isGithubPages
   ? {
       apiKey: ACTIVE_FIREBASE_CONFIG.apiKey,
       authDomain: ACTIVE_FIREBASE_CONFIG.authDomain,
@@ -35,7 +36,7 @@ const firebaseConfig = isRunApp
       messagingSenderId: ACTIVE_FIREBASE_CONFIG.messagingSenderId,
       appId: ACTIVE_FIREBASE_CONFIG.appId,
       measurementId: ACTIVE_FIREBASE_CONFIG.measurementId || '',
-      firestoreDatabaseId: ACTIVE_FIREBASE_CONFIG.firestoreDatabaseId || '(default)'
+      firestoreDatabaseId: '(default)'
     }
   : {
       apiKey: import.meta.env.VITE_FIREBASE_API_KEY || ACTIVE_FIREBASE_CONFIG.apiKey,
@@ -55,11 +56,14 @@ export const auth = getAuth(app);
 // Initialize Firestore with memory cache to prevent IndexedDB "database is closing/hidden" issues in iframe/preview
 export const db = (() => {
   try {
+    const customDbId = (!firebaseConfig.firestoreDatabaseId || firebaseConfig.firestoreDatabaseId === '(default)')
+      ? undefined
+      : firebaseConfig.firestoreDatabaseId;
     return initializeFirestore(app, {
       localCache: memoryLocalCache()
-    }, firebaseConfig.firestoreDatabaseId);
+    }, customDbId);
   } catch {
-    return getFirestore(app, firebaseConfig.firestoreDatabaseId);
+    return getFirestore(app);
   }
 })();
 
@@ -120,20 +124,24 @@ export const loginWithGoogle = async (): Promise<User | null> => {
   }
 
   // Web Browser Flow:
+  const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
-    console.error("Google Sign-In Error:", error);
+    console.warn("Google Sign-In popup notice:", error);
 
-    // If outside iframe and popup was explicitly blocked by browser, try redirect fallback
-    const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+    // If outside iframe and popup was blocked or closed or on mobile, fallback to signInWithRedirect
     if (
       !isIframe &&
       (error?.code === 'auth/popup-blocked' ||
-       error?.code === 'auth/operation-not-supported-in-this-environment')
+       error?.code === 'auth/popup-closed-by-user' ||
+       error?.code === 'auth/cancelled-popup-request' ||
+       error?.code === 'auth/operation-not-supported-in-this-environment' ||
+       isMobileBrowser())
     ) {
-      console.warn("Popup blocked outside iframe. Falling back to signInWithRedirect...");
+      console.warn("Popup blocked or mobile environment. Initiating signInWithRedirect...");
       await signInWithRedirect(auth, googleProvider);
       return null;
     }
