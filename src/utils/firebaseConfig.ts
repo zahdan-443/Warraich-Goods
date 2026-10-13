@@ -59,8 +59,9 @@ export const resolveActiveFirebaseConfig = (): FirebaseConfigType => {
   const isBrowser = typeof window !== 'undefined';
   const hostname = isBrowser ? window.location.hostname : '';
   const isGithubPages = hostname.includes('github.io');
+  const isLiveDomain = hostname.includes('warraich') || hostname.includes('firebaseapp.com') || hostname.includes('web.app');
 
-  if (isGithubPages) {
+  if (isGithubPages || isLiveDomain) {
     return WARRAICH_GOODS_CONFIG;
   }
 

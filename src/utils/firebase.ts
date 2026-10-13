@@ -124,28 +124,13 @@ export const loginWithGoogle = async (): Promise<User | null> => {
   }
 
   // Web Browser Flow:
-  const isIframe = typeof window !== 'undefined' && window.self !== window.top;
-
+  // signInWithPopup leverages https://warraich-goods.firebaseapp.com/__/auth/handler
+  // which is pre-authorized in Google OAuth without requiring custom domain redirect URIs.
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
     console.warn("Google Sign-In popup notice:", error);
-
-    // If outside iframe and popup was blocked or closed or on mobile, fallback to signInWithRedirect
-    if (
-      !isIframe &&
-      (error?.code === 'auth/popup-blocked' ||
-       error?.code === 'auth/popup-closed-by-user' ||
-       error?.code === 'auth/cancelled-popup-request' ||
-       error?.code === 'auth/operation-not-supported-in-this-environment' ||
-       isMobileBrowser())
-    ) {
-      console.warn("Popup blocked or mobile environment. Initiating signInWithRedirect...");
-      await signInWithRedirect(auth, googleProvider);
-      return null;
-    }
-    // Propagate error to let UI provide immediate feedback
     throw error;
   }
 };

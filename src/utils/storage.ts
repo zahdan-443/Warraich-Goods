@@ -788,8 +788,8 @@ export async function getAllRegisteredUsers(): Promise<UserProfile[]> {
     }
   });
 
-  // Populate from Firestore
-  if (typeof navigator === 'undefined' || navigator.onLine) {
+  // Populate from Firestore: Strictly confidential - only Fleet Owner warraichgoods43@gmail.com
+  if (isCurrentOwner() && (typeof navigator === 'undefined' || navigator.onLine)) {
     try {
       const usersRef = collection(db, 'users');
       const snap = await Promise.race([
@@ -848,6 +848,16 @@ export interface BiltyAccessConfigData {
   allowedEmails: string[];
 }
 
+// Helper to verify if the currently authenticated Firebase user is the App Owner
+const isCurrentOwner = (): boolean => {
+  try {
+    const email = auth.currentUser?.email?.toLowerCase().trim();
+    return email === 'warraichgoods43@gmail.com';
+  } catch {
+    return false;
+  }
+};
+
 export function normalizeBiltyConfig(data: any): BiltyAccessConfigData {
   const allowedUIDs: string[] = Array.isArray(data?.allowedUIDs) 
     ? data.allowedUIDs.filter((id: unknown): id is string => typeof id === 'string' && id.trim().length > 0)
@@ -859,7 +869,8 @@ export function normalizeBiltyConfig(data: any): BiltyAccessConfigData {
 }
 
 export async function getBiltyAccessConfig(): Promise<BiltyAccessConfigData> {
-  if (typeof navigator === 'undefined' || navigator.onLine) {
+  // Confidential: Remote Firestore access/biltyAccess is strictly restricted to warraichgoods43@gmail.com
+  if (isCurrentOwner() && (typeof navigator === 'undefined' || navigator.onLine)) {
     try {
       const accessRef = doc(db, 'access', 'biltyAccess');
       const snap = await withTimeout(getDoc(accessRef), 3000);
@@ -871,9 +882,11 @@ export async function getBiltyAccessConfig(): Promise<BiltyAccessConfigData> {
         safeStorage.setItem('wg_global_bilty_allowed_emails', JSON.stringify(config.allowedEmails));
         safeStorage.setItem('ah-bilty-allowed-emails', JSON.stringify(config.allowedEmails));
         safeStorage.setItem('ah-bilty-allowed-uids', JSON.stringify(config.allowedUIDs));
+        return config;
       }
     } catch (err: any) {
-      if (err?.code !== 'permission-denied') {
+      const msg = err?.message || '';
+      if (err?.code !== 'permission-denied' && !msg.includes('insufficient permissions')) {
         console.warn("Could not fetch remote bilty access config, using local cache:", err);
       }
     }
@@ -895,10 +908,15 @@ export async function getBiltyAccessConfig(): Promise<BiltyAccessConfigData> {
 
 /**
  * Real-time listener for Bilty access changes in Firestore
+ * Strictly active ONLY for the App Owner (warraichgoods43@gmail.com)
  */
 export function subscribeToBiltyAccess(
   onUpdate: (config: BiltyAccessConfigData) => void
 ): Unsubscribe {
+  // Non-owners must never subscribe to confidential bilty access rules
+  if (!isCurrentOwner()) {
+    return () => {};
+  }
   try {
     const accessRef = doc(db, 'access', 'biltyAccess');
     return onSnapshot(
@@ -916,19 +934,23 @@ export function subscribeToBiltyAccess(
         }
       },
       (err) => {
-        // Suppress warning if offline or permissions pending; gracefully rely on local cache
-        if (err?.code !== 'permission-denied') {
+        const msg = err?.message || '';
+        // Suppress permission-denied warnings gracefully
+        if (err?.code !== 'permission-denied' && !msg.includes('insufficient permissions')) {
           console.warn('Bilty access real-time subscription error:', err);
         }
       }
     );
   } catch (err) {
-    console.warn('Failed to set up bilty access snapshot listener:', err);
     return () => {};
   }
 }
 
 export async function updateBiltyAccessInFirestore(allowedUIDs: string[], allowedEmails: string[] = []) {
+  if (!isCurrentOwner()) {
+    console.warn("Unauthorized attempt to update bilty access configuration.");
+    return;
+  }
   const cleanUIDs = Array.from(new Set(allowedUIDs.filter(Boolean)));
   const cleanEmails = Array.from(new Set(allowedEmails.filter(Boolean).map(e => e.toLowerCase().trim())));
   

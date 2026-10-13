@@ -47,7 +47,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         }
         if (onClose) onClose();
       } else if (!user) {
-        // Redirect initiated: keep loading active so user sees that navigation is underway
+        // If a redirect was initiated by native auth, keep loading active
         setRedirecting(true);
         setLoading(true);
         return;
@@ -59,7 +59,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         );
       }
     } catch (err: any) {
-      console.error('Google Sign-In failed:', err);
+      console.error('Google Sign-In notice:', err);
       const isUnauth = err?.code === 'auth/unauthorized-domain' || (err?.message && err.message.includes('auth/unauthorized-domain'));
       
       if (isUnauth) {
@@ -72,14 +72,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       } else if (err?.code === 'auth/popup-blocked') {
         setError(
           lang === 'ur'
-            ? 'براؤزر نے گوگل پوپ اپ ونڈو بلاک کر دی۔ براہ کرم پوپ اپ کی اجازت دیں یا نیچے دیے گئے ڈائریکٹ بٹن پر کلک کریں۔'
-            : 'Google Sign-In popup was blocked by your browser. Please allow popups or click the direct redirect option below.'
+            ? 'براؤزر نے لاگ ان پوپ اپ ونڈو روک دی۔ براہ کرم ایڈریس بار میں "Always allow pop-ups" منتخب کریں اور نیچے دوبارہ کلک کریں۔'
+            : 'Google Sign-In popup was blocked by your browser. Please allow popups in your browser address bar and click Sign In again.'
         );
-      } else if (err?.code === 'auth/popup-closed-by-user') {
+      } else if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
         setError(
           lang === 'ur'
-            ? 'گوگل سائن ان ونڈو لاگ ان سے پہلے بند کر دی گئی۔'
-            : 'Google Sign-In popup was closed before completion.'
+            ? 'گوگل سائن ان ونڈو بند کر دی گئی۔ لاگ ان کرنے کے لیے دوبارہ بٹن دبائیں۔'
+            : 'Google Sign-In window was closed before completion. Please try again.'
         );
       } else {
         setError(
@@ -239,36 +239,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               </span>
             </button>
 
-            {/* Direct Redirect Option (Guaranteed fallback for mobile and popup-blocked browsers) */}
-            <div className="text-center pt-2 pb-1 border-t border-[#ecece0]/80">
+            {/* Popup Unblock / Retry Helper */}
+            <div className="text-center pt-2 pb-1 border-t border-[#ecece0]/80 space-y-1">
               <button
                 type="button"
-                onClick={async () => {
-                  setLoading(true);
-                  setRedirecting(true);
-                  setError(null);
-                  try {
-                    await loginWithGoogleRedirect();
-                  } catch (e: any) {
-                    setError(
-                      (lang === 'ur' ? 'لاگ ان مکمل نہیں ہو سکا۔ ' : 'Redirect failed: ') +
-                        (e?.message ? `(${e.message})` : '')
-                    );
-                    setLoading(false);
-                    setRedirecting(false);
-                  }
-                }}
+                onClick={handleStartGoogle}
                 disabled={loading || redirecting}
                 className="text-xs text-[#1e3a68] hover:text-[#162a4d] underline font-bold cursor-pointer transition-colors py-1 inline-block"
               >
                 {lang === 'ur'
-                  ? '⚡ اگر پوپ اپ نہ کھلے تو سیدھا گوگل لاگ ان پیج پر جائیں'
-                  : '⚡ Open Direct Google Login (Redirect Mode)'}
+                  ? '⚡ دوبارہ سائن ان ونڈو کھولیں (Retry Popup)'
+                  : '⚡ Retry Google Sign-In Window'}
               </button>
-              <p className="text-[10px] text-[#8e8e75] mt-0.5">
+              <p className="text-[10px] text-[#8e8e75]">
                 {lang === 'ur'
-                  ? 'موبائل اور تمام براؤزرز پر 100٪ یقینی لاگ ان'
-                  : '100% reliable on mobile and strict popup blockers'}
+                  ? 'اگر پوپ اپ ونڈو خودکار طور پر نہ کھلے تو براؤزر سیٹنگز میں پوپ اپ کی اجازت دیں'
+                  : 'If sign-in window does not open, ensure pop-ups are allowed in browser settings'}
               </p>
             </div>
           </div>

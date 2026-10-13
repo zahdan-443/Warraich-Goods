@@ -212,7 +212,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right: User Status & Notification Bell */}
           <div className="flex items-center gap-2 shrink-0">
-            {userEmail && (
+            {userEmail ? (
               <button
                 onClick={handleOpenMenu}
                 className="py-1.5 px-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
@@ -220,6 +220,15 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="max-w-[80px] sm:max-w-[120px] truncate">{isOwnerUser ? (lang === 'ur' ? 'آنر' : 'Owner') : (lang === 'ur' ? 'ڈرائیور' : 'Driver')}</span>
+              </button>
+            ) : (
+              <button
+                onClick={onSignIn}
+                className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-[#1e3a68] to-[#162a4d] hover:from-[#162a4d] hover:to-[#0f1d35] text-white text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
+                title={lang === 'ur' ? 'گوگل اکاؤنٹ سے لاگ ان کریں' : 'Sign in with Google'}
+              >
+                <LogIn className="w-3.5 h-3.5 text-[#c59b27]" />
+                <span>{lang === 'ur' ? 'لاگ ان' : 'Sign In'}</span>
               </button>
             )}
 

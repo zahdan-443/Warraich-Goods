@@ -118,19 +118,12 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(false);
   const [showTopMenu, setShowTopMenu] = useState(false);
 
-  // Authorization check for Bilty Generator — accepts Owner, Master Accounts, or any authorized Gmail/UID
+  // Authorization check for Bilty Generator — Strictly restricted to App Owner warraichgoods43@gmail.com
   const cleanEmail = userEmail ? userEmail.toLowerCase().trim() : null;
-  const isMaster = Boolean(
-    cleanEmail && MASTER_EMAILS.some(e => e.toLowerCase().trim() === cleanEmail)
-  );
   const isOwner = Boolean(
-    cleanEmail && (cleanEmail === OWNER_EMAIL.toLowerCase().trim() || isMaster)
+    cleanEmail && cleanEmail === OWNER_EMAIL.toLowerCase().trim()
   );
-  const isAllowedUID = Boolean(currentUid && biltyAllowedUIDs.includes(currentUid));
-  const isAllowedEmail = Boolean(
-    cleanEmail && (isMaster || biltyAllowedEmails.some(e => e.toLowerCase().trim() === cleanEmail))
-  );
-  const isBiltyAuthorized = Boolean(isMaster || isOwner || isAllowedUID || isAllowedEmail);
+  const isBiltyAuthorized = isOwner;
 
   // Stored state
   const [trips, setTrips] = useState<Trip[]>(() => getStoredTrips());
@@ -389,13 +382,18 @@ export default function App() {
       const uid = currentUid || `user_${Date.now()}`;
       setCurrentUid(uid);
 
-      // Refresh bilty access immediately
-      try {
-        const config = await getBiltyAccessConfig();
-        setBiltyAllowedUIDs(config.allowedUIDs);
-        setBiltyAllowedEmails(config.allowedEmails);
-      } catch (accessErr) {
-        console.warn("Could not load bilty access config on login:", accessErr);
+      // Refresh bilty access immediately (Confidential: Strictly App Owner)
+      if (isOwnerEmail) {
+        try {
+          const config = await getBiltyAccessConfig();
+          setBiltyAllowedUIDs(config.allowedUIDs);
+          setBiltyAllowedEmails(config.allowedEmails);
+        } catch {
+          // Gracefully rely on local state
+        }
+      } else {
+        setBiltyAllowedUIDs([]);
+        setBiltyAllowedEmails([]);
       }
 
       try {
