@@ -118,8 +118,16 @@ export const loginWithGoogle = async (): Promise<User | null> => {
       }
       return auth.currentUser;
     } catch (error: any) {
-      console.error("Native Google Sign-In Error:", error);
-      throw error;
+      console.warn("Native Google Sign-In notice:", error);
+      // Fallback to web signInWithPopup if native throws plugin not implemented or configuration error
+      try {
+        console.warn("Falling back to web popup auth in WebView...");
+        const result = await signInWithPopup(auth, googleProvider);
+        return result.user;
+      } catch (fallbackError: any) {
+        console.error("Web auth fallback notice:", fallbackError);
+        throw error;
+      }
     }
   }
 
