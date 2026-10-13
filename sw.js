@@ -46,11 +46,11 @@ const CORE_STATIC_ASSETS = [
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
     './assets/index-CAsbQbs6.css',
-  './assets/index-T8Ls10il.js',
-  './assets/vendor-firebase-PkEH6Q46.js',
-  './assets/vendor-pdf-cnnAoOax.js',
+  './assets/index-Ci-xktIW.js',
+  './assets/vendor-firebase-CM7zkR46.js',
+  './assets/vendor-pdf-CVSEOcNX.js',
   './assets/vendor-react-BYujvrvJ.js',
-  './assets/web-C0FHtJl7.js'
+  './assets/web-UTPiufR2.js'
 ];
 
 // 1. Install Event: Precache All Shell Assets + Parse HTML for Vite Bundles
@@ -141,7 +141,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // Ignore browser extensions and localhost/dev internal endpoints
+  // Ignore browser extensions and dev internal endpoints
   if (url.protocol.startsWith('chrome-extension')) return;
   if (
     url.pathname.startsWith('/@') ||
@@ -149,6 +149,20 @@ self.addEventListener('fetch', (event) => {
     url.pathname.includes('/node_modules/')
   ) {
     return;
+  }
+
+  // Cross-origin network pass-through:
+  // External APIs (Google OAuth, Firebase APIs, fonts, telemetry) must ALWAYS bypass the Service Worker
+  // and go directly to network, EXCEPT for third-party map tile servers for offline map support.
+  if (url.origin !== self.location.origin) {
+    const isMapTile =
+      url.hostname.includes('tile.openstreetmap.org') ||
+      url.hostname.includes('basemaps.cartocdn.com') ||
+      (url.pathname.endsWith('.png') && url.pathname.includes('/tiles/'));
+
+    if (!isMapTile) {
+      return; // Direct network pass-through for Firebase, Google OAuth, and external APIs
+    }
   }
 
   // Handle OpenStreetMap / CartoDB / Tile Server requests
