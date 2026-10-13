@@ -4,6 +4,9 @@
  * Adheres strictly to Chromium PWA Notification standards to prevent spam filtering.
  */
 
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
+
 export interface SystemNotificationOptions {
   body?: string;
   icon?: string;
@@ -18,15 +21,30 @@ export interface SystemNotificationOptions {
 let lastNotificationTime = 0;
 
 export function isNotificationSupported(): boolean {
+  if (Capacitor.isNativePlatform()) {
+    return true;
+  }
   return typeof window !== 'undefined' && 'Notification' in window;
 }
 
 export function getNotificationPermission(): NotificationPermission {
+  if (Capacitor.isNativePlatform()) {
+    return 'granted';
+  }
   if (!isNotificationSupported()) return 'denied';
   return Notification.permission;
 }
 
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const res = await LocalNotifications.requestPermissions();
+      return res.display === 'granted' ? 'granted' : 'denied';
+    } catch {
+      return 'denied';
+    }
+  }
+
   if (!isNotificationSupported()) {
     console.warn('Notifications are not supported in this browser environment.');
     return 'denied';
@@ -50,18 +68,39 @@ export async function sendSystemNotification(
   body?: string,
   options: SystemNotificationOptions = {}
 ): Promise<boolean> {
+  // Throttle notifications (at least 1.5 seconds between system toasts) to prevent spam
+  const now = Date.now();
+  if (now - lastNotificationTime < 1500) {
+    return false;
+  }
+  lastNotificationTime = now;
+
+  // On Native Android Platform (Capacitor APK), dispatch directly via LocalNotifications
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const notifId = (Date.now() % 1000000) + Math.floor(Math.random() * 1000);
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: notifId,
+            title,
+            body: body || '',
+            smallIcon: 'ic_launcher',
+            sound: 'default'
+          }
+        ]
+      });
+      return true;
+    } catch (nativeErr) {
+      console.warn('Native LocalNotifications delivery failed:', nativeErr);
+    }
+  }
+
   if (!isNotificationSupported()) return false;
 
   if (Notification.permission !== 'granted') {
     return false;
   }
-
-  // Throttle notifications (at least 2 seconds between system toasts) to prevent Chrome spam flags
-  const now = Date.now();
-  if (now - lastNotificationTime < 2000) {
-    return false;
-  }
-  lastNotificationTime = now;
 
   // Use clean static icon path
   const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';

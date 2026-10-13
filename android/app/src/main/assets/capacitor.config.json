@@ -12,15 +12,11 @@
 		"webContentsDebuggingEnabled": false
 	},
 	"plugins": {
-		"SplashScreen": {
-			"launchShowDuration": 2200,
-			"launchAutoHide": true,
-			"backgroundColor": "#FFFFFF",
-			"androidSplashResourceName": "splash",
-			"androidScaleType": "CENTER_CROP",
-			"showSpinner": false,
-			"splashFullScreen": true,
-			"splashImmersive": true
+		"FirebaseAuthentication": {
+			"skipNativeAuth": false,
+			"providers": [
+				"google.com"
+			]
 		}
 	}
 }

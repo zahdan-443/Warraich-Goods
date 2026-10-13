@@ -27,6 +27,8 @@ import {
   processOfflineQueue
 } from './utils/storage';
 import { auth, onAuthStateChanged, logoutUser, checkRedirectAuthResult } from './utils/firebase';
+import { App as CapApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { Header } from './components/Header';
 import { HomeView } from './components/views/HomeView';
 import { SplashScreen } from './components/SplashScreen';
@@ -241,6 +243,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    // 1. Web browser back button / history management
     const handlePopState = (e: PopStateEvent) => {
       if (showTopMenu) {
         setShowTopMenu(false);
@@ -252,10 +255,8 @@ export default function App() {
         window.history.pushState({ tab: activeTab }, '');
         return;
       }
-
-      const customEvent = new CustomEvent('app-back-button', { cancelable: true });
-      const canceled = !window.dispatchEvent(customEvent);
-      if (canceled) {
+      if (showBiltyAccessModal) {
+        setShowBiltyAccessModal(false);
         window.history.pushState({ tab: activeTab }, '');
         return;
       }
@@ -274,14 +275,63 @@ export default function App() {
           lastBackPressTime.current = now;
           window.history.pushState({ tab: 'home' }, '');
           setExitToast(true);
-          setTimeout(() => setExitToast(false), 2500);
+          setTimeout(() => setExitToast(false), 2000);
         }
       }
     };
 
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [activeTab, showTopMenu, showAuthModal]);
+
+    // 2. Android Device Hardware / Gesture Back Button via Capacitor
+    let removeCapListener: (() => void) | null = null;
+    if (Capacitor.isNativePlatform()) {
+      CapApp.addListener('backButton', () => {
+        // Modal priority 1: Close open modals first
+        if (showTopMenu) {
+          setShowTopMenu(false);
+          return;
+        }
+        if (showAuthModal) {
+          setShowAuthModal(false);
+          return;
+        }
+        if (showBiltyAccessModal) {
+          setShowBiltyAccessModal(false);
+          return;
+        }
+
+        // Navigation priority 2: If on any inner tool, navigate to dashboard ('home')
+        if (activeTab !== 'home') {
+          if ('vibrate' in navigator) {
+            try { navigator.vibrate(10); } catch {}
+          }
+          handleNavigate('home');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+
+        // Dashboard priority 3: On dashboard, double click back within 2 seconds to exit app
+        const now = Date.now();
+        if (now - lastBackPressTime.current < 2000) {
+          CapApp.exitApp();
+        } else {
+          lastBackPressTime.current = now;
+          setExitToast(true);
+          if ('vibrate' in navigator) {
+            try { navigator.vibrate(25); } catch {}
+          }
+          setTimeout(() => setExitToast(false), 2000);
+        }
+      }).then((handle) => {
+        removeCapListener = () => handle.remove();
+      }).catch(() => {});
+    }
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      if (removeCapListener) removeCapListener();
+    };
+  }, [activeTab, showTopMenu, showAuthModal, showBiltyAccessModal]);
 
   const handleToggleLang = () => {
     const nextLang: Language = lang === 'en' ? 'ur' : 'en';

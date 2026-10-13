@@ -37,14 +37,6 @@ if (typeof window !== 'undefined') {
     console.warn('Driver Dost caught global window error:', event.error || event.message);
   });
 
-  const stalePreloader = document.getElementById('app-preloader');
-  if (stalePreloader) {
-    stalePreloader.remove();
-  }
-  const initialLoader = document.getElementById('app-initial-loader');
-  if (initialLoader) {
-    initialLoader.remove();
-  }
 }
 
 createRoot(document.getElementById('root')!).render(
