@@ -14,6 +14,14 @@ const config: CapacitorConfig = {
     webContentsDebuggingEnabled: false
   },
   plugins: {
+    SplashScreen: {
+      launchShowDuration: 0,
+      launchAutoHide: true,
+      backgroundColor: '#ffffff'
+    },
+    LocalNotifications: {
+      sound: 'default'
+    },
     FirebaseAuthentication: {
       skipNativeAuth: false,
       providers: ['google.com']

@@ -139,7 +139,7 @@ export async function dispatchDailyDigestNotification(
     return { success: false, reason: 'unsupported' };
   }
 
-  let perm = getNotificationPermission();
+  let perm = await getNotificationPermission();
   if (perm !== 'granted') {
     if (force) {
       perm = await requestNotificationPermission();

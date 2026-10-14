@@ -1,7 +1,7 @@
 /**
  * Web & Mobile Push Notification Utility for Warraich Goods Transport Co.
- * Handles Native Browser & Mobile Status Bar Notifications via Service Worker & Notifications API
- * Adheres strictly to Chromium PWA Notification standards to prevent spam filtering.
+ * Handles Native Android Status Bar Notifications via Capacitor LocalNotifications &
+ * Web PWA Status Bar Notifications via Service Worker & Notifications API.
  */
 
 import { Capacitor } from '@capacitor/core';
@@ -19,6 +19,33 @@ export interface SystemNotificationOptions {
 }
 
 let lastNotificationTime = 0;
+let channelCreated = false;
+
+export const NOTIFICATION_CHANNEL_ID = 'driver_dost_channel';
+
+/**
+ * Ensures the Android Notification Channel exists with High Importance.
+ * Android 8.0+ (API 26+) REQUIRES a notification channel, otherwise notifications are silently ignored.
+ */
+export async function ensureNotificationChannel(): Promise<void> {
+  if (!Capacitor.isNativePlatform() || channelCreated) return;
+  try {
+    await LocalNotifications.createChannel({
+      id: NOTIFICATION_CHANNEL_ID,
+      name: 'Driver Dost Transport Alerts',
+      description: 'Trip cost, fuel logs, vehicle accounts, document expiry and transport alerts',
+      importance: 5, // High importance (heads-up banner and sound)
+      visibility: 1, // Public on lock screen
+      vibration: true,
+      sound: 'default',
+      lights: true,
+      lightColor: '#162A4D'
+    });
+    channelCreated = true;
+  } catch (err) {
+    console.warn('LocalNotifications channel setup note:', err);
+  }
+}
 
 export function isNotificationSupported(): boolean {
   if (Capacitor.isNativePlatform()) {
@@ -27,20 +54,34 @@ export function isNotificationSupported(): boolean {
   return typeof window !== 'undefined' && 'Notification' in window;
 }
 
-export function getNotificationPermission(): NotificationPermission {
+/**
+ * Checks current notification permission without triggering a prompt.
+ */
+export async function getNotificationPermission(): Promise<NotificationPermission> {
   if (Capacitor.isNativePlatform()) {
-    return 'granted';
+    try {
+      const res = await LocalNotifications.checkPermissions();
+      return res.display === 'granted' ? 'granted' : res.display === 'denied' ? 'denied' : 'default';
+    } catch {
+      return 'default';
+    }
   }
   if (!isNotificationSupported()) return 'denied';
   return Notification.permission;
 }
 
+/**
+ * Explicitly requests notification permissions from the user.
+ * On Android 13+ (API 33+), triggers the OS runtime dialog.
+ */
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
   if (Capacitor.isNativePlatform()) {
     try {
+      await ensureNotificationChannel();
       const res = await LocalNotifications.requestPermissions();
       return res.display === 'granted' ? 'granted' : 'denied';
-    } catch {
+    } catch (err) {
+      console.warn('Native requestPermissions failed:', err);
       return 'denied';
     }
   }
@@ -61,16 +102,15 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 
 /**
  * Dispatches a native notification to the device's system status bar and notification panel.
- * Rate-limited and grouped to comply with Android Chrome Anti-Spam heuristics.
  */
 export async function sendSystemNotification(
   title: string,
   body?: string,
   options: SystemNotificationOptions = {}
 ): Promise<boolean> {
-  // Throttle notifications (at least 1.5 seconds between system toasts) to prevent spam
+  // Gentle throttle (at least 500ms between system toasts) to prevent flood
   const now = Date.now();
-  if (now - lastNotificationTime < 1500) {
+  if (now - lastNotificationTime < 500) {
     return false;
   }
   lastNotificationTime = now;
@@ -78,14 +118,25 @@ export async function sendSystemNotification(
   // On Native Android Platform (Capacitor APK), dispatch directly via LocalNotifications
   if (Capacitor.isNativePlatform()) {
     try {
-      const notifId = (Date.now() % 1000000) + Math.floor(Math.random() * 1000);
+      await ensureNotificationChannel();
+
+      // Check permissions, request if needed
+      const currentPerm = await LocalNotifications.checkPermissions();
+      if (currentPerm.display !== 'granted') {
+        const req = await LocalNotifications.requestPermissions();
+        if (req.display !== 'granted') {
+          return false;
+        }
+      }
+
+      const notifId = Math.floor(Math.random() * 1000000) + 1;
       await LocalNotifications.schedule({
         notifications: [
           {
             id: notifId,
             title,
             body: body || '',
-            smallIcon: 'ic_launcher',
+            channelId: NOTIFICATION_CHANNEL_ID,
             sound: 'default'
           }
         ]
@@ -111,7 +162,7 @@ export async function sendSystemNotification(
     body: body || '',
     icon: options.icon || defaultIcon,
     badge: options.badge || defaultBadge,
-    tag: options.tag || 'warraich-goods-update',
+    tag: options.tag || 'driver-dost-update',
     renotify: options.renotify ?? false,
     vibrate: options.vibrate || [100, 50, 100],
     data: options.data || { url: './' },
@@ -145,4 +196,3 @@ export async function sendSystemNotification(
     }
   }
 }
-

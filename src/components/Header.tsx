@@ -26,7 +26,7 @@ interface HeaderProps {
   lang: Language;
   onToggleLang: () => void;
   userEmail: string | null;
-  onSignIn: () => void;
+  onSignIn?: () => void;
   onSignOut: () => void;
   role: UserRole;
   onSelectRole: (r: UserRole) => void;
@@ -77,7 +77,9 @@ export const Header: React.FC<HeaderProps> = ({
 
   useEffect(() => {
     if (isNotificationSupported()) {
-      setNotifPerm(getNotificationPermission());
+      getNotificationPermission().then((perm) => {
+        setNotifPerm(perm);
+      }).catch(() => {});
     }
   }, [showNotifs]);
 
@@ -108,6 +110,10 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleSendTestNotification = async () => {
     setTestSent(true);
+    await sendSystemNotification(
+      lang === 'ur' ? 'ڈرائیور دوست ٹیسٹ الرٹ 🚛' : 'Driver Dost Test Alert 🚛',
+      lang === 'ur' ? 'سسٹم الرٹ اور نوٹیفیکیشن اسٹیٹس بار پر کامیابی سے موصول ہو رہا ہے۔' : 'Transport notification successfully delivered to your device status bar.'
+    );
     await dispatchDailyDigestNotification(lang, true);
     setTimeout(() => setTestSent(false), 3000);
   };
@@ -280,9 +286,9 @@ export const Header: React.FC<HeaderProps> = ({
                   <SyncStatusBadge lang={lang} onSyncComplete={onSyncOffline} />
                 </div>
 
-                {/* SINGLE UNIFIED LOGIN / ACCOUNT CONTROL CARD */}
-                <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] shadow-2xs">
-                  {userEmail ? (
+                {/* AUTHENTICATED ACCOUNT CONTROL CARD (Only shown when user is logged in; removed for guests) */}
+                {userEmail && (
+                  <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] shadow-2xs">
                     <div className="space-y-3 text-left">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
@@ -330,32 +336,8 @@ export const Header: React.FC<HeaderProps> = ({
                         <span>{lang === 'ur' ? 'لاگ آؤٹ کریں' : 'Sign Out Account'}</span>
                       </button>
                     </div>
-                  ) : (
-                    <div className="space-y-2.5 text-left">
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4 text-[#8b9d77]" />
-                        <span className="text-xs font-bold text-[#4a4a35] font-serif">
-                          {lang === 'ur' ? 'گوگل اکاؤنٹ لاگ ان' : 'Google Account Sign In'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-[#8e8e75] leading-relaxed">
-                        {lang === 'ur'
-                          ? 'اپنے گوگل اکاؤنٹ سے سائن ان کریں اور فلیٹ یا بلٹی سسٹم تک رسائی حاصل کریں۔'
-                          : 'Sign in with your Google account to access fleet and transport features.'}
-                      </p>
-                      <button
-                        onClick={() => {
-                          handleCloseMenu();
-                          onSignIn();
-                        }}
-                        className="w-full py-2.5 px-3 bg-[#1e3a68] hover:bg-[#162a4d] text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs"
-                      >
-                        <LogIn className="w-3.5 h-3.5 text-[#c59b27]" />
-                        <span>{lang === 'ur' ? 'گوگل اکاؤنٹ سے لاگ ان کریں' : 'Sign In with Google'}</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Language Control */}
                 <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] flex items-center justify-between">

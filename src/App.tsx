@@ -36,7 +36,8 @@ import {
   sendSystemNotification, 
   isNotificationSupported, 
   getNotificationPermission,
-  requestNotificationPermission 
+  requestNotificationPermission,
+  ensureNotificationChannel
 } from './utils/notifications';
 
 import { TripCostView } from './components/views/TripCostView';
@@ -242,75 +243,57 @@ export default function App() {
     }
   };
 
+  // Ref synchronizers to prevent listener churn and lifecycle races on Android
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+
+  const showTopMenuRef = useRef(showTopMenu);
+  showTopMenuRef.current = showTopMenu;
+
+  const showAuthModalRef = useRef(showAuthModal);
+  showAuthModalRef.current = showAuthModal;
+
+  const showBiltyAccessModalRef = useRef(showBiltyAccessModal);
+  showBiltyAccessModalRef.current = showBiltyAccessModal;
+
   useEffect(() => {
-    // 1. Web browser back button / history management
-    const handlePopState = (e: PopStateEvent) => {
-      if (showTopMenu) {
-        setShowTopMenu(false);
-        window.history.pushState({ tab: activeTab }, '');
-        return;
-      }
-      if (showAuthModal) {
-        setShowAuthModal(false);
-        window.history.pushState({ tab: activeTab }, '');
-        return;
-      }
-      if (showBiltyAccessModal) {
-        setShowBiltyAccessModal(false);
-        window.history.pushState({ tab: activeTab }, '');
-        return;
-      }
+    // 1. Android Notification Channel & Permission setup on app initialization
+    if (Capacitor.isNativePlatform()) {
+      ensureNotificationChannel().then(() => {
+        requestNotificationPermission().catch(() => {});
+      }).catch(() => {});
+    }
 
-      if (activeTab !== 'home') {
-        const targetTab = e.state?.tab || 'home';
-        setActiveTab(targetTab);
-        if (targetTab === 'home') {
-          window.history.pushState({ tab: 'home' }, '');
-        }
-      } else {
-        const now = Date.now();
-        if (now - lastBackPressTime.current < 2000) {
-          // Allow exit on 2nd back press within 2 seconds
-        } else {
-          lastBackPressTime.current = now;
-          window.history.pushState({ tab: 'home' }, '');
-          setExitToast(true);
-          setTimeout(() => setExitToast(false), 2000);
-        }
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
-    // 2. Android Device Hardware / Gesture Back Button via Capacitor
+    // 2. Android Hardware / Gesture Back Button handling (Single permanent listener)
     let removeCapListener: (() => void) | null = null;
     if (Capacitor.isNativePlatform()) {
       CapApp.addListener('backButton', () => {
-        // Modal priority 1: Close open modals first
-        if (showTopMenu) {
+        // Priority 1: Close active drawers or modals
+        if (showTopMenuRef.current) {
           setShowTopMenu(false);
           return;
         }
-        if (showAuthModal) {
+        if (showAuthModalRef.current) {
           setShowAuthModal(false);
           return;
         }
-        if (showBiltyAccessModal) {
+        if (showBiltyAccessModalRef.current) {
           setShowBiltyAccessModal(false);
           return;
         }
 
-        // Navigation priority 2: If on any inner tool, navigate to dashboard ('home')
-        if (activeTab !== 'home') {
+        // Priority 2: If user is inside ANY inner tool / section, navigate back to Dashboard ('home')
+        if (activeTabRef.current !== 'home') {
           if ('vibrate' in navigator) {
             try { navigator.vibrate(10); } catch {}
           }
-          handleNavigate('home');
+          setActiveTab('home');
+          window.history.replaceState({ tab: 'home' }, '', '#home');
           window.scrollTo({ top: 0, behavior: 'smooth' });
           return;
         }
 
-        // Dashboard priority 3: On dashboard, double click back within 2 seconds to exit app
+        // Priority 3: When already on Dashboard ('home'), double back within 2 seconds to exit app
         const now = Date.now();
         if (now - lastBackPressTime.current < 2000) {
           CapApp.exitApp();
@@ -327,11 +310,48 @@ export default function App() {
       }).catch(() => {});
     }
 
+    // 3. Web browser popstate handling
+    const handlePopState = (e: PopStateEvent) => {
+      if (showTopMenuRef.current) {
+        setShowTopMenu(false);
+        return;
+      }
+      if (showAuthModalRef.current) {
+        setShowAuthModal(false);
+        return;
+      }
+      if (showBiltyAccessModalRef.current) {
+        setShowBiltyAccessModal(false);
+        return;
+      }
+
+      if (activeTabRef.current !== 'home') {
+        const targetTab = e.state?.tab || 'home';
+        setActiveTab(targetTab);
+        window.history.replaceState({ tab: targetTab }, '', `#${targetTab}`);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        const now = Date.now();
+        if (now - lastBackPressTime.current < 2000) {
+          if (Capacitor.isNativePlatform()) {
+            CapApp.exitApp();
+          }
+        } else {
+          lastBackPressTime.current = now;
+          setExitToast(true);
+          setTimeout(() => setExitToast(false), 2000);
+          window.history.pushState({ tab: 'home' }, '', '#home');
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
     return () => {
       window.removeEventListener('popstate', handlePopState);
       if (removeCapListener) removeCapListener();
     };
-  }, [activeTab, showTopMenu, showAuthModal, showBiltyAccessModal]);
+  }, []); // Mounted once: Zero listener churn, preventing Android abrupt exit
 
   const handleToggleLang = () => {
     const nextLang: Language = lang === 'en' ? 'ur' : 'en';

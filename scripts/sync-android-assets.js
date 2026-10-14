@@ -61,7 +61,7 @@ if (fs.existsSync(distDir)) {
         },
         plugins: {
           SplashScreen: {
-            launchShowDuration: 2200,
+            launchShowDuration: 0,
             launchAutoHide: true,
             backgroundColor: "#FFFFFF",
             androidSplashResourceName: "splash",
