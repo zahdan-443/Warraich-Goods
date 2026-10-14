@@ -144,6 +144,21 @@ jobs:
             gradle assembleDebug --no-daemon
           fi
 
+      - name: Verify APK Signature Matches Expected Keystore
+        if: ${{ inputs.build_type == 'release' }}
+        run: |
+          APK_PATH=$(find android/app/build/outputs/apk/release -name "*.apk" | head -1)
+          echo "Checking signature of: $APK_PATH"
+          BUILD_TOOLS_DIR=$(find $ANDROID_HOME/build-tools -maxdepth 1 -type d | sort -V | tail -1)
+          APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
+          echo "=== APK's actual signing certificate (from the built APK itself) ==="
+          "$APKSIGNER" verify --print-certs "$APK_PATH" | grep -i "SHA-256"
+          echo "=== Keystore's certificate (from the decoded secret file, for comparison) ==="
+          keytool -list -v -keystore "android/app/$ANDROID_KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" 2>/dev/null | grep "SHA256:"
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ env.ANDROID_KEYSTORE_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
