@@ -249,7 +249,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right: User Status & Notification Bell */}
           <div className="flex items-center gap-2 shrink-0">
-            {userEmail ? (
+            {userEmail && (
               <button
                 onClick={handleOpenMenu}
                 className="py-1.5 px-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
@@ -257,15 +257,6 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="max-w-[80px] sm:max-w-[120px] truncate">{isOwnerUser ? (lang === 'ur' ? 'آنر' : 'Owner') : (lang === 'ur' ? 'ڈرائیور' : 'Driver')}</span>
-              </button>
-            ) : (
-              <button
-                onClick={onSignIn}
-                className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-[#b58b28] hover:from-amber-600 hover:to-[#96721f] text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all border border-amber-300/60"
-                title={lang === 'ur' ? 'لاگ ان کریں' : 'Sign In'}
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">{lang === 'ur' ? 'لاگ ان' : 'Sign In'}</span>
               </button>
             )}
 
@@ -402,7 +393,7 @@ export const Header: React.FC<HeaderProps> = ({
                       className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 active:scale-98 text-slate-950 font-bold text-xs flex items-center justify-center gap-2.5 shadow-md cursor-pointer transition-all border border-amber-300"
                     >
                       <LogIn className="w-4 h-4 text-slate-950" />
-                      <span>{lang === 'ur' ? 'گوگل یا آنر لاگ ان کریں' : 'Sign In with Google / Owner'}</span>
+                      <span>{lang === 'ur' ? 'گوگل اکاؤنٹ سے لاگ ان کریں' : 'Sign In with Google Account'}</span>
                     </button>
 
                     <div className="text-[10px] text-slate-300 text-center flex items-center justify-center gap-1.5 pt-0.5">
