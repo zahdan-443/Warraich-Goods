@@ -32,16 +32,25 @@ if (fs.existsSync(distDir)) {
         fs.rmSync(androidPublicDir, { recursive: true, force: true });
       }
       fs.mkdirSync(androidPublicDir, { recursive: true });
+      const webOnlyOrRedundant = [
+        'server.cjs',
+        'server.cjs.map',
+        'robots.txt',
+        'sitemap.xml',
+        '404.html',
+        '_headers',
+        'screenshot-desktop.png',
+        'screenshot-mobile.png',
+        'dashcam-icon.jpg'
+      ];
+
       fs.cpSync(distDir, androidPublicDir, { 
         recursive: true,
-        filter: (src) => !src.endsWith('server.cjs') && !src.endsWith('server.cjs.map')
+        filter: (src) => {
+          const baseName = path.basename(src);
+          return !webOnlyOrRedundant.includes(baseName);
+        }
       });
-
-      // Ensure no node backend binaries linger in android assets
-      const serverCjs = path.join(androidPublicDir, 'server.cjs');
-      const serverMap = path.join(androidPublicDir, 'server.cjs.map');
-      if (fs.existsSync(serverCjs)) fs.unlinkSync(serverCjs);
-      if (fs.existsSync(serverMap)) fs.unlinkSync(serverMap);
 
       console.log('✅ Synchronized client web assets to android/app/src/main/assets/public (excluding server files)');
 

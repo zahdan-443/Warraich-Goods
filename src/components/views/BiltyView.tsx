@@ -256,8 +256,12 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
       language: record.language || selectedLanguage
     });
     setTimeout(() => {
-      window.print();
-    }, 150);
+      if (typeof (window as any).AndroidPrinter?.print === 'function') {
+        (window as any).AndroidPrinter.print();
+      } else {
+        window.print();
+      }
+    }, 250);
   };
 
   // Search state

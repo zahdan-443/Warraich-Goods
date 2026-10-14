@@ -32,7 +32,6 @@
   font-family: 'Alvi Lahori Nastaleeq';
   src: url('/fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
        url('./fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
-       url('/fonts/AlviLahori.ttf') format('truetype'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/AlviLahoriNastaleeq.woff2') format('woff2');
   font-weight: 400 700;
   font-style: normal;
@@ -43,7 +42,6 @@
   font-family: 'lahori-nastaleeq';
   src: url('/fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
        url('./fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
-       url('/fonts/AlviLahori.ttf') format('truetype'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/AlviLahoriNastaleeq.woff2') format('woff2');
   font-weight: 400 700;
   font-style: normal;
