@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send, Download } from 'lucide-react';
+import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send, Download, Maximize2 } from 'lucide-react';
 import { DICTIONARY, Language, AppNotification, UserRole } from '../types';
 import { CompanyLogo } from './CompanyLogo';
 import { logoIconData } from '../assets/dashboardIcons';
@@ -74,6 +74,37 @@ export const Header: React.FC<HeaderProps> = ({
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>('default');
   const [testSent, setTestSent] = useState(false);
   const [copyToast, setCopyToast] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      if ((window as any).AndroidBridge?.isFullScreen) {
+        return (window as any).AndroidBridge.isFullScreen();
+      }
+      return localStorage.getItem('dd-fullscreen') === 'true';
+    }
+    return false;
+  });
+
+  const handleToggleFullScreen = () => {
+    const next = !isFullScreen;
+    setIsFullScreen(next);
+    try {
+      localStorage.setItem('dd-fullscreen', String(next));
+    } catch {}
+
+    if (typeof (window as any).AndroidBridge?.setFullScreen === 'function') {
+      (window as any).AndroidBridge.setFullScreen(next);
+    } else if (typeof document !== 'undefined') {
+      if (next) {
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
+      } else {
+        if (document.exitFullscreen && document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    }
+  };
 
   useEffect(() => {
     if (isNotificationSupported()) {
@@ -218,7 +249,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right: User Status & Notification Bell */}
           <div className="flex items-center gap-2 shrink-0">
-            {userEmail && (
+            {userEmail ? (
               <button
                 onClick={handleOpenMenu}
                 className="py-1.5 px-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
@@ -226,6 +257,15 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="max-w-[80px] sm:max-w-[120px] truncate">{isOwnerUser ? (lang === 'ur' ? 'آنر' : 'Owner') : (lang === 'ur' ? 'ڈرائیور' : 'Driver')}</span>
+              </button>
+            ) : (
+              <button
+                onClick={onSignIn}
+                className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-[#b58b28] hover:from-amber-600 hover:to-[#96721f] text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all border border-amber-300/60"
+                title={lang === 'ur' ? 'لاگ ان کریں' : 'Sign In'}
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">{lang === 'ur' ? 'لاگ ان' : 'Sign In'}</span>
               </button>
             )}
 
@@ -286,8 +326,8 @@ export const Header: React.FC<HeaderProps> = ({
                   <SyncStatusBadge lang={lang} onSyncComplete={onSyncOffline} />
                 </div>
 
-                {/* AUTHENTICATED ACCOUNT CONTROL CARD (Only shown when user is logged in; removed for guests) */}
-                {userEmail && (
+                {/* AUTHENTICATED ACCOUNT CONTROL CARD (Or Guest Sign In Card) */}
+                {userEmail ? (
                   <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] shadow-2xs">
                     <div className="space-y-3 text-left">
                       <div className="flex items-center justify-between">
@@ -335,6 +375,39 @@ export const Header: React.FC<HeaderProps> = ({
                         <LogOut className="w-3.5 h-3.5" />
                         <span>{lang === 'ur' ? 'لاگ آؤٹ کریں' : 'Sign Out Account'}</span>
                       </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-3xl bg-gradient-to-br from-[#162a4d] to-[#1e3a68] text-white shadow-md border border-[#162a4d]/20 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-amber-400 text-slate-900 flex items-center justify-center font-bold shadow-xs shrink-0">
+                        <LogIn className="w-5 h-5 text-slate-900" />
+                      </div>
+                      <div className="text-left flex-1 min-w-0">
+                        <div className="font-serif font-bold text-sm text-white">
+                          {lang === 'ur' ? 'اکاؤنٹ لاگ ان / سائن ان' : 'Account Sign In'}
+                        </div>
+                        <div className="text-[11px] text-slate-200 truncate">
+                          {lang === 'ur' ? 'کلاؤڈ بیک اپ و آنر رسائی' : 'Cloud sync & Owner access'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCloseMenu();
+                        if (onSignIn) onSignIn();
+                      }}
+                      className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 active:scale-98 text-slate-950 font-bold text-xs flex items-center justify-center gap-2.5 shadow-md cursor-pointer transition-all border border-amber-300"
+                    >
+                      <LogIn className="w-4 h-4 text-slate-950" />
+                      <span>{lang === 'ur' ? 'گوگل یا آنر لاگ ان کریں' : 'Sign In with Google / Owner'}</span>
+                    </button>
+
+                    <div className="text-[10px] text-slate-300 text-center flex items-center justify-center gap-1.5 pt-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      <span>{lang === 'ur' ? 'مہمان موڈ فعال ہے - بنیادی ٹولز آزادانہ کام کر رہے ہیں' : 'Guest mode active - Core tools ready offline'}</span>
                     </div>
                   </div>
                 )}
@@ -424,6 +497,36 @@ export const Header: React.FC<HeaderProps> = ({
                       <span>{lang === 'ur' ? 'ہائی وے موڈ ☀️ (تیز دھوپ و ہائی کنٹراسٹ)' : 'Highway Mode ☀️ (High-Contrast Sunlight)'}</span>
                     </button>
                   </div>
+                </div>
+
+                {/* Full Screen / Immersive Mode (Notch & Battery Bar Hide - Zero Permissions) */}
+                <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-2xl bg-white border border-[#ecece0] shadow-2xs">
+                      <Maximize2 className="w-5 h-5 text-[#8b9d77]" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-serif font-bold text-sm text-[#4a4a35]">
+                        {lang === 'ur' ? 'مکمل فل اسکرین موڈ' : 'Full Screen Immersive'}
+                      </div>
+                      <div className="text-xs text-[#8e8e75]">
+                        {lang === 'ur' ? 'نچ اور بیٹری بار چھپا کر فل اسکرین کریں' : 'Hide notch & battery status bar'}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleToggleFullScreen}
+                    className={`px-3 py-1.5 rounded-xl font-bold text-xs shadow-xs cursor-pointer transition-all active:scale-95 border ${
+                      isFullScreen
+                        ? 'bg-[#1e3a68] text-white border-[#1e3a68]'
+                        : 'bg-white border-[#ecece0] text-[#5a5a40] hover:bg-[#f0f0e4]'
+                    }`}
+                  >
+                    {isFullScreen
+                      ? (lang === 'ur' ? 'فعال (On)' : 'Active (On)')
+                      : (lang === 'ur' ? 'غیر فعال (Off)' : 'Off')}
+                  </button>
                 </div>
 
                 {/* Notifications Control */}

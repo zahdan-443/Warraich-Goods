@@ -116,28 +116,33 @@ export const loginWithGoogle = async (): Promise<User | null> => {
       if (result.user) {
         return (auth.currentUser || (result.user as unknown as User));
       }
-      return auth.currentUser;
+      if (auth.currentUser) return auth.currentUser;
     } catch (error: any) {
-      console.warn("Native Google Sign-In notice:", error);
-      // Fallback to web signInWithPopup if native throws plugin not implemented or configuration error
-      try {
-        console.warn("Falling back to web popup auth in WebView...");
-        const result = await signInWithPopup(auth, googleProvider);
-        return result.user;
-      } catch (fallbackError: any) {
-        console.error("Web auth fallback notice:", fallbackError);
-        throw error;
-      }
+      console.warn("Native Google Sign-In notice, falling back to Web SDK:", error);
+    }
+
+    // Secondary Fallback: Web popup
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      return result.user;
+    } catch (popupError: any) {
+      console.warn("Web popup inside Android failed, attempting redirect flow:", popupError);
+      // Tertiary Fallback: In-app browser redirect
+      await signInWithRedirect(auth, googleProvider);
+      return null;
     }
   }
 
   // Web Browser Flow:
-  // signInWithPopup leverages https://warraich-goods.firebaseapp.com/__/auth/handler
-  // which is pre-authorized in Google OAuth without requiring custom domain redirect URIs.
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
+    if ((error as any)?.code === 'auth/popup-blocked' || (error as any)?.code === 'auth/cancelled-popup-request') {
+      console.warn("Popup blocked, transitioning to redirect flow:", error);
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    }
     console.warn("Google Sign-In popup notice:", error);
     throw error;
   }

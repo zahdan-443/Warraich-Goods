@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, LogIn, X, AlertCircle, Copy, Check, Cloud, Sparkles } from 'lucide-react';
+import { ShieldCheck, LogIn, X, AlertCircle, Copy, Check, Cloud, Sparkles, Crown } from 'lucide-react';
 import { Language } from '../types';
 import { loginWithGoogle, loginWithGoogleRedirect } from '../utils/firebase';
 
@@ -17,6 +17,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [error, setError] = useState<string | null>(null);
   const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
   const [domainCopied, setDomainCopied] = useState(false);
+  const [showOwnerDirect, setShowOwnerDirect] = useState(false);
+  const [ownerPin, setOwnerPin] = useState('');
+  const [ownerPinError, setOwnerPinError] = useState<string | null>(null);
+
+  const handleOwnerDirectSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setOwnerPinError(null);
+    const cleanPin = ownerPin.trim();
+    if (cleanPin === '443' || cleanPin.toLowerCase() === 'warraich443' || cleanPin === '5370443') {
+      onSuccess('warraichgoods43@gmail.com');
+      if (onClose) onClose();
+    } else {
+      setOwnerPinError(
+        lang === 'ur'
+          ? 'غلط آنر سیکیورٹی کوڈ۔ برائے مہربانی درست کوڈ درج کریں۔'
+          : 'Invalid Owner Security PIN. Please enter correct PIN.'
+      );
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -240,7 +259,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             </button>
 
             {/* Popup Unblock / Retry Helper */}
-            <div className="text-center pt-2 pb-1 border-t border-[#ecece0]/80 space-y-1">
+            <div className="text-center pt-2 pb-1 border-t border-[#ecece0]/80 space-y-2">
               <button
                 type="button"
                 onClick={handleStartGoogle}
@@ -256,6 +275,60 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                   ? 'اگر پوپ اپ ونڈو خودکار طور پر نہ کھلے تو براؤزر سیٹنگز میں پوپ اپ کی اجازت دیں'
                   : 'If sign-in window does not open, ensure pop-ups are allowed in browser settings'}
               </p>
+
+              {/* Owner Direct Access Accordion / Fallback */}
+              <div className="pt-2">
+                {!showOwnerDirect ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowOwnerDirect(true)}
+                    className="text-xs font-bold text-amber-700 hover:text-amber-800 flex items-center justify-center gap-1.5 mx-auto py-1 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 cursor-pointer transition-all"
+                  >
+                    <Crown className="w-3.5 h-3.5 text-amber-600" />
+                    <span>{lang === 'ur' ? 'آنر ڈائریکٹ لاگ ان (Owner PIN)' : 'Owner Direct PIN Login'}</span>
+                  </button>
+                ) : (
+                  <form onSubmit={handleOwnerDirectSubmit} className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 text-left space-y-2.5 animate-in fade-in">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                        <Crown className="w-3.5 h-3.5 text-amber-600" />
+                        <span>warraichgoods43@gmail.com</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowOwnerDirect(false)}
+                        className="text-[10px] text-slate-500 hover:text-slate-800"
+                      >
+                        {lang === 'ur' ? 'بند کریں' : 'Close'}
+                      </button>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-[#4a4a35] block">
+                        {lang === 'ur' ? 'آنر سیکیورٹی پن (Security PIN):' : 'Owner Security PIN:'}
+                      </label>
+                      <input
+                        type="password"
+                        value={ownerPin}
+                        onChange={(e) => setOwnerPin(e.target.value)}
+                        placeholder="PIN (443 / 5370443)"
+                        className="w-full px-3 py-2 text-xs bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono text-center font-bold tracking-widest"
+                      />
+                    </div>
+
+                    {ownerPinError && (
+                      <p className="text-[11px] text-red-600 font-bold">{ownerPinError}</p>
+                    )}
+
+                    <button
+                      type="submit"
+                      className="w-full py-2 bg-gradient-to-r from-amber-500 to-[#b58b28] hover:from-amber-600 hover:to-[#96721f] text-slate-950 font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all"
+                    >
+                      {lang === 'ur' ? 'آنر اکاؤنٹ لاگ ان تصدیق کریں' : 'Verify & Unlock Owner Account'}
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
           </div>
 
