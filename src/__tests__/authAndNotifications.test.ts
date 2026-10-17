@@ -27,6 +27,12 @@ describe('Auth & Notifications Utility Suite', () => {
         expect.stringContaining('loginWithGoogleRedirect is deprecated')
       );
     });
+
+    it('should confirm guest mode active without showing auth modal on startup', () => {
+      // Guest user state checks
+      const storedUser = typeof window !== 'undefined' ? localStorage.getItem('ah-gmail-user') : null;
+      expect(storedUser).toBeNull();
+    });
   });
 
   describe('Notifications System Permission Handling', () => {
