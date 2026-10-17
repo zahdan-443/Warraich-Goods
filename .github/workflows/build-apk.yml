@@ -15,7 +15,7 @@ on:
 jobs:
   build-apk:
     name: Build Android APK
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     env:
       ACTIONS_RUNNER_FORCE_ACTIONS_NODE24: "true"
       VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
@@ -33,7 +33,7 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: 'npm'
 
       - name: Setup Java JDK 21
