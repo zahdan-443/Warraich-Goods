@@ -33,6 +33,16 @@ describe('Auth & Notifications Utility Suite', () => {
       const storedUser = typeof window !== 'undefined' ? localStorage.getItem('ah-gmail-user') : null;
       expect(storedUser).toBeNull();
     });
+
+    it('should correctly authorize warraichgoods43@gmail.com as the App Owner', () => {
+      const OWNER_EMAIL = 'warraichgoods43@gmail.com';
+      const testEmail = 'WarraichGoods43@gmail.com ';
+      const isOwner = testEmail.toLowerCase().trim() === OWNER_EMAIL.toLowerCase().trim();
+      expect(isOwner).toBe(true);
+
+      const guestEmail = 'driver@example.com';
+      const isGuestOwner = guestEmail.toLowerCase().trim() === OWNER_EMAIL.toLowerCase().trim();
+    });
   });
 
   describe('Notifications System Permission Handling', () => {

@@ -103,7 +103,14 @@ export const signInWithGoogleIdToken = async (idToken: string): Promise<User> =>
 };
 
 export const loginWithGoogleRedirect = async (): Promise<void> => {
-  await signInWithRedirect(auth, googleProvider);
+  console.warn('loginWithGoogleRedirect is deprecated. Use loginWithGoogle() popup authentication.');
+  if (typeof window !== 'undefined') {
+    try {
+      await signInWithRedirect(auth, googleProvider);
+    } catch (e) {
+      console.warn('signInWithRedirect notice:', e);
+    }
+  }
 };
 
 export const checkRedirectAuthResult = async (): Promise<User | null> => {
