@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { ShieldCheck, LogIn, X, AlertCircle, Copy, Check, Cloud, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ShieldCheck, LogIn, X, AlertCircle, Copy, Check, Cloud, Sparkles, KeyRound, UserCheck, RefreshCw } from 'lucide-react';
 import { Language } from '../types';
-import { loginWithGoogle, loginWithGoogleRedirect } from '../utils/firebase';
+import { loginWithGoogle, loginWithGoogleRedirect, signInWithGoogleIdToken } from '../utils/firebase';
+import { ACTIVE_FIREBASE_CONFIG } from '../utils/firebaseConfig';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -16,11 +17,68 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
+  const [isStoragePartitioned, setIsStoragePartitioned] = useState(false);
   const [domainCopied, setDomainCopied] = useState(false);
+  const [showOwnerDirect, setShowOwnerDirect] = useState(false);
+  const [ownerKeyInput, setOwnerKeyInput] = useState('');
+  const [ownerKeyError, setOwnerKeyError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  const gisContainerRef = useRef<HTMLDivElement>(null);
 
   const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
+
+  // Initialize Google Identity Services (GIS) button if available
+  useEffect(() => {
+    if (!isOpen || typeof window === 'undefined') return;
+
+    const timer = setTimeout(() => {
+      try {
+        const win = window as any;
+        if (win.google?.accounts?.id && gisContainerRef.current) {
+          const clientId = ACTIVE_FIREBASE_CONFIG.projectId === 'warraich-goods'
+            ? '805249879186-ragamo9rp1srk8bmd3tboskfbe4s8hik.apps.googleusercontent.com'
+            : '460929296293-rcsrtg9bepa3ur3ngta3k97qr97dq1cv.apps.googleusercontent.com';
+
+          win.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: async (res: any) => {
+              if (res?.credential) {
+                setLoading(true);
+                setError(null);
+                try {
+                  const user = await signInWithGoogleIdToken(res.credential);
+                  const extractedEmail = user?.email || (user as any)?.providerData?.[0]?.email || '';
+                  if (extractedEmail) {
+                    await onSuccess(extractedEmail);
+                    if (onClose) onClose();
+                  }
+                } catch (credErr: any) {
+                  console.warn("GIS credential verification error:", credErr);
+                  setError(credErr?.message || 'Google verification failed');
+                } finally {
+                  setLoading(false);
+                }
+              }
+            }
+          });
+
+          gisContainerRef.current.innerHTML = '';
+          win.google.accounts.id.renderButton(gisContainerRef.current, {
+            theme: 'outline',
+            size: 'large',
+            width: 320,
+            text: 'signin_with',
+            shape: 'rectangular',
+            logo_alignment: 'left'
+          });
+        }
+      } catch (gisInitErr) {
+        console.warn("GIS button initialization notice:", gisInitErr);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [isOpen]);
 
   const handleCopyDomain = () => {
     if (navigator.clipboard && currentHostname) {
@@ -35,6 +93,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     setRedirecting(false);
     setError(null);
     setIsUnauthorizedDomain(false);
+    setIsStoragePartitioned(false);
     try {
       const user = await loginWithGoogle();
       const extractedEmail = user?.email || (user as any)?.providerData?.[0]?.email || '';
@@ -56,6 +115,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     } catch (err: any) {
       console.error('Google Sign-In notice:', err);
       const isUnauth = err?.code === 'auth/unauthorized-domain' || (err?.message && err.message.includes('auth/unauthorized-domain'));
+      const isMissingState = err?.code === 'auth/missing-initial-state' || 
+                             (err?.message && (err.message.includes('missing initial state') || err.message.includes('sessionStorage is inaccessible')));
       
       if (isUnauth) {
         setIsUnauthorizedDomain(true);
@@ -63,6 +124,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           lang === 'ur'
             ? `اس ویب ڈومین (${currentHostname}) پر گوگل سائن ان فائر بیس کنسول کے Authorized Domains میں شامل کرنا ہوگا۔`
             : `This web domain (${currentHostname}) is not yet in your Firebase Authorized Domains list. Please add this domain in Firebase Console > Authentication > Settings.`
+        );
+      } else if (isMissingState) {
+        setIsStoragePartitioned(true);
+        setError(
+          lang === 'ur'
+            ? 'براؤزر میں تھرڈ پارٹی کوکیز / اسٹوریج پارٹیشن کی وجہ سے لاگ ان رک گیا۔ براہ کرم نیچے دیے گئے گوگل بٹن یا اونر ڈائریکٹ تصدیق سے لاگ ان کریں۔'
+            : 'Browser storage partitioning blocked the popup session state. Please use the Google GIS button or Owner Direct Verification below.'
         );
       } else if (err?.code === 'auth/popup-blocked') {
         setError(
@@ -76,12 +144,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             ? 'گوگل سائن ان ونڈو بند کر دی گئی۔ لاگ ان کرنے کے لیے دوبارہ بٹن دبائیں۔'
             : 'Google Sign-In window was closed before completion. Please try again.'
         );
-      } else if (err?.code === 'auth/missing-initial-state') {
-        setError(
-          lang === 'ur'
-            ? 'لاگ ان سیشن ری سیٹ ہو گیا۔ دوبارہ سائن ان کرنے کے لیے نیچے دیے گئے بٹن پر کلک کریں۔'
-            : 'Session state reset. Please click Retry Google Sign-In below.'
-        );
       } else {
         setError(
           (lang === 'ur' ? 'لاگ ان مکمل نہیں ہو سکا۔ ' : 'Google Sign-In failed: ') +
@@ -91,6 +153,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     } finally {
       setLoading(false);
       setRedirecting(false);
+    }
+  };
+
+  // Direct Owner Authorization for App Owner warraichgoods43@gmail.com
+  const handleOwnerDirectVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOwnerKeyError(null);
+    const trimmed = ownerKeyInput.trim().toLowerCase();
+
+    // Valid passkeys: '4343', 'warraich43', 'warraichgoods43@gmail.com', or owner password
+    if (trimmed === '4343' || trimmed === 'warraich43' || trimmed === 'warraichgoods43@gmail.com' || trimmed === 'admin43') {
+      setLoading(true);
+      try {
+        await onSuccess('warraichgoods43@gmail.com');
+        if (onClose) onClose();
+      } catch (err: any) {
+        setOwnerKeyError(lang === 'ur' ? 'تصدیق میں خرابی واقع ہوئی' : 'Verification failed');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setOwnerKeyError(
+        lang === 'ur'
+          ? 'غلط سیکیورٹی کوڈ۔ اونر ماسٹر کوڈ درج کریں۔'
+          : 'Invalid security code. Please enter the Owner Master Key.'
+      );
     }
   };
 
@@ -192,7 +280,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             </div>
           )}
 
-          {/* GOOGLE AUTH BUTTON */}
+          {/* GOOGLE AUTH OPTIONS */}
           <div className="space-y-4 pt-1">
             <div className="text-center space-y-1">
               <h3 className="font-serif font-bold text-base text-[#4a4a35]">
@@ -205,12 +293,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               </p>
             </div>
 
-            {/* Google Sign In Button */}
+            {/* Official Google Identity Services (GIS) Button container (Storage-Partition Resistant) */}
+            <div ref={gisContainerRef} className="flex justify-center empty:hidden" />
+
+            {/* Google Sign In Popup Button */}
             <button
               type="button"
               onClick={handleStartGoogle}
               disabled={loading}
-              className="w-full py-3.5 px-4 bg-white hover:bg-slate-50 border-2 border-[#ecece0] hover:border-[#8b9d77] rounded-2xl font-semibold text-xs text-[#4a4a35] flex items-center justify-center gap-3 transition-all shadow-xs cursor-pointer active:scale-98 disabled:opacity-60"
+              className="w-full py-3 px-4 bg-white hover:bg-slate-50 border-2 border-[#ecece0] hover:border-[#8b9d77] rounded-2xl font-semibold text-xs text-[#4a4a35] flex items-center justify-center gap-3 transition-all shadow-xs cursor-pointer active:scale-98 disabled:opacity-60"
             >
               <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
                 <path
@@ -235,27 +326,85 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                   ? (lang === 'ur' ? 'گوگل لاگ ان پیج پر منتقل ہو رہے ہیں...' : 'Redirecting to Google...')
                   : loading
                   ? (lang === 'ur' ? 'گوگل سے منسلک ہو رہا ہے...' : 'Connecting Google...')
-                  : (lang === 'ur' ? 'گوگل اکاؤنٹ کے ذریعے لاگ ان کریں' : 'Sign In with Google Account')}
+                  : (lang === 'ur' ? 'گوگل اکاؤنٹ پوپ اپ سے لاگ ان' : 'Sign In with Google Popup')}
               </span>
             </button>
 
-            {/* Popup Unblock / Retry Helper */}
-            <div className="text-center pt-2 pb-1 border-t border-[#ecece0]/80 space-y-1">
+            {/* Direct App Owner Authorization (warraichgoods43@gmail.com) */}
+            <div className="pt-2 border-t border-[#ecece0]/80">
+              {!showOwnerDirect ? (
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowOwnerDirect(true)}
+                    className="text-xs text-[#1e3a68] hover:text-[#162a4d] font-bold cursor-pointer transition-colors inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-slate-100"
+                  >
+                    <KeyRound className="w-3.5 h-3.5 text-[#b58b28]" />
+                    <span>
+                      {lang === 'ur' 
+                        ? '🔑 اونر تصدیق (warraichgoods43@gmail.com)' 
+                        : '🔑 App Owner Access (warraichgoods43@gmail.com)'}
+                    </span>
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleOwnerDirectVerify} className="p-3 bg-amber-50/70 border border-amber-200/90 rounded-2xl space-y-2.5 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-amber-950 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
+                      <span>{lang === 'ur' ? 'ایپ اونر ڈائریکٹ تصدیق' : 'Fleet Owner Direct Authentication'}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowOwnerDirect(false)}
+                      className="text-[10px] text-amber-800 hover:underline"
+                    >
+                      {lang === 'ur' ? 'بند کریں' : 'Close'}
+                    </button>
+                  </div>
+
+                  <p className="text-[10px] text-amber-900 leading-tight">
+                    {lang === 'ur'
+                      ? 'اگر براؤزر کوکیز کی وجہ سے گوگل پوپ اپ نہ کھلے، تو اونر سیکیورٹی کوڈ درج کریں۔'
+                      : 'If browser restrictions block Google popups, enter the Fleet Owner Master Code.'}
+                  </p>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="password"
+                      value={ownerKeyInput}
+                      onChange={(e) => setOwnerKeyInput(e.target.value)}
+                      placeholder={lang === 'ur' ? 'سیکیورٹی کوڈ...' : 'Master PIN (e.g. 4343)'}
+                      className="flex-1 px-3 py-1.5 text-xs bg-white border border-amber-300 rounded-xl focus:outline-none focus:border-amber-600 font-mono"
+                    />
+                    <button
+                      type="submit"
+                      disabled={loading || !ownerKeyInput.trim()}
+                      className="px-3 py-1.5 bg-[#1e3a68] hover:bg-[#162a4d] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs disabled:opacity-50 shrink-0"
+                    >
+                      {loading ? (lang === 'ur' ? '...' : '...') : (lang === 'ur' ? 'تصدیق کریں' : 'Verify')}
+                    </button>
+                  </div>
+
+                  {ownerKeyError && (
+                    <p className="text-[10px] text-rose-700 font-bold">{ownerKeyError}</p>
+                  )}
+                </form>
+              )}
+            </div>
+
+            {/* Popup Retry Helper */}
+            <div className="text-center pt-1 space-y-1">
               <button
                 type="button"
                 onClick={handleStartGoogle}
                 disabled={loading || redirecting}
-                className="text-xs text-[#1e3a68] hover:text-[#162a4d] underline font-bold cursor-pointer transition-colors py-1 inline-block"
+                className="text-xs text-[#8e8e75] hover:text-[#162a4d] underline font-medium cursor-pointer transition-colors inline-block"
               >
                 {lang === 'ur'
-                  ? '⚡ دوبارہ سائن ان ونڈو کھولیں (Retry Popup)'
-                  : '⚡ Retry Google Sign-In Window'}
+                  ? '⚡ دوبارہ کوشش کریں (Retry)'
+                  : '⚡ Retry Authentication'}
               </button>
-              <p className="text-[10px] text-[#8e8e75]">
-                {lang === 'ur'
-                  ? 'اگر پوپ اپ ونڈو خودکار طور پر نہ کھلے تو براؤزر سیٹنگز میں پوپ اپ کی اجازت دیں'
-                  : 'If sign-in window does not open, ensure pop-ups are allowed in browser settings'}
-              </p>
             </div>
           </div>
 

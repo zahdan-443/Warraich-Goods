@@ -315,14 +315,14 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
 
   return (
     <div 
-      className={`rounded-2xl border px-3 py-2.5 sm:px-4 sm:py-3 shadow-2xs transition-all relative overflow-hidden ${
+      className={`rounded-2xl border px-3 py-2 sm:px-3 sm:py-2 shadow-2xs transition-all relative overflow-hidden ${
         hasRisk
           ? 'bg-gradient-to-r from-amber-50 via-amber-50 to-orange-50 border-amber-300 text-amber-950'
           : 'bg-gradient-to-r from-emerald-50 via-emerald-50 to-teal-50 border-emerald-300 text-emerald-950'
       }`}
     >
       {/* Top Banner Row: Icon, Title, Stale Warning, Refresh, Dismiss */}
-      <div className="flex items-start justify-between gap-2.5">
+      <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2.5 flex-1 min-w-0">
           <div 
             className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${

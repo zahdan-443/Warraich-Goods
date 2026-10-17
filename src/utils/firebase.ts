@@ -8,7 +8,9 @@ import {
   signInWithCredential,
   signOut,
   onAuthStateChanged,
-  User
+  User,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { initializeFirestore, memoryLocalCache, getFirestore, setLogLevel } from 'firebase/firestore';
 import { Capacitor } from '@capacitor/core';
@@ -53,6 +55,15 @@ export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
 
+// Explicitly set browserLocalPersistence to ensure auth state survives storage-partitioning and page refreshes
+if (typeof window !== 'undefined') {
+  try {
+    setPersistence(auth, browserLocalPersistence).catch(() => {});
+  } catch {
+    // ignore
+  }
+}
+
 // Initialize Firestore with memory cache to prevent IndexedDB "database is closing/hidden" issues in iframe/preview
 export const db = (() => {
   try {
@@ -77,7 +88,19 @@ if (typeof window !== 'undefined') {
 }
 
 export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
+googleProvider.setCustomParameters({ 
+  prompt: 'select_account'
+});
+
+/**
+ * Sign in directly using Google ID token from Google Identity Services (GIS).
+ * Completely bypasses /__/auth/handler and storage-partitioned sessionStorage issues!
+ */
+export const signInWithGoogleIdToken = async (idToken: string): Promise<User> => {
+  const credential = GoogleAuthProvider.credential(idToken);
+  const userCredential = await signInWithCredential(auth, credential);
+  return userCredential.user;
+};
 
 export const loginWithGoogleRedirect = async (): Promise<void> => {
   // Deprecated redirect flow to prevent missing-initial-state in storage-partitioned environments
