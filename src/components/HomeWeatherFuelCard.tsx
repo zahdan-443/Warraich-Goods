@@ -192,7 +192,7 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&timezone=Asia%2FKarachi`;
       
       const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const timeoutId = controller ? setTimeout(() => controller.abort(), 6000) : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 12000) : null;
       let resp;
       try {
         resp = await fetch(url, { signal: controller ? controller.signal : undefined });

@@ -191,6 +191,15 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
   const [locatingUser, setLocatingUser] = useState<boolean>(false);
   const [shareSuccess, setShareSuccess] = useState<boolean>(false);
   const [autoRefreshInterval] = useState<boolean>(true);
+  const [showAllCities, setShowAllCities] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (leafletMapRef.current) {
+      setTimeout(() => {
+        leafletMapRef.current?.invalidateSize();
+      }, 150);
+    }
+  }, [showAllCities]);
 
   // --- ROAD HAZARD ALERTS STATE (Requirement 2 & 5) ---
   const [hazardReports, setHazardReports] = useState<HazardReport[]>([]);
@@ -447,130 +456,163 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
     };
   };
 
-  // Fetch live weather from Open-Meteo
+  // Helper to parse individual city weather from Open-Meteo response
+  const processWeatherItem = (current: any, hourly: any): LiveWeatherData => {
+    const temp = Math.round(current.temperature_2m ?? 25);
+    const apparentTemp = Math.round(current.apparent_temperature ?? temp);
+    const humidity = Math.round(current.relative_humidity_2m ?? 45);
+    const windSpeed = Math.round(current.wind_speed_10m ?? 10);
+    const visibilityKm = Math.round((current.visibility || 10000) / 100) / 10;
+    const precipitationMm = current.precipitation || 0;
+    const weatherCode = current.weather_code || 0;
+
+    const currentHour = new Date().getHours();
+    const precipitationProbability = (hourly && Array.isArray(hourly.precipitation_probability))
+      ? (hourly.precipitation_probability[currentHour] ?? hourly.precipitation_probability[0] ?? (precipitationMm > 0 ? 80 : 0))
+      : (precipitationMm > 0 ? 80 : (weatherCode >= 51 && weatherCode <= 67 ? 60 : 0));
+
+    const parsed = parseWeatherCode(weatherCode, current.visibility || 10000, windSpeed, temp);
+
+    return {
+      temp,
+      apparentTemp,
+      humidity,
+      windSpeed,
+      visibilityKm,
+      precipitationMm,
+      precipitationProbability,
+      weatherCode,
+      ...parsed,
+      updatedAt: new Date().toLocaleTimeString(lang === 'ur' ? 'ur-PK' : 'en-US', { hour: '2-digit', minute: '2-digit' })
+    };
+  };
+
+  // Fast Batch-fetch multiple coordinates from Open-Meteo in ONE efficient HTTP call
+  const fetchBatchCoords = async (cities: TransitCity[]): Promise<Record<string, LiveWeatherData>> => {
+    if (!cities.length) return {};
+    const lats = cities.map(c => c.lat.toFixed(4)).join(',');
+    const lngs = cities.map(c => c.lng.toFixed(4)).join(',');
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&hourly=precipitation_probability&forecast_days=1&timezone=Asia%2FKarachi`;
+
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 10000) : null;
+    let resp;
+    try {
+      resp = await fetch(url, { signal: controller ? controller.signal : undefined });
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+
+    if (!resp.ok) throw new Error(`Weather API returned ${resp.status}`);
+    const data = await resp.json();
+    const list = Array.isArray(data) ? data : [data];
+
+    const result: Record<string, LiveWeatherData> = {};
+    cities.forEach((city, idx) => {
+      const item = list[idx];
+      if (item && item.current) {
+        result[city.id] = processWeatherItem(item.current, item.hourly);
+      }
+    });
+    return result;
+  };
+
+  // Fetch live weather with immediate corridor priority and background sync
   const fetchAllCitiesWeather = async () => {
     setLoadingWeather(true);
-    let anyFetchFailed = false;
-    let anyFetchSuccess = false;
+
     try {
-      const results: Record<string, LiveWeatherData> = { ...weatherMap };
-      const coords = PAKISTAN_CITIES.map(c => ({ id: c.id, lat: c.lat, lng: c.lng }));
+      // 1. FIRST PRIORITY: Active route cities (instantaneous ~250ms fetch for visible corridor)
+      const activeCities = routeCities.length > 0 ? routeCities : [originCity, destCity];
+      const activeResults = await fetchBatchCoords(activeCities);
 
-      const requests = coords.map(async (city) => {
-        try {
-          const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&hourly=precipitation_probability&forecast_days=1&timezone=Asia%2FKarachi`;
-          const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-          const timeoutId = controller ? setTimeout(() => controller.abort(), 6000) : null;
-          let resp;
-          try {
-            resp = await fetch(url, { signal: controller ? controller.signal : undefined });
-          } finally {
-            if (timeoutId) clearTimeout(timeoutId);
-          }
-          if (!resp.ok) throw new Error('API failed');
-          const data = await resp.json();
-          const current = data.current;
-          
-          const temp = Math.round(current.temperature_2m);
-          const apparentTemp = Math.round(current.apparent_temperature);
-          const humidity = Math.round(current.relative_humidity_2m);
-          const windSpeed = Math.round(current.wind_speed_10m);
-          const visibilityKm = Math.round((current.visibility || 10000) / 100) / 10;
-          const precipitationMm = current.precipitation || 0;
-          const weatherCode = current.weather_code || 0;
-
-          const currentHour = new Date().getHours();
-          const precipitationProbability = (data.hourly && Array.isArray(data.hourly.precipitation_probability))
-            ? (data.hourly.precipitation_probability[currentHour] ?? data.hourly.precipitation_probability[0] ?? (precipitationMm > 0 ? 80 : 0))
-            : (precipitationMm > 0 ? 80 : (weatherCode >= 51 && weatherCode <= 67 ? 60 : 0));
-
-          const parsed = parseWeatherCode(weatherCode, current.visibility || 10000, windSpeed, temp);
-
-          results[city.id] = {
-            temp,
-            apparentTemp,
-            humidity,
-            windSpeed,
-            visibilityKm,
-            precipitationMm,
-            precipitationProbability,
-            weatherCode,
-            ...parsed,
-            updatedAt: new Date().toLocaleTimeString(lang === 'ur' ? 'ur-PK' : 'en-US', { hour: '2-digit', minute: '2-digit' })
-          };
-          anyFetchSuccess = true;
-        } catch {
-          anyFetchFailed = true;
-          // Stale data preservation: keep previous cached weather if available!
-          if (!results[city.id]) {
-            const baseTemp = city.id === 'karachi' || city.id === 'gwadar' ? 29 : city.id === 'gilgit' || city.id === 'abbottabad' ? 16 : 24;
-            const parsed = parseWeatherCode(0, 8000, 14, baseTemp);
-            results[city.id] = {
-              temp: baseTemp,
-              apparentTemp: baseTemp + 1,
-              humidity: 45,
-              windSpeed: 12,
-              visibilityKm: 8.5,
-              precipitationMm: 0,
-              precipitationProbability: 0,
-              weatherCode: 0,
-              ...parsed,
-              updatedAt: new Date().toLocaleTimeString(lang === 'ur' ? 'ur-PK' : 'en-US', { hour: '2-digit', minute: '2-digit' })
-            };
-          }
-        }
-      });
-
-      await Promise.all(requests);
-      setWeatherMap(results);
-
-      if (anyFetchSuccess && !anyFetchFailed) {
-        const now = Date.now();
-        setWeatherCachedTimestamp(now);
-        setWeatherFetchError(false);
+      const now = Date.now();
+      setWeatherMap(prev => {
+        const merged = { ...prev, ...activeResults };
         try {
           localStorage.setItem(CACHE_KEY_WEATHER, JSON.stringify({
-            data: results,
+            data: merged,
             timestamp: now
           }));
         } catch {
           // ignore
         }
-      } else if (anyFetchFailed) {
-        setWeatherFetchError(true);
+        return merged;
+      });
+
+      setWeatherCachedTimestamp(now);
+      setWeatherFetchError(false);
+      setLoadingWeather(false); // Stop spinner immediately because visible stations are updated!
+
+      // 2. BACKGROUND SYNC: Update remaining Pakistan cities in 45-city batches
+      const activeIds = new Set(activeCities.map(c => c.id));
+      const remainingCities = PAKISTAN_CITIES.filter(c => !activeIds.has(c.id));
+      const CHUNK_SIZE = 45;
+
+      for (let i = 0; i < remainingCities.length; i += CHUNK_SIZE) {
+        const chunk = remainingCities.slice(i, i + CHUNK_SIZE);
+        try {
+          const chunkResults = await fetchBatchCoords(chunk);
+          setWeatherMap(prev => {
+            const merged = { ...prev, ...chunkResults };
+            try {
+              localStorage.setItem(CACHE_KEY_WEATHER, JSON.stringify({
+                data: merged,
+                timestamp: Date.now()
+              }));
+            } catch {
+              // ignore
+            }
+            return merged;
+          });
+        } catch {
+          // Ignore background chunk errors to prevent disrupting active route
+        }
       }
     } catch (e) {
       console.error('Weather fetch error:', e);
-      setWeatherFetchError(true);
+      // If active route batch failed, try single-city fallback for origin & dest
+      try {
+        const fallbackResults: Record<string, LiveWeatherData> = {};
+        for (const city of [originCity, destCity]) {
+          const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&timezone=Asia%2FKarachi`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.current) {
+              fallbackResults[city.id] = processWeatherItem(data.current, data.hourly);
+            }
+          }
+        }
+        if (Object.keys(fallbackResults).length > 0) {
+          const now = Date.now();
+          setWeatherMap(prev => ({ ...prev, ...fallbackResults }));
+          setWeatherCachedTimestamp(now);
+          setWeatherFetchError(false);
+        } else {
+          setWeatherFetchError(true);
+        }
+      } catch {
+        setWeatherFetchError(true);
+      }
     } finally {
       setLoadingWeather(false);
     }
   };
 
-  // Initial load
+  // Initial load & automatic refresh every 5 minutes
   useEffect(() => {
-    let shouldFetch = true;
-    try {
-      const cachedStr = localStorage.getItem(CACHE_KEY_WEATHER);
-      if (cachedStr) {
-        const parsed = JSON.parse(cachedStr);
-        if (parsed && parsed.timestamp && (Date.now() - parsed.timestamp < CACHE_TTL_MS)) {
-          shouldFetch = false;
-        }
-      }
-    } catch {
-      // ignore
-    }
-
-    if (shouldFetch) {
-      fetchAllCitiesWeather();
-    }
+    fetchAllCitiesWeather();
 
     if (autoRefreshInterval) {
-      const interval = setInterval(fetchAllCitiesWeather, 60000 * 10);
+      const interval = setInterval(fetchAllCitiesWeather, 60000 * 5);
       return () => clearInterval(interval);
     }
   }, [autoRefreshInterval]);
+
+  // When selected route origin or destination changes, immediately refresh route weather
+  useEffect(() => {
+    fetchAllCitiesWeather();
+  }, [originCityId, destCityId]);
 
   // Leaflet Tile URLs
   const getTileUrl = (layer: 'streets' | 'satellite' | 'terrain' | 'dark') => {
@@ -1094,36 +1136,36 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
   };
 
   return (
-    <div className={`flex-1 flex flex-col max-w-7xl mx-auto w-full p-3 sm:p-5 lg:p-6 gap-3.5 sm:gap-4.5 animate-in fade-in ${isUrdu ? 'text-right' : 'text-left'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
+    <div className={`flex-1 flex flex-col max-w-6xl mx-auto w-full p-2.5 sm:p-3.5 gap-2.5 animate-in fade-in ${isUrdu ? 'text-right' : 'text-left'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
       
-      {/* Top Header - Matching TripCostView Style & Placement */}
-      <div className="w-full flex items-center justify-between pb-2 shrink-0 border-b border-[#ecece0]">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+      {/* Top Header */}
+      <div className="w-full flex items-center justify-between pb-1.5 shrink-0 border-b border-[#ecece0]">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
             <PublicImage
               fileName="map-icon.png"
               alt="Highway Route Map and Navigation"
-              width={40}
-              height={40}
-              className="w-full h-full object-cover rounded-xl"
-              fallbackIcon={<MapPin className="w-5 h-5 text-[#8b9d77]" />}
+              width={32}
+              height={32}
+              className="w-full h-full object-cover rounded-lg"
+              fallbackIcon={<MapPin className="w-4 h-4 text-[#8b9d77]" />}
             />
           </div>
           <div>
-            <h1 className="text-base sm:text-lg font-bold text-[#4a4a35] leading-tight">
+            <h1 className="text-sm sm:text-base font-bold text-[#4a4a35] leading-tight">
               {isUrdu ? 'نقشہ و روٹ موسم' : 'Map & Route Weather'}
             </h1>
-            <p className="text-[11px] text-[#8e8e75]">
+            <p className="text-[10px] text-[#8e8e75]">
               {isUrdu ? 'موٹروے روٹ نقشہ، حدِ نگاہ اور لائیو موسم' : 'Highway corridors, visibility & live weather'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => setIsReportModalOpen(true)}
-            className="px-3 py-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs active:scale-95"
+            className="px-2.5 py-1.5 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
             title={isUrdu ? 'سڑک پر خطرہ رپورٹ کریں' : 'Report Road Hazard'}
           >
             <AlertTriangle className="w-3.5 h-3.5" />
@@ -1134,7 +1176,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
             <button
               type="button"
               onClick={() => onNavigate('home')}
-              className="p-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+              className="p-1.5 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
               title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
             >
               <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
@@ -1145,24 +1187,24 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
       </div>
 
       {locationError && (
-        <div className="mb-4 bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold p-3 rounded-2xl text-center shadow-2xs">
+        <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold p-2 rounded-xl text-center shadow-2xs">
           {locationError}
         </div>
       )}
 
       {/* SEARCHABLE CITY SELECTION BOX (From City & To City) */}
-      <section className="bg-white p-3.5 sm:p-5 rounded-[24px] sm:rounded-[28px] shadow-sm border border-[#ecece0] space-y-3">
+      <section className="bg-white p-2.5 sm:p-3 rounded-2xl shadow-2xs border border-[#ecece0] space-y-2">
         
-        <div className="flex flex-wrap items-center justify-between border-b border-[#ecece0] pb-3 gap-2">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-[#8b9d77]/15 text-[#8b9d77]">
-              <Search className="w-4 h-4" />
+        <div className="flex flex-wrap items-center justify-between border-b border-[#ecece0]/80 pb-1.5 gap-2">
+          <div className="flex items-center gap-1.5">
+            <div className="p-1.5 rounded-lg bg-[#8b9d77]/15 text-[#8b9d77]">
+              <Search className="w-3.5 h-3.5" />
             </div>
             <div>
-              <h2 className="font-serif font-bold text-sm sm:text-base text-[#4a4a35]">
+              <h2 className="font-serif font-bold text-xs sm:text-sm text-[#4a4a35]">
                 {isUrdu ? 'روٹ کا انتخاب کریں (شہر تلاش کریں)' : 'Select Route (Search Cities)'}
               </h2>
-              <p className="text-[11px] text-[#8e8e75]">
+              <p className="text-[10px] text-[#8e8e75]">
                 {isUrdu
                   ? `${originCity.nameUr} ➔ ${destCity.nameUr} (${routeMetrics.distanceKm} کلومیٹر)`
                   : `${originCity.nameEn} ➔ ${destCity.nameEn} (${routeMetrics.distanceKm} km)`}
@@ -1170,8 +1212,8 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="bg-[#fdfbf7] px-2.5 py-1 rounded-xl border border-[#ecece0] flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-1.5">
+            <div className="bg-[#fdfbf7] px-2 py-0.5 rounded-lg border border-[#ecece0] flex items-center gap-1 text-[11px]">
               <span className="text-[10px] text-[#8e8e75]">{isUrdu ? 'فاصلہ:' : 'Dist:'}</span>
               <span className="font-mono font-bold text-[#8b9d77]">{routeMetrics.distanceKm} km</span>
             </div>
@@ -1179,25 +1221,25 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
               type="button"
               onClick={handleSwapCities}
               title={isUrdu ? 'روانگی اور منزل تبدیل کریں' : 'Swap Origin and Destination'}
-              className="px-3 py-1.5 rounded-xl bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35] transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+              className="px-2.5 py-1 rounded-lg bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35] transition-all flex items-center gap-1 text-[11px] font-bold cursor-pointer"
             >
-              <ArrowRightLeft className="w-3.5 h-3.5" />
+              <ArrowRightLeft className="w-3 h-3" />
               <span className="hidden sm:inline">{isUrdu ? 'تبدیل کریں' : 'Swap'}</span>
             </button>
           </div>
         </div>
 
         {/* Dual Searchable City Selectors */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 relative">
           
           {/* FROM CITY (کہاں سے روانگی) */}
           <div className="relative">
-            <label className="text-xs font-bold text-[#4a4a35] flex items-center justify-between mb-1.5">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+            <label className="text-[11px] font-bold text-[#4a4a35] flex items-center justify-between mb-1">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
                 <span>{isUrdu ? 'کہاں سے روانگی (From City):' : 'From City (Origin):'}</span>
               </span>
-              <span className="text-[10px] text-emerald-700 font-normal bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+              <span className="text-[9px] text-emerald-700 font-normal bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                 {isUrdu ? originCity.provinceUr : originCity.provinceEn}
               </span>
             </label>
@@ -1208,15 +1250,15 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
                 setIsOriginOpen(!isOriginOpen);
                 setIsDestOpen(false);
               }}
-              className="w-full px-4 py-3 bg-[#fdfbf7] border-2 border-emerald-300 hover:border-emerald-500 rounded-2xl flex items-center justify-between cursor-pointer transition-all shadow-2xs"
+              className="w-full px-3 py-2 bg-[#fdfbf7] border-2 border-emerald-300 hover:border-emerald-500 rounded-xl flex items-center justify-between cursor-pointer transition-all shadow-2xs text-xs"
             >
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span className="font-bold text-sm text-[#1f2937]">
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="font-bold text-xs text-[#1f2937]">
                   {isUrdu ? `${originCity.nameUr} (${originCity.nameEn})` : `${originCity.nameEn} (${originCity.provinceEn})`}
                 </span>
               </div>
-              <ChevronDown className={`w-4 h-4 text-[#8e8e75] transition-transform ${isOriginOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3.5 h-3.5 text-[#8e8e75] transition-transform ${isOriginOpen ? 'rotate-180' : ''}`} />
             </div>
 
             {/* Search Dropdown Popup */}
@@ -1275,12 +1317,12 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
 
           {/* TO CITY (کہاں تک منزل) */}
           <div className="relative">
-            <label className="text-xs font-bold text-[#4a4a35] flex items-center justify-between mb-1.5">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+            <label className="text-[11px] font-bold text-[#4a4a35] flex items-center justify-between mb-1">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
                 <span>{isUrdu ? 'کہاں تک منزل (To City):' : 'To City (Destination):'}</span>
               </span>
-              <span className="text-[10px] text-rose-700 font-normal bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+              <span className="text-[9px] text-rose-700 font-normal bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
                 {isUrdu ? destCity.provinceUr : destCity.provinceEn}
               </span>
             </label>
@@ -1291,15 +1333,15 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
                 setIsDestOpen(!isDestOpen);
                 setIsOriginOpen(false);
               }}
-              className="w-full px-4 py-3 bg-[#fdfbf7] border-2 border-rose-300 hover:border-rose-500 rounded-2xl flex items-center justify-between cursor-pointer transition-all shadow-2xs"
+              className="w-full px-3 py-2 bg-[#fdfbf7] border-2 border-rose-300 hover:border-rose-500 rounded-xl flex items-center justify-between cursor-pointer transition-all shadow-2xs text-xs"
             >
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-rose-600 shrink-0" />
-                <span className="font-bold text-sm text-[#1f2937]">
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                <span className="font-bold text-xs text-[#1f2937]">
                   {isUrdu ? `${destCity.nameUr} (${destCity.nameEn})` : `${destCity.nameEn} (${destCity.provinceEn})`}
                 </span>
               </div>
-              <ChevronDown className={`w-4 h-4 text-[#8e8e75] transition-transform ${isDestOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3.5 h-3.5 text-[#8e8e75] transition-transform ${isDestOpen ? 'rotate-180' : ''}`} />
             </div>
 
             {/* Search Dropdown Popup */}
@@ -1356,34 +1398,6 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
             )}
           </div>
 
-        </div>
-
-        {/* Quick Popular Corridors Chips */}
-        <div className="pt-2 border-t border-[#ecece0]/80 flex items-center gap-2 overflow-x-auto no-scrollbar">
-          <span className="text-[11px] font-bold text-[#8e8e75] shrink-0">
-            {isUrdu ? 'فوری راستے:' : 'Popular Routes:'}
-          </span>
-          {POPULAR_ROUTES.map(pr => {
-            const isMatch = (originCityId === pr.originId && destCityId === pr.destId) || (originCityId === pr.destId && destCityId === pr.originId);
-            return (
-              <button
-                key={pr.id}
-                type="button"
-                onClick={() => {
-                  setOriginCityId(pr.originId);
-                  setDestCityId(pr.destId);
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 border ${
-                  isMatch
-                    ? 'bg-[#8b9d77] text-white border-[#8b9d77] shadow-xs'
-                    : 'bg-[#fdfbf7] text-[#4a4a35] border-[#ecece0] hover:border-[#8b9d77]'
-                }`}
-              >
-                <span>{isUrdu ? pr.nameUr : pr.nameEn}</span>
-                <span className="text-[10px] mx-1 opacity-75 font-mono">({pr.distanceKm}km)</span>
-              </button>
-            );
-          })}
         </div>
 
       </section>
@@ -1499,53 +1513,50 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
         </section>
       )}
 
-      {/* Main Full-Width Section: Interactive Map + Route Stations */}
-      <div className="flex flex-col gap-6">
+      {/* Main Section: Interactive Map + Route Stations */}
+      <div className="flex flex-col gap-2">
         
         {/* Interactive Leaflet Map Container */}
-        <div className="bg-white p-2 sm:p-3 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] overflow-hidden relative">
+        <div className="bg-white p-1.5 sm:p-2 rounded-2xl shadow-2xs border border-[#ecece0] overflow-hidden relative">
           
           {/* Map Layer Switcher Floating Pill */}
-          <div className={`absolute top-4 ${isUrdu ? 'right-4' : 'left-4'} z-[500] bg-white/95 backdrop-blur-md p-1.5 rounded-2xl shadow-md border border-[#ecece0] flex items-center gap-1 text-[11px] font-bold`}>
+          <div className={`absolute top-3 ${isUrdu ? 'right-3' : 'left-3'} z-[500] bg-white/95 backdrop-blur-md p-1 rounded-xl shadow-xs border border-[#ecece0] flex items-center gap-0.5 text-[10px] font-bold`}>
             <button
               type="button"
               onClick={() => setActiveMapLayer('streets')}
-              className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${activeMapLayer === 'streets' ? 'bg-[#8b9d77] text-white' : 'text-[#4a4a35] hover:bg-[#f0f0e4]'}`}
+              className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer ${activeMapLayer === 'streets' ? 'bg-[#8b9d77] text-white' : 'text-[#4a4a35] hover:bg-[#f0f0e4]'}`}
             >
               {isUrdu ? 'سڑکیں' : 'Streets'}
             </button>
             <button
               type="button"
               onClick={() => setActiveMapLayer('satellite')}
-              className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${activeMapLayer === 'satellite' ? 'bg-[#8b9d77] text-white' : 'text-[#4a4a35] hover:bg-[#f0f0e4]'}`}
+              className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer ${activeMapLayer === 'satellite' ? 'bg-[#8b9d77] text-white' : 'text-[#4a4a35] hover:bg-[#f0f0e4]'}`}
             >
               {isUrdu ? 'سیٹلائٹ' : 'Satellite'}
             </button>
             <button
               type="button"
               onClick={() => setActiveMapLayer('terrain')}
-              className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${activeMapLayer === 'terrain' ? 'bg-[#8b9d77] text-white' : 'text-[#4a4a35] hover:bg-[#f0f0e4]'}`}
+              className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer ${activeMapLayer === 'terrain' ? 'bg-[#8b9d77] text-white' : 'text-[#4a4a35] hover:bg-[#f0f0e4]'}`}
             >
-              {isUrdu ? 'پہاڑی رقبہ' : 'Terrain'}
+              {isUrdu ? 'پہاڑ' : 'Terrain'}
             </button>
             <button
               type="button"
               onClick={() => setActiveMapLayer('dark')}
-              className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${activeMapLayer === 'dark' ? 'bg-[#222] text-white' : 'text-[#4a4a35] hover:bg-[#f0f0e4]'}`}
+              className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer ${activeMapLayer === 'dark' ? 'bg-[#222] text-white' : 'text-[#4a4a35] hover:bg-[#f0f0e4]'}`}
             >
-              {isUrdu ? 'نائٹ موڈ' : 'Night'}
+              {isUrdu ? 'نائٹ' : 'Night'}
             </button>
           </div>
 
           {/* Weather Legend Float on Map */}
-          <div className={`absolute bottom-4 ${isUrdu ? 'left-4 text-right' : 'right-4 text-left'} z-[500] bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl shadow-md border border-[#ecece0] text-[10px] text-[#4a4a35] space-y-1 hidden sm:block`}>
-            <div className="font-bold font-serif text-[#8b9d77]">
-              {isUrdu ? 'موسمی علامات:' : 'Weather Legend:'}
-            </div>
+          <div className={`absolute bottom-3 ${isUrdu ? 'left-3 text-right' : 'right-3 text-left'} z-[500] bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-xl shadow-xs border border-[#ecece0] text-[9px] text-[#4a4a35] space-y-0.5 hidden sm:block`}>
             <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1">{isUrdu ? '🟢 محفوظ / صاف' : '🟢 Safe / Clear'}</span>
-              <span className="flex items-center gap-1">{isUrdu ? '🟡 دھند / بارش' : '🟡 Fog / Rain'}</span>
-              <span className="flex items-center gap-1">{isUrdu ? '🔴 وارننگ' : '🔴 Alert'}</span>
+              <span className="flex items-center gap-0.5">{isUrdu ? '🟢 صاف' : '🟢 Clear'}</span>
+              <span className="flex items-center gap-0.5">{isUrdu ? '🟡 دھند/بارش' : '🟡 Rain/Fog'}</span>
+              <span className="flex items-center gap-0.5">{isUrdu ? '🔴 وارننگ' : '🔴 Alert'}</span>
             </div>
           </div>
 
@@ -1553,197 +1564,227 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
           <div 
             ref={mapContainerRef} 
             id="pakistan-route-weather-map"
-            className="w-full h-[480px] sm:h-[580px] md:h-[650px] rounded-[28px] z-0 overflow-hidden"
+            className="w-full h-[200px] sm:h-[235px] md:h-[265px] rounded-xl z-0 overflow-hidden"
             style={{ background: '#e5e7eb' }}
           />
         </div>
 
-        {/* Route Stations Weather Flow Horizontal Cards */}
-        <div className="bg-white p-5 sm:p-6 rounded-[32px] sm:rounded-[36px] shadow-sm border border-[#ecece0] space-y-4">
+        {/* Route Weather Advisory Summary Banner (Kept & Compact) */}
+        <RouteWeatherAdvisoryBanner
+          lang={lang}
+          routeCities={routeCities}
+          weatherMap={weatherMap}
+          loadingWeather={loadingWeather}
+          weatherFetchError={weatherFetchError}
+          weatherCachedTimestamp={weatherCachedTimestamp}
+          originCity={originCity}
+          destCity={destCity}
+          onRefreshWeather={fetchAllCitiesWeather}
+        />
+
+        {/* Crowd-Sourced Road Hazard Advisory Summary Banner (Only alerts if active hazard reports exist) */}
+        <RouteHazardAdvisoryBanner
+          lang={lang}
+          summaries={routeHazardSummaries}
+          onOpenReportModal={() => setIsReportModalOpen(true)}
+          onRefresh={loadHazards}
+          isRefreshing={loadingHazards}
+        />
+
+        {/* Navigation & Highway Actions Bar (Right below Map for immediate access) */}
+        <div className="bg-white p-2 sm:p-2.5 rounded-2xl shadow-2xs border border-[#ecece0] flex flex-col md:flex-row items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={handleStartNavigation}
+              className="flex-1 md:flex-initial px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-serif font-bold text-xs shadow-2xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Play className="w-3.5 h-3.5 fill-white shrink-0" />
+              <span>{isUrdu ? 'لائیو نیویگیشن شروع کریں' : 'Start Live Navigation'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenGoogleMapsNav}
+              title={isUrdu ? 'گوگل میپس میں نیویگیشن کھولیں' : 'Open in Google Maps'}
+              className="px-3 py-2 rounded-xl bg-[#1e3a68] hover:bg-[#162a4d] text-white text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs shrink-0"
+            >
+              <ExternalLink className="w-3 h-3 text-emerald-300" />
+              <span>{isUrdu ? 'گوگل میپس' : 'Google Maps'}</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1.5 w-full md:w-auto shrink-0">
+            {/* 1. WHATSAPP SHARE */}
+            <button
+              type="button"
+              onClick={handleShareWeatherWhatsApp}
+              aria-label={isUrdu ? 'واٹس ایپ پر شیئر کریں' : 'Share on WhatsApp'}
+              className="py-2 px-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+            >
+              <Share2 className="w-3.5 h-3.5 shrink-0" />
+              <span>{shareSuccess ? (isUrdu ? 'شیئر ہو گیا!' : 'Shared!') : (isUrdu ? 'واٹس ایپ' : 'WhatsApp')}</span>
+            </button>
+
+            {/* 2. MY LOCATION */}
+            <button
+              type="button"
+              onClick={handleLocateMe}
+              disabled={locatingUser}
+              aria-label={isUrdu ? 'میری لوکیشن' : 'My Location'}
+              className="py-2 px-2.5 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs active:scale-95 disabled:opacity-75"
+            >
+              <Crosshair className={`w-3.5 h-3.5 shrink-0 ${locatingUser ? 'animate-spin' : ''}`} />
+              <span>{locatingUser ? (isUrdu ? 'تلاش...' : 'Locating...') : (isUrdu ? 'لوکیشن' : 'Location')}</span>
+            </button>
+
+            {/* 3. WEATHER REFRESH */}
+            <button
+              type="button"
+              onClick={fetchAllCitiesWeather}
+              disabled={loadingWeather}
+              aria-label={isUrdu ? 'موسم اپڈیٹ کریں' : 'Refresh Weather'}
+              className="py-2 px-2.5 rounded-xl bg-[#8b9d77] hover:bg-[#7a8c66] text-white text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs active:scale-95 disabled:opacity-75"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${loadingWeather ? 'animate-spin' : ''}`} />
+              <span>{loadingWeather ? (isUrdu ? 'اپڈیٹ...' : 'Updating...') : (isUrdu ? 'ریفریش' : 'Refresh')}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ROUTE STATIONS AND WEATHER MINIMIZER TOGGLE */}
+        <div className="bg-white p-2 sm:p-2.5 rounded-2xl shadow-2xs border border-[#ecece0] space-y-2">
           
-          {/* Route Weather Advisory Summary Banner (Above per-city weather cards) */}
-          <RouteWeatherAdvisoryBanner
-            lang={lang}
-            routeCities={routeCities}
-            weatherMap={weatherMap}
-            loadingWeather={loadingWeather}
-            weatherFetchError={weatherFetchError}
-            weatherCachedTimestamp={weatherCachedTimestamp}
-            originCity={originCity}
-            destCity={destCity}
-            onRefreshWeather={fetchAllCitiesWeather}
-          />
-
-          {/* Crowd-Sourced Road Hazard Advisory Summary Banner (Requirement 5) */}
-          <RouteHazardAdvisoryBanner
-            lang={lang}
-            summaries={routeHazardSummaries}
-            onOpenReportModal={() => setIsReportModalOpen(true)}
-            onRefresh={loadHazards}
-            isRefreshing={loadingHazards}
-          />
-
-          <div className="flex items-center justify-between">
-            <h2 className="font-serif font-bold text-sm sm:text-base text-[#4a4a35] flex items-center gap-2">
-              <Navigation className="w-4 h-4 text-[#8b9d77]" />
-              <span>{isUrdu ? 'روٹ کے تمام اہم اسٹیشنز اور موسمی صورتحال:' : 'Route Stations & Live Weather Status:'}</span>
-            </h2>
-            <span className="text-xs font-mono font-bold text-[#8b9d77]">
-              {routeCities.length} {isUrdu ? 'اسٹاپ پوائنٹس' : 'Transit Stops'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {routeCities.map((city, idx) => {
-              const weather = weatherMap[city.id];
-              const isOrigin = idx === 0;
-              const isDest = idx === routeCities.length - 1;
-              return (
-                <div
-                  key={city.id}
-                  onClick={() => {
-                    setSelectedCityForDetail(city);
-                    if (leafletMapRef.current) {
-                      leafletMapRef.current.flyTo([city.lat, city.lng], 9, { animate: true });
-                    }
-                  }}
-                  className={`p-4 rounded-3xl border transition-all cursor-pointer relative overflow-hidden group ${
-                    isUrdu ? 'text-right' : 'text-left'
-                  } ${
-                    isOrigin
-                      ? 'bg-emerald-50/70 border-emerald-300 hover:border-emerald-500'
-                      : isDest
-                        ? 'bg-rose-50/70 border-rose-300 hover:border-rose-500'
-                        : 'bg-[#fdfbf7] border-[#ecece0] hover:border-[#8b9d77] hover:bg-white'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className={isUrdu ? 'text-left' : 'text-right'}>
-                      <div className="text-lg font-serif font-bold text-[#4a4a35]">
-                        {weather ? `${weather.temp}°C` : '--'}
-                      </div>
-                      <div className="text-[10px] text-[#8e8e75]">
-                        {weather ? (isUrdu ? weather.conditionUr : weather.conditionEn) : '--'}
-                      </div>
-                    </div>
-
-                    <div className={isUrdu ? 'text-right' : 'text-left'}>
-                      <div className={`flex items-center ${isUrdu ? 'justify-end' : 'justify-start'} gap-1.5`}>
-                        <h3 className="font-serif font-bold text-sm text-[#4a4a35]">
-                          {isUrdu ? city.nameUr : city.nameEn}
-                        </h3>
-                        <span className={`w-2 h-2 rounded-full ${isOrigin ? 'bg-emerald-500' : isDest ? 'bg-rose-500' : 'bg-blue-500'}`}></span>
-                      </div>
-                      <span className="text-[10px] text-[#8e8e75] font-sans">
-                        {isOrigin ? (isUrdu ? 'روانگی مقام' : 'Origin Station') : isDest ? (isUrdu ? 'منزل مقام' : 'Destination') : `${isUrdu ? 'چیک پوائنٹ' : 'Checkpoint'} #${idx}`}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] pt-2 border-t border-[#ecece0]/80">
-                    <div className="bg-white/80 p-1.5 rounded-xl">
-                      <span className="text-[#8e8e75] block text-[9px]">{isUrdu ? 'دید' : 'Vis'}</span>
-                      <strong className={weather && weather.visibilityKm < 1 ? 'text-red-600' : 'text-[#4a4a35]'}>
-                        {weather ? `${weather.visibilityKm}km` : '--'}
-                      </strong>
-                    </div>
-                    <div className="bg-white/80 p-1.5 rounded-xl">
-                      <span className="text-[#8e8e75] block text-[9px]">{isUrdu ? 'ہوا' : 'Wind'}</span>
-                      <strong>{weather ? `${weather.windSpeed}k/h` : '--'}</strong>
-                    </div>
-                    <div className="bg-white/80 p-1.5 rounded-xl">
-                      <span className="text-[#8e8e75] block text-[9px]">{isUrdu ? 'نمی' : 'Hum'}</span>
-                      <strong>{weather ? `${weather.humidity}%` : '--'}</strong>
-                    </div>
-                  </div>
-
-                  {weather && weather.fogWarning && (
-                    <div className={`mt-2 text-[10px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 rounded-xl px-2 py-1 flex items-center gap-1 ${isUrdu ? 'justify-end' : 'justify-start'}`}>
-                      <span>{isUrdu ? 'دھند / اسموگ وارننگ' : 'Fog / Smog Warning'}</span>
-                      <CloudFog className="w-3 h-3 text-amber-700 shrink-0" />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* DEDICATED NAVIGATION ACTION BAR UNDER WEATHER DISPLAY */}
-          <div className="pt-4 border-t border-[#ecece0] flex flex-col gap-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-bold font-serif text-[#4a4a35]">
-                  {isUrdu ? 'روٹ نیویگیشن اور ٹرن بائی ٹرن رہنمائی' : 'Route Navigation & Turn-by-Turn Guidance'}
-                </h3>
-                <p className="text-xs text-[#8e8e75] mt-0.5">
-                  {isUrdu
-                    ? `${originCity.nameUr} سے ${destCity.nameUr} کے سفر کے لیے فل سکرین لائیو نیویگیشن پیج کھولیں`
-                    : `Open dedicated full-screen live turn-by-turn driving page from ${originCity.nameEn} to ${destCity.nameEn}`}
-                </p>
+          <button
+            type="button"
+            onClick={() => setShowAllCities(prev => !prev)}
+            className={`w-full py-2 px-3 rounded-xl border-2 transition-all flex items-center justify-between cursor-pointer font-bold shadow-2xs active:scale-[0.99] ${
+              showAllCities
+                ? 'bg-[#8b9d77] text-white border-[#8b9d77]'
+                : 'bg-[#fdfbf7] hover:bg-[#f4f4ea] text-[#4a4a35] border-[#8b9d77]/40 hover:border-[#8b9d77]'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <div className={`p-1 rounded-lg ${showAllCities ? 'bg-white/20 text-white' : 'bg-[#8b9d77]/15 text-[#8b9d77]'}`}>
+                <Navigation className="w-3.5 h-3.5" />
               </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <button
-                  type="button"
-                  onClick={handleStartNavigation}
-                  className="flex-1 sm:flex-initial px-7 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white font-serif font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Play className="w-5 h-5 fill-white shrink-0" />
-                  <span>{isUrdu ? 'لائیو نیویگیشن شروع کریں' : 'Start Live Navigation'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleOpenGoogleMapsNav}
-                  title={isUrdu ? 'گوگل میپس میں نیویگیشن کھولیں' : 'Open in Google Maps'}
-                  className="px-4 py-3.5 rounded-2xl bg-[#1e3a68] hover:bg-[#162a4d] text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>{isUrdu ? 'گوگل میپس' : 'Google Maps'}</span>
-                </button>
+              <div className={isUrdu ? 'text-right' : 'text-left'}>
+                <span className="text-xs font-serif block leading-tight">
+                  {isUrdu ? 'روٹ کے تمام اہم اسٹیشنز اور موسمی صورتحال' : 'Route Stations & Live Weather Status'}
+                </span>
+                <span className={`text-[9px] ${showAllCities ? 'text-white/80' : 'text-[#8e8e75]'}`}>
+                  {routeCities.length} {isUrdu ? 'اہم اسٹیشنز و چیک پوائنٹس' : 'Transit stops and checkpoints'}
+                </span>
               </div>
             </div>
 
-            {/* THREE ESSENTIAL UTILITY BUTTONS BELOW NAVIGATION (WhatsApp Share, My Location, Refresh Weather) */}
-            <div className="pt-3 border-t border-dashed border-[#ecece0] grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              
-              {/* 1. WHATSAPP SHARE */}
-              <button
-                type="button"
-                onClick={handleShareWeatherWhatsApp}
-                aria-label={isUrdu ? 'واٹس ایپ پر شیئر کریں' : 'Share on WhatsApp'}
-                className="w-full py-3 px-4 rounded-2xl bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold font-serif transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
-              >
-                <Share2 className="w-4 h-4 shrink-0" />
-                <span>{shareSuccess ? (isUrdu ? 'شیئر ہو گیا!' : 'Shared!') : (isUrdu ? 'واٹس ایپ شیئر' : 'WhatsApp Share')}</span>
-              </button>
-
-              {/* 2. MY LOCATION */}
-              <button
-                type="button"
-                onClick={handleLocateMe}
-                disabled={locatingUser}
-                aria-label={isUrdu ? 'میری لوکیشن' : 'My Location'}
-                className="w-full py-3 px-4 rounded-2xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold font-serif transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95 disabled:opacity-75"
-              >
-                <Crosshair className={`w-4 h-4 shrink-0 ${locatingUser ? 'animate-spin' : ''}`} />
-                <span>{locatingUser ? (isUrdu ? 'تلاش جاری...' : 'Locating...') : (isUrdu ? 'میری لوکیشن' : 'My Location')}</span>
-              </button>
-
-              {/* 3. WEATHER REFRESH */}
-              <button
-                type="button"
-                onClick={fetchAllCitiesWeather}
-                disabled={loadingWeather}
-                aria-label={isUrdu ? 'موسم اپڈیٹ کریں' : 'Refresh Weather'}
-                className="w-full py-3 px-4 rounded-2xl bg-[#8b9d77] hover:bg-[#7a8c66] text-white text-xs font-bold font-serif transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95 disabled:opacity-75"
-              >
-                <RefreshCw className={`w-4 h-4 shrink-0 ${loadingWeather ? 'animate-spin' : ''}`} />
-                <span>{loadingWeather ? (isUrdu ? 'اپڈیٹ ہو رہا ہے...' : 'Updating...') : (isUrdu ? 'موسم ریفریش' : 'Refresh Weather')}</span>
-              </button>
-
+            <div className="flex items-center gap-1 text-xs">
+              <span className={`px-2 py-0.5 rounded-lg font-bold text-[10px] ${
+                showAllCities ? 'bg-white text-[#5a5a40]' : 'bg-[#8b9d77] text-white'
+              }`}>
+                {showAllCities 
+                  ? (isUrdu ? 'اسٹیشنز بند کریں' : 'Hide Stations') 
+                  : (isUrdu ? 'تمام متعلقہ شہر کھولیں' : 'Open All Relevant Cities')}
+              </span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${showAllCities ? 'rotate-180' : ''}`} />
             </div>
-          </div>
+          </button>
+
+          {/* ALL RELEVANT CITY BOXES (Only visible when user toggles button open) */}
+          {showAllCities && (
+            <div className="space-y-3 animate-in fade-in duration-300 pt-2">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs text-[#8e8e75] font-serif">
+                  {isUrdu 
+                    ? `روٹ پر واقع تمام ${routeCities.length} شہروں کا تازہ موسمی احوال:` 
+                    : `Live weather for all ${routeCities.length} cities along route:`}
+                </span>
+                <span className="text-[11px] font-mono text-[#8b9d77] font-bold">
+                  {originCity.nameUr} ➔ {destCity.nameUr}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {routeCities.map((city, idx) => {
+                  const weather = weatherMap[city.id];
+                  const isOrigin = idx === 0;
+                  const isDest = idx === routeCities.length - 1;
+                  return (
+                    <div
+                      key={city.id}
+                      onClick={() => {
+                        setSelectedCityForDetail(city);
+                        if (leafletMapRef.current) {
+                          leafletMapRef.current.flyTo([city.lat, city.lng], 9, { animate: true });
+                        }
+                      }}
+                      className={`p-4 rounded-3xl border transition-all cursor-pointer relative overflow-hidden group ${
+                        isUrdu ? 'text-right' : 'text-left'
+                      } ${
+                        isOrigin
+                          ? 'bg-emerald-50/70 border-emerald-300 hover:border-emerald-500'
+                          : isDest
+                            ? 'bg-rose-50/70 border-rose-300 hover:border-rose-500'
+                            : 'bg-[#fdfbf7] border-[#ecece0] hover:border-[#8b9d77] hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className={isUrdu ? 'text-left' : 'text-right'}>
+                          <div className="text-lg font-serif font-bold text-[#4a4a35]">
+                            {weather ? `${weather.temp}°C` : '--'}
+                          </div>
+                          <div className="text-[10px] text-[#8e8e75]">
+                            {weather ? (isUrdu ? weather.conditionUr : weather.conditionEn) : '--'}
+                            {weather?.updatedAt && (
+                              <span className="block text-[8px] text-[#8e8e75]/80 font-mono">
+                                🕒 {weather.updatedAt}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className={isUrdu ? 'text-right' : 'text-left'}>
+                          <div className={`flex items-center ${isUrdu ? 'justify-end' : 'justify-start'} gap-1.5`}>
+                            <h3 className="font-serif font-bold text-sm text-[#4a4a35]">
+                              {isUrdu ? city.nameUr : city.nameEn}
+                            </h3>
+                            <span className={`w-2 h-2 rounded-full ${isOrigin ? 'bg-emerald-500' : isDest ? 'bg-rose-500' : 'bg-blue-500'}`}></span>
+                          </div>
+                          <span className="text-[10px] text-[#8e8e75] font-sans">
+                            {isOrigin ? (isUrdu ? 'روانگی مقام' : 'Origin Station') : isDest ? (isUrdu ? 'منزل مقام' : 'Destination') : `${isUrdu ? 'چیک پوائنٹ' : 'Checkpoint'} #${idx}`}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] pt-2 border-t border-[#ecece0]/80">
+                        <div className="bg-white/80 p-1.5 rounded-xl">
+                          <span className="text-[#8e8e75] block text-[9px]">{isUrdu ? 'دید' : 'Vis'}</span>
+                          <strong className={weather && weather.visibilityKm < 1 ? 'text-red-600' : 'text-[#4a4a35]'}>
+                            {weather ? `${weather.visibilityKm}km` : '--'}
+                          </strong>
+                        </div>
+                        <div className="bg-white/80 p-1.5 rounded-xl">
+                          <span className="text-[#8e8e75] block text-[9px]">{isUrdu ? 'ہوا' : 'Wind'}</span>
+                          <strong>{weather ? `${weather.windSpeed}k/h` : '--'}</strong>
+                        </div>
+                        <div className="bg-white/80 p-1.5 rounded-xl">
+                          <span className="text-[#8e8e75] block text-[9px]">{isUrdu ? 'نمی' : 'Hum'}</span>
+                          <strong>{weather ? `${weather.humidity}%` : '--'}</strong>
+                        </div>
+                      </div>
+
+                      {weather && weather.fogWarning && (
+                        <div className={`mt-2 text-[10px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 rounded-xl px-2 py-1 flex items-center gap-1 ${isUrdu ? 'justify-end' : 'justify-start'}`}>
+                          <span>{isUrdu ? 'دھند / اسموگ وارننگ' : 'Fog / Smog Warning'}</span>
+                          <CloudFog className="w-3 h-3 text-amber-700 shrink-0" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
         </div>
 

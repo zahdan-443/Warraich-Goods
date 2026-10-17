@@ -68,37 +68,7 @@ export const RouteHazardAdvisoryBanner: React.FC<RouteHazardAdvisoryBannerProps>
   };
 
   if (summaries.length === 0) {
-    return (
-      <div 
-        className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-50/80 to-teal-50/80 border border-emerald-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-        dir={isUrdu ? 'rtl' : 'ltr'}
-      >
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-          </div>
-          <div>
-            <p className="font-bold text-emerald-950">
-              {isUrdu ? 'روٹ پر کوئی خطرہ یا رکاوٹ رپورٹ نہیں ہے' : 'No active road hazards reported along this corridor'}
-            </p>
-            <p className="text-[11px] text-emerald-800/80">
-              {isUrdu 
-                ? 'گزشتہ 24 گھنٹوں میں موٹروے/ہائی وے ٹریفک معمول کے مطابق ہے۔' 
-                : 'Corridor traffic and checkpoints clear over the past 24 hours.'}
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onOpenReportModal}
-          className="self-start sm:self-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>{isUrdu ? 'خطرہ رپورٹ کریں' : 'Report Hazard'}</span>
-        </button>
-      </div>
-    );
+    return null;
   }
 
   const totalReportsCount = summaries.reduce((sum, s) => sum + s.count, 0);
