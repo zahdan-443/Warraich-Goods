@@ -450,6 +450,12 @@ export default function App() {
           lang === 'ur' ? `ویب ڈومین (${hostname}) فائر بیس کے Authorized Domains میں شامل کریں۔` : `Please authorize (${hostname}) in Firebase Console.`,
           'system'
         );
+      } else if (err?.code === 'auth/popup-blocked') {
+        pushAppNotification(
+          lang === 'ur' ? 'پوپ اپ بلاک ہے' : 'Popup Blocked',
+          lang === 'ur' ? 'براؤزر نے لاگ ان ونڈو روک دی۔ براہ کرم ایڈریس بار میں پاپ اپ کی اجازت دیں اور دوبارہ کلک کریں۔' : 'Browser blocked sign-in popup. Please allow popups in your browser and click again.',
+          'system'
+        );
       } else if (err?.code !== 'auth/popup-closed-by-user' && err?.code !== 'auth/cancelled-popup-request') {
         pushAppNotification(
           lang === 'ur' ? 'گوگل لاگ ان' : 'Google Sign-In',

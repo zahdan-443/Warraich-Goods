@@ -136,11 +136,18 @@ export const isMobileBrowser = (): boolean => {
 };
 
 export const loginWithGoogle = async (): Promise<User | null> => {
-  // 1. Capacitor native platform (Android APK WebView)
+  // 1. Capacitor native platform (Android APK)
   if (Capacitor.isNativePlatform()) {
     try {
-      const result = await FirebaseAuthentication.signInWithGoogle();
-      if (result.credential?.idToken) {
+      let result;
+      try {
+        result = await FirebaseAuthentication.signInWithGoogle();
+      } catch (nativeErr: any) {
+        console.warn("First native signInWithGoogle attempt notice, retrying with useCredentialManager: false:", nativeErr);
+        result = await FirebaseAuthentication.signInWithGoogle({ useCredentialManager: false });
+      }
+
+      if (result?.credential?.idToken) {
         const credential = GoogleAuthProvider.credential(
           result.credential.idToken,
           result.credential.accessToken
@@ -148,30 +155,24 @@ export const loginWithGoogle = async (): Promise<User | null> => {
         const userCredential = await signInWithCredential(auth, credential);
         return userCredential.user;
       }
-      if (result.user) {
+      if (result?.user) {
         return (auth.currentUser || (result.user as unknown as User));
       }
       if (auth.currentUser) return auth.currentUser;
+      return null;
     } catch (error: any) {
-      console.warn("Native Google Sign-In notice, falling back to Web SDK:", error);
+      console.error("Native Google Sign-In error:", error);
+      throw error;
     }
   }
 
-  // 2. Web Browser Flow: Standard Firebase Google Auth
+  // 2. Web Browser Flow: Standard Firebase Google Auth with Popup
+  // Using signInWithPopup avoids 'missing initial state' caused by browser storage partitioning
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
     console.warn("Google Sign-In popup notice:", error);
-    // If popup is blocked by the browser, fallback to redirect
-    if (error?.code === 'auth/popup-blocked') {
-      try {
-        await signInWithRedirect(auth, googleProvider);
-        return null;
-      } catch (redirectErr) {
-        console.warn("Redirect sign-in notice:", redirectErr);
-      }
-    }
     throw error;
   }
 };

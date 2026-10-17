@@ -4,4 +4,5 @@
     <string name="title_activity_main">Driver Dost</string>
     <string name="package_name">com.warraichgoods.driverdost</string>
     <string name="custom_url_scheme">com.warraichgoods.driverdost</string>
+    <string name="default_web_client_id">805249879186-ragamo9rp1srk8bmd3tboskfbe4s8hik.apps.googleusercontent.com</string>
 </resources>
