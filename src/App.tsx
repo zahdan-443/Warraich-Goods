@@ -457,9 +457,12 @@ export default function App() {
           'system'
         );
       } else if (err?.code !== 'auth/popup-closed-by-user' && err?.code !== 'auth/cancelled-popup-request') {
+        const errDetail = err?.message || err?.code || '';
         pushAppNotification(
           lang === 'ur' ? 'گوگل لاگ ان' : 'Google Sign-In',
-          lang === 'ur' ? 'گوگل لاگ ان مکمل نہیں ہو سکا۔ دوبارہ کوشش کریں۔' : 'Google Sign-In could not be completed. Please try again.',
+          lang === 'ur' 
+            ? `گوگل لاگ ان مکمل نہیں ہو سکا۔ ${errDetail ? `(${errDetail.slice(0, 70)})` : 'دوبارہ کوشش کریں۔'}` 
+            : `Google Sign-In could not be completed. ${errDetail ? `(${errDetail.slice(0, 70)})` : 'Please try again.'}`,
           'system'
         );
       }

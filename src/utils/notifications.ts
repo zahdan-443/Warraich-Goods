@@ -137,7 +137,9 @@ export async function sendSystemNotification(
             title,
             body: body || '',
             channelId: NOTIFICATION_CHANNEL_ID,
-            sound: 'default'
+            sound: 'default',
+            isExactNotification: false,
+            isExactMandatory: false
           }
         ]
       });
