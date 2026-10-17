@@ -20,9 +20,17 @@
     @com.getcapacitor.PluginMethod public <methods>;
 }
 
-# Official Capacitor Plugins (including @capacitor/filesystem)
+# Official & Community Capacitor Plugins
 -keep class com.capacitorjs.plugins.** { *; }
 -dontwarn com.capacitorjs.plugins.**
+-keep class io.capawesome.capacitorjs.plugins.** { *; }
+-dontwarn io.capawesome.capacitorjs.plugins.**
+-keep class io.capawesome.capacitorjs.plugins.firebase.authentication.** { *; }
+-keep interface io.capawesome.capacitorjs.plugins.firebase.authentication.** { *; }
+-keepclassmembers class io.capawesome.capacitorjs.plugins.firebase.authentication.** {
+    public *;
+    protected *;
+}
 
 # Native library used by @capacitor/filesystem
 -keep class io.ionic.libs.** { *; }
