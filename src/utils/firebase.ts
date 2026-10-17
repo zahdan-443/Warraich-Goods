@@ -80,7 +80,8 @@ export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export const loginWithGoogleRedirect = async (): Promise<void> => {
-  await signInWithRedirect(auth, googleProvider);
+  // Deprecated redirect flow to prevent missing-initial-state in storage-partitioned environments
+  console.warn('loginWithGoogleRedirect is deprecated. Use loginWithGoogle() popup authentication.');
 };
 
 export const checkRedirectAuthResult = async (): Promise<User | null> => {
@@ -90,7 +91,9 @@ export const checkRedirectAuthResult = async (): Promise<User | null> => {
       return result.user;
     }
   } catch (error: any) {
-    console.error("Redirect Auth Error:", error);
+    if (error?.code !== 'auth/missing-initial-state') {
+      console.warn("Redirect Auth check notice:", error);
+    }
   }
   return null;
 };
@@ -118,31 +121,24 @@ export const loginWithGoogle = async (): Promise<User | null> => {
       }
       if (auth.currentUser) return auth.currentUser;
     } catch (error: any) {
-      console.warn("Native Google Sign-In notice, falling back to Web SDK:", error);
+      console.warn("Native Google Sign-In notice, falling back to Web popup SDK:", error);
     }
 
-    // Secondary Fallback: Web popup
+    // Fallback on Android: Web popup
     try {
       const result = await signInWithPopup(auth, googleProvider);
       return result.user;
     } catch (popupError: any) {
-      console.warn("Web popup inside Android failed, attempting redirect flow:", popupError);
-      // Tertiary Fallback: In-app browser redirect
-      await signInWithRedirect(auth, googleProvider);
-      return null;
+      console.warn("Web popup inside Android failed:", popupError);
+      throw popupError;
     }
   }
 
-  // Web Browser Flow:
+  // Web Browser Flow: Popup-driven sign in
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
-    if ((error as any)?.code === 'auth/popup-blocked' || (error as any)?.code === 'auth/cancelled-popup-request') {
-      console.warn("Popup blocked, transitioning to redirect flow:", error);
-      await signInWithRedirect(auth, googleProvider);
-      return null;
-    }
     console.warn("Google Sign-In popup notice:", error);
     throw error;
   }
