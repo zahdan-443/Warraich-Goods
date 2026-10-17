@@ -115,6 +115,7 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
     cityNameUr: string;
     cityNameEn: string;
     warning?: string;
+    updatedAt?: string;
   } | null>(() => {
     try {
       const cached = localStorage.getItem('wg_home_weather_cache');
@@ -271,7 +272,11 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
         roadStatusEn,
         cityNameUr,
         cityNameEn,
-        warning
+        warning,
+        updatedAt: new Date().toLocaleTimeString(isUrdu ? 'ur-PK' : 'en-US', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
       };
 
       setWeatherData(weatherObj);
@@ -597,6 +602,14 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
               <span className="text-[#8e8e75]">
                 {weatherData ? (isUrdu ? weatherData.roadStatusUr : weatherData.roadStatusEn) : '--'}
               </span>
+              {weatherData?.updatedAt && (
+                <>
+                  <span>·</span>
+                  <span className="text-[10px] text-emerald-700 font-mono">
+                    {isUrdu ? `تازہ ترین: ${weatherData.updatedAt}` : `Updated: ${weatherData.updatedAt}`}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>

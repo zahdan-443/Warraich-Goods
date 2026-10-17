@@ -315,55 +315,40 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
 
   return (
     <div 
-      className={`rounded-2xl border px-3 py-2 sm:px-3 sm:py-2 shadow-2xs transition-all relative overflow-hidden ${
+      className={`rounded-xl border px-3 py-2 shadow-2xs transition-all relative ${
         hasRisk
-          ? 'bg-gradient-to-r from-amber-50 via-amber-50 to-orange-50 border-amber-300 text-amber-950'
-          : 'bg-gradient-to-r from-emerald-50 via-emerald-50 to-teal-50 border-emerald-300 text-emerald-950'
+          ? 'bg-amber-50/95 border-amber-300 text-amber-950'
+          : 'bg-emerald-50/95 border-emerald-300 text-emerald-950'
       }`}
+      dir={isUrdu ? 'rtl' : 'ltr'}
     >
-      {/* Top Banner Row: Icon, Title, Stale Warning, Refresh, Dismiss */}
+      {/* Top Banner Row: Badge, Title, Refresh, Dismiss */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-start gap-2.5 flex-1 min-w-0">
-          <div 
-            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
+        <div className="flex-1 min-w-0 space-y-0.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border ${
               hasRisk 
-                ? 'bg-amber-100 text-amber-800 border border-amber-200' 
-                : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-            }`}
-          >
-            {hasRisk ? (
-              <AlertTriangle className="w-4 h-4 text-amber-700 animate-pulse" />
-            ) : (
-              <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                ? 'bg-amber-200/90 border-amber-400 text-amber-950' 
+                : 'bg-emerald-200/90 border-emerald-400 text-emerald-950'
+            }`}>
+              {isUrdu ? (hasRisk ? '⚠️ کارگو رسک ایڈوائزری' : '✅ کلیئر روٹ') : (hasRisk ? '⚠️ Cargo Weather Advisory' : '✅ Clear Route')}
+            </span>
+
+            <span className="font-serif font-bold text-xs sm:text-sm text-slate-900">
+              {isUrdu ? advisory.titleUr : advisory.titleEn}
+            </span>
+
+            {weatherFetchError && staleTimeLabel && (
+              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                <Clock className="w-2.5 h-2.5 text-amber-700" />
+                <span>{staleTimeLabel}</span>
+              </span>
             )}
           </div>
 
-          <div className="flex-1 min-w-0 space-y-0.5">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md border ${
-                hasRisk 
-                  ? 'bg-amber-200/80 border-amber-400/60 text-amber-900' 
-                  : 'bg-emerald-200/80 border-emerald-400/60 text-emerald-900'
-              }`}>
-                {isUrdu ? (hasRisk ? '⚠️ کارگو رسک ایڈوائزری' : '✅ کلیئر روٹ') : (hasRisk ? '⚠️ Cargo Weather Advisory' : '✅ Clear Route')}
-              </span>
-
-              <span className="font-serif font-bold text-xs sm:text-sm text-slate-900">
-                {isUrdu ? advisory.titleUr : advisory.titleEn}
-              </span>
-
-              {weatherFetchError && staleTimeLabel && (
-                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                  <Clock className="w-2.5 h-2.5 text-amber-700" />
-                  <span>{staleTimeLabel}</span>
-                </span>
-              )}
-            </div>
-
-            <p className="text-[11px] sm:text-xs leading-snug text-slate-800 font-medium">
-              {isUrdu ? advisory.descUr : advisory.descEn}
-            </p>
-          </div>
+          <p className="text-[11px] sm:text-xs leading-snug text-slate-800 font-medium pt-0.5">
+            {isUrdu ? advisory.descUr : advisory.descEn}
+          </p>
         </div>
 
         {/* Small Action Icons */}
@@ -390,7 +375,7 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
 
       {/* At-risk city chips (Only shown if hasRisk) */}
       {hasRisk && (
-        <div className="mt-2 pt-2 border-t border-amber-200/70 flex flex-wrap items-center gap-1.5">
+        <div className="mt-1.5 pt-1.5 border-t border-amber-200/80 flex flex-wrap items-center gap-1.5">
           <span className="text-[10px] font-bold text-amber-900">
             {isUrdu ? 'متاثرہ اسٹیشنز:' : 'At-Risk Stops:'}
           </span>
@@ -398,7 +383,7 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
           {atRiskCities.map((item, idx) => (
             <div 
               key={item.city.id}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/90 border border-amber-300 text-[11px] font-medium text-amber-950 shadow-2xs"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/90 border border-amber-300 text-[10px] font-medium text-amber-950 shadow-2xs"
             >
               <span className="font-bold">
                 {idx + 1}. {isUrdu ? item.city.nameUr : item.city.nameEn}
@@ -427,7 +412,7 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
       )}
 
       {/* Driver Disclaimer Note */}
-      <div className={`mt-1.5 pt-1.5 border-t border-dashed ${hasRisk ? 'border-amber-200 text-amber-800/90' : 'border-emerald-200 text-emerald-800/90'} flex items-center justify-between text-[10px]`}>
+      <div className={`mt-1.5 pt-1 border-t border-dashed ${hasRisk ? 'border-amber-200 text-amber-800/90' : 'border-emerald-200 text-emerald-800/90'} flex items-center justify-between text-[10px]`}>
         <span className="leading-tight">
           {isUrdu
             ? 'ℹ️ یہ مشورہ صرف سامان و کارگو کی حفاظت کے لیے ہے۔ روٹ کا حتمی فیصلہ مکمل طور پر ڈرائیور کا ہے۔'

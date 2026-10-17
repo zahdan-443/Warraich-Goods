@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, LogIn, X, AlertCircle, Copy, Check, Cloud, Sparkles, KeyRound, UserCheck, RefreshCw } from 'lucide-react';
+import { ShieldCheck, X, AlertCircle, Copy, Check, Cloud } from 'lucide-react';
 import { Language } from '../types';
 import { loginWithGoogle, loginWithGoogleRedirect, signInWithGoogleIdToken } from '../utils/firebase';
 import { ACTIVE_FIREBASE_CONFIG } from '../utils/firebaseConfig';
@@ -19,9 +19,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
   const [isStoragePartitioned, setIsStoragePartitioned] = useState(false);
   const [domainCopied, setDomainCopied] = useState(false);
-  const [showOwnerDirect, setShowOwnerDirect] = useState(false);
-  const [ownerKeyInput, setOwnerKeyInput] = useState('');
-  const [ownerKeyError, setOwnerKeyError] = useState<string | null>(null);
 
   const gisContainerRef = useRef<HTMLDivElement>(null);
 
@@ -153,32 +150,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     } finally {
       setLoading(false);
       setRedirecting(false);
-    }
-  };
-
-  // Direct Owner Authorization for App Owner warraichgoods43@gmail.com
-  const handleOwnerDirectVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setOwnerKeyError(null);
-    const trimmed = ownerKeyInput.trim().toLowerCase();
-
-    // Valid passkeys: '4343', 'warraich43', 'warraichgoods43@gmail.com', or owner password
-    if (trimmed === '4343' || trimmed === 'warraich43' || trimmed === 'warraichgoods43@gmail.com' || trimmed === 'admin43') {
-      setLoading(true);
-      try {
-        await onSuccess('warraichgoods43@gmail.com');
-        if (onClose) onClose();
-      } catch (err: any) {
-        setOwnerKeyError(lang === 'ur' ? 'تصدیق میں خرابی واقع ہوئی' : 'Verification failed');
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      setOwnerKeyError(
-        lang === 'ur'
-          ? 'غلط سیکیورٹی کوڈ۔ اونر ماسٹر کوڈ درج کریں۔'
-          : 'Invalid security code. Please enter the Owner Master Key.'
-      );
     }
   };
 
@@ -330,68 +301,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               </span>
             </button>
 
-            {/* Direct App Owner Authorization (warraichgoods43@gmail.com) */}
-            <div className="pt-2 border-t border-[#ecece0]/80">
-              {!showOwnerDirect ? (
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowOwnerDirect(true)}
-                    className="text-xs text-[#1e3a68] hover:text-[#162a4d] font-bold cursor-pointer transition-colors inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-slate-100"
-                  >
-                    <KeyRound className="w-3.5 h-3.5 text-[#b58b28]" />
-                    <span>
-                      {lang === 'ur' 
-                        ? '🔑 اونر تصدیق (warraichgoods43@gmail.com)' 
-                        : '🔑 App Owner Access (warraichgoods43@gmail.com)'}
-                    </span>
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleOwnerDirectVerify} className="p-3 bg-amber-50/70 border border-amber-200/90 rounded-2xl space-y-2.5 animate-in fade-in">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-amber-950 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
-                      <span>{lang === 'ur' ? 'ایپ اونر ڈائریکٹ تصدیق' : 'Fleet Owner Direct Authentication'}</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowOwnerDirect(false)}
-                      className="text-[10px] text-amber-800 hover:underline"
-                    >
-                      {lang === 'ur' ? 'بند کریں' : 'Close'}
-                    </button>
-                  </div>
-
-                  <p className="text-[10px] text-amber-900 leading-tight">
-                    {lang === 'ur'
-                      ? 'اگر براؤزر کوکیز کی وجہ سے گوگل پوپ اپ نہ کھلے، تو اونر سیکیورٹی کوڈ درج کریں۔'
-                      : 'If browser restrictions block Google popups, enter the Fleet Owner Master Code.'}
-                  </p>
-
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="password"
-                      value={ownerKeyInput}
-                      onChange={(e) => setOwnerKeyInput(e.target.value)}
-                      placeholder={lang === 'ur' ? 'سیکیورٹی کوڈ...' : 'Master PIN (e.g. 4343)'}
-                      className="flex-1 px-3 py-1.5 text-xs bg-white border border-amber-300 rounded-xl focus:outline-none focus:border-amber-600 font-mono"
-                    />
-                    <button
-                      type="submit"
-                      disabled={loading || !ownerKeyInput.trim()}
-                      className="px-3 py-1.5 bg-[#1e3a68] hover:bg-[#162a4d] text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs disabled:opacity-50 shrink-0"
-                    >
-                      {loading ? (lang === 'ur' ? '...' : '...') : (lang === 'ur' ? 'تصدیق کریں' : 'Verify')}
-                    </button>
-                  </div>
-
-                  {ownerKeyError && (
-                    <p className="text-[10px] text-rose-700 font-bold">{ownerKeyError}</p>
-                  )}
-                </form>
-              )}
-            </div>
 
             {/* Popup Retry Helper */}
             <div className="text-center pt-1 space-y-1">

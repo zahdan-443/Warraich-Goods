@@ -529,7 +529,10 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
     return result;
   };
 
-  // Fetch live weather with immediate corridor priority and background sync
+  // Key national transit hubs to keep synchronized alongside active route
+  const KEY_HUB_IDS = ['samundri', 'lahore', 'karachi', 'islamabad', 'faisalabad', 'multan', 'rawalpindi', 'peshawar', 'quetta', 'sukkur', 'hyderabad', 'bahawalpur'];
+
+  // Fetch live weather with immediate corridor priority and background sync for key hubs
   const fetchAllCitiesWeather = async () => {
     setLoadingWeather(true);
 
@@ -556,17 +559,15 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
       setWeatherFetchError(false);
       setLoadingWeather(false); // Stop spinner immediately because visible stations are updated!
 
-      // 2. BACKGROUND SYNC: Update remaining Pakistan cities in 45-city batches
+      // 2. SECONDARY: Update remaining key transit hubs in ONE compact batch (avoids API rate limits)
       const activeIds = new Set(activeCities.map(c => c.id));
-      const remainingCities = PAKISTAN_CITIES.filter(c => !activeIds.has(c.id));
-      const CHUNK_SIZE = 45;
+      const keyHubCities = PAKISTAN_CITIES.filter(c => KEY_HUB_IDS.includes(c.id) && !activeIds.has(c.id));
 
-      for (let i = 0; i < remainingCities.length; i += CHUNK_SIZE) {
-        const chunk = remainingCities.slice(i, i + CHUNK_SIZE);
+      if (keyHubCities.length > 0) {
         try {
-          const chunkResults = await fetchBatchCoords(chunk);
+          const hubResults = await fetchBatchCoords(keyHubCities);
           setWeatherMap(prev => {
-            const merged = { ...prev, ...chunkResults };
+            const merged = { ...prev, ...hubResults };
             try {
               localStorage.setItem(CACHE_KEY_WEATHER, JSON.stringify({
                 data: merged,
@@ -578,7 +579,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
             return merged;
           });
         } catch {
-          // Ignore background chunk errors to prevent disrupting active route
+          // Ignore key hub secondary errors to prevent disrupting active route
         }
       }
     } catch (e) {
@@ -1155,10 +1156,10 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
   };
 
   return (
-    <div className={`flex-1 flex flex-col max-w-6xl mx-auto w-full p-2.5 sm:p-3.5 gap-2.5 animate-in fade-in ${isUrdu ? 'text-right' : 'text-left'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
+    <div className={`flex-1 flex flex-col max-w-6xl mx-auto w-full p-2 sm:p-3 gap-2 animate-in fade-in ${isUrdu ? 'text-right' : 'text-left'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
       
       {/* Top Header */}
-      <div className="w-full flex items-center justify-between pb-1.5 shrink-0 border-b border-[#ecece0]">
+      <div className="w-full flex items-center justify-between pb-1 shrink-0 border-b border-[#ecece0]">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
             <PublicImage
@@ -1212,7 +1213,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
       )}
 
       {/* SEARCHABLE CITY SELECTION BOX (From City & To City) */}
-      <section className="bg-white p-2.5 sm:p-3 rounded-2xl shadow-2xs border border-[#ecece0] space-y-2">
+      <section className="bg-white p-2 sm:p-2.5 rounded-2xl shadow-2xs border border-[#ecece0] space-y-1.5">
         
         <div className="flex flex-wrap items-center justify-between border-b border-[#ecece0]/80 pb-1.5 gap-2">
           <div className="flex items-center gap-1.5">
