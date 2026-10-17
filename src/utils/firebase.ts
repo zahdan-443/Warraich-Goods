@@ -91,7 +91,10 @@ export const checkRedirectAuthResult = async (): Promise<User | null> => {
       return result.user;
     }
   } catch (error: any) {
-    if (error?.code !== 'auth/missing-initial-state') {
+    if (
+      error?.code !== 'auth/missing-initial-state' &&
+      error?.code !== 'auth/operation-not-supported-in-this-environment'
+    ) {
       console.warn("Redirect Auth check notice:", error);
     }
   }

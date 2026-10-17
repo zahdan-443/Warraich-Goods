@@ -819,7 +819,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                       </div>
                       <div className="text-right shrink-0">
                         <span className="font-serif font-bold text-base text-[#5a5a40]">
-                          PKR {trip.total.toLocaleString()}
+                            PKR {(trip.total || 0).toLocaleString()}
                         </span>
                         <div className="text-[9px] text-[#8e8e75]">{trip.date}</div>
                       </div>
