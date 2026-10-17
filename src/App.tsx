@@ -1040,12 +1040,14 @@ export default function App() {
       </main>
 
       <React.Suspense fallback={null}>
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={handleAuthSuccess}
-          lang={lang}
-        />
+        {showAuthModal && (
+          <AuthModal
+            isOpen={showAuthModal}
+            onClose={() => setShowAuthModal(false)}
+            onSuccess={handleAuthSuccess}
+            lang={lang}
+          />
+        )}
 
         <ManageBiltyAccessModal
           isOpen={showBiltyAccessModal && (userEmail?.toLowerCase().trim() === 'warraichgoods43@gmail.com')}

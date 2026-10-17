@@ -103,8 +103,7 @@ export const signInWithGoogleIdToken = async (idToken: string): Promise<User> =>
 };
 
 export const loginWithGoogleRedirect = async (): Promise<void> => {
-  // Deprecated redirect flow to prevent missing-initial-state in storage-partitioned environments
-  console.warn('loginWithGoogleRedirect is deprecated. Use loginWithGoogle() popup authentication.');
+  await signInWithRedirect(auth, googleProvider);
 };
 
 export const checkRedirectAuthResult = async (): Promise<User | null> => {
@@ -129,43 +128,8 @@ export const isMobileBrowser = (): boolean => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent);
 };
 
-/**
- * Request Google OAuth Access Token via Google Identity Services (GIS).
- * Completely bypasses /__/auth/handler and storage-partitioned sessionStorage issues!
- */
-export const requestGoogleOAuthAccessToken = (clientId: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const win = typeof window !== 'undefined' ? (window as any) : null;
-    if (!win?.google?.accounts?.oauth2) {
-      return reject(new Error('GIS_UNAVAILABLE'));
-    }
-
-    try {
-      const client = win.google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: 'email profile openid',
-        callback: (resp: any) => {
-          if (resp?.error) {
-            reject(new Error(resp.error_description || resp.error));
-          } else if (resp?.access_token) {
-            resolve(resp.access_token);
-          } else {
-            reject(new Error('No access token returned from Google'));
-          }
-        },
-        error_callback: (err: any) => {
-          reject(err);
-        }
-      });
-      client.requestAccessToken({ prompt: 'select_account' });
-    } catch (e) {
-      reject(e);
-    }
-  });
-};
-
 export const loginWithGoogle = async (): Promise<User | null> => {
-  // Capacitor native platform (Android APK WebView)
+  // 1. Capacitor native platform (Android APK WebView)
   if (Capacitor.isNativePlatform()) {
     try {
       const result = await FirebaseAuthentication.signInWithGoogle();
@@ -184,52 +148,23 @@ export const loginWithGoogle = async (): Promise<User | null> => {
     } catch (error: any) {
       console.warn("Native Google Sign-In notice, falling back to Web SDK:", error);
     }
-
-    // Fallback on Android: Web popup
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      return result.user;
-    } catch (popupError: any) {
-      console.warn("Web popup inside Android failed:", popupError);
-      throw popupError;
-    }
   }
 
-  // Web Browser Flow:
-  // 1. Try Google Identity Services (GIS) Token Client first
-  // This opens Google's OAuth window directly without routing through /__/auth/handler,
-  // preventing "missing initial state" and storage-partitioning blank screens!
-  if (typeof window !== 'undefined') {
-    const win = window as any;
-    if (win.google?.accounts?.oauth2) {
-      try {
-        const clientId = ACTIVE_FIREBASE_CONFIG.projectId === 'warraich-goods'
-          ? '805249879186-ragamo9rp1srk8bmd3tboskfbe4s8hik.apps.googleusercontent.com'
-          : '460929296293-rcsrtg9bepa3ur3ngta3k97qr97dq1cv.apps.googleusercontent.com';
-
-        const accessToken = await requestGoogleOAuthAccessToken(clientId);
-        if (accessToken) {
-          const credential = GoogleAuthProvider.credential(null, accessToken);
-          const userCredential = await signInWithCredential(auth, credential);
-          return userCredential.user;
-        }
-      } catch (gisError: any) {
-        console.warn("Google Identity Services notice:", gisError);
-        const msg = gisError?.message || String(gisError);
-        if (msg.includes('popup_closed') || msg.includes('closed before')) {
-          throw new Error('Google Sign-In window was closed before completion.');
-        }
-        // Fall back to signInWithPopup if GIS token client had an environment issue
-      }
-    }
-  }
-
-  // 2. Standard Firebase signInWithPopup
+  // 2. Web Browser Flow: Standard Firebase Google Auth
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
     console.warn("Google Sign-In popup notice:", error);
+    // If popup is blocked by the browser, fallback to redirect
+    if (error?.code === 'auth/popup-blocked') {
+      try {
+        await signInWithRedirect(auth, googleProvider);
+        return null;
+      } catch (redirectErr) {
+        console.warn("Redirect sign-in notice:", redirectErr);
+      }
+    }
     throw error;
   }
 };

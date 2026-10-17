@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { ShieldCheck, X, AlertCircle, Copy, Check, Cloud } from 'lucide-react';
 import { Language } from '../types';
-import { loginWithGoogle, loginWithGoogleRedirect, signInWithGoogleIdToken } from '../utils/firebase';
-import { ACTIVE_FIREBASE_CONFIG } from '../utils/firebaseConfig';
+import { loginWithGoogle } from '../utils/firebase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -14,68 +13,14 @@ interface AuthModalProps {
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess, lang, fullScreen = false }) => {
   const [loading, setLoading] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
-  const [isStoragePartitioned, setIsStoragePartitioned] = useState(false);
   const [domainCopied, setDomainCopied] = useState(false);
-
-  const gisContainerRef = useRef<HTMLDivElement>(null);
 
   const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
 
-  // Initialize Google Identity Services (GIS) button if available
-  useEffect(() => {
-    if (!isOpen || typeof window === 'undefined') return;
-
-    const timer = setTimeout(() => {
-      try {
-        const win = window as any;
-        if (win.google?.accounts?.id && gisContainerRef.current) {
-          const clientId = ACTIVE_FIREBASE_CONFIG.projectId === 'warraich-goods'
-            ? '805249879186-ragamo9rp1srk8bmd3tboskfbe4s8hik.apps.googleusercontent.com'
-            : '460929296293-rcsrtg9bepa3ur3ngta3k97qr97dq1cv.apps.googleusercontent.com';
-
-          win.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: async (res: any) => {
-              if (res?.credential) {
-                setLoading(true);
-                setError(null);
-                try {
-                  const user = await signInWithGoogleIdToken(res.credential);
-                  const extractedEmail = user?.email || (user as any)?.providerData?.[0]?.email || '';
-                  if (extractedEmail) {
-                    await onSuccess(extractedEmail);
-                    if (onClose) onClose();
-                  }
-                } catch (credErr: any) {
-                  console.warn("GIS credential verification error:", credErr);
-                  setError(credErr?.message || 'Google verification failed');
-                } finally {
-                  setLoading(false);
-                }
-              }
-            }
-          });
-
-          gisContainerRef.current.innerHTML = '';
-          win.google.accounts.id.renderButton(gisContainerRef.current, {
-            theme: 'outline',
-            size: 'large',
-            width: 320,
-            text: 'signin_with',
-            shape: 'rectangular',
-            logo_alignment: 'left'
-          });
-        }
-      } catch (gisInitErr) {
-        console.warn("GIS button initialization notice:", gisInitErr);
-      }
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [isOpen]);
+  // Strict check: Modal must NEVER render when closed
+  if (!isOpen) return null;
 
   const handleCopyDomain = () => {
     if (navigator.clipboard && currentHostname) {
@@ -87,15 +32,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
   const handleStartGoogle = async () => {
     setLoading(true);
-    setRedirecting(false);
     setError(null);
     setIsUnauthorizedDomain(false);
-    setIsStoragePartitioned(false);
     try {
       const user = await loginWithGoogle();
-      const extractedEmail = user?.email || (user as any)?.providerData?.[0]?.email || '';
+      if (!user) {
+        // Redirection initiated or pending auth resolution
+        return;
+      }
+      const extractedEmail = user.email || (user as any)?.providerData?.[0]?.email || '';
       
-      if (user && extractedEmail) {
+      if (extractedEmail) {
         try {
           await onSuccess(extractedEmail);
         } catch (postAuthError: any) {
@@ -112,8 +59,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     } catch (err: any) {
       console.error('Google Sign-In notice:', err);
       const isUnauth = err?.code === 'auth/unauthorized-domain' || (err?.message && err.message.includes('auth/unauthorized-domain'));
-      const isMissingState = err?.code === 'auth/missing-initial-state' || 
-                             (err?.message && (err.message.includes('missing initial state') || err.message.includes('sessionStorage is inaccessible')));
       
       if (isUnauth) {
         setIsUnauthorizedDomain(true);
@@ -121,13 +66,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           lang === 'ur'
             ? `اس ویب ڈومین (${currentHostname}) پر گوگل سائن ان فائر بیس کنسول کے Authorized Domains میں شامل کرنا ہوگا۔`
             : `This web domain (${currentHostname}) is not yet in your Firebase Authorized Domains list. Please add this domain in Firebase Console > Authentication > Settings.`
-        );
-      } else if (isMissingState) {
-        setIsStoragePartitioned(true);
-        setError(
-          lang === 'ur'
-            ? 'براؤزر میں تھرڈ پارٹی کوکیز / اسٹوریج پارٹیشن کی وجہ سے لاگ ان رک گیا۔ براہ کرم نیچے دیے گئے گوگل بٹن یا اونر ڈائریکٹ تصدیق سے لاگ ان کریں۔'
-            : 'Browser storage partitioning blocked the popup session state. Please use the Google GIS button or Owner Direct Verification below.'
         );
       } else if (err?.code === 'auth/popup-blocked') {
         setError(
@@ -149,12 +87,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       }
     } finally {
       setLoading(false);
-      setRedirecting(false);
     }
   };
 
   return (
-    <div className={`fixed inset-0 z-50 ${fullScreen ? 'bg-[#f5f2eb]' : 'bg-black/50 backdrop-blur-sm'} flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200`}>
+    <div
+      className={`fixed inset-0 z-50 ${fullScreen ? 'bg-[#f5f2eb]' : 'bg-black/50 backdrop-blur-sm'} flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && onClose && !fullScreen) {
+          onClose();
+        }
+      }}
+    >
       <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl border border-[#ecece0] overflow-hidden my-auto">
         {/* Header banner */}
         <div className="bg-gradient-to-r from-[#162a4d] via-[#1e3a68] to-[#162a4d] p-6 text-white relative">
@@ -264,15 +208,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               </p>
             </div>
 
-            {/* Official Google Identity Services (GIS) Button container (Storage-Partition Resistant) */}
-            <div ref={gisContainerRef} className="flex justify-center empty:hidden" />
-
-            {/* Google Sign In Popup Button */}
+            {/* Google Sign In Button */}
             <button
               type="button"
               onClick={handleStartGoogle}
               disabled={loading}
-              className="w-full py-3 px-4 bg-white hover:bg-slate-50 border-2 border-[#ecece0] hover:border-[#8b9d77] rounded-2xl font-semibold text-xs text-[#4a4a35] flex items-center justify-center gap-3 transition-all shadow-xs cursor-pointer active:scale-98 disabled:opacity-60"
+              className="w-full py-3.5 px-4 bg-white hover:bg-slate-50 border-2 border-[#ecece0] hover:border-[#8b9d77] rounded-2xl font-semibold text-xs text-[#4a4a35] flex items-center justify-center gap-3 transition-all shadow-xs cursor-pointer active:scale-98 disabled:opacity-60"
             >
               <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
                 <path
@@ -293,21 +234,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 />
               </svg>
               <span>
-                {redirecting
-                  ? (lang === 'ur' ? 'گوگل لاگ ان پیج پر منتقل ہو رہے ہیں...' : 'Redirecting to Google...')
-                  : loading
+                {loading
                   ? (lang === 'ur' ? 'گوگل سے منسلک ہو رہا ہے...' : 'Connecting Google...')
-                  : (lang === 'ur' ? 'گوگل اکاؤنٹ پوپ اپ سے لاگ ان' : 'Sign In with Google Popup')}
+                  : (lang === 'ur' ? 'گوگل اکاؤنٹ سے لاگ ان' : 'Sign In with Google')}
               </span>
             </button>
-
 
             {/* Popup Retry Helper */}
             <div className="text-center pt-1 space-y-1">
               <button
                 type="button"
                 onClick={handleStartGoogle}
-                disabled={loading || redirecting}
+                disabled={loading}
                 className="text-xs text-[#8e8e75] hover:text-[#162a4d] underline font-medium cursor-pointer transition-colors inline-block"
               >
                 {lang === 'ur'
