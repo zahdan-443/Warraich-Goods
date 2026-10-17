@@ -46,16 +46,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           console.warn("Post-auth error:", postAuthError);
         }
         if (onClose) onClose();
-      } else if (!user) {
-        // If a redirect was initiated by native auth, keep loading active
-        setRedirecting(true);
-        setLoading(true);
-        return;
       } else {
         setError(
           lang === 'ur'
-            ? 'گوگل اکاؤنٹ کی معلومات حاصل نہیں ہوسکی۔ دوبارہ کوشش کریں۔'
-            : 'Could not retrieve user info from Google Account. Please try again.'
+            ? 'گوگل اکاؤنٹ کی معلومات حاصل نہیں ہوسکی۔ دوبارہ لاگ ان کا بٹن دبائیں۔'
+            : 'Could not retrieve user info from Google Account. Please click Retry below.'
         );
       }
     } catch (err: any) {
@@ -73,13 +68,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         setError(
           lang === 'ur'
             ? 'براؤزر نے لاگ ان پوپ اپ ونڈو روک دی۔ براہ کرم ایڈریس بار میں "Always allow pop-ups" منتخب کریں اور نیچے دوبارہ کلک کریں۔'
-            : 'Google Sign-In popup was blocked by your browser. Please allow popups in your browser address bar and click Sign In again.'
+            : 'Google Sign-In popup was blocked by your browser. Please allow popups in your browser address bar and click Retry.'
         );
       } else if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
         setError(
           lang === 'ur'
             ? 'گوگل سائن ان ونڈو بند کر دی گئی۔ لاگ ان کرنے کے لیے دوبارہ بٹن دبائیں۔'
             : 'Google Sign-In window was closed before completion. Please try again.'
+        );
+      } else if (err?.code === 'auth/missing-initial-state') {
+        setError(
+          lang === 'ur'
+            ? 'لاگ ان سیشن ری سیٹ ہو گیا۔ دوبارہ سائن ان کرنے کے لیے نیچے دیے گئے بٹن پر کلک کریں۔'
+            : 'Session state reset. Please click Retry Google Sign-In below.'
         );
       } else {
         setError(
@@ -88,9 +89,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         );
       }
     } finally {
-      if (!redirecting) {
-        setLoading(false);
-      }
+      setLoading(false);
+      setRedirecting(false);
     }
   };
 
