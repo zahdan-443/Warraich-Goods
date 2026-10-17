@@ -200,31 +200,33 @@ export async function checkRateLimit(reporterUid: string): Promise<{ allowed: bo
     // ignore local storage errors
   }
 
-  // 2. Query Firestore check
-  try {
-    const reportsRef = collection(db, 'hazardReports');
-    const userQuery = query(reportsRef, where('reporterUid', '==', reporterUid));
-    const firestorePromise = getDocs(userQuery);
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), 1500)
-    );
-    const querySnap = await Promise.race([firestorePromise, timeoutPromise]);
+  // 2. Query Firestore check (only if user is authenticated)
+  if (auth.currentUser) {
+    try {
+      const reportsRef = collection(db, 'hazardReports');
+      const userQuery = query(reportsRef, where('reporterUid', '==', reporterUid));
+      const firestorePromise = getDocs(userQuery);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 1500)
+      );
+      const querySnap = await Promise.race([firestorePromise, timeoutPromise]);
 
-    let mostRecentMs = 0;
-    querySnap.forEach((docSnap) => {
-      const data = docSnap.data();
-      const ms = getMillisFromTimestamp(data.createdAt);
-      if (ms > mostRecentMs) {
-        mostRecentMs = ms;
+      let mostRecentMs = 0;
+      querySnap.forEach((docSnap) => {
+        const data = docSnap.data();
+        const ms = getMillisFromTimestamp(data.createdAt);
+        if (ms > mostRecentMs) {
+          mostRecentMs = ms;
+        }
+      });
+
+      if (mostRecentMs > 0 && now - mostRecentMs < RATE_LIMIT_WINDOW_MS) {
+        const remaining = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - mostRecentMs)) / 1000);
+        return { allowed: false, remainingSeconds: remaining };
       }
-    });
-
-    if (mostRecentMs > 0 && now - mostRecentMs < RATE_LIMIT_WINDOW_MS) {
-      const remaining = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - mostRecentMs)) / 1000);
-      return { allowed: false, remainingSeconds: remaining };
+    } catch (err) {
+      console.warn('[HazardReports] Firestore rate-limit query check failed, proceeding with local check:', err);
     }
-  } catch (err) {
-    console.warn('[HazardReports] Firestore rate-limit query check failed, proceeding with local check:', err);
   }
 
   return { allowed: true, remainingSeconds: 0 };
