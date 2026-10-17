@@ -26,7 +26,7 @@ import {
   saveUserProfileInFirestore,
   processOfflineQueue
 } from './utils/storage';
-import { auth, onAuthStateChanged, logoutUser, checkRedirectAuthResult } from './utils/firebase';
+import { auth, onAuthStateChanged, logoutUser, checkRedirectAuthResult, loginWithGoogle } from './utils/firebase';
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { Header } from './components/Header';
@@ -52,7 +52,6 @@ import { MapView } from './components/views/MapView';
 import { TollPlazaView } from './components/views/TollPlazaView';
 import { NavigationView } from './components/views/NavigationView';
 import { DashcamView } from './components/views/DashcamView';
-import { AuthModal } from './components/AuthModal';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
 import { Home, ArrowLeft } from 'lucide-react';
@@ -89,7 +88,7 @@ export default function App() {
   const handleDismissSplash = React.useCallback(() => {
     setShowSplash(false);
   }, []);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
   const [showBiltyAccessModal, setShowBiltyAccessModal] = useState(false);
   const [authInitialized, setAuthInitialized] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(() => {
@@ -250,9 +249,6 @@ export default function App() {
   const showTopMenuRef = useRef(showTopMenu);
   showTopMenuRef.current = showTopMenu;
 
-  const showAuthModalRef = useRef(showAuthModal);
-  showAuthModalRef.current = showAuthModal;
-
   const showBiltyAccessModalRef = useRef(showBiltyAccessModal);
   showBiltyAccessModalRef.current = showBiltyAccessModal;
 
@@ -271,10 +267,6 @@ export default function App() {
         // Priority 1: Close active drawers or modals
         if (showTopMenuRef.current) {
           setShowTopMenu(false);
-          return;
-        }
-        if (showAuthModalRef.current) {
-          setShowAuthModal(false);
           return;
         }
         if (showBiltyAccessModalRef.current) {
@@ -314,10 +306,6 @@ export default function App() {
     const handlePopState = (e: PopStateEvent) => {
       if (showTopMenuRef.current) {
         setShowTopMenu(false);
-        return;
-      }
-      if (showAuthModalRef.current) {
-        setShowAuthModal(false);
         return;
       }
       if (showBiltyAccessModalRef.current) {
@@ -435,9 +423,43 @@ export default function App() {
     }
   };
 
-  // Sign in handler
-  const handleSignIn = () => {
-    setShowAuthModal(true);
+  // Direct Google Sign-In without internal app popup
+  const handleSignIn = async () => {
+    if (authLoading) return;
+    setAuthLoading(true);
+    try {
+      const user = await loginWithGoogle();
+      if (user) {
+        const email = user.email || (user as any)?.providerData?.[0]?.email || '';
+        if (email) {
+          await handleAuthSuccess(email);
+          pushAppNotification(
+            lang === 'ur' ? 'خوش آمدید' : 'Welcome',
+            lang === 'ur' ? `گوگل اکاؤنٹ (${email}) کامیابی سے لاگ ان ہو گیا۔` : `Successfully signed in as ${email}.`,
+            'system'
+          );
+        }
+      }
+    } catch (err: any) {
+      console.warn("Direct Google sign-in notice:", err);
+      const isUnauth = err?.code === 'auth/unauthorized-domain' || (err?.message && err.message.includes('auth/unauthorized-domain'));
+      if (isUnauth) {
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+        pushAppNotification(
+          lang === 'ur' ? 'فائر بیس ڈومین تصدیق درکار ہے' : 'Domain Authorization Required',
+          lang === 'ur' ? `ویب ڈومین (${hostname}) فائر بیس کے Authorized Domains میں شامل کریں۔` : `Please authorize (${hostname}) in Firebase Console.`,
+          'system'
+        );
+      } else if (err?.code !== 'auth/popup-closed-by-user' && err?.code !== 'auth/cancelled-popup-request') {
+        pushAppNotification(
+          lang === 'ur' ? 'گوگل لاگ ان' : 'Google Sign-In',
+          lang === 'ur' ? 'گوگل لاگ ان مکمل نہیں ہو سکا۔ دوبارہ کوشش کریں۔' : 'Google Sign-In could not be completed. Please try again.',
+          'system'
+        );
+      }
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleAuthSuccess = async (email: string) => {
@@ -880,6 +902,7 @@ export default function App() {
               }}
               onCloseTopMenu={() => setShowTopMenu(false)}
               onOpenBiltyAccess={() => setShowBiltyAccessModal(true)}
+              authLoading={authLoading}
             />
           )}
 
@@ -1040,14 +1063,6 @@ export default function App() {
       </main>
 
       <React.Suspense fallback={null}>
-        {showAuthModal && (
-          <AuthModal
-            isOpen={showAuthModal}
-            onClose={() => setShowAuthModal(false)}
-            onSuccess={handleAuthSuccess}
-            lang={lang}
-          />
-        )}
 
         <ManageBiltyAccessModal
           isOpen={showBiltyAccessModal && (userEmail?.toLowerCase().trim() === 'warraichgoods43@gmail.com')}

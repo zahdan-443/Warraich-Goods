@@ -41,6 +41,7 @@ interface HeaderProps {
   onOpenTopMenu?: () => void;
   onCloseTopMenu?: () => void;
   onOpenBiltyAccess?: () => void;
+  authLoading?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -61,7 +62,8 @@ export const Header: React.FC<HeaderProps> = ({
   showTopMenuExternal,
   onOpenTopMenu,
   onCloseTopMenu,
-  onOpenBiltyAccess
+  onOpenBiltyAccess,
+  authLoading = false
 }) => {
   const t = DICTIONARY[lang];
   const [logoErr, setLogoErr] = useState(false);
@@ -386,14 +388,23 @@ export const Header: React.FC<HeaderProps> = ({
 
                     <button
                       type="button"
+                      disabled={authLoading}
                       onClick={() => {
                         handleCloseMenu();
                         if (onSignIn) onSignIn();
                       }}
-                      className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 active:scale-98 text-slate-950 font-bold text-xs flex items-center justify-center gap-2.5 shadow-md cursor-pointer transition-all border border-amber-300"
+                      className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 active:scale-98 disabled:opacity-60 text-slate-950 font-bold text-xs flex items-center justify-center gap-2.5 shadow-md cursor-pointer transition-all border border-amber-300"
                     >
-                      <LogIn className="w-4 h-4 text-slate-950" />
-                      <span>{lang === 'ur' ? 'گوگل اکاؤنٹ سے لاگ ان کریں' : 'Sign In with Google Account'}</span>
+                      {authLoading ? (
+                        <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin shrink-0" />
+                      ) : (
+                        <LogIn className="w-4 h-4 text-slate-950 shrink-0" />
+                      )}
+                      <span>
+                        {authLoading
+                          ? (lang === 'ur' ? 'گوگل سے منسلک ہو رہا ہے...' : 'Connecting Google...')
+                          : (lang === 'ur' ? 'گوگل اکاؤنٹ سے لاگ ان کریں' : 'Sign In with Google Account')}
+                      </span>
                     </button>
 
                     <div className="text-[10px] text-slate-300 text-center flex items-center justify-center gap-1.5 pt-0.5">
