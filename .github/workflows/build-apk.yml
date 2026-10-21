@@ -17,7 +17,6 @@ jobs:
     name: Build Android APK
     runs-on: ubuntu-26.04
     env:
-      ACTIONS_RUNNER_FORCE_ACTIONS_NODE24: "true"
       VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
       VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
       VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
@@ -45,7 +44,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: '8.14.6'
+          gradle-version: '9.8.1'
           validate-wrappers: false
 
       - name: Setup Android SDK
