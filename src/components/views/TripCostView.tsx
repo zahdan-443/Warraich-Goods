@@ -18,7 +18,10 @@ import {
   Info,
   Check,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Sparkles,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -77,6 +80,9 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   const [isLoadingComparison, setIsLoadingComparison] = useState<boolean>(false);
   const [selectedComparisonRouteId, setSelectedComparisonRouteId] = useState<string | null>(null);
 
+  // Optional Expected Freight Income (متوقع کرایہ آمدن)
+  const [expectedIncome, setExpectedIncome] = useState<string>('');
+
   // Result Calculation Object
   const [lastCalc, setLastCalc] = useState<Omit<Trip, 'id' | 'name'> & {
     origin?: string;
@@ -84,6 +90,9 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     fuelRateVal?: number;
     mileageVal?: number;
     combinedExpensesVal?: number;
+    expectedIncomeVal?: number;
+    netProfitVal?: number;
+    profitPerKmVal?: number | 'N/A';
   } | null>(null);
 
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
@@ -284,6 +293,12 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       total: Math.round(totalCostVal)
     });
 
+    const expIncNum = Math.max(0, parseFloat(expectedIncome) || 0);
+    const netProfitVal = expIncNum > 0 ? (expIncNum - tripFinCheck.computedTotal) : undefined;
+    const profitPerKmVal: number | 'N/A' | undefined = expIncNum > 0
+      ? (effDist > 0 ? Number(((expIncNum - tripFinCheck.computedTotal) / effDist).toFixed(2)) : 'N/A')
+      : undefined;
+
     const calcObj = {
       fuelType: 'Diesel 🛢️',
       fuelTypeRaw: 'diesel' as FuelType,
@@ -303,7 +318,10 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       dest: formatCityDisplay(destCity),
       fuelRateVal: p,
       mileageVal: m,
-      combinedExpensesVal: exp
+      combinedExpensesVal: exp,
+      expectedIncomeVal: expIncNum > 0 ? expIncNum : undefined,
+      netProfitVal,
+      profitPerKmVal
     };
 
     setLastCalc(calcObj);
@@ -321,6 +339,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     setFuelPrice(liveDieselBenchmark);
     setMileage('7');
     setCombinedExpenses('3200');
+    setExpectedIncome('');
     setIsReturn(false);
     setError(null);
     setPdfError(null);
@@ -333,7 +352,14 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   const handleSaveToDiary = () => {
     if (!lastCalc) return;
     const tripName = `${lastCalc.origin || 'سفر'} تا ${lastCalc.dest || 'منزل'}`;
-    onSaveTrip(lastCalc, tripName);
+    const tripToSave = {
+      ...lastCalc,
+      expectedIncome: lastCalc.expectedIncomeVal,
+      totalIncome: lastCalc.expectedIncomeVal,
+      netProfit: lastCalc.netProfitVal,
+      profitPerKm: typeof lastCalc.profitPerKmVal === 'number' ? lastCalc.profitPerKmVal : undefined
+    };
+    onSaveTrip(tripToSave, tripName);
     setSaveSuccess(true);
   };
 
@@ -1062,6 +1088,85 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
             </div>
           </div>
 
+          {/* Field 7: Expected Freight Income / متوقع کرایہ آمدن (اختیاری) */}
+          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs sm:text-sm font-black text-[#383827]">
+                {isUrdu ? 'متوقع کرایہ آمدن (اختیاری)' : 'Expected Freight Income (Optional)'}
+              </label>
+              <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-bold">
+                {isUrdu ? 'نفع فی کلومیٹر تخمینہ' : 'Profit/KM Preview'}
+              </span>
+            </div>
+            <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-emerald-600 transition-all shadow-2xs">
+              <input
+                type="number"
+                inputMode="decimal"
+                value={expectedIncome}
+                onChange={(e) => setExpectedIncome(e.target.value)}
+                onFocus={(e) => e.target.select()}
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+                placeholder={isUrdu ? 'مثلاً: 45000' : 'e.g. 45000'}
+                className="flex-1 bg-transparent text-left font-mono font-black text-sm sm:text-base text-[#2b2b1f] focus:outline-none dir-ltr pr-2 min-w-0"
+              />
+              <span className="text-xs font-mono font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-lg shrink-0 select-none">
+                PKR
+              </span>
+            </div>
+
+            {/* Live Profitability Preview (Before Saving Trip) */}
+            {parseFloat(expectedIncome) > 0 && (() => {
+              const effDist = (parseFloat(distance) || 0) * (isReturn ? 2 : 1);
+              const p = parseFloat(fuelPrice) || 0;
+              const m = parseFloat(mileage) || 7;
+              const exp = parseFloat(combinedExpenses) || 0;
+              const expInc = parseFloat(expectedIncome) || 0;
+              const consumedL = m > 0 ? effDist / m : 0;
+              const fuelCost = consumedL * p;
+              const totalExp = Math.round(fuelCost + exp);
+              const netP = expInc - totalExp;
+              const pPerKm = effDist > 0 ? Number((netP / effDist).toFixed(2)) : 'N/A';
+              const isProfit = netP >= 0;
+
+              return (
+                <div className={`mt-2.5 p-3 rounded-xl border-2 transition-all space-y-2 ${
+                  isProfit ? 'bg-emerald-50/90 border-emerald-400' : 'bg-rose-50/90 border-rose-400'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      {isUrdu ? 'متوقع منافع / نقصان کا فوری تخمینہ:' : 'Live Profitability Preview:'}
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 ${
+                      isProfit ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                    }`}>
+                      {isProfit ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                      {isProfit ? (isUrdu ? 'متوقع نفع' : 'Expected Profit') : (isUrdu ? 'متوقع نقصان' : 'Expected Loss')}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
+                    <div className="bg-white/95 p-2 rounded-lg border border-slate-200">
+                      <span className="text-[10px] text-slate-500 block">{isUrdu ? 'کل سفری خرچ' : 'Total Expense'}</span>
+                      <span className="font-mono font-bold text-slate-800">PKR {totalExp.toLocaleString()}</span>
+                    </div>
+                    <div className="bg-white/95 p-2 rounded-lg border border-slate-200">
+                      <span className="text-[10px] text-slate-500 block">{isUrdu ? 'خالص نفع / نقصان' : 'Net Profit/Loss'}</span>
+                      <span className={`font-mono font-bold ${isProfit ? 'text-emerald-700' : 'text-rose-600'}`}>
+                        {isProfit ? '+' : '-'}PKR {Math.abs(netP).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="bg-white/95 p-2 rounded-lg border border-slate-200">
+                      <span className="text-[10px] text-slate-500 block">{isUrdu ? 'نفع فی KM' : 'Profit / KM'}</span>
+                      <span className="font-mono font-bold text-indigo-700">
+                        {pPerKm === 'N/A' ? 'N/A' : `PKR ${pPerKm}`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
           {/* Field 7: Round Trip / واپسی کا چکر (دگنا فاصلہ) */}
           <label className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex items-center justify-between cursor-pointer active:bg-[#f6f5ee] transition-all">
             <div className="flex items-center gap-2.5">
@@ -1175,6 +1280,98 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
               {lastCalc.dist} KM {lastCalc.isReturn ? (isUrdu ? '(راؤنڈ ٹرپ دگنا فاصلہ)' : '(Round Trip 2x Distance)') : ''}
             </span>
           </div>
+
+          {/* Profitability & Profit per KM Preview Card */}
+          {lastCalc && (
+            <div className={`p-4 rounded-3xl border-2 shadow-sm space-y-2.5 transition-all ${
+              lastCalc.expectedIncomeVal && (lastCalc.netProfitVal ?? 0) >= 0 
+                ? 'bg-emerald-50/90 border-emerald-400 text-emerald-950' 
+                : lastCalc.expectedIncomeVal && (lastCalc.netProfitVal ?? 0) < 0
+                  ? 'bg-red-50/90 border-red-400 text-red-950'
+                  : 'bg-amber-50/80 border-amber-300 text-amber-950'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                  <TrendingUp className="w-4 h-4 text-emerald-700" />
+                  <span>{isUrdu ? 'ٹرپ نفع و نقصان کا تخمینہ (Profitability Preview)' : 'Trip Profit & Loss Preview'}</span>
+                </span>
+                {lastCalc.expectedIncomeVal ? (
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-black border ${
+                    (lastCalc.netProfitVal ?? 0) >= 0 
+                      ? 'bg-emerald-600 text-white border-emerald-700' 
+                      : 'bg-red-600 text-white border-red-700'
+                  }`}>
+                    {(lastCalc.netProfitVal ?? 0) >= 0 ? (isUrdu ? 'خالص نفع / بچت' : 'Net Profit') : (isUrdu ? 'خسارہ' : 'Net Loss')}
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/80 text-amber-900 border border-amber-300">
+                    {isUrdu ? 'کرایہ آمدن شامل کریں' : 'Add Freight Income'}
+                  </span>
+                )}
+              </div>
+
+              {/* Inline quick edit for expected income if not set */}
+              <div className="flex items-center gap-2 pt-1 pb-0.5">
+                <span className="text-[11px] font-bold text-slate-700 shrink-0">
+                  {isUrdu ? 'متوقع کرایہ آمدن:' : 'Expected Freight:'}
+                </span>
+                <div className="flex-1 flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1 focus-within:border-emerald-500 shadow-2xs">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={expectedIncome}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setExpectedIncome(val);
+                      const incNum = Math.max(0, parseFloat(val) || 0);
+                      if (lastCalc) {
+                        const netP = incNum > 0 ? incNum - lastCalc.total : undefined;
+                        const pKm = incNum > 0 
+                          ? (lastCalc.dist > 0 ? Number(((incNum - lastCalc.total) / lastCalc.dist).toFixed(2)) : 'N/A')
+                          : undefined;
+                        setLastCalc({
+                          ...lastCalc,
+                          expectedIncomeVal: incNum > 0 ? incNum : undefined,
+                          netProfitVal: netP,
+                          profitPerKmVal: pKm
+                        });
+                      }
+                    }}
+                    placeholder={isUrdu ? 'کرایہ رقم درج کریں (PKR)' : 'Enter freight (PKR)'}
+                    className="w-full bg-transparent font-mono font-bold text-xs text-slate-900 focus:outline-none"
+                  />
+                  <span className="text-[10px] font-mono font-bold text-slate-500">PKR</span>
+                </div>
+              </div>
+
+              {lastCalc.expectedIncomeVal && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-center">
+                  <div className="bg-white/80 p-2.5 rounded-2xl border border-emerald-200/60 shadow-2xs">
+                    <span className="text-[10px] text-slate-600 font-bold block">{isUrdu ? 'کل کرایہ آمدن' : 'Expected Income'}</span>
+                    <span className="font-mono font-black text-sm sm:text-base text-slate-900">
+                      Rs {lastCalc.expectedIncomeVal.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="bg-white/80 p-2.5 rounded-2xl border border-emerald-200/60 shadow-2xs">
+                    <span className="text-[10px] text-slate-600 font-bold block">{isUrdu ? 'خالص نفع / نقصان' : 'Net Profit / Loss'}</span>
+                    <span className={`font-mono font-black text-sm sm:text-base ${
+                      (lastCalc.netProfitVal ?? 0) >= 0 ? 'text-emerald-700' : 'text-red-600'
+                    }`}>
+                      Rs {Math.abs(lastCalc.netProfitVal || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="bg-white/80 p-2.5 rounded-2xl border border-emerald-200/60 shadow-2xs col-span-2 sm:col-span-1">
+                    <span className="text-[10px] text-slate-600 font-bold block">{isUrdu ? 'نفع فی کلومیٹر' : 'Profit Per KM'}</span>
+                    <span className="font-mono font-black text-sm sm:text-base text-indigo-700">
+                      {lastCalc.profitPerKmVal === 'N/A' || lastCalc.profitPerKmVal === undefined 
+                        ? 'N/A' 
+                        : `Rs ${lastCalc.profitPerKmVal} / KM`}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Breakdown Table Card */}
           <div className="bg-white p-4 rounded-3xl border-2 border-[#e0e0d2] shadow-2xs space-y-2.5 text-xs sm:text-sm">

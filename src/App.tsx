@@ -52,6 +52,7 @@ import { MapView } from './components/views/MapView';
 import { TollPlazaView } from './components/views/TollPlazaView';
 import { NavigationView } from './components/views/NavigationView';
 import { DashcamView } from './components/views/DashcamView';
+import { LedgerView } from './components/views/LedgerView';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
 import { Home, ArrowLeft } from 'lucide-react';
@@ -1065,6 +1066,16 @@ export default function App() {
           {activeTab === 'dashcam' && (
             <DashcamView
               lang={lang}
+              onNavigate={handleNavigate}
+            />
+          )}
+
+          {activeTab === 'ledger' && (
+            <LedgerView
+              lang={lang}
+              vehicles={vehicles}
+              trips={trips}
+              isBiltyAuthorized={isBiltyAuthorized}
               onNavigate={handleNavigate}
             />
           )}

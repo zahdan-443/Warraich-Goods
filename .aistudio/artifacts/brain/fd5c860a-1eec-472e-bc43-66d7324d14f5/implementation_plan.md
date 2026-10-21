@@ -1,86 +1,84 @@
-# Revised Minimal Mobile Dashboard Architecture (Zero Button Deletion)
+# Ledger (حساب کتاب) Feature Implementation Plan
 
-Re-architects the Driver Dost Home Dashboard into a fast, single-screen **Mobile-First App** experience. **Strict requirement applied: Zero buttons deleted.** All 9 action buttons are retained 100% and neatly rearranged into an ergonomic, thumb-friendly app launcher layout.
-
-## User Review & Critical Decisions
-
-> [!IMPORTANT]
-> **Confirmed Directives:**
-> 1. **Zero Button Deletion**: All 9 tools and verification buttons are preserved with complete functionality.
-> 2. **Calendar & Wisdom Card**: Completely removed from the Home screen to eliminate scroll fatigue.
-> 3. **Owner Control Panel**: Preserved exactly as-is for the authenticated owner (`warraichgoods43@gmail.com`).
-> 4. **Modern Mobile Layout**: Re-arranged into a clean, modern 2-row app launcher grid.
+## Overview
+A complete financial ledger system for Pakistani transport & logistics operators, seamlessly integrating Party Ledgers, Broker Ledgers, Vehicle Profit & Loss analytics, Trip Cost Calculator profitability previews, WhatsApp payment reminders, Direct Calling, Receipt OCR, and safe Firestore/offline synchronization with strict Bilty access control.
 
 ---
 
-## 1. Overview & Core Concept
+## 1. Planned Files to Create & Edit
 
-- **What It Does**: Streamlines `HomeView.tsx` by replacing the massive right-hand calendar block with a unified single-screen mobile layout. All 9 tools are grouped in a structured, thumb-friendly application grid alongside the live Pakistan POL rates and weather monitor.
-- **Target Audience / Persona**: Pakistani transport drivers, fleet owners, and logistics dispatchers using Android phones and tablets on highways.
-- **Key Value**: Every single tool is instantly visible and accessible in 1 tap without long scrolling or digging through complex menus.
+### Files to Create:
+1. **`src/utils/ledgerStorage.ts`**:
+   - Core data operations, offline local caching (IndexedDB/safeStorage fallback), and Firestore sync for `users/{uid}/ledgerParties`, `ledgerBrokers`, `vehicleExpenses`, and `vehicleIncome`.
+   - Deterministic transaction ID generation to eliminate duplicate entries during synchronization.
+   - Bilty linking: Automatic linking of consignor and consignee party transactions from Bilty records (total freight, advance, payable balance) only when `isBiltyAuthorized()` is true.
+   - Unauthorized user boundary: 100% silent omission of Bilty-sourced data with zero references to "Bilty" in labels or text.
+   - Financial aggregators: Running balances, Top Parties ranking by volume, and Vehicle Profit/Loss with profit per KM (or "N/A" for zero distance).
+   - WhatsApp message formatter in bilingual Urdu & English with invoice breakdown and direct call link builder.
 
----
+2. **`src/components/views/LedgerView.tsx`**:
+   - Main Ledger screen with 3 sub-tabs:
+     - **Party Ledger (کھاتہ پارٹی)**: Parties list, running balances, Top Parties ranking cards, transaction history (Debit/Credit), manual entry modal, direct call button (`tel:`), WhatsApp payment reminder sheet.
+     - **Broker Ledger (بروکر کھاتہ)**: Broker profiles, commission tracking, load/reference notes, paid/unpaid status toggle, manual entries, direct call, WhatsApp reminder.
+     - **Vehicle Profit/Loss (گاڑی نفع و نقصان)**: Vehicle selector, custom date ranges (Today, This Week, This Month, Custom Date Range), aggregate income, fuel/toll expenses, net profit/loss with Green/Red indicators, Profit per KM calculation (with "N/A" for 0 km), and receipt scanning.
 
-## 2. All 9 Preserved Buttons & Layout Organization
-
-All 9 buttons are kept with their user-provided authoritative icons and full routing handlers:
-
-| # | Tool Name (Urdu / English) | Destination / Action | Icon Asset |
-|---|---------------------------|----------------------|------------|
-| 1 | **سفر اخراجات کیلکولیٹر** / Trip Expense Calculator | `onNavigate('calculator')` | `tripIconData` (trip-icon.png) |
-| 2 | **گاڑی کا حساب** / Vehicle Account (Gari Hisaab) | `onNavigate('vehicleAccount')` | `gariHisaabIconData` (gari-hisaab-icon.png) |
-| 3 | **موٹروے ٹول ٹیکس** / Motorway Toll Tax | `onNavigate('toll')` | `tollIconData` (toll-icon.png) |
-| 4 | **نقشہ و روٹ موسم** / Map & Route Weather | `onNavigate('map')` | `mapIconData` (map-icon.png) |
-| 5 | **ڈیش کیم ریکارڈر** / Dashcam Video Recorder | `onNavigate('dashcam')` | `dashcamIconData` (dashcam-icon.png) |
-| 6 | **گاڑیوں کی تصدیق** / Vehicles Verification | `onNavigate('verify', 'vehicle')` | `vehicleIconData` (vehicle-icon.png) |
-| 7 | **لائسنس کی تصدیق** / License Verification | `onNavigate('verify', 'license')` | `licenseIconData` (license-icon.png) |
-| 8 | **ای چالان چیکنگ** / E-Challan Checking | `onNavigate('verify', 'challan')` | `echallanIconData` (echallan-icon.png) |
-| 9 | **مزید سہولتیں و آپریشنز** / More Services & Quick Ops | `openModalWithHistory(setShowQuickOpsModal)` | `quickOpsIconData` (quick-ops-icon.png) |
-
----
-
-## 3. Screen Structure & Flow
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ 🚛 Driver Dost Header (Logo, Bell Drawer, Role, Theme, Lang)    │
-├─────────────────────────────────────────────────────────────────┤
-│ [Owner Command Center: Only rendered for authenticated owner]   │
-│ [Expiring Document Banner: Only rendered if alerts exist]       │
-├─────────────────────────────────────────────────────────────────┤
-│ 📱 DRIVER DOST APP LAUNCHER (All 9 Tools in Ergonomic Grid)     │
-│                                                                 │
-│ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐     │
-│ │ 1. Trip    │ │ 2. Gari    │ │ 3. Toll    │ │ 4. Live    │     │
-│ │ Calculator │ │ Hisaab     │ │ Tax        │ │ Map & Fog  │     │
-│ └────────────┘ └────────────┘ └────────────┘ └────────────┘     │
-│ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐     │
-│ │ 5. Dashcam │ │ 6. Vehicle │ │ 7. License │ │ 8. E-Challan│    │
-│ │ Recorder   │ │ Verify     │ │ Verify     │ │ Check      │     │
-│ └────────────┘ └────────────┘ └────────────┘ └────────────┘     │
-│ ┌─────────────────────────────────────────────────────────┐     │
-│ │ 9. مزید سہولتیں و آپریشنز (More Fleet Tools & Operations)│     │
-│ └─────────────────────────────────────────────────────────┘     │
-├─────────────────────────────────────────────────────────────────┤
-│ 🛢️ COMPACT PAKISTAN POL RATES & LIVE CITY WEATHER CARD          │
-│ ┌─────────────────────────────────────────────────────────────┐ │
-│ │ 🌤️ Lahore 26°C · HSD Diesel Rs 290 · Super Petrol Rs 280   │ │
-│ │ [ٹرپ میں لگائیں / Apply]                                    │ │
-│ └─────────────────────────────────────────────────────────────┘ │
-├─────────────────────────────────────────────────────────────────┤
-│ ℹ️ Government Apps Disclaimer (Store Compliance)                │
-└─────────────────────────────────────────────────────────────────┘
-```
+### Files to Edit:
+1. **`src/types.ts`**:
+   - Add `'ledger'` to `ActiveTab`.
+   - Define TypeScript interfaces: `LedgerParty`, `PartyTransaction`, `LedgerBroker`, `BrokerTransaction`, `VehicleExpenseEntry`, `VehicleIncomeEntry`, `LedgerDateRange`.
+2. **`src/components/Navigation.tsx`**:
+   - Add the Ledger item with book/receipt icon (`BookOpen` / `ReceiptText`) with bilingual Urdu "حساب کتاب" and English "Ledger".
+3. **`src/components/views/HomeView.tsx`**:
+   - Add a high-visibility Ledger shortcut card in the Home quick actions grid.
+4. **`src/components/views/TripCostView.tsx`**:
+   - Add optional "Expected Freight Income" (متوقع کرایہ آمدن) input in PKR.
+   - Add real-time "Trip Profitability Preview" before saving:
+     - Expected Income
+     - Total Expenses (Fuel + Toll + Loading + Driver + Other)
+     - Net Profit / Loss (Green badge for profit, Red badge for loss)
+     - Profit per KM (PKR / KM, or "N/A" when distance is 0)
+5. **`src/components/CameraOcrInput.tsx`**:
+   - Add `mode='receipt'` / `'expense'` support to extract numeric amounts and currency totals from paper receipts, fuel chits, and workshop bills using Tesseract OCR.
+6. **`src/App.tsx`**:
+   - Register the active tab `'ledger'`, pass required state props (`user`, `isBiltyAuthorized`, `trips`, `vehicles`, `lang`), and handle navigation.
+7. **`firestore.rules`**:
+   - Add user-scoped authorization rules for `ledgerParties`, `ledgerBrokers`, `vehicleExpenses`, and `vehicleIncome`.
 
 ---
 
-## 4. Key Improvements Delivered
+## 2. Priority Implementation Phases
 
-1. **Massive Reduction in Vertical Height**:
-   - By eliminating the 2-column web split (which forced the page to stretch down with an empty 400px calendar and quote block), everything now fits gracefully within standard mobile viewports.
-2. **Unified App Launcher Experience**:
-   - Rather than dividing the buttons into separate disjointed cards with repetitive headers, all 9 tools are integrated into one coherent, fluid app launcher tray.
-3. **Strict Policy & Asset Compliance**:
-   - Zero changes to `/public` PNG files.
-   - Owner-only authorization remains intact.
-   - Guest local storage mode remains non-blocking.
+### Phase 1: Profit per KM & Trip Profitability Preview
+- Enhance `TripCostView.tsx` with optional expected freight income field.
+- Render live Net Profit/Loss and Profit per KM badge preview before saving the trip.
+- Handle zero-distance cases by displaying "N/A".
+
+### Phase 2: WhatsApp & Direct Call Reminders
+- Add instant WhatsApp payment reminder generators in `ledgerStorage.ts` for both Party and Broker ledgers.
+- Pre-fill professional bilingual messages with party name, pending balance in PKR, invoice reference, and transport company signature.
+- Add one-tap `tel:` direct call buttons for party and broker mobile numbers.
+
+### Phase 3: Top Parties Ranking
+- Calculate aggregate charged transaction volume across all party records.
+- Display Top 5 Parties podium/ranking cards on the Party Ledger dashboard with total volume and balance indicators.
+
+### Phase 4: Receipt OCR Integration
+- Enhance `CameraOcrInput.tsx` with expense/receipt recognition logic.
+- Integrate OCR into manual expense entries in Vehicle Profit/Loss and Party Ledger, allowing drivers to scan receipts and prefill the amount before saving.
+
+### Phase 5: Base Ledger, Bilty Integration & Firestore Sync
+- Implement Party Ledger & Broker Ledger full CRUD (add, edit, transaction history, running balance).
+- Connect Bilty auto-linking strictly for users where `isBiltyAuthorized()` is true, ensuring zero mentions of "Bilty" for unauthorized users.
+- Connect Firestore sync (`users/{uid}/...`) with offline IndexedDB fallback.
+
+---
+
+## 3. Verification & Quality Assurance
+- Automated tests in `src/__tests__/ledger.test.ts` verifying:
+  - Profit per KM calculation and zero distance "N/A" handling.
+  - WhatsApp reminder text generation.
+  - Top Parties ranking logic.
+  - Bilty data isolation (no bilty data or labels for unauthorized users).
+  - Storage and deterministic deduplication.
+- Run `npm run lint` (`tsc --noEmit`) and `npm run test` (Vitest).
+- Run `compile_applet` to confirm successful production compilation.

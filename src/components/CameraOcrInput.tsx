@@ -6,7 +6,7 @@ import { Language } from '../types';
 interface CameraOcrInputProps {
   onScanResult: (text: string) => void;
   lang?: Language;
-  mode?: 'vehicle' | 'fuel' | 'generic';
+  mode?: 'vehicle' | 'fuel' | 'generic' | 'receipt' | 'expense';
   className?: string;
   label?: string;
 }
@@ -42,6 +42,41 @@ export const CameraOcrInput: React.FC<CameraOcrInputProps> = ({
         if (numbers && numbers.length > 0) {
           // Find largest number or standard price
           processed = numbers.sort((a, b) => parseFloat(b.replace(',', '.')) - parseFloat(a.replace(',', '.')))[0];
+        }
+      } else if (mode === 'receipt' || mode === 'expense') {
+        // Receipt OCR: Look for total / amount / net patterns
+        const lines = rawText.split('\n');
+        let foundAmount = '';
+        
+        // Priority 1: Lines containing total, net, amount, rs, pkr
+        for (const line of lines) {
+          if (/total|net|amount|rs|pkr|grand|balance|due/i.test(line)) {
+            const matches = line.match(/(\d+[\d,.]*)/g);
+            if (matches && matches.length > 0) {
+              const cleaned = matches[matches.length - 1].replace(/,/g, '');
+              if (!isNaN(parseFloat(cleaned)) && parseFloat(cleaned) > 0) {
+                foundAmount = cleaned;
+                break;
+              }
+            }
+          }
+        }
+
+        // Priority 2: If not found, look for largest realistic expense number in the text
+        if (!foundAmount) {
+          const allNumbers = rawText.match(/\d+([.,]\d+)?/g);
+          if (allNumbers && allNumbers.length > 0) {
+            const validCandidates = allNumbers
+              .map(n => parseFloat(n.replace(',', '')))
+              .filter(n => n >= 50 && n <= 1000000);
+            if (validCandidates.length > 0) {
+              foundAmount = String(Math.max(...validCandidates));
+            }
+          }
+        }
+
+        if (foundAmount) {
+          processed = foundAmount;
         }
       } else if (mode === 'vehicle') {
         // Clean vehicle plate format (e.g. LHR 7860, MN-4321)

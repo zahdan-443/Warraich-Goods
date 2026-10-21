@@ -1,7 +1,86 @@
 export type Language = 'en' | 'ur';
 export type FuelType = 'diesel' | 'petrol' | 'cng';
-export type ActiveTab = 'home' | 'calculator' | 'vehicle' | 'drivers' | 'routes' | 'fuel' | 'verify' | 'bilty' | 'vehicleAccount' | 'map' | 'toll' | 'navigation' | 'dashcam';
+export type ActiveTab = 'home' | 'calculator' | 'vehicle' | 'drivers' | 'routes' | 'fuel' | 'verify' | 'bilty' | 'vehicleAccount' | 'map' | 'toll' | 'navigation' | 'dashcam' | 'ledger';
 export type CalcSubTab = 'calc' | 'history' | 'summary';
+export type LedgerSubTab = 'parties' | 'brokers' | 'vehicleProfitLoss';
+
+export interface PartyTransaction {
+  id: string;
+  partyId: string;
+  date: string;
+  type: 'debit' | 'credit'; // debit: freight charged/receivable, credit: payment received
+  amount: number;
+  description: string;
+  referenceNo?: string;
+  vehicleNo?: string;
+  source?: 'manual' | 'freight';
+  createdAt: number;
+}
+
+export interface LedgerParty {
+  id: string;
+  name: string;
+  phone?: string;
+  city?: string;
+  address?: string;
+  notes?: string;
+  runningBalance: number; // >0: Party owes company (Receivable), <0: Advance/Payable
+  totalCharged: number;   // Total freight charged (used for Top Parties ranking)
+  totalReceived: number;  // Total payments received
+  lastTransactionDate?: string;
+  updatedAt: number;
+}
+
+export interface BrokerTransaction {
+  id: string;
+  brokerId: string;
+  date: string;
+  loadDescription: string;
+  vehicleNo?: string;
+  route?: string;
+  freightAmount: number;
+  commission: number;
+  status: 'paid' | 'unpaid';
+  notes?: string;
+  createdAt: number;
+}
+
+export interface LedgerBroker {
+  id: string;
+  name: string;
+  phone?: string;
+  city?: string;
+  totalCommission: number;
+  unpaidCommission: number;
+  notes?: string;
+  updatedAt: number;
+}
+
+export interface VehicleExpenseEntry {
+  id: string;
+  vehicleNo: string;
+  date: string;
+  category: 'fuel' | 'toll' | 'repair' | 'challan' | 'driver' | 'other';
+  amount: number;
+  description: string;
+  receiptUrl?: string;
+  tripId?: number;
+  source?: 'trip' | 'account' | 'manual';
+  createdAt: number;
+}
+
+export interface VehicleIncomeEntry {
+  id: string;
+  vehicleNo: string;
+  date: string;
+  amount: number;
+  partyName?: string;
+  description: string;
+  tripId?: number;
+  source?: 'trip' | 'manual' | 'freight';
+  createdAt: number;
+}
+
 
 export interface CustomExpense {
   id: string;
@@ -47,8 +126,10 @@ export interface Trip {
   driver: number;
   other: number;
   total: number;
+  expectedIncome?: number;
   totalIncome?: number;
   netProfit?: number;
+  profitPerKm?: number;
   incomes?: FreightIncome[];
   isReturn: boolean;
   date: string;
@@ -355,6 +436,7 @@ export const DICTIONARY = {
     nav: {
       home: "Dashboard",
       calculator: "Trip Cost",
+      ledger: "Ledger",
       map: "Map",
       vehicle: "Vehicles",
       drivers: "Drivers",
@@ -576,6 +658,7 @@ export const DICTIONARY = {
     nav: {
       home: "ڈیش بورڈ",
       calculator: "سفر خرچ",
+      ledger: "حساب کتاب",
       map: "نقشہ و روٹ موسم",
       vehicle: "گاڑیاں",
       drivers: "ڈرائیور",

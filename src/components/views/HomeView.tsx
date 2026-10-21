@@ -547,6 +547,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {/* FULL DISPLAY APP LAUNCHER: 8 Core Transport Icon Image Buttons (2 Columns x 4 Rows, Huge Single-Tap, Full Screen Grid, Zero Text Names) */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-5 w-full">
           {/* 1. Trip Expense Calculator */}
+          {/* 1. Trip Expense Calculator */}
           <QuickActionButton
             href="#calculator"
             onClick={() => onNavigate('calculator')}
@@ -556,7 +557,17 @@ export const HomeView: React.FC<HomeViewProps> = ({
             highlight={true}
           />
 
-          {/* 2. Vehicle Account / Ledger */}
+          {/* 2. Ledger (حساب کتاب) */}
+          <QuickActionButton
+            href="#ledger"
+            onClick={() => onNavigate('ledger')}
+            imgSrc=""
+            fallbackIcon={<BookOpen className="w-12 h-12 text-[#8b9d77]" />}
+            fullName={lang === 'ur' ? 'حساب کتاب (لیجر)' : 'Ledger (Khata)'}
+            highlight={true}
+          />
+
+          {/* 3. Vehicle Account / Khata */}
           <QuickActionButton
             href="#vehicleAccount"
             onClick={() => onNavigate('vehicleAccount')}
@@ -891,6 +902,23 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </div>
                 <span className="font-serif font-bold text-xs text-blue-950 group-hover:text-blue-800 transition-colors">
                   {lang === 'ur' ? 'ڈیش کیم ریکارڈر' : 'Dashcam Recorder'}
+                </span>
+              </button>
+
+              {/* Financial Ledger (حساب کتاب) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickOpsModal(false);
+                  onNavigate('ledger');
+                }}
+                className="p-5 rounded-3xl bg-emerald-500/10 border border-emerald-300/80 hover:border-emerald-500 hover:bg-emerald-500/20 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95"
+              >
+                <div className="p-3 bg-white rounded-2xl border border-emerald-300 group-hover:border-emerald-500 shadow-2xs shrink-0 text-emerald-800">
+                  <BookOpen className="w-6 h-6 text-emerald-700" />
+                </div>
+                <span className="font-serif font-bold text-xs text-emerald-950 group-hover:text-emerald-800 transition-colors">
+                  {lang === 'ur' ? 'حساب کتاب (لیجر)' : 'Financial Ledger'}
                 </span>
               </button>
 

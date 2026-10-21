@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActiveTab, DICTIONARY, Language } from '../types';
-import { LayoutDashboard, Calculator, Truck, Users, MapPin, Fuel, ShieldCheck, Receipt, Map as MapIcon, Camera } from 'lucide-react';
+import { LayoutDashboard, Calculator, BookOpen, Truck, Users, MapPin, Fuel, ShieldCheck, Receipt, Map as MapIcon, Camera } from 'lucide-react';
 
 interface NavigationProps {
   activeTab: ActiveTab;
@@ -15,6 +15,7 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, onSelectTab, 
   const rawNavItems: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
     { id: 'home', label: t.home, icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'calculator', label: t.calculator, icon: <Calculator className="w-4 h-4" /> },
+    { id: 'ledger', label: (t as any).ledger || (lang === 'ur' ? 'حساب کتاب' : 'Ledger'), icon: <BookOpen className="w-4 h-4" /> },
     { id: 'map', label: t.map || (lang === 'ur' ? 'نقشہ' : 'Map'), icon: <MapIcon className="w-4 h-4" /> },
     { 
       id: 'bilty', 

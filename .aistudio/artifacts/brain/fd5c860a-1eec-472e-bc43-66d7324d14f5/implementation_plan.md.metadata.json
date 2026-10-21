@@ -1,6 +1,6 @@
 {
-  "summary":  "Revised implementation plan: Zero buttons deleted! All 9 functional buttons (Trip Calculator, Vehicle Account/Ledger, Motorway Toll, Map & Route Weather, Dashcam Recorder, Vehicles Verification, License Verification, E-Challan Check, and More Services/Quick Ops) are preserved 100%. Re-architected into an ergonomic, responsive 2-row app launcher layout. Calendar and wisdom box removed from HomeView to eliminate multi-screen scroll fatigue. Owner Control Panel remains strictly preserved for authorized owner only.",
-  "updatedAt":  "2026-10-10T09:57:36.875342313Z",
+  "summary":  "Implementation plan for adding the comprehensive Ledger (حساب کتاب) feature to Driver Dost, including Party Ledger, Broker Ledger, Vehicle Profit/Loss with profit per KM and trip profitability preview, WhatsApp payment reminders and direct calling, Top Parties ranking, Receipt OCR integration, and Firestore/offline storage.",
+  "updatedAt":  "2026-10-21T05:25:13.598652816Z",
   "requestFeedback":  true,
   "userFacing":  true
 }
