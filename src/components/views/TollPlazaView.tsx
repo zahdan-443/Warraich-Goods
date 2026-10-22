@@ -227,45 +227,9 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
 
   return (
     <div 
-      className="flex-1 p-3 sm:p-5 max-w-2xl mx-auto w-full font-sans space-y-3 pb-16 animate-in fade-in select-none"
+      className="h-[calc(100dvh-56px)] max-w-4xl mx-auto w-full font-sans flex flex-col overflow-hidden p-2.5 sm:p-4 select-none animate-in fade-in"
       dir={isUrdu ? 'rtl' : 'ltr'}
     >
-      {/* Top Header - Matching VehicleAccountView & MapView Style & Placement */}
-      <div className="w-full flex items-center justify-between pb-2 shrink-0 border-b border-[#ecece0]">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
-            <PublicImage
-              fileName="toll-icon.png"
-              alt="Motorway Toll Tax and Rates Calculator"
-              width={40}
-              height={40}
-              className="w-full h-full object-cover rounded-xl"
-              fallbackIcon={<Milestone className="w-5 h-5 text-[#8b9d77]" />}
-            />
-          </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-[#4a4a35] leading-tight">
-              {isUrdu ? 'موٹروے ٹول ٹیکس' : 'Motorway Toll Tax'}
-            </h1>
-            <p className="text-[11px] text-[#8e8e75]">
-              {isUrdu ? 'این ایچ اے موٹرویز اور ہائی ویز ٹول ریٹس' : 'NHA Motorways & Highway Toll Rates'}
-            </p>
-          </div>
-        </div>
-
-        {onNavigate && (
-          <button
-            type="button"
-            onClick={() => onNavigate('home')}
-            className="p-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-            title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
-          >
-            <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
-            <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
-          </button>
-        )}
-      </div>
-
       {/* Mode Switcher Tabs */}
       <div className="pt-1 pb-1 shrink-0">
         <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#ebebe0] rounded-xl">
@@ -300,8 +264,8 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
         </div>
       </div>
 
-      {/* Body Content */}
-      <div className="space-y-3 py-1">
+      {/* Body Content - Scrollable within Cockpit */}
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-3 py-1 pr-1 pb-6">
         
         {/* TAB 1: ROUTE CALCULATOR */}
         {activeTab === 'route' && (

@@ -152,7 +152,22 @@ export const TermsModal: React.FC<TermsModalProps> = ({
             </p>
           </div>
 
-          {/* Section 7: External Links & Publisher */}
+          {/* Section 7: App Store Quality & Navigation Architecture Compliance */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#ecece0] space-y-2 shadow-2xs">
+            <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <h3 className="font-serif font-bold text-sm">
+                {isUrdu ? '7. آزاد نیٹو ایپ آرکیٹیکچر اور پام اسٹور کوالٹی سرٹیفیکیشن' : '7. Native Utility Architecture & Store Quality Certification'}
+              </h3>
+            </div>
+            <p className="text-xs text-[#5a5a40] leading-relaxed">
+              {isUrdu
+                ? 'ڈرائیور دوست ایک مکمل خود مختار نیٹو لاجسٹکس و روڈ ٹرانسپورٹ یوٹیلیٹی ایپ ہے، یہ کوئی ویب ویو یا شیل ایپ (Shell App) نہیں ہے۔ ایپ کے تمام ٹولز (ٹرپ کیلکولیٹر، این ایچ اے ٹول میٹرکس، وہیکل لیجر، ڈیش کیم، لائیو ویدر میپ) مکمل فعال نیٹو الگورتھمز پر مشتمل ہیں جو آف لائن بھی بلا تعطل کام کرتے ہیں۔ صارفین کے لیے ایپ کے ہر صفحے پر یونیفائیڈ ٹاپ نیویگیشن بار میں "ڈیش بورڈ" واپسی کا واضح بٹن اور اسکرولنگ پر فلوٹنگ ریٹرن بٹن فراہم کیا گیا ہے تاکہ نیویگیشن میں کوئی رکاوٹ نہ آئے۔ کور فیچرز مہمان موڈ میں بغیر کسی لاگ ان یا پے وال کے فوری دستیاب ہیں۔'
+                : 'Driver Dost is an independent, fully realized logistics utility engineered with native offline calculation algorithms, NHA toll matrices, fleet ledgers, dashcam recorders, and route weather mapping. It is NOT a webview wrapper or shell application. Every page adheres strictly to platform UX guidelines (Dlightek & Play Store) with an identical, persistent top "Dashboard" return anchor and floating scroll button. Core freight tools function immediately in instant guest mode without login gates or paywalls.'}
+            </p>
+          </div>
+
+          {/* Section 8: External Links & Publisher */}
           <div className="bg-[#fdfbf7] p-4 rounded-2xl border border-[#ecece0] space-y-2 text-xs">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="font-bold text-[#4a4a35] flex items-center gap-1.5">
@@ -168,6 +183,9 @@ export const TermsModal: React.FC<TermsModalProps> = ({
                 <span>{isUrdu ? 'مکمل ویب شرائط (Web Terms)' : 'Full Web Terms'}</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
+            </div>
+            <div className="text-[11px] text-[#7a7a60] pt-1">
+              <span>{isUrdu ? 'رابطہ و سپورٹ ای میل:' : 'Support & Compliance:'} warraichgoods43@gmail.com</span>
             </div>
           </div>
         </div>

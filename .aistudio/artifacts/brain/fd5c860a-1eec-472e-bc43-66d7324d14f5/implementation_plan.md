@@ -1,84 +1,161 @@
-# Ledger (حساب کتاب) Feature Implementation Plan
+# Comprehensive UX/UI Optimization, Viewport Refactoring & App Store Compliance Plan
 
 ## Overview
-A complete financial ledger system for Pakistani transport & logistics operators, seamlessly integrating Party Ledgers, Broker Ledgers, Vehicle Profit & Loss analytics, Trip Cost Calculator profitability previews, WhatsApp payment reminders, Direct Calling, Receipt OCR, and safe Firestore/offline synchronization with strict Bilty access control.
+This plan resolves the PalmStore / Dlightek quality rejection (*"critical UX flaws, including the app looking like a shell app, underdeveloped core features because there is no button to go back to the home page"*) and elevates the entire application to certified native app store standards. It establishes a unified top app bar across all pages with a standardized "Back to Dashboard" button, preserves the floating scroll button, restores the 10-icon dashboard grid using `quick-ops-icon.png`, creates a dedicated icon for the new Ledger feature, refactors cockpit pages (Toll Plaza, Map, Navigation, Dashcam) to fit cleanly to screen height without outer scroll, declutters scrollable pages, and updates legal compliance.
 
 ---
 
-## 1. Planned Files to Create & Edit
+## User Review & Critical Decisions
 
-### Files to Create:
-1. **`src/utils/ledgerStorage.ts`**:
-   - Core data operations, offline local caching (IndexedDB/safeStorage fallback), and Firestore sync for `users/{uid}/ledgerParties`, `ledgerBrokers`, `vehicleExpenses`, and `vehicleIncome`.
-   - Deterministic transaction ID generation to eliminate duplicate entries during synchronization.
-   - Bilty linking: Automatic linking of consignor and consignee party transactions from Bilty records (total freight, advance, payable balance) only when `isBiltyAuthorized()` is true.
-   - Unauthorized user boundary: 100% silent omission of Bilty-sourced data with zero references to "Bilty" in labels or text.
-   - Financial aggregators: Running balances, Top Parties ranking by volume, and Vehicle Profit/Loss with profit per KM (or "N/A" for zero distance).
-   - WhatsApp message formatter in bilingual Urdu & English with invoice breakdown and direct call link builder.
+> [!IMPORTANT]
+> All user selections from the interactive clarifications have been incorporated:
+> 1. **10-Icon Dashboard Grid**: Restores the full 10-icon 2-column launcher grid, using `/quick-ops-icon.png` for Quick Operations and generating a new icon for the Ledger (حساب کتاب) feature.
+> 2. **Fit-to-Screen Cockpit Views**: Toll Plaza, Map, Navigation, and Dashcam pages are locked to viewport height (`h-[calc(100dvh-56px)]`) with clean internal pan/scroll zones and zero outer page overflow.
+> 3. **Universal Back Navigation**: Every tab and page features a standardized "Back to Dashboard" button in the exact same top header position, alongside the floating scroll button for long-content views.
+> 4. **PalmStore & Play Store Quality Audit**: Comprehensive Terms & Conditions and Privacy Policy overhaul with hardware permission disclosures, transport fleet declarations, and Android back-key hierarchy.
 
-2. **`src/components/views/LedgerView.tsx`**:
-   - Main Ledger screen with 3 sub-tabs:
-     - **Party Ledger (کھاتہ پارٹی)**: Parties list, running balances, Top Parties ranking cards, transaction history (Debit/Credit), manual entry modal, direct call button (`tel:`), WhatsApp payment reminder sheet.
-     - **Broker Ledger (بروکر کھاتہ)**: Broker profiles, commission tracking, load/reference notes, paid/unpaid status toggle, manual entries, direct call, WhatsApp reminder.
-     - **Vehicle Profit/Loss (گاڑی نفع و نقصان)**: Vehicle selector, custom date ranges (Today, This Week, This Month, Custom Date Range), aggregate income, fuel/toll expenses, net profit/loss with Green/Red indicators, Profit per KM calculation (with "N/A" for 0 km), and receipt scanning.
+- **Confirmed Decision 1**: Restore 10-icon grid on Home with `quick-ops-icon.png` and a new Ledger icon.
+- **Confirmed Decision 2**: Lock Toll Plaza, Map, Navigation, and Dashcam to 100% viewport height.
+- **Confirmed Decision 3**: Universal dual-position Back to Dashboard navigation across all 11+ views.
 
-### Files to Edit:
-1. **`src/types.ts`**:
-   - Add `'ledger'` to `ActiveTab`.
-   - Define TypeScript interfaces: `LedgerParty`, `PartyTransaction`, `LedgerBroker`, `BrokerTransaction`, `VehicleExpenseEntry`, `VehicleIncomeEntry`, `LedgerDateRange`.
-2. **`src/components/Navigation.tsx`**:
-   - Add the Ledger item with book/receipt icon (`BookOpen` / `ReceiptText`) with bilingual Urdu "حساب کتاب" and English "Ledger".
+---
+
+## 1. Overview & Core Concept
+
+- **What It Delivers**:
+  - **Zero Confusion Navigation**: Immediate, uniform "Back to Dashboard" button in the exact same upper coordinate on every non-home screen, accompanied by the floating scroll-up button.
+  - **Native Viewport Ergonomics**: Toll Plaza interactive map/calculator, Live Route Weather Map, Turn-by-Turn Navigation, and Dashcam recorder fit 100% within the screen boundary like native Android tools.
+  - **Streamlined Scrollable Pages**: Trip Cost Calculator, Ledger, Vehicles, Drivers, Routes, Fuel Log, and Gov Verify have redundant secondary buttons and clutter removed, focusing directly on data and workflows.
+  - **10-Icon Launcher**: Full symmetrical 2-column x 5-row launcher grid on the dashboard for instant 1-tap access to all 10 core utilities.
+  - **Store Compliance Certification**: Fully updated Terms & Conditions (`TermsModal.tsx`), Privacy Policy (`PrivacyPolicyModal.tsx`), and Android hardware back-button interceptor.
+
+---
+
+## 2. User Experience & Visual Design
+
+```
++-------------------------------------------------------------+
+| [← Dashboard / ہوم]    Page Title (e.g. Toll Plaza)   [اردو/EN]| <-- Unified Sticky ViewHeader
++-------------------------------------------------------------+
+|                                                             |
+|   FIT-TO-SCREEN VIEWPORT (Toll, Map, Nav, Dashcam):         |
+|   ┌─────────────────────────────────────────────────────┐   |
+|   │ Full-height interactive canvas / controls           │   |
+|   │ (Zero awkward outer scrollbars, strictly 100dvh)    │   |
+|   └─────────────────────────────────────────────────────┘   |
+|                                                             |
+|   OR SCROLLABLE VIEWS (Calculator, Ledger, Fleet):          |
+|   - Clean decluttered cards, streamlined action bars        |
+|   - [🏠 Dashboard ↑] floating button appears on deep scroll  |
+|                                                             |
++-------------------------------------------------------------+
+```
+
+### A. Dashboard 10-Icon Grid (Symmetrical 2x5 Layout)
+1. **Trip Cost Calculator** (`trip-icon.png`)
+2. **Financial Ledger / حساب کتاب** (New `ledger-icon.png`)
+3. **Vehicle Account / گاڑی کا حساب** (`gari-hisaab-icon.png`)
+4. **Motorway Toll Tax** (`toll-icon.png`)
+5. **Route Weather Map** (`map-icon.png`)
+6. **Dashcam Recorder** (`dashcam-icon.png`)
+7. **Quick Operations & Tools / مزید سہولتیں** (`quick-ops-icon.png`)
+8. **Vehicles Verification** (`vehicle-icon.png`)
+9. **License Verification** (`license-icon.png`)
+10. **E-Challan Check** (`echallan-icon.png`)
+
+### B. Viewport Fitting for Cockpit Views
+- **Toll Plaza View (`TollPlazaView.tsx`)**:
+  - Outer container: `h-[calc(100dvh-56px)] flex flex-col overflow-hidden`.
+  - Top selectors (Motorway/Highway, Plazas, Axle Class) in a compact, non-wrapping header.
+  - Results and fee matrix scrollable within an internal scroll pane while the summary remains pinned.
+- **Map View (`MapView.tsx`)**:
+  - Outer container: `h-[calc(100dvh-56px)] relative overflow-hidden`.
+  - Full-screen interactive Leaflet map canvas with floating route/weather controls.
+- **Navigation View (`NavigationView.tsx`)**:
+  - Outer container: `h-[calc(100dvh-56px)] flex flex-col overflow-hidden`.
+  - Split viewport: Active GPS route map (60% height) + Turn guidance & toll indicator (40% height).
+- **Dashcam View (`DashcamView.tsx`)**:
+  - Outer container: `h-[calc(100dvh-56px)] flex flex-col overflow-hidden`.
+  - Camera preview window centered and scaled with pinned record controls and telemetry overlay.
+
+### C. Decluttering Scrollable Views
+- Remove redundant, mismatched back arrows inside cards or nested page sections (e.g. in `TripCostView`, `LedgerView`, `VehiclesView`, `DriversView`) since the universal `ViewHeader` provides the authoritative top navigation.
+- Consolidate disclaimers and secondary banners into quiet footnotes.
+- Maintain the floating scroll-up button (`fixed top-[58px] left-3 sm:left-5 z-40`) for effortless return during deep scrolling.
+
+---
+
+## 3. Key Product Decisions & Trade-Offs
+
+- **Decision 1: Universal ViewHeader in `App.tsx` vs. Per-View Header Edits**
+  - *Chosen Approach*: Implement a single `ViewHeader` in `App.tsx` that renders for all tabs where `activeTab !== 'home'`.
+  - *Why*: Guarantees 100% position and styling consistency across all 11+ views. Reviewers and users will find the "Back to Dashboard" button in the exact same pixel coordinates on every page.
+- **Decision 2: Viewport Math (`100dvh` vs `100vh`)**
+  - *Chosen Approach*: Use dynamic viewport units `100dvh` with a `100vh` fallback and offset for the sticky header (`calc(100dvh - 56px)`).
+  - *Why*: Prevents mobile browser address bars and Android system gesture bars from clipping controls on mobile Chrome and WebView.
+- **Decision 3: Dedicated Ledger Icon Asset**
+  - *Chosen Approach*: Create a dedicated `public/ledger-icon.png` (using vector/canvas rendering or generated imagery with book/rupee/freight motif) to match the visual fidelity of other launcher icons without altering any existing user-uploaded images (Rule 1).
+
+---
+
+## 4. Technical Architecture & Component Mapping
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                          App.tsx                            │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │  Home View: Header (Standard Logo, Lang, Menu, Auth)  │  │
+│  │  Non-Home: ViewHeader (Universal Back to Dashboard)   │  │
+│  └───────────────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │                     Active View                       │  │
+│  │  - Fit-to-Screen: TollPlaza | Map | Nav | Dashcam     │  │
+│  │  - Scrollable: TripCost | Ledger | Vehicles | Drivers │  │
+│  └───────────────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │       Floating Scroll-Up Back to Dashboard Button     │  │
+│  └───────────────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │   TermsModal & PrivacyPolicyModal (Compliance 2026)   │  │
+│  └───────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Planned Code Changes:
+1. **`src/components/ViewHeader.tsx`**:
+   - Universal top bar for non-home views with standardized Back to Dashboard button (Home icon + Arrow + text), localized title, and language toggle.
+2. **`src/App.tsx`**:
+   - Render `ViewHeader` whenever `activeTab !== 'home'`.
+   - Keep floating scroll-up back button.
+   - Refine Android hardware back button handler so it gracefully returns to Home before exit.
 3. **`src/components/views/HomeView.tsx`**:
-   - Add a high-visibility Ledger shortcut card in the Home quick actions grid.
-4. **`src/components/views/TripCostView.tsx`**:
-   - Add optional "Expected Freight Income" (متوقع کرایہ آمدن) input in PKR.
-   - Add real-time "Trip Profitability Preview" before saving:
-     - Expected Income
-     - Total Expenses (Fuel + Toll + Loading + Driver + Other)
-     - Net Profit / Loss (Green badge for profit, Red badge for loss)
-     - Profit per KM (PKR / KM, or "N/A" when distance is 0)
-5. **`src/components/CameraOcrInput.tsx`**:
-   - Add `mode='receipt'` / `'expense'` support to extract numeric amounts and currency totals from paper receipts, fuel chits, and workshop bills using Tesseract OCR.
-6. **`src/App.tsx`**:
-   - Register the active tab `'ledger'`, pass required state props (`user`, `isBiltyAuthorized`, `trips`, `vehicles`, `lang`), and handle navigation.
-7. **`firestore.rules`**:
-   - Add user-scoped authorization rules for `ledgerParties`, `ledgerBrokers`, `vehicleExpenses`, and `vehicleIncome`.
+   - Update quick actions grid to a symmetrical 10-icon launcher (2 columns x 5 rows).
+   - Restore `quick-ops-icon.png` as icon button #7.
+   - Add new Ledger icon as button #2.
+4. **Fit-to-Screen Refactoring**:
+   - `TollPlazaView.tsx`: Lock container to viewport height; add internal scroll for plaza lists.
+   - `MapView.tsx`: Fill container to viewport height; clean up controls overlay.
+   - `NavigationView.tsx`: Fill container to viewport height; optimize route preview.
+   - `DashcamView.tsx`: Lock to viewport height; clean video feed layout.
+5. **Decluttering Scrollable Views**:
+   - Remove redundant internal back buttons and duplicate banners in `TripCostView.tsx`, `LedgerView.tsx`, `VehiclesView.tsx`, `DriversView.tsx`, `RoutesView.tsx`, and `FuelLogView.tsx`.
+6. **Store Compliance & Policy Documentation**:
+   - `TermsModal.tsx`: Comprehensive PalmStore / Google Play disclosures (utility nature, anti-shell architecture, camera OCR & GPS permissions, offline data policy, owner contact info).
+   - `PrivacyPolicyModal.tsx`: Explicit camera, local storage, and zero-data-brokerage clauses.
+7. **Asset Creation**:
+   - Create high-resolution `public/ledger-icon.png` for the Ledger launcher icon while respecting user assets.
 
 ---
 
-## 2. Priority Implementation Phases
+## 5. Verification & Testing Plan
 
-### Phase 1: Profit per KM & Trip Profitability Preview
-- Enhance `TripCostView.tsx` with optional expected freight income field.
-- Render live Net Profit/Loss and Profit per KM badge preview before saving the trip.
-- Handle zero-distance cases by displaying "N/A".
-
-### Phase 2: WhatsApp & Direct Call Reminders
-- Add instant WhatsApp payment reminder generators in `ledgerStorage.ts` for both Party and Broker ledgers.
-- Pre-fill professional bilingual messages with party name, pending balance in PKR, invoice reference, and transport company signature.
-- Add one-tap `tel:` direct call buttons for party and broker mobile numbers.
-
-### Phase 3: Top Parties Ranking
-- Calculate aggregate charged transaction volume across all party records.
-- Display Top 5 Parties podium/ranking cards on the Party Ledger dashboard with total volume and balance indicators.
-
-### Phase 4: Receipt OCR Integration
-- Enhance `CameraOcrInput.tsx` with expense/receipt recognition logic.
-- Integrate OCR into manual expense entries in Vehicle Profit/Loss and Party Ledger, allowing drivers to scan receipts and prefill the amount before saving.
-
-### Phase 5: Base Ledger, Bilty Integration & Firestore Sync
-- Implement Party Ledger & Broker Ledger full CRUD (add, edit, transaction history, running balance).
-- Connect Bilty auto-linking strictly for users where `isBiltyAuthorized()` is true, ensuring zero mentions of "Bilty" for unauthorized users.
-- Connect Firestore sync (`users/{uid}/...`) with offline IndexedDB fallback.
-
----
-
-## 3. Verification & Quality Assurance
-- Automated tests in `src/__tests__/ledger.test.ts` verifying:
-  - Profit per KM calculation and zero distance "N/A" handling.
-  - WhatsApp reminder text generation.
-  - Top Parties ranking logic.
-  - Bilty data isolation (no bilty data or labels for unauthorized users).
-  - Storage and deterministic deduplication.
-- Run `npm run lint` (`tsc --noEmit`) and `npm run test` (Vitest).
-- Run `compile_applet` to confirm successful production compilation.
+1. **Automated Unit Tests (`src/__tests__/navigationAndCompliance.test.ts`)**:
+   - Verify universal "Back to Dashboard" button appears across all tabs.
+   - Test hardware back-button transitions from each tab back to Home.
+   - Verify Terms & Conditions and Privacy Policy contain all mandatory store compliance sections.
+2. **Regression Testing (`npm run test`)**:
+   - Run Vitest suite to ensure all 83 existing tests continue to pass.
+3. **Type Safety & Linting (`npm run lint`)**:
+   - Run `tsc --noEmit` to ensure 0 TypeScript errors.
+4. **Production Build (`compile_applet`)**:
+   - Ensure clean Vite production compilation.

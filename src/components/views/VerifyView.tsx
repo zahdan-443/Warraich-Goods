@@ -595,19 +595,6 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            {onNavigate && (
-              <button
-                type="button"
-                onClick={() => onNavigate('home')}
-                className="px-3 py-1.5 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
-              >
-                <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
-                <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
-              </button>
-            )}
-          </div>
         </header>
 
         {/* Sub-Tab Navigation Pills */}

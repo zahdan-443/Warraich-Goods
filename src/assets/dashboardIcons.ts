@@ -14,6 +14,7 @@ export function getAssetUrl(fileName: string): string {
 
 // Exported standard public asset path strings
 export const tripIconData: string = './trip-icon.png';
+export const ledgerIconData: string = './ledger-icon.png';
 export const gariHisaabIconData: string = './gari-hisaab-icon.png';
 export const vehicleIconData: string = './vehicle-icon.png';
 export const licenseIconData: string = './license-icon.png';

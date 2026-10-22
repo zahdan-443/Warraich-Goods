@@ -621,42 +621,8 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
         className={`w-full max-w-xl mx-auto flex flex-col p-3 sm:p-5 pb-10 sm:pb-16 font-sans ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} 
         dir={isUrdu ? 'rtl' : 'ltr'}
       >
-        {/* Top Header with Trip Icon */}
-        <div className="w-full flex items-center justify-between pb-2.5 shrink-0 border-b border-[#e0e0d2]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
-              <PublicImage
-                fileName="trip-icon.png"
-                alt="Trip Expense and Freight Calculation Tool"
-                width={40}
-                height={40}
-                className="w-full h-full object-cover rounded-xl"
-                fallbackIcon={<Calculator className="w-5 h-5 text-[#8b9d77]" />}
-              />
-            </div>
-            <div>
-              <h1 className="text-base sm:text-lg font-bold text-[#4a4a35] leading-tight">
-                {isUrdu ? 'سفر اخراجات کیلکولیٹر' : 'Trip Expense Calculator'}
-              </h1>
-              <p className="text-[11px] text-[#8e8e75]">
-                {isUrdu ? 'کرایہ، ڈیزل و اخراجات کا تخمینہ' : 'Freight, Fuel & Expense Estimate'}
-              </p>
-            </div>
-          </div>
-          {onNavigate && (
-            <button
-              type="button"
-              onClick={() => onNavigate('home')}
-              className="p-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-            >
-              <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
-              <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
-            </button>
-          )}
-        </div>
-
         {/* 7 Inputs - Smooth scrollable sequence with generous spacing */}
-        <div className="w-full flex-1 flex flex-col space-y-3 sm:space-y-3.5 py-3">
+        <div className="w-full flex-1 flex flex-col space-y-3 sm:space-y-3.5 py-1">
           
           {/* Field 1: Origin City / از (روانگی - ڈراپ ڈاؤن) */}
           <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">

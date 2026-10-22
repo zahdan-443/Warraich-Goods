@@ -53,6 +53,7 @@ import { TollPlazaView } from './components/views/TollPlazaView';
 import { NavigationView } from './components/views/NavigationView';
 import { DashcamView } from './components/views/DashcamView';
 import { LedgerView } from './components/views/LedgerView';
+import { ViewHeader } from './components/ViewHeader';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
 import { Home, ArrowLeft } from 'lucide-react';
@@ -876,6 +877,81 @@ export default function App() {
     );
   };
 
+  const TAB_HEADER_INFO: Record<string, { title: string; titleUr: string; subtitle?: string; subtitleUr?: string }> = {
+    calculator: {
+      title: 'Trip Cost Calculator',
+      titleUr: 'ٹرپ خرچ کیلکولیٹر',
+      subtitle: 'Fuel, Toll & Net Profit',
+      subtitleUr: 'ڈیزل، ٹول ٹیکس اور خالص بچت'
+    },
+    vehicle: {
+      title: 'Vehicle Fleet',
+      titleUr: 'گاڑیوں کی تفصیل',
+      subtitle: 'Manage Fleet & Mileage',
+      subtitleUr: 'گاڑیاں اور مائلیج اندراج'
+    },
+    drivers: {
+      title: 'Drivers Directory',
+      titleUr: 'ڈرائیورز لسٹ',
+      subtitle: 'Directory & License Status',
+      subtitleUr: 'ڈرائیورز اور لائسنس ڈیٹا'
+    },
+    routes: {
+      title: 'Saved Routes',
+      titleUr: 'روٹس اور راستے',
+      subtitle: 'Presets & Standard Distances',
+      subtitleUr: 'محفوظ روٹس اور فاصلہ'
+    },
+    fuel: {
+      title: 'Fuel Price Log',
+      titleUr: 'ڈیزل و فیول لاگ',
+      subtitle: 'Official Fuel History',
+      subtitleUr: 'سرکاری فیول ریٹ ریکارڈ'
+    },
+    verify: {
+      title: 'Verification Center',
+      titleUr: 'گاڑی و لائسنس تصدیق',
+      subtitle: 'Vehicles, Licenses, Challans & Bilty QR',
+      subtitleUr: 'آن لائن تصدیقی پورٹل'
+    },
+    map: {
+      title: 'Route Weather & Map',
+      titleUr: 'لائیو موسم اور نقشہ',
+      subtitle: 'Fog, Rain, Heat & Wind Alert',
+      subtitleUr: 'دھند، بارش اور سڑک کی صورتحال'
+    },
+    bilty: {
+      title: 'Bilty Generator',
+      titleUr: 'بلٹی جنریٹر (وارڑائچ گڈز)',
+      subtitle: 'Authorized Consignment Note System',
+      subtitleUr: 'مجاز کنسائنمنٹ نوٹ اور کیو آر'
+    },
+    toll: {
+      title: 'Toll Plaza Rates',
+      titleUr: 'ٹول پلازہ ریٹس و کیلکولیٹر',
+      subtitle: 'Motorway & Highway Tolls',
+      subtitleUr: 'موٹروے و ہائی وے آفیشل ٹول ٹیکس'
+    },
+    vehicleAccount: {
+      title: 'Gari Hisaab (Vehicle Khata)',
+      titleUr: 'گاڑی حساب کتاب (کھاتہ)',
+      subtitle: 'Expense & Revenue Ledger',
+      subtitleUr: 'خرچ، آمدنی اور بچت کا تفصیلی حساب'
+    },
+    dashcam: {
+      title: 'Driver Dashcam',
+      titleUr: 'ڈرائیور ڈیش کیم',
+      subtitle: 'Road Recording & GPS HUD',
+      subtitleUr: 'ویڈیو ریکارڈنگ اور اسپیڈومیٹر'
+    },
+    ledger: {
+      title: 'Financial Party Ledger',
+      titleUr: 'پارٹی اور ڈرائیور لیجر (کھاتہ)',
+      subtitle: 'Credit, Debit & Outstanding Balance',
+      subtitleUr: 'بنام / جمع کھاتہ و بقایا رقم'
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#fdfbf7] text-[#4a4a35] flex flex-col font-sans relative">
       {showSplash ? (
@@ -913,6 +989,18 @@ export default function App() {
               onCloseTopMenu={() => setShowTopMenu(false)}
               onOpenBiltyAccess={() => setShowBiltyAccessModal(true)}
               authLoading={authLoading}
+            />
+          )}
+
+          {activeTab && activeTab !== 'home' && activeTab !== 'navigation' && (
+            <ViewHeader
+              title={TAB_HEADER_INFO[activeTab]?.title || 'Driver Dost'}
+              titleUr={TAB_HEADER_INFO[activeTab]?.titleUr || 'ڈرائیور دوست'}
+              subtitle={TAB_HEADER_INFO[activeTab]?.subtitle}
+              subtitleUr={TAB_HEADER_INFO[activeTab]?.subtitleUr}
+              lang={lang}
+              onBackToDashboard={() => handleNavigate('home')}
+              onToggleLang={handleToggleLang}
             />
           )}
 

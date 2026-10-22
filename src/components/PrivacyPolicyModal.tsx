@@ -80,6 +80,9 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
                 <strong>{isUrdu ? 'لوکل اسٹوریج:' : 'Local Device Storage:'}</strong> {isUrdu ? 'تمام ڈیٹا صارف کی ڈیوائس کے اندر لوکل میموری (IndexedDB / localStorage) میں محفوظ ہوتا ہے۔' : 'All user data is stored locally in device private sandbox storage.'}
               </li>
               <li>
+                <strong>{isUrdu ? 'کیمرہ و ڈیش کیم پرائیویسی:' : 'Camera & Dashcam Privacy:'}</strong> {isUrdu ? 'ڈیش کیم ویڈیو اور رسید او سی آر کا سارا پروسیس مکمل طور پر صارف کی ڈیوائس پر ہوتا ہے۔ کوئی بھی ویڈیو یا کیمرہ اسٹریم بیرونی سرور پر اپلوڈ نہیں کی جاتی۔' : 'Dashcam video recording and OCR receipt scanning execute 100% on-device. No live video feed or camera buffer is ever uploaded to any external server.'}
+              </li>
+              <li>
                 <strong>{isUrdu ? 'کوئی غیر متعلقہ رسائی نہیں:' : 'No Irrelevant Access:'}</strong> {isUrdu ? 'ایپ ایس ایم ایس، کال لاگز، کنٹیکٹس یا فون گیلری تک کوئی غیر متعلقہ رسائی حاصل نہیں کرتی۔' : 'The app never requests access to SMS, call records, system contacts, or gallery media.'}
               </li>
             </ul>

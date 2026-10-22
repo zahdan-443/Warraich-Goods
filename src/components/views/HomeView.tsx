@@ -57,7 +57,8 @@ import {
   quickOpsIconData,
   mapIconData,
   biltyIconData,
-  dashcamIconData
+  dashcamIconData,
+  ledgerIconData
 } from '../../assets/dashboardIcons';
 
 interface HomeViewProps {
@@ -544,9 +545,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         )}
 
-        {/* FULL DISPLAY APP LAUNCHER: 8 Core Transport Icon Image Buttons (2 Columns x 4 Rows, Huge Single-Tap, Full Screen Grid, Zero Text Names) */}
+        {/* FULL DISPLAY APP LAUNCHER: 10 Core Transport Icon Image Buttons (2 Columns x 5 Rows, Single-Tap, Full Screen Grid) */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-5 w-full">
-          {/* 1. Trip Expense Calculator */}
           {/* 1. Trip Expense Calculator */}
           <QuickActionButton
             href="#calculator"
@@ -557,13 +557,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
             highlight={true}
           />
 
-          {/* 2. Ledger (حساب کتاب) */}
+          {/* 2. Financial Ledger (حساب کتاب) */}
           <QuickActionButton
             href="#ledger"
             onClick={() => onNavigate('ledger')}
-            imgSrc=""
+            imgSrc={ledgerIconData}
             fallbackIcon={<BookOpen className="w-12 h-12 text-[#8b9d77]" />}
-            fullName={lang === 'ur' ? 'حساب کتاب (لیجر)' : 'Ledger (Khata)'}
+            fullName={lang === 'ur' ? 'حساب کتاب (لیجر)' : 'Financial Ledger (Khata)'}
             highlight={true}
           />
 
@@ -577,7 +577,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             highlight={true}
           />
 
-          {/* 3. Motorway Toll Tax Calculator */}
+          {/* 4. Motorway Toll Tax Calculator */}
           <QuickActionButton
             href="#toll"
             onClick={() => onNavigate('toll')}
@@ -587,7 +587,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             highlight={true}
           />
 
-          {/* 4. Map & Route Weather */}
+          {/* 5. Map & Route Weather */}
           <QuickActionButton
             href="#map"
             onClick={() => onNavigate('map')}
@@ -597,7 +597,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             highlight={true}
           />
 
-          {/* 5. Dashcam Video Recorder */}
+          {/* 6. Dashcam Video Recorder */}
           <QuickActionButton
             href="#dashcam"
             onClick={() => onNavigate('dashcam')}
@@ -607,7 +607,17 @@ export const HomeView: React.FC<HomeViewProps> = ({
             highlight={true}
           />
 
-          {/* 6. Vehicles Verification */}
+          {/* 7. Other Tools & Operations (Restored with quick-ops-icon.png) */}
+          <QuickActionButton
+            href="#quickOps"
+            onClick={() => openModalWithHistory(setShowQuickOpsModal)}
+            imgSrc={quickOpsIconData}
+            fallbackIcon={<Wrench className="w-12 h-12 text-[#8b9d77]" />}
+            fullName={lang === 'ur' ? 'مزید سہولتیں و آپریشنز' : 'More Services & Operations'}
+            highlight={true}
+          />
+
+          {/* 8. Vehicles Verification */}
           <QuickActionButton
             href="#verify"
             onClick={() => onNavigate('verify', 'vehicle')}
@@ -616,7 +626,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             fullName={lang === 'ur' ? 'گاڑیوں کی تصدیق' : 'Vehicles Verification'}
           />
 
-          {/* 7. License Verification */}
+          {/* 9. License Verification */}
           <QuickActionButton
             href="#verify"
             onClick={() => onNavigate('verify', 'license')}
@@ -625,7 +635,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             fullName={lang === 'ur' ? 'لائسنس کی تصدیق' : 'License Verification'}
           />
 
-          {/* 8. E-Challan Check */}
+          {/* 10. E-Challan Check */}
           <QuickActionButton
             href="#verify"
             onClick={() => onNavigate('verify', 'challan')}
@@ -634,39 +644,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
             fullName={lang === 'ur' ? 'ای چالان چیکنگ' : 'E-Challan Checking'}
           />
         </div>
-
-        {/* 9. NEW STYLE "MORE" BUTTON (Beneath 8 Icons, Wide Modern Styling, No Icon Image Needed) */}
-        <button
-          type="button"
-          onClick={() => openModalWithHistory(setShowQuickOpsModal)}
-          className="w-full py-3.5 sm:py-4 px-4 sm:px-6 bg-gradient-to-r from-[#28382b] via-[#3d5541] to-[#28382b] hover:from-[#1e2b20] hover:to-[#1e2b20] text-white rounded-2xl sm:rounded-3xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex items-center justify-between group active:scale-[0.99] border-2 border-[#4a634e]/50 select-none"
-          aria-label={lang === 'ur' ? 'مزید سہولتیں و آپریشنز' : 'More Services & Operations'}
-        >
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/15 backdrop-blur-xs flex items-center justify-center text-emerald-200 group-hover:scale-105 group-hover:bg-white/25 transition-all shadow-2xs">
-              <Wrench className="w-6 h-6 text-emerald-300" />
-            </div>
-            <div className={lang === 'ur' ? 'text-right' : 'text-left'}>
-              <div className="flex items-center gap-2">
-                <span className="text-base sm:text-lg font-bold font-serif text-white tracking-wide">
-                  {lang === 'ur' ? 'مزید سہولتیں و آپریشنز' : 'More Tools & Operations'}
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-400/25 text-emerald-200 border border-emerald-400/40">
-                  {lang === 'ur' ? '۶+ ٹولز' : '6+ Tools'}
-                </span>
-              </div>
-              <p className="text-[11px] sm:text-xs text-emerald-100/80 font-sans mt-0.5">
-                {lang === 'ur'
-                  ? 'سفر ڈائری، روٹس گائیڈ، فلیٹ گاڑیاں، ڈرائیورز و ڈیزل لاگز'
-                  : 'Safar Diary, Routes, Vehicles, Drivers & Fuel Logs'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 text-emerald-200 font-bold text-xs sm:text-sm bg-white/10 group-hover:bg-white/20 px-3.5 py-2 rounded-xl transition-all shrink-0">
-            <span>{lang === 'ur' ? 'کھولیں' : 'Open'}</span>
-            <ChevronLeft className={`w-4 h-4 transition-transform group-hover:-translate-x-1 ${lang === 'ur' ? '' : 'rotate-180'}`} />
-          </div>
-        </button>
 
         {/* Official Government Disclaimer (Google Play & Palm Store Government Apps Policy Compliance) */}
         <div className="px-1 py-0.5 flex items-start gap-2 text-[10.5px] text-[#8e8e75] leading-relaxed">

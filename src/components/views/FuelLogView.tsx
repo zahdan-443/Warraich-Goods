@@ -99,17 +99,6 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {onNavigate && (
-              <button
-                type="button"
-                onClick={() => onNavigate('home')}
-                className="p-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-                title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
-              >
-                <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
-                <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
-              </button>
-            )}
             <div className="w-12 h-12 bg-[#f0f0e4] rounded-full flex items-center justify-center text-[#5a5a40]">
               <Fuel className="w-6 h-6 text-[#8b9d77]" />
             </div>

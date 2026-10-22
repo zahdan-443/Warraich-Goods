@@ -151,18 +151,6 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
           </div>
 
           <div className="flex items-center gap-3 self-start sm:self-auto">
-            {onNavigate && (
-              <button
-                type="button"
-                onClick={() => onNavigate('home')}
-                className="p-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-                title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
-              >
-                <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
-                <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
-              </button>
-            )}
-
             <button
               onClick={openAddModal}
               className="px-6 py-3.5 bg-[#5a5a40] text-white rounded-full font-medium text-xs uppercase tracking-widest hover:bg-[#4a4a35] shadow-xs transition-all active:scale-98 cursor-pointer flex items-center gap-2"

@@ -307,49 +307,9 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
   });
 
   return (
-    <div className={`min-h-screen bg-[#F4F6F0] pb-24 ${isUrdu ? 'rtl font-urdu' : 'ltr font-sans'}`}>
-      {/* Top Header Bar */}
-      <div className="bg-[#1b4332] text-white shadow-md sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => onNavigate('home')}
-              className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 transition-all text-white flex items-center gap-1.5 text-xs font-bold cursor-pointer"
-              aria-label={isUrdu ? 'واپس ڈیش بورڈ' : 'Back to Dashboard'}
-            >
-              <ArrowLeft className={`w-4 h-4 ${isUrdu ? 'rotate-180' : ''}`} />
-              <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
-            </button>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 bg-[#40916c] rounded-lg shadow-sm">
-                  <Video className="w-4 h-4 text-white" />
-                </span>
-                <h1 className="text-base sm:text-lg font-bold tracking-tight text-white">
-                  {isUrdu ? 'ڈیش کیم ویڈیو ریکارڈر' : 'Transport Dashcam'}
-                </h1>
-              </div>
-              <p className="text-xs text-[#d8f3dc]/80 font-medium">
-                {isUrdu
-                  ? 'بیک گراؤنڈ روڈ اور کیبن ریکارڈنگ • اسکرین آف پر بھی جاری'
-                  : 'Background road & cabin recording • Continues with screen locked'}
-              </p>
-            </div>
-          </div>
-
-          {/* Quick Dual Status Pill */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-black/20 border border-white/10 text-[#d8f3dc]">
-            <Radio className={`w-3.5 h-3.5 ${isRecording ? 'text-red-400 animate-pulse' : 'text-emerald-300'}`} />
-            <span>
-              {isRecording 
-                ? (isDualActive ? (isUrdu ? 'ڈوئل ریکارڈنگ جاری ہے' : 'Dual Recording Active') : (isUrdu ? 'روڈ ریکارڈنگ جاری ہے' : 'Road Recording Active'))
-                : (isUrdu ? 'تیار (اسٹینڈ بائی)' : 'Standby')}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-5xl mx-auto px-4 py-4 space-y-4">
+    <div className={`h-[calc(100dvh-56px)] flex flex-col overflow-hidden bg-[#F4F6F0] select-none ${isUrdu ? 'rtl font-urdu' : 'ltr font-sans'}`}>
+      
+      <div className="flex-1 min-h-0 overflow-y-auto max-w-5xl mx-auto w-full px-3 sm:px-4 py-3 space-y-4 pb-8">
         {/* Error Alert */}
         {errorMessage && (
           <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl flex items-start justify-between gap-3 text-red-800 text-sm animate-in fade-in">
