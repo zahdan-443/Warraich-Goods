@@ -78,6 +78,13 @@ if (fs.existsSync(distDir)) {
             showSpinner: false,
             splashFullScreen: true,
             splashImmersive: true
+          },
+          LocalNotifications: {
+            sound: "default"
+          },
+          FirebaseAuthentication: {
+            skipNativeAuth: false,
+            providers: ["google.com"]
           }
         }
       };

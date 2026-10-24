@@ -159,9 +159,18 @@ export const loginWithGoogle = async (): Promise<User | null> => {
         return (auth.currentUser || (result.user as unknown as User));
       }
       if (auth.currentUser) return auth.currentUser;
-      return null;
     } catch (error: any) {
       console.error("Native Google Sign-In error:", error);
+      // Resilient fallback: If native plugin reports not implemented, attempt web signInWithPopup fallback
+      if (typeof error?.message === 'string' && error.message.includes('not implemented')) {
+        console.warn("Attempting web signInWithPopup fallback...");
+        try {
+          const webResult = await signInWithPopup(auth, googleProvider);
+          return webResult.user;
+        } catch (popupErr) {
+          console.error("Popup fallback error:", popupErr);
+        }
+      }
       throw error;
     }
   }

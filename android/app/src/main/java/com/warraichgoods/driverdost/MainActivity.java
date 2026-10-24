@@ -12,6 +12,7 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
+import io.capawesome.capacitorjs.plugins.firebase.authentication.FirebaseAuthenticationPlugin;
 import com.warraichgoods.driverdost.dashcam.DashcamPlugin;
 
 public class MainActivity extends BridgeActivity {
@@ -19,8 +20,9 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+        registerPlugin(FirebaseAuthenticationPlugin.class);
         registerPlugin(DashcamPlugin.class);
+        super.onCreate(savedInstanceState);
 
         // Allow app to seamlessly draw behind the camera cutout / notch on Android 9+ (API 28+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
