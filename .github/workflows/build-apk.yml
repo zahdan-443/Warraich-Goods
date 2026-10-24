@@ -69,17 +69,23 @@ jobs:
           # Safety cleanup: remove any corrupt/non-standard land-hdpi splash that can fail aapt2 compilation
           rm -rf android/app/src/main/res/drawable-land-hdpi || true
 
-      - name: Inject google-services.json (if provided via GitHub Secret)
+      - name: Inject google-services.json (from Secrets or Workspace)
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
+          mkdir -p android/app/src/release
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
-            echo "✅ Successfully configured android/app/google-services.json from GitHub Secrets"
+            echo "$GOOGLE_SERVICES_JSON" > android/app/src/release/google-services.json
+            echo "✅ Successfully configured google-services.json from GitHub Secrets"
+          elif [ -f "android/app/src/release/google-services.json" ]; then
+            echo "✅ Found android/app/src/release/google-services.json, syncing to android/app/google-services.json"
+            cp android/app/src/release/google-services.json android/app/google-services.json
           elif [ -f "android/app/google-services.json" ]; then
-            echo "✅ android/app/google-services.json exists in workspace"
+            echo "✅ Found android/app/google-services.json, syncing to android/app/src/release/google-services.json"
+            cp android/app/google-services.json android/app/src/release/google-services.json
           else
-            echo "⚠️ Notice: google-services.json not found in repository or secrets. Place it at android/app/google-services.json or add GOOGLE_SERVICES_JSON secret."
+            echo "⚠️ Notice: google-services.json not found in repository or secrets."
           fi
 
       - name: Prepare Release Keystore (Secrets or Auto-Generate)

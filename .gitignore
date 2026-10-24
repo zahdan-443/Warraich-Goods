@@ -20,7 +20,6 @@ keystores/
 android/keystores/
 android/app/*.keystore
 android/app/*.jks
-android/app/google-services.json
 android/app/src/main/assets/public/
 firebase-debug.log*
 firestore-debug.log*
