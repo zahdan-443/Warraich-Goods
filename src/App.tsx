@@ -458,15 +458,23 @@ export default function App() {
           lang === 'ur' ? 'براؤزر نے لاگ ان ونڈو روک دی۔ براہ کرم ایڈریس بار میں پاپ اپ کی اجازت دیں اور دوبارہ کلک کریں۔' : 'Browser blocked sign-in popup. Please allow popups in your browser and click again.',
           'system'
         );
-      } else if (err?.code !== 'auth/popup-closed-by-user' && err?.code !== 'auth/cancelled-popup-request') {
-        const errDetail = err?.message || err?.code || '';
-        pushAppNotification(
-          lang === 'ur' ? 'گوگل لاگ ان' : 'Google Sign-In',
-          lang === 'ur' 
-            ? `گوگل لاگ ان مکمل نہیں ہو سکا۔ ${errDetail ? `(${errDetail.slice(0, 70)})` : 'دوبارہ کوشش کریں۔'}` 
-            : `Google Sign-In could not be completed. ${errDetail ? `(${errDetail.slice(0, 70)})` : 'Please try again.'}`,
-          'system'
-        );
+      } else {
+        const errDetail = String(err?.message || err?.code || '');
+        const isCancelled = err?.code === 'auth/popup-closed-by-user' ||
+          err?.code === 'auth/cancelled-popup-request' ||
+          errDetail.toLowerCase().includes('cancel') ||
+          errDetail.includes('16') ||
+          err?.code === '16';
+
+        if (!isCancelled) {
+          pushAppNotification(
+            lang === 'ur' ? 'گوگل لاگ ان' : 'Google Sign-In',
+            lang === 'ur' 
+              ? `گوگل لاگ ان مکمل نہیں ہو سکا۔ ${errDetail ? `(${errDetail.slice(0, 70)})` : 'دوبارہ کوشش کریں۔'}` 
+              : `Google Sign-In could not be completed. ${errDetail ? `(${errDetail.slice(0, 70)})` : 'Please try again.'}`,
+            'system'
+          );
+        }
       }
     } finally {
       setAuthLoading(false);

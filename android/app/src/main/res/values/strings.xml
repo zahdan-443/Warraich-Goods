@@ -5,4 +5,10 @@
     <string name="package_name">com.warraichgoods.driverdost</string>
     <string name="custom_url_scheme">com.warraichgoods.driverdost</string>
     <string name="default_web_client_id">805249879186-ragamo9rp1srk8bmd3tboskfbe4s8hik.apps.googleusercontent.com</string>
+    <string name="google_app_id">1:805249879186:android:341518d401d90735e5ea4b</string>
+    <string name="gcm_defaultSenderId">805249879186</string>
+    <string name="google_api_key">AIzaSyCxp0Q7e5hZPgLCjSa32iG5d05tyTsAASY</string>
+    <string name="project_id">warraich-goods</string>
+    <string name="google_storage_bucket">warraich-goods.firebasestorage.app</string>
 </resources>
+
