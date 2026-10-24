@@ -57,8 +57,6 @@ export async function getLogoBase64(): Promise<string> {
     './bilty-official-icon.png',
     '/bilty-official-icon.png',
     `${origin}/bilty-official-icon.png`,
-    `${cleanBase}bilty-official-icon.jpg`,
-    './bilty-official-icon.jpg',
     `${cleanBase}logo.png`,
     './logo.png',
     '/logo.png',

@@ -10,7 +10,6 @@
 @font-face {
   font-family: 'Jameel Noori Nastaleeq';
   src: url('/fonts/JameelNooriNastaleeq.woff') format('woff'),
-       url('./fonts/JameelNooriNastaleeq.woff') format('woff'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/JameelNooriNastaleeq.woff') format('woff');
   font-weight: 400 700;
   font-style: normal;
@@ -20,7 +19,6 @@
 @font-face {
   font-family: 'jameel-noori-nastaleeq';
   src: url('/fonts/JameelNooriNastaleeq.woff') format('woff'),
-       url('./fonts/JameelNooriNastaleeq.woff') format('woff'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/JameelNooriNastaleeq.woff') format('woff');
   font-weight: 400 700;
   font-style: normal;
@@ -31,7 +29,6 @@
 @font-face {
   font-family: 'Alvi Lahori Nastaleeq';
   src: url('/fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
-       url('./fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/AlviLahoriNastaleeq.woff2') format('woff2');
   font-weight: 400 700;
   font-style: normal;
@@ -41,7 +38,6 @@
 @font-face {
   font-family: 'lahori-nastaleeq';
   src: url('/fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
-       url('./fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/AlviLahoriNastaleeq.woff2') format('woff2');
   font-weight: 400 700;
   font-style: normal;
@@ -52,7 +48,6 @@
 @font-face {
   font-family: 'PDMS Nastaleeq Nafees';
   src: url('/fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
-       url('./fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/PDMS_NastaliqNafees.ttf') format('truetype');
   font-weight: 400 700;
   font-style: normal;
@@ -62,7 +57,6 @@
 @font-face {
   font-family: 'nastaleeq-nafees';
   src: url('/fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
-       url('./fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/PDMS_NastaliqNafees.ttf') format('truetype');
   font-weight: 400 700;
   font-style: normal;
@@ -72,39 +66,16 @@
 @font-face {
   font-family: 'nastaleeq';
   src: url('/fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
-       url('./fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/PDMS_NastaliqNafees.ttf') format('truetype');
   font-weight: 400 700;
   font-style: normal;
   font-display: swap;
 }
 
-/* 4. Nafees Nastaleeq */
-@font-face {
-  font-family: 'Nafees Nastaleeq';
-  src: url('/fonts/Nafees-Nastaleeq.ttf') format('truetype'),
-       url('./fonts/Nafees-Nastaleeq.ttf') format('truetype'),
-       url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/Nafees-Nastaleeq.ttf') format('truetype');
-  font-weight: 400 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'nafees-nastaleeq';
-  src: url('/fonts/Nafees-Nastaleeq.ttf') format('truetype'),
-       url('./fonts/Nafees-Nastaleeq.ttf') format('truetype'),
-       url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/Nafees-Nastaleeq.ttf') format('truetype');
-  font-weight: 400 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* 5. Akbar Font - Bold, striking calligraphy for headings & transport signage */
+/* 4. Akbar Font - Bold, striking calligraphy for headings & transport signage */
 @font-face {
   font-family: 'Akbar';
   src: url('/fonts/Akbar.woff') format('woff'),
-       url('./fonts/Akbar.woff') format('woff'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/Akbar.woff') format('woff');
   font-weight: 400 900;
   font-style: normal;
@@ -114,39 +85,8 @@
 @font-face {
   font-family: 'akbar';
   src: url('/fonts/Akbar.woff') format('woff'),
-       url('./fonts/Akbar.woff') format('woff'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/Akbar.woff') format('woff');
   font-weight: 400 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* 6. Mehr Nastaleeq */
-@font-face {
-  font-family: 'Mehr Nastaleeq';
-  src: url('/fonts/MehrNastaleeq.ttf') format('truetype'),
-       url('./fonts/MehrNastaleeq.ttf') format('truetype');
-  font-weight: 400 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'mehr-nastaleeq';
-  src: url('/fonts/MehrNastaleeq.ttf') format('truetype'),
-       url('./fonts/MehrNastaleeq.ttf') format('truetype');
-  font-weight: 400 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* 7. Noto Nastaliq Draft */
-@font-face {
-  font-family: 'noto-nastaleeq';
-  src: url('/fonts/NotoNastaliqUrduDraft.woff') format('woff'),
-       url('./fonts/NotoNastaliqUrduDraft.woff') format('woff'),
-       url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/NotoNastaliqUrduDraft.woff') format('woff');
-  font-weight: 400 700;
   font-style: normal;
   font-display: swap;
 }
