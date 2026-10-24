@@ -1,210 +1,146 @@
 <!DOCTYPE html>
-<html lang="ur" dir="rtl">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Terms & Conditions - Driver Dost | شرائط و ضوابط</title>
-  <meta name="description" content="Terms and Conditions of Use for Driver Dost transport management application by Warraich Goods Transport Company. Compliant with Google Play & Palm Store policies." />
-  <link rel="icon" type="image/png" href="./logo.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Terms &amp; Conditions - Driver Dost | شرائط و ضوابط</title>
+  <meta name="description" content="Terms and Conditions for the Driver Dost road-freight and fleet utility app by Warraich Goods Transport Company.">
   <style>
     :root {
-      --primary: #1e3a68;
-      --secondary: #8b9d77;
-      --bg: #fdfbf7;
-      --text: #4a4a35;
-      --card: #ffffff;
-      --border: #ecece0;
-      --accent: #d97706;
+      --bg:#f6f7f9; --card:#ffffff; --text:#1d2430; --muted:#5a6578; --accent:#0a6b4b; --border:#dfe3ea;
+      color-scheme: light dark;
     }
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#10141b; --card:#18202b; --text:#e6e9ef; --muted:#9aa5b8; --accent:#4cc79a; --border:#2a3442; }
     }
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-      line-height: 1.7;
-      padding: 24px 16px;
-    }
-    .container {
-      max-width: 820px;
-      margin: 0 auto;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 28px;
-      padding: 36px 28px;
-      box-shadow: 0 4px 25px rgba(0,0,0,0.04);
-    }
-    .header {
-      border-bottom: 2px solid var(--border);
-      padding-bottom: 24px;
-      margin-bottom: 28px;
-      text-align: center;
-    }
-    .badge {
-      display: inline-block;
-      padding: 4px 14px;
-      background-color: rgba(139, 157, 119, 0.2);
-      color: #3b4d29;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
-    h1 {
-      font-size: 26px;
-      color: var(--primary);
-      margin-bottom: 8px;
-      font-family: 'Noto Nastaliq Urdu', serif;
-    }
-    .subtitle {
-      font-size: 13px;
-      color: #7a7a60;
-    }
-    h2 {
-      font-size: 17px;
-      color: var(--primary);
-      margin-top: 24px;
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 6px;
-      font-family: 'Noto Nastaliq Urdu', serif;
-    }
-    p, li {
-      font-size: 13.5px;
-      color: #4a4a35;
-      margin-bottom: 8px;
-    }
-    ul {
-      margin-right: 22px;
-      margin-bottom: 14px;
-    }
-    .notice-box {
-      background-color: #f9f9f2;
-      border: 1px solid #8b9d77;
-      border-radius: 16px;
-      padding: 16px 20px;
-      margin: 20px 0;
-    }
-    .compliance-box {
-      background-color: #eff6ff;
-      border: 1px solid #93c5fd;
-      border-radius: 16px;
-      padding: 16px 20px;
-      margin: 20px 0;
-      font-size: 13px;
-      color: #1e3a8a;
-    }
-    .footer {
-      border-top: 2px solid var(--border);
-      margin-top: 32px;
-      padding-top: 20px;
-      text-align: center;
-      font-size: 12px;
-      color: #8e8e75;
-    }
-    .btn-back {
-      display: inline-block;
-      padding: 8px 18px;
-      background: var(--primary);
-      color: #fff;
-      text-decoration: none;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: bold;
-      margin-top: 10px;
-    }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; line-height:1.65;
+           padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0); }
+    main { max-width:820px; margin:0 auto; padding:20px 16px 48px; }
+    header h1 { margin:8px 0 4px; font-size:1.6rem; }
+    header .meta { color:var(--muted); font-size:.9rem; }
+    .notice { background:var(--card); border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:10px; padding:12px 14px; margin:16px 0; }
+    section { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin:12px 0; }
+    h2 { font-size:1.05rem; margin:0 0 8px; color:var(--accent); }
+    .ur-title { font-weight:500; color:var(--muted); }
+    p { margin:6px 0; }
+    .ur { font-family:"Noto Nastaliq Urdu","Jameel Noori Nastaleeq","Noto Naskh Arabic",Tahoma,serif; line-height:2.1; text-align:right; }
+    a { color:var(--accent); }
+    footer { color:var(--muted); font-size:.85rem; margin-top:24px; text-align:center; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <span class="badge">Google Play Store & Palm Store Policy Compliant (2026 Edition)</span>
-      <h1>شرائط و ضوابط (Terms and Conditions)</h1>
-      <p class="subtitle">Driver Dost · Warraich Goods Transport Company · آخری تجدید: اکتوبر 2026</p>
+  <main>
+    <header>
+      <h1>Terms &amp; Conditions <span class="ur-title" lang="ur">/ شرائط و ضوابط</span></h1>
+      <div class="meta">Driver Dost · Warraich Goods Transport Company · Last updated: 24 October 2026 · App version 1.2.1</div>
+    </header>
+
+    <div class="notice">
+      <p lang="en"><strong>Important:</strong> Driver Dost is an independent, privately owned app. It is not a government app and is not affiliated with any government body.</p>
+      <p class="ur" lang="ur" dir="rtl"><strong>اہم:</strong> ڈرائیور دوست ایک آزاد، نجی ایپ ہے۔ یہ سرکاری ایپ نہیں اور کسی سرکاری ادارے سے وابستہ نہیں۔</p>
     </div>
 
-    <div class="compliance-box">
-      <strong>اہم اعلان برائے اسٹور پالیسی (Google Play & Palm Store Policy):</strong><br />
-      ڈرائیور دوست (Driver Dost) ایک آزاد، نجی روڈ فریٹ اور فلیٹ مینجمنٹ یوٹیلیٹی ایپ ہے جس کی ملکیت اور انتظام <strong>وڑائچ گڈز ٹرانسپورٹ کمپنی</strong> کے پاس ہے۔ یہ ایپ کسی سرکاری ادارے یا حکومتِ پاکستان کی نمائندگی نہیں کرتی۔
-    </div>
+    <section id="s1">
+      <h2>1. Acceptance of Terms <span class="ur-title" lang="ur">/ شرائط کی منظوری</span></h2>
+      <p lang="en">By installing or using Driver Dost (the "App") you agree to these Terms &amp; Conditions and to our Privacy Policy. If you do not agree, please do not use the App. You must be 18 years or older to use it.</p>
+      <p class="ur" lang="ur" dir="rtl">ڈرائیور دوست ("ایپ") انسٹال یا استعمال کرنے کا مطلب ہے کہ آپ ان شرائط و ضوابط اور پرائیویسی پالیسی سے متفق ہیں۔ اگر آپ متفق نہیں تو ایپ استعمال نہ کریں۔ ایپ استعمال کرنے کے لیے آپ کی عمر کم از کم 18 سال ہونی چاہیے۔</p>
+    </section>
+    <section id="s2">
+      <h2>2. About the App <span class="ur-title" lang="ur">/ ایپ کے بارے میں</span></h2>
+      <p lang="en">Driver Dost is an independent, privately owned road-freight and fleet utility app, owned and operated by Warraich Goods Transport Company, Samundri, Punjab, Pakistan. It is not a government app and does not represent any government body.</p>
+      <p class="ur" lang="ur" dir="rtl">ڈرائیور دوست ایک آزاد، نجی روڈ فریٹ اور فلیٹ یوٹیلیٹی ایپ ہے جس کی ملکیت اور انتظام وڑائچ گڈز ٹرانسپورٹ کمپنی، سمندری، پنجاب، پاکستان کے پاس ہے۔ یہ سرکاری ایپ نہیں اور کسی سرکاری ادارے کی نمائندگی نہیں کرتی۔</p>
+    </section>
+    <section id="s3">
+      <h2>3. What the App Offers <span class="ur-title" lang="ur">/ ایپ کی سہولیات</span></h2>
+      <p lang="en">Trip fuel and cost calculation, motorway and highway toll estimates, route comparison, weather and fuel-rate information, navigation help using your location, road hazard alerts shared by drivers, fleet, vehicle, driver and expense records, document-expiry reminders, an optional dashcam, PDF export and WhatsApp sharing, and quick links to third-party government portals. Features may be added, changed or removed over time.</p>
+      <p class="ur" lang="ur" dir="rtl">ٹرپ کے ایندھن اور اخراجات کا حساب، موٹروے اور ہائی وے ٹول کا تخمینہ، روٹ کا موازنہ، موسم اور ایندھن کے نرخوں کی معلومات، آپ کی لوکیشن کے ذریعے نیویگیشن میں مدد، ڈرائیورز کی طرف سے روڈ ہیزرڈ الرٹس، فلیٹ، گاڑی، ڈرائیور اور اخراجات کا ریکارڈ، دستاویزات کی میعاد کی یاد دہانی، اختیاری ڈیش کیم، پی ڈی ایف ایکسپورٹ اور واٹس ایپ شیئرنگ، اور تھرڈ پارٹی سرکاری پورٹلز کے فوری لنکس۔ فیچرز وقتاً فوقتاً شامل، تبدیل یا ختم کیے جا سکتے ہیں۔</p>
+    </section>
+    <section id="s4">
+      <h2>4. Estimates and Information Only <span class="ur-title" lang="ur">/ تخمینے اور معلومات</span></h2>
+      <p lang="en">Calculations, toll amounts, distances, travel times, fuel prices, weather and route suggestions are estimates for planning only and may differ from actual figures. Fuel prices are reference values based on OGRA/PSO notifications and may lag behind the latest official notification. Always confirm with the official source or the fuel pump. You are responsible for decisions you make using the App.</p>
+      <p class="ur" lang="ur" dir="rtl">حسابات، ٹول کی رقوم، فاصلے، سفری وقت، ایندھن کے نرخ، موسم اور روٹ کی تجاویز صرف منصوبہ بندی کے لیے تخمینے ہیں اور اصل اعداد سے مختلف ہو سکتے ہیں۔ ایندھن کے نرخ اوگرا/پی ایس او کے نوٹیفکیشنز پر مبنی حوالہ جاتی قدریں ہیں اور تازہ ترین سرکاری نوٹیفکیشن سے پیچھے ہو سکتی ہیں۔ ہمیشہ سرکاری ذریعے یا پمپ سے تصدیق کریں۔ ایپ کی بنیاد پر کیے گئے فیصلوں کی ذمہ داری آپ کی ہے۔</p>
+    </section>
+    <section id="s5">
+      <h2>5. Third-Party Services and Links <span class="ur-title" lang="ur">/ تھرڈ پارٹی سروسز اور لنکس</span></h2>
+      <p lang="en">The App links to external government websites (for example vehicle, driving-licence and e-challan portals) and uses third-party services such as Google Firebase (sign-in and cloud sync), Open-Meteo (weather) and OSRM (routing). We are not affiliated with them, do not control their content or availability, and are not responsible for them. Their own terms and privacy policies apply.</p>
+      <p class="ur" lang="ur" dir="rtl">ایپ بیرونی سرکاری ویب سائٹس (مثلاً گاڑی، ڈرائیونگ لائسنس اور ای چالان پورٹلز) کے لنکس دیتی ہے اور تھرڈ پارٹی سروسز جیسے گوگل فائر بیس (سائن اِن اور کلاؤڈ سنک)، اوپن میٹیو (موسم) اور او ایس آر ایم (روٹنگ) استعمال کرتی ہے۔ ہمارا ان سے کوئی تعلق نہیں، ہم ان کے مواد یا دستیابی پر کنٹرول نہیں رکھتے اور ان کے ذمہ دار نہیں۔ ان کی اپنی شرائط اور پرائیویسی پالیسیاں لاگو ہوتی ہیں۔</p>
+    </section>
+    <section id="s6">
+      <h2>6. Accounts, Guest Mode and Cloud Sync <span class="ur-title" lang="ur">/ اکاؤنٹ، گیسٹ موڈ اور کلاؤڈ سنک</span></h2>
+      <p lang="en">You can use the core tools in guest mode without signing in; records are then kept on your device. If you sign in with Google, your records are synchronised to your private account on Google Firebase so you can restore them on another device. You are responsible for keeping your Google account secure. Cloud data is private to your account, except hazard reports you choose to submit (section 8) and anything described in section 12.</p>
+      <p class="ur" lang="ur" dir="rtl">آپ بنیادی ٹولز گیسٹ موڈ میں بغیر سائن اِن کے استعمال کر سکتے ہیں؛ اس صورت میں ریکارڈ آپ کی ڈیوائس پر رہتا ہے۔ اگر آپ گوگل سے سائن اِن کریں تو آپ کا ریکارڈ گوگل فائر بیس پر آپ کے نجی اکاؤنٹ میں سنک ہوتا ہے تاکہ دوسری ڈیوائس پر بحال کیا جا سکے۔ اپنے گوگل اکاؤنٹ کی حفاظت آپ کی ذمہ داری ہے۔ کلاؤڈ ڈیٹا آپ کے اکاؤنٹ تک نجی ہے، سوائے ان ہیزرڈ رپورٹس کے جو آپ خود جمع کرائیں (شق 8) اور شق 12 میں بیان کردہ چیزوں کے۔</p>
+    </section>
+    <section id="s7">
+      <h2>7. Permissions: Location, Camera, Microphone, Notifications <span class="ur-title" lang="ur">/ اجازتیں: لوکیشن، کیمرہ، مائیکروفون، نوٹیفکیشنز</span></h2>
+      <p lang="en">Location is used only while the App is open and only after you allow it, for navigation, nearby weather and toll information and hazard reports. It is never tracked in the background, and you can use the App without location by choosing cities manually. The camera is used for document scanning (OCR) and the optional dashcam; the microphone is used only for dashcam audio. You can withdraw any permission at any time in your device settings.</p>
+      <p class="ur" lang="ur" dir="rtl">لوکیشن صرف اس وقت استعمال ہوتی ہے جب ایپ کھلی ہو اور آپ نے اجازت دی ہو، نیویگیشن، قریبی موسم و ٹول کی معلومات اور ہیزرڈ رپورٹس کے لیے۔ پس منظر (بیک گراؤنڈ) میں لوکیشن کبھی ٹریک نہیں ہوتی، اور آپ شہر خود چن کر لوکیشن کے بغیر بھی ایپ استعمال کر سکتے ہیں۔ کیمرہ دستاویزات کی اسکیننگ (OCR) اور اختیاری ڈیش کیم کے لیے ہے؛ مائیکروفون صرف ڈیش کیم کی آواز کے لیے ہے۔ آپ کسی بھی وقت ڈیوائس سیٹنگز میں اجازت واپس لے سکتے ہیں۔</p>
+    </section>
+    <section id="s8">
+      <h2>8. Road Hazard Reports (User-Generated) <span class="ur-title" lang="ur">/ روڈ ہیزرڈ رپورٹس (صارفین کی جانب سے)</span></h2>
+      <p lang="en">Signed-in users can submit road hazard reports (category, location and time). By submitting, you confirm the report is genuine and made in good faith. Do not submit false, misleading or abusive reports or spam; submission frequency is limited. Reports are visible to other signed-in users, stop being shown after 24 hours, and you may delete your own reports. To flag an inaccurate or abusive report, email us; we may remove content and restrict users who misuse this feature. Reports are community information, not official advisories; always follow NHMP (helpline 130) and official instructions.</p>
+      <p class="ur" lang="ur" dir="rtl">سائن اِن صارفین روڈ ہیزرڈ رپورٹس (قسم، مقام اور وقت) جمع کرا سکتے ہیں۔ رپورٹ جمع کرانے کا مطلب ہے کہ آپ تصدیق کرتے ہیں کہ یہ درست اور نیک نیتی سے ہے۔ جھوٹی، گمراہ کن یا توہین آمیز رپورٹس یا اسپیم جمع نہ کریں؛ رپورٹس بھیجنے کی تعداد محدود ہے۔ رپورٹس دیگر سائن اِن صارفین کو نظر آتی ہیں، 24 گھنٹے بعد دکھانا بند ہو جاتی ہیں، اور آپ اپنی رپورٹس حذف کر سکتے ہیں۔ غلط یا توہین آمیز رپورٹ کی نشاندہی کے لیے ہمیں ای میل کریں؛ ہم مواد ہٹا سکتے ہیں اور اس فیچر کا غلط استعمال کرنے والوں پر پابندی لگا سکتے ہیں۔ رپورٹس کمیونٹی کی معلومات ہیں، سرکاری ایڈوائزری نہیں؛ ہمیشہ این ایچ ایم پی (ہیلپ لائن 130) اور سرکاری ہدایات پر عمل کریں۔</p>
+    </section>
+    <section id="s9">
+      <h2>9. Dashcam and Recording <span class="ur-title" lang="ur">/ ڈیش کیم اور ریکارڈنگ</span></h2>
+      <p lang="en">The dashcam is optional and starts only when you tap Start. A persistent notification is shown while recording. Recordings are saved only on your device; the App does not upload them and we cannot access them. You control sharing and deletion. If audio is recorded, other people in the vehicle may be recorded; you alone are responsible for informing them and following applicable laws. We do not guarantee that recordings will be accepted as evidence. Never handle the phone while driving.</p>
+      <p class="ur" lang="ur" dir="rtl">ڈیش کیم اختیاری ہے اور صرف اس وقت شروع ہوتا ہے جب آپ Start دبائیں۔ ریکارڈنگ کے دوران ایک مستقل نوٹیفکیشن دکھائی دیتا ہے۔ ریکارڈنگز صرف آپ کی ڈیوائس پر محفوظ ہوتی ہیں؛ ایپ انہیں اپلوڈ نہیں کرتی اور ہم ان تک رسائی نہیں رکھتے۔ شیئرنگ اور حذف کرنے کا اختیار آپ کے پاس ہے۔ اگر آڈیو ریکارڈ ہو تو گاڑی میں موجود دیگر افراد بھی ریکارڈ ہو سکتے ہیں؛ انہیں آگاہ کرنے اور متعلقہ قوانین پر عمل کرنے کی ذمہ داری صرف آپ کی ہے۔ ہم اس بات کی ضمانت نہیں دیتے کہ ریکارڈنگ بطور ثبوت قبول ہوگی۔ ڈرائیونگ کے دوران فون ہاتھ میں نہ لیں۔</p>
+    </section>
+    <section id="s10">
+      <h2>10. Safe Driving <span class="ur-title" lang="ur">/ محفوظ ڈرائیونگ</span></h2>
+      <p lang="en">Do not use the App by hand while driving a moving vehicle. Complete trip planning, toll calculation and route setup before you start the journey.</p>
+      <p class="ur" lang="ur" dir="rtl">چلتی گاڑی چلاتے وقت ایپ کو ہاتھ سے استعمال نہ کریں۔ ٹرپ کی منصوبہ بندی، ٹول کا حساب اور روٹ سفر شروع کرنے سے پہلے مکمل کریں۔</p>
+    </section>
+    <section id="s11">
+      <h2>11. Notifications <span class="ur-title" lang="ur">/ نوٹیفکیشنز</span></h2>
+      <p lang="en">With your permission the App may send a daily information digest (fuel rates, weather, road conditions) and reminders for document expiry dates you have entered. We do not send advertising or promotional notifications. You can turn notifications off at any time.</p>
+      <p class="ur" lang="ur" dir="rtl">آپ کی اجازت سے ایپ روزانہ معلوماتی ڈائجسٹ (ایندھن کے نرخ، موسم، سڑکوں کی صورتحال) اور آپ کی درج کردہ دستاویزات کی میعاد کی یاد دہانیاں بھیج سکتی ہے۔ ہم اشتہاری یا پروموشنل نوٹیفکیشنز نہیں بھیجتے۔ آپ کسی بھی وقت نوٹیفکیشنز بند کر سکتے ہیں۔</p>
+    </section>
+    <section id="s12">
+      <h2>12. Restricted and Premium Features <span class="ur-title" lang="ur">/ محدود اور پریمیم فیچرز</span></h2>
+      <p lang="en">Some business modules are available only to accounts specifically authorised by the owner and are not part of the general public feature set. We may in future offer such modules, or other optional features, as paid or subscription services. Any paid feature will be clearly marked and will need your explicit consent before any charge. We intend to keep core everyday tools free; any change will be announced in the App before it takes effect. Access to restricted modules may be granted, limited or withdrawn at our discretion.</p>
+      <p class="ur" lang="ur" dir="rtl">کچھ کاروباری ماڈیولز صرف ان اکاؤنٹس کے لیے ہیں جنہیں مالک نے خاص طور پر اجازت دی ہو، اور یہ عام عوامی فیچرز کا حصہ نہیں۔ مستقبل میں ہم ایسے ماڈیولز یا دیگر اختیاری فیچرز کو ادائیگی یا سبسکرپشن سروس کے طور پر پیش کر سکتے ہیں۔ ہر ادائیگی والا فیچر واضح طور پر نشان زد ہوگا اور کوئی رقم لینے سے پہلے آپ کی واضح رضامندی درکار ہوگی۔ ہمارا ارادہ ہے کہ روزمرہ کے بنیادی ٹولز مفت رہیں؛ کوئی بھی تبدیلی نافذ ہونے سے پہلے ایپ میں اعلان کی جائے گی۔ محدود ماڈیولز تک رسائی ہمارے صوابدید پر دی، محدود یا واپس لی جا سکتی ہے۔</p>
+    </section>
+    <section id="s13">
+      <h2>13. Acceptable Use <span class="ur-title" lang="ur">/ قابلِ قبول استعمال</span></h2>
+      <p lang="en">Do not misuse the App: no unlawful use, reverse engineering, scraping, interfering with servers or other users, impersonation, or attempts to access data or features you are not authorised to use.</p>
+      <p class="ur" lang="ur" dir="rtl">ایپ کا غلط استعمال نہ کریں: غیر قانونی استعمال، ریورس انجینئرنگ، ڈیٹا اسکریپنگ، سرورز یا دیگر صارفین میں مداخلت، کسی کی نقالی، یا ایسے ڈیٹا/فیچرز تک رسائی کی کوشش جن کی آپ کو اجازت نہیں، ممنوع ہیں۔</p>
+    </section>
+    <section id="s14">
+      <h2>14. Intellectual Property <span class="ur-title" lang="ur">/ املاکِ دانش</span></h2>
+      <p lang="en">The App, its design, name, logo and content belong to Warraich Goods Transport Company. You receive a limited, personal, non-transferable licence to use the App. Your own data remains yours.</p>
+      <p class="ur" lang="ur" dir="rtl">ایپ، اس کا ڈیزائن، نام، لوگو اور مواد وڑائچ گڈز ٹرانسپورٹ کمپنی کی ملکیت ہیں۔ آپ کو ایپ استعمال کرنے کا محدود، ذاتی، ناقابلِ منتقلی لائسنس ملتا ہے۔ آپ کا اپنا ڈیٹا آپ ہی کا رہتا ہے۔</p>
+    </section>
+    <section id="s15">
+      <h2>15. Disclaimer and Limitation of Liability <span class="ur-title" lang="ur">/ دستبرداری اور ذمہ داری کی حد</span></h2>
+      <p lang="en">The App is provided "as is" and "as available", without warranties of accuracy, availability or fitness for a particular purpose. To the fullest extent permitted by law, Warraich Goods Transport Company is not liable for indirect or consequential loss, loss of profit, delays, road incidents, data loss, or decisions made using the App. Nothing in these Terms limits liability that cannot be limited by law.</p>
+      <p class="ur" lang="ur" dir="rtl">ایپ "جیسی ہے" اور "جیسی دستیاب ہے" کی بنیاد پر فراہم کی جاتی ہے، درستگی، دستیابی یا کسی خاص مقصد کے لیے موزونیت کی ضمانت کے بغیر۔ قانون کی اجازت کی حد تک، وڑائچ گڈز ٹرانسپورٹ کمپنی بالواسطہ یا نتیجے میں ہونے والے نقصان، منافع کے نقصان، تاخیر، سڑک کے حادثات، ڈیٹا کے ضیاع یا ایپ کی بنیاد پر کیے گئے فیصلوں کی ذمہ دار نہیں۔ ان شرائط میں کوئی بات اس ذمہ داری کو محدود نہیں کرتی جو قانوناً محدود نہیں کی جا سکتی۔</p>
+    </section>
+    <section id="s16">
+      <h2>16. Suspension and Termination <span class="ur-title" lang="ur">/ معطلی اور خاتمہ</span></h2>
+      <p lang="en">We may suspend or end access for anyone who breaks these Terms or misuses the App. You may stop using the App at any time and delete your data as described in the Privacy Policy.</p>
+      <p class="ur" lang="ur" dir="rtl">جو شخص ان شرائط کی خلاف ورزی کرے یا ایپ کا غلط استعمال کرے، اس کی رسائی ہم معطل یا ختم کر سکتے ہیں۔ آپ کسی بھی وقت ایپ کا استعمال بند کر سکتے ہیں اور پرائیویسی پالیسی کے مطابق اپنا ڈیٹا حذف کر سکتے ہیں۔</p>
+    </section>
+    <section id="s17">
+      <h2>17. Changes to These Terms <span class="ur-title" lang="ur">/ شرائط میں تبدیلی</span></h2>
+      <p lang="en">We may update these Terms. The latest update date is shown at the top of this page; continuing to use the App after an update means you accept it. Material changes will be announced in the App.</p>
+      <p class="ur" lang="ur" dir="rtl">ہم ان شرائط کو اپ ڈیٹ کر سکتے ہیں۔ تازہ ترین تاریخ اس صفحے کے اوپر درج ہوتی ہے؛ اپ ڈیٹ کے بعد ایپ کا استعمال جاری رکھنے کا مطلب ہے کہ آپ اسے قبول کرتے ہیں۔ اہم تبدیلیوں کا اعلان ایپ میں کیا جائے گا۔</p>
+    </section>
+    <section id="s18">
+      <h2>18. Governing Law <span class="ur-title" lang="ur">/ قابلِ اطلاق قانون</span></h2>
+      <p lang="en">These Terms are governed by the laws of Pakistan. Disputes are subject to the competent courts at Faisalabad, Punjab.</p>
+      <p class="ur" lang="ur" dir="rtl">یہ شرائط پاکستان کے قوانین کے تحت ہیں۔ تنازعات کا فیصلہ فیصل آباد، پنجاب کی مجاز عدالتوں میں ہوگا۔</p>
+    </section>
+    <section id="s19">
+      <h2>19. Contact <span class="ur-title" lang="ur">/ رابطہ</span></h2>
+      <p lang="en">Publisher: Warraich Goods Transport Company<br>Email: <a href="mailto:warraichgoods43@gmail.com">warraichgoods43@gmail.com</a><br>Phone: +92 300 5370443<br>Address: Near General Bus Stand, Samundri / Faisalabad, Punjab, Pakistan<br>For data-deletion requests or to report content, email us with the subject "Driver Dost - Request".</p>
+      <p class="ur" lang="ur" dir="rtl">پبلشر: وڑائچ گڈز ٹرانسپورٹ کمپنی<br>ای میل: <a href="mailto:warraichgoods43@gmail.com">warraichgoods43@gmail.com</a><br>فون: +92 300 5370443<br>پتہ: جنرل بس اسٹینڈ کے قریب، سمندری / فیصل آباد، پنجاب، پاکستان<br>ڈیٹا حذف کرنے کی درخواست یا مواد کی شکایت کے لیے سبجیکٹ "Driver Dost - Request" کے ساتھ ہمیں ای میل کریں۔</p>
+    </section>
 
-    <h2>1. سروس کا دائرہ کار (Scope of Service)</h2>
-    <p>
-      ڈرائیور دوست ایپلیکیشن روڈ فریٹ ڈرائیورز، ٹرک مالکان، اور ٹرانسپورٹ مینجرز کو درج ذیل بنیادی سہولیات فراہم کرتی ہے:
-    </p>
-    <ul>
-      <li>ٹرپ ڈیزل و سفری منافع کیلکولیشن</li>
-      <li>موٹروے ٹول ٹیکس اور روٹ فاصلہ تخمینہ</li>
-      <li>مقامی موسمی صورتحال، حدِ نگاہ اور پیٹرولیم مصنوعات کے سرکاری نرخوں کا جائزہ</li>
-      <li>محفوظ آف لائن فلیٹ ریکارڈز اور گاڑیوں کا کھاتہ</li>
-      <li>ڈرائیونگ سیفٹی و روڈ ہیزرڈ الرٹس</li>
-    </ul>
-
-    <h2>2. لوکیشن پرمشن اور پرائیویسی (Location & On-Demand GPS)</h2>
-    <p>
-      موسمی حدِ نگاہ اور قریب ترین روٹ جانچنے کے لیے صارف کی ڈیوائس لوکیشن (GPS) صرف اس وقت حاصل کی جاتی ہے جب صارف واضح طور پر "میری موجودہ لوکیشن حاصل کریں" پر کلک کرے۔
-    </p>
-    <ul>
-      <li>لوکیشن پس منظر (Background) میں بغیر اجازت کبھی ٹریک نہیں ہوتی۔</li>
-      <li>صارف لوکیشن اجازت دیے بغیر بھی پاکستان کے تمام شہروں کی مکمل فہرست سے کسی بھی شہر کا انتخاب کر کے بغیر کسی رکاوٹ کے ایپ استعمال کر سکتا ہے۔</li>
-      <li>لوکیشن ڈیٹا کسی بیرونی اشتہاری یا تھرڈ پارٹی کو کبھی فروخت نہیں کیا جاتا۔</li>
-    </ul>
-
-    <h2>3. روزانہ نوٹیفکیشنز و اینٹی سپیم پالیسی (Daily Alerts & Anti-Spam Policy)</h2>
-    <p>
-      ایپ کے پش نوٹیفکیشنز (سرکاری ڈیزل و پیٹرول ریٹس، موسمی حدِ نگاہ، اور روڈ صورتحال) خالصتاً معلوماتی (Utility Digest) ہیں۔
-    </p>
-    <ul>
-      <li>اینڈرائیڈ 13+ (POST_NOTIFICATIONS) کے عین مطابق نوٹیفکیشنز صارف کی پیشگی رضامندی پر مبنی ہیں۔</li>
-      <li>اینٹی سپیم ضابطے کے تحت یہ نوٹیفکیشن دن میں صرف ایک بار (صبح کے وقت) یا سرکاری نرخوں میں تبدیلی پر بھیجا جاتا ہے۔</li>
-      <li>ایپ کے اندر کوئی اشتہاری یا پروموشنل سپیم نہیں بھیجا جاتا۔</li>
-      <li>صارف جب چاہے ایپ کی سیٹنگز یا موبائل نوٹیفکیشن پینل سے الرٹس بند (Toggle Off) کر سکتا ہے۔</li>
-    </ul>
-
-    <h2>4. روڈ ہیزرڈ الرٹس اور صارفین کی رپورٹس (Crowdsourced Road Advisories)</h2>
-    <p>
-      ایپ میں موٹروے و جی ٹی روڈ پر دھند، راستے کی بندش، یا حادثات کی رپورٹس ڈرائیورز اور فلیٹ آپریٹرز کی طرف سے عمومی آگاہی کے لیے شیئر کی جاتی ہیں۔
-    </p>
-    <ul>
-      <li>ڈرائیور دوست یا وڑائچ گڈز ٹرانسپورٹ کمپنی کسی غیر متوقع روڈ بلاک یا موسمی تاخیر کے نقصانات کی قانونی ذمہ دار نہیں ہوگی۔</li>
-      <li>ڈرائیور حضرات نیشنل ہائی ویز اینڈ موٹروے پولیس (NHMP) کے آفیشل ہیلپ لائن 130 کے اعلانات کو ہمیشہ اولیت دیں۔</li>
-    </ul>
-
-    <h2>5. سرکاری پیٹرولیم نرخ (OGRA / PSO Official Benchmarks)</h2>
-    <p>
-      ایپ میں دکھائے جانے والے ڈیزل، سپر پیٹرول، اور دیگر ایندھن کے نرخ اوگرا اور پی ایس او کے سرکاری نوٹیفکیشنز کے مطابق مرکزی فریٹ حسابات کے لیے ہیں، انفرادی دور دراز ریٹیل پمپوں پر معمولی مقامی فرق ممکن ہو سکتا ہے۔
-    </p>
-
-    <h2>6. دورانِ ڈرائیونگ موبائل فون کے استعمال پر پابندی (Safe Driving)</h2>
-    <p>
-      ڈرائیور حضرات کے لیے دورانِ ڈرائیونگ موبائل کے کسی بھی دستی استعمال کی سختی سے ممانعت ہے۔ تمام ٹرپ کیلکولیشنز اور روٹ پلاننگ سفر شروع کرنے سے پہلے مکمل کریں۔
-    </p>
-
-    <h2>7. ڈیٹا کا مقامی تحفظ (Offline Sandbox & Local Storage)</h2>
-    <p>
-      تمام لاگز اور مالیاتی حسابات صارف کی ڈیوائس میں محفوظ رہتے ہیں۔ صارف جب چاہے ایپ کے سائیڈ مینیو سے اپنے ریکارڈز ایکسپورٹ یا مستقل طور پر حذف (Purge) کر سکتا ہے۔
-    </p>
-
-    <div class="notice-box">
-      <strong>رابطہ و پبلشر معلومات:</strong><br />
-      پبلشر: <strong>وڑائچ گڈز ٹرانسپورٹ کمپنی</strong><br />
-      ای میل: <span dir="ltr"><strong>warraichgoods43@gmail.com</strong></span><br />
-      پتہ: سمندری، فیصل آباد، پنجاب، پاکستان
-    </div>
-
-    <div class="footer">
-      <p>© 2026 Driver Dost · Warraich Goods Transport Company. جملہ حقوق محفوظ ہیں۔</p>
-      <a href="./privacy.html" class="btn-back">پرائیویسی پالیسی کھولیں</a>
-    </div>
-  </div>
+    <footer>
+      <p><a href="privacy.html">Privacy Policy / پرائیویسی پالیسی</a></p>
+      <p>© 2026 Warraich Goods Transport Company. All rights reserved. / جملہ حقوق محفوظ ہیں۔</p>
+    </footer>
+  </main>
 </body>
 </html>

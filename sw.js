@@ -6,7 +6,7 @@
    - Navigation Fallback directly to Cached SPA App Shell (No Blocking Error Screens)
    - Map Tile Caching (OSRM, OpenStreetMap, CartoDB) with Transparent Offline Tile Fallback
    - Dynamic Asset Discovery on Service Worker Install
-   - Background Sync for Offline Bilty, Ledger & Transport Records
+   - Background Sync for Offline Documents, Ledger & Transport Records
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
@@ -45,11 +45,12 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/index-B9FU9lw9.js',
-  './assets/index-DbwUg0pP.css',
+    './assets/aistudio',
+  './assets/index-CblkGrN0.js',
+  './assets/index-DeWgD8bv.css',
   './assets/vendor-firebase-BE6KhiC_.js',
-  './assets/vendor-pdf-FMadgl2q.js',
-  './assets/vendor-react-C96mqDBP.js',
+  './assets/vendor-pdf-D8KJjxXU.js',
+  './assets/vendor-react-BCNWVSG0.js',
   './assets/web-D3HSkgoX.js',
   './assets/web-DEacLa_8.js',
   './assets/web-kNZ9iJGg.js'
