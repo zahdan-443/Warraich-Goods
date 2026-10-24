@@ -6,7 +6,7 @@
    - Navigation Fallback directly to Cached SPA App Shell (No Blocking Error Screens)
    - Map Tile Caching (OSRM, OpenStreetMap, CartoDB) with Transparent Offline Tile Fallback
    - Dynamic Asset Discovery on Service Worker Install
-   - Background Sync for Offline Bilty, Ledger & Transport Records
+   - Background Sync for Offline Documents, Ledger & Transport Records
    - Web Push Alerts & Notification Management
    ========================================================================== */
 

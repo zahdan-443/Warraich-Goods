@@ -16,3 +16,9 @@
 
 ## 4. Notifications & System Status Bar
 - Maintain native device status bar and notification panel push alerts via Service Worker and Notifications API for all important transport operations (saved trips, vehicles, fuel logs, etc.).
+
+## 5. Public-Facing Terminology Policy (Strict Rule)
+- The word "Bilty" (and Urdu "بلٹی") must never appear in any public-facing text shown to regular users: README, public/*.html, public/manifest.json, index.html, store text, CHANGELOG.
+- It may exist only in source code paths that are already restricted to the authorised owner account.
+- Use neutral words like "documents" or "authorised business accounts" instead.
+
