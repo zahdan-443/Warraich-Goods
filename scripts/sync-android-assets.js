@@ -12,7 +12,7 @@ if (fs.existsSync(distDir)) {
     const distAssetsDir = path.join(distDir, 'assets');
     if (fs.existsSync(distSw) && fs.existsSync(distAssetsDir)) {
       const chunkFiles = fs.readdirSync(distAssetsDir)
-        .filter(f => !f.endsWith('.map'))
+        .filter(f => !f.endsWith('.map') && fs.statSync(path.join(distAssetsDir, f)).isFile())
         .map(f => `./assets/${f}`);
 
       let swContent = fs.readFileSync(distSw, 'utf8');

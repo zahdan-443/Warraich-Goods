@@ -4,6 +4,15 @@
     <meta name="google-site-verification" content="FbkLPKJ17nJ7kaOobCe1ezmCSzpcm_mgxkzVob-cSLE" />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <script>
+      (function() {
+        if (typeof window !== 'undefined' && window.location.hostname.includes('github.io')) {
+          if (window.location.pathname === '/Warraich-Goods') {
+            window.history.replaceState(null, '', '/Warraich-Goods/' + window.location.hash);
+          }
+        }
+      })();
+    </script>
     <meta name="theme-color" content="#8b9d77" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

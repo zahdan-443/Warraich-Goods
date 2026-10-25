@@ -15,37 +15,54 @@ import {
 } from 'lucide-react';
 
 /**
+ * Determine dynamic base URL for static assets (supporting GitHub Pages subpath, Capacitor, and root)
+ */
+export function getBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const loc = window.location;
+    if (loc.hostname.includes('github.io')) {
+      const match = loc.pathname.match(/^\/([^/#?]+)/);
+      if (match && match[1]) {
+        return `/${match[1]}/`;
+      }
+      return '/Warraich-Goods/';
+    }
+  }
+  const base = typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL ? import.meta.env.BASE_URL : './';
+  return base.endsWith('/') ? base : base + '/';
+}
+
+/**
  * List of fallback URLs for a given public asset filename
  */
 export function getAssetCandidates(fileName: string): string[] {
   const clean = (fileName || '').replace(/^\.?\//, '');
-  
-  const base = typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL ? import.meta.env.BASE_URL : './';
-  const cleanBase = base.endsWith('/') ? base : base + '/';
+  const baseUrl = getBaseUrl();
 
   const list: string[] = [
+    `${baseUrl}${clean}`,
     `./${clean}`,
-    `/${clean}`,
-    `${cleanBase}${clean}`,
     `/Warraich-Goods/${clean}`,
+    `https://zahdan-443.github.io/Warraich-Goods/${clean}`,
+    `/${clean}`,
     `./public/${clean}`
   ];
 
   // Specific filename aliases in /public:
   if (clean === 'toll-icon.png') {
-    list.splice(1, 0, './toll_icon.png', '/toll_icon.png');
+    list.push(`${baseUrl}toll_icon.png`, './toll_icon.png', '/Warraich-Goods/toll_icon.png');
   } else if (clean === 'toll_icon.png') {
-    list.splice(1, 0, './toll-icon.png', '/toll-icon.png');
+    list.push(`${baseUrl}toll-icon.png`, './toll-icon.png', '/Warraich-Goods/toll-icon.png');
   }
 
   if (clean === 'splash.png') {
-    list.splice(1, 0, './splash-screen.png', '/splash-screen.png');
+    list.push(`${baseUrl}splash-screen.png`, './splash-screen.png');
   } else if (clean === 'splash-screen.png') {
-    list.splice(1, 0, './splash.png', '/splash.png');
+    list.push(`${baseUrl}splash.png`, './splash.png');
   }
 
   if (['logo.png', 'icon-192.png', 'icon-512.png'].includes(clean)) {
-    list.push('./app-icon.png', '/app-icon.png');
+    list.push(`${baseUrl}app-icon.png`, './app-icon.png');
   }
 
   return Array.from(new Set(list));
@@ -252,6 +269,14 @@ export const PublicImage: React.FC<PublicImageProps> = ({
   const [candidateIndex, setCandidateIndex] = useState(0);
   const [hasFailedAll, setHasFailedAll] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const imgRef = React.useRef<HTMLImageElement>(null);
+
+  // If already loaded in browser memory/cache, mark loaded immediately
+  React.useEffect(() => {
+    if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+      setLoaded(true);
+    }
+  }, [candidateIndex]);
 
   const handleError = () => {
     if (candidateIndex + 1 < candidates.length) {
@@ -280,9 +305,11 @@ export const PublicImage: React.FC<PublicImageProps> = ({
     return <DefaultServiceVector name={clean} className={className} />;
   }
 
+  const fitClass = fitMode === 'cover' ? 'object-cover' : fitMode === 'fill' ? 'object-fill' : 'object-contain';
+
   return (
     <div className={`relative flex items-center justify-center overflow-hidden w-full h-full ${className || ''}`}>
-      {/* Instant fallback graphic / icon shown immediately until image is loaded */}
+      {/* Instant fallback graphic / icon shown until image finishes rendering */}
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
           {fallbackIcon ? (
@@ -293,26 +320,23 @@ export const PublicImage: React.FC<PublicImageProps> = ({
         </div>
       )}
 
-      {/* Primary User Image (smoothly displays as soon as ready) */}
-      {(() => {
-        const fitClass = fitMode === 'cover' ? 'object-cover' : fitMode === 'fill' ? 'object-fill' : 'object-contain';
-        return (
-          <img
-            src={candidates[candidateIndex]}
-            alt={computedAlt}
-            loading={rest.loading || "eager"}
-            decoding="async"
-            width={width}
-            height={height}
-            className={`w-full h-full ${fitClass} transition-opacity duration-200 ${
-              loaded ? 'opacity-100 relative z-10' : 'opacity-0'
-            } ${imgClassName || ''}`}
-            onError={handleError}
-            onLoad={handleLoad}
-            {...rest}
-          />
-        );
-      })()}
+      {/* Primary User Image */}
+      <img
+        ref={imgRef}
+        key={candidates[candidateIndex]}
+        src={candidates[candidateIndex]}
+        alt={computedAlt}
+        loading={rest.loading || "eager"}
+        decoding="async"
+        width={width}
+        height={height}
+        className={`w-full h-full ${fitClass} transition-opacity duration-150 ${
+          loaded ? 'opacity-100 relative z-10' : 'opacity-90 relative z-10'
+        } ${imgClassName || ''}`}
+        onError={handleError}
+        onLoad={handleLoad}
+        {...rest}
+      />
     </div>
   );
 };

@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v22';
+const CACHE_NAME = 'driver-dost-v23';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 
 // Core static assets always available locally
@@ -18,29 +18,28 @@ const CORE_STATIC_ASSETS = [
   './',
   'index.html',
   'manifest.json',
-  'manifest.webmanifest',
   'logo.png',
-  'bilty-official-icon.png',
-  'bilty-official-icon.jpg',
   'app-icon.png',
   'icon-192.png',
   'icon-512.png',
   'screenshot-mobile.png',
   'screenshot-desktop.png',
-  'vehicle-icon.png',
   'trip-icon.png',
-  'bilty-icon.png',
+  'ledger-icon.png',
   'gari-hisaab-icon.png',
-  'safar-diary-icon.png',
-  'echallan-icon.png',
-  'license-icon.png',
-  'quick-ops-icon.png',
-  'scan-me-qr.png',
-  'splash.png',
   'toll-icon.png',
   'map-icon.png',
-  'company-card.png',
-  'warraich-card.png'
+  'dashcam-icon.png',
+  'quick-ops-icon.png',
+  'vehicle-icon.png',
+  'license-icon.png',
+  'echallan-icon.png',
+  'safar-diary-icon.png',
+  'scan-me-qr.png',
+  'splash.png',
+  'warraich-card.png',
+  'bilty-official-icon.png',
+  'bilty-icon.png'
 ];
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)

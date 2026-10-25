@@ -1,4 +1,5 @@
-export { PublicImage, getAssetCandidates } from '../components/PublicImage';
+import { getBaseUrl } from '../components/PublicImage';
+export { PublicImage, getAssetCandidates, getBaseUrl } from '../components/PublicImage';
 export type { PublicImageProps } from '../components/PublicImage';
 
 /**
@@ -7,9 +8,8 @@ export type { PublicImageProps } from '../components/PublicImage';
  */
 export function getAssetUrl(fileName: string): string {
   const clean = (fileName || '').replace(/^\.?\//, '');
-  const base = typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL ? import.meta.env.BASE_URL : './';
-  const cleanBase = base.endsWith('/') ? base : base + '/';
-  return `${cleanBase}${clean}`;
+  const baseUrl = getBaseUrl();
+  return `${baseUrl}${clean}`;
 }
 
 // Exported standard public asset path strings
