@@ -106,7 +106,7 @@ After a build, check the fingerprint printed in the workflow log and register it
 
 Email: warraichgoods43@gmail.com
 Phone: +92 300 5370443
-Address: Near General Bus Stand, Samundri, Faisalabad, Punjab, Pakistan
+Address: Samundri, Faisalabad, Punjab, Pakistan
 
 ## Copyright
 
