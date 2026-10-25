@@ -624,59 +624,45 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
         {/* 7 Inputs - Smooth scrollable sequence with generous spacing */}
         <div className="w-full flex-1 flex flex-col space-y-3 sm:space-y-3.5 py-1">
           
-          {/* Field 1: Origin City / از (روانگی - ڈراپ ڈاؤن) */}
-          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-            <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1.5 flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-[#8b9d77]" />
-              <span>{isUrdu ? 'از (روانگی کا شہر)' : 'From City (Origin)'}</span>
-            </label>
-            <select
-              value={originCity}
-              onChange={(e) => setOriginCity(e.target.value)}
-              className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-sm sm:text-base font-black text-[#2b2b1f] focus:border-[#8b9d77] focus:outline-none cursor-pointer shadow-2xs"
-            >
-              {PAKISTAN_CITIES.map((c) => (
-                <option key={c.nameEn} value={c.nameEn}>
-                  {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Fields 1 & 2: Origin & Destination Cities - Single Line Side-by-Side */}
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            {/* Field 1: Origin City / از (روانگی) */}
+            <div className="bg-white p-2.5 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+              <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1 sm:mb-1.5 flex items-center gap-1 sm:gap-1.5 truncate">
+                <MapPin className="w-3.5 h-3.5 text-[#8b9d77] shrink-0" />
+                <span className="truncate">{isUrdu ? 'از (روانگی)' : 'From City'}</span>
+              </label>
+              <select
+                value={originCity}
+                onChange={(e) => setOriginCity(e.target.value)}
+                className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-2 sm:px-3 py-2 text-xs sm:text-sm font-black text-[#2b2b1f] focus:border-[#8b9d77] focus:outline-none cursor-pointer shadow-2xs truncate"
+              >
+                {PAKISTAN_CITIES.map((c) => (
+                  <option key={c.nameEn} value={c.nameEn}>
+                    {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Quick Swap Route Button */}
-          <div className="flex justify-center -my-1.5 z-10">
-            <button
-              type="button"
-              onClick={() => {
-                const temp = originCity;
-                setOriginCity(destCity);
-                setDestCity(temp);
-              }}
-              className="px-3.5 py-1 bg-white hover:bg-slate-50 border-2 border-[#8b9d77]/60 text-[#4a5a3a] rounded-full text-xs font-bold transition-all shadow-2xs active:scale-95 flex items-center gap-1.5 cursor-pointer select-none"
-              title={isUrdu ? 'شہروں کو آپس میں بدلیں' : 'Swap Cities'}
-            >
-              <ArrowLeftRight className="w-3.5 h-3.5 text-[#8b9d77]" />
-              <span className="text-[11px]">{isUrdu ? 'روٹ بدلیں (Swap)' : 'Swap Route'}</span>
-            </button>
-          </div>
-
-          {/* Field 2: Destination City / تا (منزل - ڈراپ ڈاؤن) */}
-          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-            <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1.5 flex items-center gap-1.5">
-              <Navigation className="w-4 h-4 text-[#8b9d77]" />
-              <span>{isUrdu ? 'تا (منزل کا شہر)' : 'To City (Destination)'}</span>
-            </label>
-            <select
-              value={destCity}
-              onChange={(e) => setDestCity(e.target.value)}
-              className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-sm sm:text-base font-black text-[#2b2b1f] focus:border-[#8b9d77] focus:outline-none cursor-pointer shadow-2xs"
-            >
-              {PAKISTAN_CITIES.map((c) => (
-                <option key={c.nameEn} value={c.nameEn}>
-                  {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`}
-                </option>
-              ))}
-            </select>
+            {/* Field 2: Destination City / تا (منزل) */}
+            <div className="bg-white p-2.5 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+              <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1 sm:mb-1.5 flex items-center gap-1 sm:gap-1.5 truncate">
+                <Navigation className="w-3.5 h-3.5 text-[#8b9d77] shrink-0" />
+                <span className="truncate">{isUrdu ? 'تا (منزل)' : 'To City'}</span>
+              </label>
+              <select
+                value={destCity}
+                onChange={(e) => setDestCity(e.target.value)}
+                className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-2 sm:px-3 py-2 text-xs sm:text-sm font-black text-[#2b2b1f] focus:border-[#8b9d77] focus:outline-none cursor-pointer shadow-2xs truncate"
+              >
+                {PAKISTAN_CITIES.map((c) => (
+                  <option key={c.nameEn} value={c.nameEn}>
+                    {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* FEATURE B: Cheapest vs Fastest Route Comparison Toggle & Cards */}

@@ -47,6 +47,25 @@ service cloud.firestore {
       match /collections/{collectionId} {
         allow read, write: if isSignedIn() && request.auth.uid == userId;
       }
+
+      // Digital Khata / کھاتہ accounts and entries (per-document sync)
+      match /ledgerAccounts/{accountId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+
+        match /entries/{entryId} {
+          allow read, write: if isSignedIn() && request.auth.uid == userId;
+        }
+      }
+
+      // Cashbook daily transactions
+      match /cashbookEntries/{entryId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      // Khata settings and PIN lock configuration
+      match /khataSettings/{settingId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
     }
 
     // Access configuration for Bilty Generator authorization (Confidential: ONLY Fleet Owner warraichgoods43@gmail.com can read or write)

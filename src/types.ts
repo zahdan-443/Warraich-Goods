@@ -2,7 +2,53 @@ export type Language = 'en' | 'ur';
 export type FuelType = 'diesel' | 'petrol' | 'cng';
 export type ActiveTab = 'home' | 'calculator' | 'vehicle' | 'drivers' | 'routes' | 'fuel' | 'verify' | 'bilty' | 'vehicleAccount' | 'map' | 'toll' | 'navigation' | 'dashcam' | 'ledger';
 export type CalcSubTab = 'calc' | 'history' | 'summary';
-export type LedgerSubTab = 'parties' | 'brokers' | 'vehicleProfitLoss';
+export type LedgerSubTab = 'parties' | 'brokers' | 'cashbook' | 'vehicleProfitLoss';
+
+export interface LedgerAccount {
+  id: string;
+  kind: 'party' | 'broker';
+  name: string;
+  phone?: string;
+  note?: string;
+  openingAmount: number;
+  openingDirection: 'get' | 'give';
+  dueDate?: string; // 'YYYY-MM-DD'
+  source: 'manual' | 'contact' | 'auto';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LedgerEntry {
+  id: string;
+  accountId: string;
+  type: 'gave' | 'got';
+  amount: number; // (> 0)
+  date: string; // 'YYYY-MM-DD'
+  note?: string;
+  source: 'manual' | 'auto';
+  sourceRef?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CashEntry {
+  id: string;
+  type: 'in' | 'out';
+  amount: number; // (> 0)
+  date: string; // 'YYYY-MM-DD'
+  note?: string;
+  category?: 'fuel' | 'toll' | 'maintenance' | 'food' | 'kharcha' | 'challan' | 'advance' | 'other' | string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KhataSettings {
+  businessName?: string;
+  pinHash?: string;
+  pinSalt?: string;
+  pinLockoutUntil?: number;
+  pinFailedAttempts?: number;
+}
 
 export interface PartyTransaction {
   id: string;

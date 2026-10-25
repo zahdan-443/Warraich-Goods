@@ -59,6 +59,7 @@ import { InstallPwaModal } from './components/InstallPwaModal';
 import { Home, ArrowLeft } from 'lucide-react';
 import { checkExpiringDocuments, processExpiryNotifications } from './utils/documentExpiry';
 import { dispatchDailyDigestNotification } from './utils/dailyDigestNotification';
+import { initKhataDueDateScheduler } from './utils/khataNotifications';
 
 export default function App() {
   const OWNER_EMAIL = 'warraichgoods43@gmail.com';
@@ -220,6 +221,8 @@ export default function App() {
         tollplaza: 'toll',
         navigation: 'navigation',
         nav: 'navigation',
+        ledger: 'ledger',
+        khata: 'ledger',
         home: 'home',
       };
       const resolved = map[rawHash.toLowerCase()];
@@ -372,8 +375,8 @@ export default function App() {
         id: 9999,
         title: lang === 'ur' ? 'معلوماتی نوٹس: لوکل میموری فعال ہے' : 'Info Notice: Local Storage Mode Active',
         message: lang === 'ur'
-          ? 'آپ کا تمام ریکارڈ (سفر اخراجات، گاڑیوں کے لاگز اور بلٹی) اس ڈیوائس پر محفوظ ہے۔ آن لائن کلاؤڈ بیک اپ کے لیے کسی بھی وقت سائن ان کر سکتے ہیں۔'
-          : 'All trip calculations, vehicle logs and bilty records are safely stored on this device. Sign in anytime for cloud backup.',
+          ? 'آپ کا تمام ریکارڈ (سفر اخراجات، گاڑیوں کے لاگز اور کاروباری دستاویزات) اس ڈیوائس پر محفوظ ہے۔ آن لائن کلاؤڈ بیک اپ کے لیے کسی بھی وقت سائن ان کر سکتے ہیں۔'
+          : 'All trip calculations, vehicle logs and transport documents are safely stored on this device. Sign in anytime for cloud backup.',
         time: lang === 'ur' ? 'ابھی' : 'Just now',
         unread: true,
         type: 'system'
@@ -583,6 +586,12 @@ export default function App() {
   // Daily Fuel Prices, Weather & Road Conditions Digest Notification (Play Store & PalmStore Compliant)
   useEffect(() => {
     dispatchDailyDigestNotification(lang, false).catch(() => {});
+  }, [lang]);
+
+  // Daily Khata Due-Date Notification Scheduler (09:00 AM check)
+  useEffect(() => {
+    const cleanup = initKhataDueDateScheduler(lang);
+    return () => cleanup();
   }, [lang]);
 
   // Firebase auth & bilty access real-time sync

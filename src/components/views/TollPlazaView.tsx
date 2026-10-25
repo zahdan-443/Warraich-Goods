@@ -273,19 +273,19 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
             {/* VIEW 1: INPUT FORM */}
             {viewState === 'input' && (
               <div className="space-y-2">
-                {/* Origin & Destination with Swap */}
-                <div className="bg-white p-3 rounded-2xl border border-[#ecece0] shadow-2xs space-y-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-11 gap-2 items-center">
+                {/* Origin & Destination - Single Line Side-by-Side */}
+                <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-[#ecece0] shadow-2xs space-y-2">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3 items-center">
                     
                     {/* From City */}
-                    <div className="sm:col-span-5 space-y-1">
-                      <label className="block text-[11px] font-bold font-serif text-[#4a4a35]">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold font-serif text-[#4a4a35] truncate">
                         {t.tollCalc.fromCity}
                       </label>
                       <select
                         value={fromCity}
                         onChange={(e) => setFromCity(e.target.value as TollCity)}
-                        className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-2.5 py-2 text-xs sm:text-sm font-medium text-[#4a4a35] focus:outline-none focus:border-[#8b9d77] shadow-2xs cursor-pointer"
+                        className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-2 sm:px-2.5 py-2 text-xs sm:text-sm font-medium text-[#4a4a35] focus:outline-none focus:border-[#8b9d77] shadow-2xs cursor-pointer truncate"
                       >
                         {CITIES_LIST.map(c => (
                           <option key={`from-${c.id}`} value={c.id}>
@@ -295,27 +295,15 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
                       </select>
                     </div>
 
-                    {/* Swap Button */}
-                    <div className="sm:col-span-1 flex justify-center py-0.5 sm:py-0">
-                      <button
-                        type="button"
-                        onClick={handleSwapCities}
-                        className="p-2 rounded-xl bg-[#fdfbf7] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35] border border-[#ecece0] hover:border-[#8b9d77] shadow-2xs transition-all active:scale-90 cursor-pointer"
-                        title={isUrdu ? 'روٹ تبدیل کریں' : 'Swap Origin & Destination'}
-                      >
-                        <ArrowRightLeft className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
                     {/* To City */}
-                    <div className="sm:col-span-5 space-y-1">
-                      <label className="block text-[11px] font-bold font-serif text-[#4a4a35]">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold font-serif text-[#4a4a35] truncate">
                         {t.tollCalc.toCity}
                       </label>
                       <select
                         value={toCity}
                         onChange={(e) => setToCity(e.target.value as TollCity)}
-                        className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-2.5 py-2 text-xs sm:text-sm font-medium text-[#4a4a35] focus:outline-none focus:border-[#8b9d77] shadow-2xs cursor-pointer"
+                        className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-2 sm:px-2.5 py-2 text-xs sm:text-sm font-medium text-[#4a4a35] focus:outline-none focus:border-[#8b9d77] shadow-2xs cursor-pointer truncate"
                       >
                         {CITIES_LIST.map(c => (
                           <option key={`to-${c.id}`} value={c.id}>

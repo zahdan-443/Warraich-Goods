@@ -131,40 +131,49 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
         fontFamily: isEn
           ? "'Plus Jakarta Sans', 'Inter', Arial, sans-serif"
           : "'Noto Sans Arabic', 'Jameel Noori Nastaleeq', 'PDMS Nastaleeq Nafees', 'Plus Jakarta Sans', Arial, sans-serif",
-        lineHeight: '1.3',
+        lineHeight: '1.25',
         width: '794px',
-        height: '1123px',
+        height: '1120px',
         minWidth: '794px',
         maxWidth: '794px',
-        minHeight: '1123px',
-        maxHeight: '1123px',
-        padding: '20px',
+        minHeight: '1120px',
+        maxHeight: '1120px',
+        padding: '16px 20px',
         boxSizing: 'border-box',
         overflow: 'hidden',
-        position: 'relative'
+        position: 'relative',
+        pageBreakInside: 'avoid',
+        pageBreakAfter: 'avoid'
       }}
     >
       <style>{`
         @media print {
           @page {
             size: A4 portrait;
-            margin: 0;
+            margin: 0mm;
           }
-          body {
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            overflow: hidden !important;
             background-color: #ffffff !important;
-            color: #000000 !important;
           }
           .printable-bilty-container {
-            width: 100% !important;
-            max-width: 100% !important;
-            height: 100vh !important;
-            max-height: 100vh !important;
+            width: 210mm !important;
+            max-width: 210mm !important;
+            height: 297mm !important;
+            max-height: 297mm !important;
             border: none !important;
             box-shadow: none !important;
-            margin: 0 !important;
-            padding: 16px !important;
+            margin: 0 auto !important;
+            padding: 10mm 12mm !important;
             page-break-after: avoid !important;
+            page-break-before: avoid !important;
             page-break-inside: avoid !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
           }
         }
         .printable-bilty-container * {
@@ -172,26 +181,26 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
         }
       `}</style>
 
-      {/* Official Warraich Goods Transport Company Card Background Watermark ("public/warraich-card.png") */}
+      {/* Official Warraich Goods Transport Company Card Background Watermark ("/warraich-card.png") */}
       <div
         style={{
           position: 'absolute',
-          top: '51%',
+          top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          opacity: 0.13,
+          opacity: 0.14,
           pointerEvents: 'none',
           userSelect: 'none',
           zIndex: 0,
-          width: '620px',
-          maxWidth: '85%',
+          width: '660px',
+          maxWidth: '88%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
         }}
       >
         <img
-          src={resolvedCard || companyCardData || './warraich-card.png'}
+          src={resolvedCard || '/warraich-card.png'}
           alt="Warraich Goods Transport Company Card"
           referrerPolicy="no-referrer"
           onError={(e) => {
@@ -201,18 +210,18 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               const base = typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL ? import.meta.env.BASE_URL : './';
               const clean = base.endsWith('/') ? base : base + '/';
               target.src = `${clean}warraich-card.png`;
-            } else if (!target.dataset.triedGh) {
-              target.dataset.triedGh = '1';
-              target.src = 'https://zahdan-443.github.io/Warraich-Goods/warraich-card.png';
             } else if (!target.dataset.triedRoot) {
               target.dataset.triedRoot = '1';
-              target.src = '/warraich-card.png';
+              target.src = './warraich-card.png';
+            } else if (!target.dataset.triedFallback) {
+              target.dataset.triedFallback = '1';
+              target.src = companyCardData;
             }
           }}
           style={{
             width: '100%',
             height: 'auto',
-            maxHeight: '430px',
+            maxHeight: '460px',
             objectFit: 'contain',
             borderRadius: '12px'
           }}

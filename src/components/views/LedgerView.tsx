@@ -1,46 +1,57 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Language,
-  LedgerParty,
-  PartyTransaction,
-  LedgerBroker,
-  BrokerTransaction,
+  LedgerAccount,
+  LedgerEntry,
+  CashEntry,
+  KhataSettings,
   Vehicle,
-  Trip,
-  VehicleExpenseEntry,
-  VehicleIncomeEntry
+  Trip
 } from '../../types';
 import {
-  getStoredParties,
-  getStoredPartyTransactions,
-  saveOrUpdateParty,
-  deleteParty,
-  addPartyTransaction,
-  getStoredBrokers,
-  getStoredBrokerTransactions,
-  saveOrUpdateBroker,
-  deleteBroker,
-  addBrokerTransaction,
-  toggleBrokerTransactionStatus,
-  getStoredVehicleExpenses,
-  getStoredVehicleIncomes,
-  addVehicleExpense,
-  deleteVehicleExpense,
-  addVehicleIncome,
-  deleteVehicleIncome,
-  syncFreightRecordsToLedger,
-  getTopPartiesRanking,
-  calculateVehicleProfitLoss,
-  formatPartyWhatsAppReminder,
-  formatBrokerWhatsAppReminder,
-  getCleanPhoneForWhatsApp,
-  fetchLedgerDataFromFirestore
+  getLedgerAccounts,
+  saveOrUpdateLedgerAccount,
+  deleteLedgerAccount,
+  getAllLedgerEntries,
+  getLedgerEntries,
+  saveOrUpdateLedgerEntry,
+  deleteLedgerEntry,
+  restoreLedgerEntry,
+  getAllCashEntries,
+  getCashEntries,
+  saveOrUpdateCashEntry,
+  deleteCashEntry,
+  restoreCashEntry,
+  calculateAccountBalance,
+  calculateAccountsSummary,
+  calculateDayCashSummary,
+  getKhataSettings,
+  saveKhataSettings,
+  normalizePakistaniPhone,
+  formatPhoneForDisplay,
+  evaluateArithmetic,
+  generatePinSalt,
+  hashPin,
+  verifyPin,
+  calculateLockoutDuration,
+  isPinLocked,
+  formatKhataReminderMessage,
+  exportKhataBackup,
+  importKhataBackup,
+  getPendingDocumentBalances,
+  importPendingDocumentToKhata,
+  PendingDocBalance
 } from '../../utils/ledgerStorage';
-import { CameraOcrInput } from '../CameraOcrInput';
+import {
+  generateAccountStatementPdf,
+  generateAllAccountsSummaryPdf,
+  downloadOrSharePdf
+} from '../../utils/khataPdf';
 import {
   BookOpen,
   Users,
   Briefcase,
+  Wallet,
   TrendingUp,
   TrendingDown,
   Plus,
@@ -50,23 +61,35 @@ import {
   Search,
   DollarSign,
   Calendar,
-  Truck,
-  CheckCircle2,
-  AlertCircle,
-  FileText,
+  Lock,
+  Unlock,
+  KeyRound,
+  Download,
+  Upload,
+  Settings,
   RotateCcw,
   Sparkles,
   ArrowUpRight,
   ArrowDownLeft,
-  Crown,
-  Receipt,
-  X
+  X,
+  Check,
+  AlertCircle,
+  Clock,
+  Share2,
+  FileText,
+  UserCheck,
+  ChevronRight,
+  ChevronLeft,
+  Smartphone,
+  Delete,
+  Calculator
 } from 'lucide-react';
+import { auth } from '../../utils/firebase';
 
 interface LedgerViewProps {
   lang: Language;
-  vehicles: Vehicle[];
-  trips: Trip[];
+  vehicles?: Vehicle[];
+  trips?: Trip[];
   isBiltyAuthorized?: boolean;
   onNavigate?: (tab: string) => void;
 }
@@ -80,1602 +103,2550 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
 }) => {
   const isUrdu = lang === 'ur';
 
-  // Sub tabs: parties, brokers, vehicleProfitLoss
-  const [subTab, setSubTab] = useState<'parties' | 'brokers' | 'vehicleProfitLoss'>('parties');
+  // Active Tab: 'parties' | 'brokers' | 'cashbook'
+  const [activeTab, setActiveTab] = useState<'parties' | 'brokers' | 'cashbook'>('parties');
 
-  // Parties & Brokers State
-  const [parties, setParties] = useState<LedgerParty[]>([]);
-  const [partyTxs, setPartyTxs] = useState<PartyTransaction[]>([]);
-  const [brokers, setBrokers] = useState<LedgerBroker[]>([]);
-  const [brokerTxs, setBrokerTxs] = useState<BrokerTransaction[]>([]);
+  // Accounts & Entries State
+  const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
+  const [allEntries, setAllEntries] = useState<LedgerEntry[]>([]);
+  const [cashEntries, setCashEntries] = useState<CashEntry[]>([]);
+  const [settings, setSettings] = useState<KhataSettings>({});
 
-  // Search query
+  // Account Detail View State
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [entriesLimit, setEntriesLimit] = useState<number>(50);
+
+  // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'get' | 'give' | 'overdue'>('all');
+  const [sortBy, setSortBy] = useState<'recent' | 'name' | 'balance'>('recent');
 
   // Modals
-  const [showAddPartyModal, setShowAddPartyModal] = useState(false);
-  const [showAddPartyTxModal, setShowAddPartyTxModal] = useState<string | null>(null); // partyId
-  const [selectedPartyHistory, setSelectedPartyHistory] = useState<string | null>(null); // partyId
+  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<LedgerAccount | null>(null);
+  const [showAddEntryModal, setShowAddEntryModal] = useState<'gave' | 'got' | null>(null);
+  const [editingEntry, setEditingEntry] = useState<LedgerEntry | null>(null);
+  const [showReminderModal, setShowReminderModal] = useState<LedgerAccount | null>(null);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showAddCashModal, setShowAddCashModal] = useState<'in' | 'out' | null>(null);
+  const [editingCashEntry, setEditingCashEntry] = useState<CashEntry | null>(null);
 
-  const [showAddBrokerModal, setShowAddBrokerModal] = useState(false);
-  const [showAddBrokerTxModal, setShowAddBrokerTxModal] = useState<string | null>(null); // brokerId
-  const [selectedBrokerHistory, setSelectedBrokerHistory] = useState<string | null>(null); // brokerId
+  // Undo Snackbar State (5 seconds)
+  const [undoItem, setUndoItem] = useState<{
+    type: 'entry' | 'cash';
+    item: LedgerEntry | CashEntry;
+    timeoutId: any;
+  } | null>(null);
 
-  const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
-  const [showAddIncomeModal, setShowAddIncomeModal] = useState(false);
+  // Security / PIN Lock State
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [lockoutRemaining, setLockoutRemaining] = useState<number>(0);
 
-  // Form states - Party
-  const [partyName, setPartyName] = useState('');
-  const [partyPhone, setPartyPhone] = useState('');
-  const [partyCity, setPartyCity] = useState('');
-  const [partyOpeningBal, setPartyOpeningBal] = useState('0');
+  // Cashbook Date State
+  const [selectedCashDate, setSelectedCashDate] = useState<string>(
+    () => new Date().toISOString().split('T')[0]
+  );
 
-  // Form states - Party Transaction
-  const [txType, setTxType] = useState<'debit' | 'credit'>('debit');
-  const [txAmount, setTxAmount] = useState('');
-  const [txDescription, setTxDescription] = useState('');
-  const [txRefNo, setTxRefNo] = useState('');
-  const [txVehicleNo, setTxVehicleNo] = useState('');
+  // Pending Documents Banner (for authorised accounts)
+  const [pendingDocs, setPendingDocs] = useState<PendingDocBalance[]>([]);
+  const [dismissPendingBanner, setDismissPendingBanner] = useState(false);
 
-  // Form states - Broker
-  const [brokerName, setBrokerName] = useState('');
-  const [brokerPhone, setBrokerPhone] = useState('');
-  const [brokerCity, setBrokerCity] = useState('');
+  // Refresh data from storage
+  const reloadData = () => {
+    const accs = getLedgerAccounts();
+    const ents = getAllLedgerEntries();
+    const cash = getAllCashEntries();
+    const setts = getKhataSettings();
 
-  // Form states - Broker Transaction
-  const [bLoadDesc, setBLoadDesc] = useState('');
-  const [bVehicleNo, setBVehicleNo] = useState('');
-  const [bFreightAmt, setBFreightAmt] = useState('');
-  const [bCommission, setBCommission] = useState('');
-  const [bStatus, setBStatus] = useState<'paid' | 'unpaid'>('unpaid');
+    setAccounts(accs);
+    setAllEntries(ents);
+    setCashEntries(cash);
+    setSettings(setts);
 
-  // Form states - Vehicle Expense / Income
-  const [selectedVehicle, setSelectedVehicle] = useState<string>('all');
-  const [expVehicleNo, setExpVehicleNo] = useState<string>('');
-  const [expCategory, setExpCategory] = useState<'fuel' | 'toll' | 'repair' | 'challan' | 'driver' | 'other'>('fuel');
-  const [expAmount, setExpAmount] = useState<string>('');
-  const [expDesc, setExpDesc] = useState<string>('');
-
-  const [incVehicleNo, setIncVehicleNo] = useState<string>('');
-  const [incAmount, setIncAmount] = useState<string>('');
-  const [incPartyName, setIncPartyName] = useState<string>('');
-  const [incDesc, setIncDesc] = useState<string>('');
-
-  // Date range filter for Profit/Loss
-  const [dateRangeType, setDateRangeType] = useState<'today' | 'week' | 'month' | 'custom' | 'all'>('month');
-  const [customStart, setCustomStart] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().slice(0, 10);
-  });
-  const [customEnd, setCustomEnd] = useState<string>(() => new Date().toISOString().slice(0, 10));
-
-  // Notification / Feedback toast
-  const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
-
-  const showToast = (msg: string) => {
-    setFeedbackToast(msg);
-    setTimeout(() => setFeedbackToast(null), 3500);
-  };
-
-  // Initial load & automatic bilty sync if authorized
-  const refreshData = () => {
-    syncFreightRecordsToLedger(isBiltyAuthorized);
-    setParties(getStoredParties());
-    setPartyTxs(getStoredPartyTransactions());
-    setBrokers(getStoredBrokers());
-    setBrokerTxs(getStoredBrokerTransactions());
+    if (isBiltyAuthorized) {
+      setPendingDocs(getPendingDocumentBalances(isBiltyAuthorized));
+    }
   };
 
   useEffect(() => {
-    refreshData();
-    fetchLedgerDataFromFirestore().then(() => {
-      refreshData();
-    });
+    reloadData();
   }, [isBiltyAuthorized]);
 
-  // Top Parties Ranking
-  const topParties = useMemo(() => {
-    return getTopPartiesRanking(5);
-  }, [parties, partyTxs]);
+  // Handle PIN Lock Initialization & Auto-Lock on Backgrounding
+  useEffect(() => {
+    const currSettings = getKhataSettings();
+    if (!currSettings.pinHash) {
+      setIsUnlocked(true);
+      return;
+    }
 
-  // Filtered Parties
-  const filteredParties = useMemo(() => {
-    if (!searchQuery.trim()) return parties;
-    const q = searchQuery.toLowerCase().trim();
-    return parties.filter(p => p.name.toLowerCase().includes(q) || (p.city && p.city.toLowerCase().includes(q)) || (p.phone && p.phone.includes(q)));
-  }, [parties, searchQuery]);
+    if (currSettings.pinLockoutUntil && Date.now() < currSettings.pinLockoutUntil) {
+      const remainingSec = Math.ceil((currSettings.pinLockoutUntil - Date.now()) / 1000);
+      setLockoutRemaining(remainingSec);
+    }
 
-  // Filtered Brokers
-  const filteredBrokers = useMemo(() => {
-    if (!searchQuery.trim()) return brokers;
-    const q = searchQuery.toLowerCase().trim();
-    return brokers.filter(b => b.name.toLowerCase().includes(q) || (b.city && b.city.toLowerCase().includes(q)) || (b.phone && b.phone.includes(q)));
-  }, [brokers, searchQuery]);
+    let backgroundTimestamp = 0;
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        backgroundTimestamp = Date.now();
+      } else {
+        if (backgroundTimestamp > 0 && Date.now() - backgroundTimestamp > 30000) {
+          const fresh = getKhataSettings();
+          if (fresh.pinHash) {
+            setIsUnlocked(false);
+            setPinInput('');
+          }
+        }
+      }
+    };
 
-  // Vehicle Profit/Loss Summary
-  const pnlSummary = useMemo(() => {
-    return calculateVehicleProfitLoss(
-      selectedVehicle,
-      dateRangeType,
-      customStart,
-      customEnd,
-      trips
-    );
-  }, [selectedVehicle, dateRangeType, customStart, customEnd, trips, parties]);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
-  // Handlers - Party
-  const handleCreateParty = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!partyName.trim()) return;
+  // Lockout countdown timer
+  useEffect(() => {
+    if (lockoutRemaining <= 0) return;
+    const timer = setInterval(() => {
+      setLockoutRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lockoutRemaining]);
 
-    const opBal = parseFloat(partyOpeningBal) || 0;
-    const newP = saveOrUpdateParty({
-      name: partyName.trim(),
-      phone: partyPhone.trim(),
-      city: partyCity.trim(),
-      runningBalance: opBal,
-      totalCharged: opBal > 0 ? opBal : 0,
-      totalReceived: opBal < 0 ? Math.abs(opBal) : 0
-    });
+  // Handle PIN Submit
+  const handlePinSubmit = async (pinAttempt: string) => {
+    const currSettings = getKhataSettings();
+    if (!currSettings.pinHash || !currSettings.pinSalt) {
+      setIsUnlocked(true);
+      return;
+    }
 
-    if (opBal !== 0) {
-      addPartyTransaction({
-        partyId: newP.id,
-        date: new Date().toISOString().slice(0, 10),
-        type: opBal > 0 ? 'debit' : 'credit',
-        amount: Math.abs(opBal),
-        description: isUrdu ? 'ابتدائی بقایا کھاتہ (Opening Balance)' : 'Opening Balance',
-        source: 'manual'
+    if (isPinLocked(currSettings.pinLockoutUntil)) {
+      setPinError(isUrdu ? 'کھاتہ لاک ہے۔ برائے مہربانی انتظار کریں۔' : 'Khata is locked. Please wait.');
+      return;
+    }
+
+    const isMatch = await verifyPin(pinAttempt, currSettings.pinSalt, currSettings.pinHash);
+    if (isMatch) {
+      saveKhataSettings({ pinFailedAttempts: 0, pinLockoutUntil: 0 });
+      setIsUnlocked(true);
+      setPinError('');
+      setPinInput('');
+    } else {
+      const failed = (currSettings.pinFailedAttempts || 0) + 1;
+      const lockoutSec = calculateLockoutDuration(failed);
+      const lockoutUntil = lockoutSec > 0 ? Date.now() + lockoutSec * 1000 : 0;
+
+      saveKhataSettings({ pinFailedAttempts: failed, pinLockoutUntil: lockoutUntil });
+      setPinInput('');
+
+      if (lockoutSec > 0) {
+        setLockoutRemaining(lockoutSec);
+        setPinError(
+          isUrdu
+            ? `5 سے زائد غلط کوششیں! کھاتہ ${lockoutSec} سیکنڈ کے لیے لاک ہو گیا ہے۔`
+            : `Too many failed attempts! Locked for ${lockoutSec}s.`
+        );
+      } else {
+        setPinError(
+          isUrdu
+            ? `غلط پن کوڈ! باقی کوششیں: ${5 - failed}`
+            : `Incorrect PIN! Attempts remaining: ${5 - failed}`
+        );
+      }
+    }
+  };
+
+  // Filtered Accounts
+  const currentKind = activeTab === 'parties' ? 'party' : 'broker';
+  const filteredAccounts = useMemo(() => {
+    if (activeTab === 'cashbook') return [];
+
+    let list = accounts.filter(a => a.kind === currentKind);
+    const today = new Date().toISOString().split('T')[0];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        a => a.name.toLowerCase().includes(q) || (a.phone && a.phone.includes(q))
+      );
+    }
+
+    if (filterType !== 'all') {
+      list = list.filter(a => {
+        const { balance } = calculateAccountBalance(
+          a,
+          allEntries.filter(e => e.accountId === a.id)
+        );
+        if (filterType === 'get') return balance > 0;
+        if (filterType === 'give') return balance < 0;
+        if (filterType === 'overdue') return a.dueDate && a.dueDate <= today && balance > 0;
+        return true;
       });
     }
 
-    setPartyName('');
-    setPartyPhone('');
-    setPartyCity('');
-    setPartyOpeningBal('0');
-    setShowAddPartyModal(false);
-    refreshData();
-    showToast(isUrdu ? 'نئی پارٹی کھاتہ میں کامیابی سے شامل ہو گئی!' : 'Party added successfully!');
-  };
-
-  const handleAddPartyTx = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!showAddPartyTxModal) return;
-    const amt = parseFloat(txAmount);
-    if (!amt || amt <= 0) return;
-
-    addPartyTransaction({
-      partyId: showAddPartyTxModal,
-      date: new Date().toISOString().slice(0, 10),
-      type: txType,
-      amount: amt,
-      description: txDescription.trim() || (txType === 'debit' ? (isUrdu ? 'کرایہ / بل' : 'Freight/Bill') : (isUrdu ? 'رقم وصولی' : 'Payment Received')),
-      referenceNo: txRefNo.trim(),
-      vehicleNo: txVehicleNo.trim(),
-      source: 'manual'
+    list.sort((a, b) => {
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      }
+      if (sortBy === 'balance') {
+        const balA = Math.abs(calculateAccountBalance(a, allEntries.filter(e => e.accountId === a.id)).balance);
+        const balB = Math.abs(calculateAccountBalance(b, allEntries.filter(e => e.accountId === b.id)).balance);
+        return balB - balA;
+      }
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
 
-    setTxAmount('');
-    setTxDescription('');
-    setTxRefNo('');
-    setTxVehicleNo('');
-    setShowAddPartyTxModal(null);
-    refreshData();
-    showToast(isUrdu ? 'کھاتہ اندراج کامیابی سے محفوظ ہو گیا!' : 'Entry recorded successfully!');
-  };
+    return list;
+  }, [accounts, allEntries, activeTab, currentKind, searchQuery, filterType, sortBy]);
 
-  // Handlers - Broker
-  const handleCreateBroker = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!brokerName.trim()) return;
+  // Overall Accounts Summary
+  const accountsSummary = useMemo(() => {
+    const list = accounts.filter(a => a.kind === currentKind);
+    return calculateAccountsSummary(list, allEntries);
+  }, [accounts, allEntries, currentKind]);
 
-    saveOrUpdateBroker({
-      name: brokerName.trim(),
-      phone: brokerPhone.trim(),
-      city: brokerCity.trim(),
-      totalCommission: 0,
-      unpaidCommission: 0
-    });
+  // Selected Account Object
+  const selectedAccount = useMemo(() => {
+    if (!selectedAccountId) return null;
+    return accounts.find(a => a.id === selectedAccountId) || null;
+  }, [accounts, selectedAccountId]);
 
-    setBrokerName('');
-    setBrokerPhone('');
-    setBrokerCity('');
-    setShowAddBrokerModal(false);
-    refreshData();
-    showToast(isUrdu ? 'نیا بروکر کامیابی سے درج ہو گیا!' : 'Broker added successfully!');
-  };
+  // Selected Account Entries
+  const selectedAccountEntries = useMemo(() => {
+    if (!selectedAccountId) return [];
+    return getLedgerEntries(selectedAccountId);
+  }, [selectedAccountId, allEntries]);
 
-  const handleAddBrokerTx = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!showAddBrokerTxModal) return;
-    const comm = parseFloat(bCommission);
-    if (isNaN(comm) || comm <= 0) return;
+  // Selected Account Balance Details
+  const selectedAccountBalance = useMemo(() => {
+    if (!selectedAccount) return { balance: 0, totalGave: 0, totalGot: 0, status: 'settled' as const };
+    return calculateAccountBalance(selectedAccount, selectedAccountEntries);
+  }, [selectedAccount, selectedAccountEntries]);
 
-    addBrokerTransaction({
-      brokerId: showAddBrokerTxModal,
-      date: new Date().toISOString().slice(0, 10),
-      loadDescription: bLoadDesc.trim() || (isUrdu ? 'عام مال برداری لوڈ' : 'General Cargo Load'),
-      vehicleNo: bVehicleNo.trim(),
-      freightAmount: parseFloat(bFreightAmt) || 0,
-      commission: comm,
-      status: bStatus
-    });
+  // Date-grouped transactions for Account Detail
+  const groupedAccountEntries = useMemo(() => {
+    const groups: { date: string; entries: LedgerEntry[] }[] = [];
+    const dateMap = new Map<string, LedgerEntry[]>();
 
-    setBLoadDesc('');
-    setBVehicleNo('');
-    setBFreightAmt('');
-    setBCommission('');
-    setShowAddBrokerTxModal(null);
-    refreshData();
-    showToast(isUrdu ? 'بروکر لوڈ اندراج محفوظ ہو گیا!' : 'Broker load entry recorded!');
-  };
-
-  // Handlers - Vehicle Expense
-  const handleAddVehicleExpense = (e: React.FormEvent) => {
-    e.preventDefault();
-    const amt = parseFloat(expAmount);
-    if (!amt || amt <= 0) return;
-    const vNo = expVehicleNo.trim() || (vehicles.length > 0 ? vehicles[0].reg : 'LHR-7860');
-
-    addVehicleExpense({
-      vehicleNo: vNo,
-      date: new Date().toISOString().slice(0, 10),
-      category: expCategory,
-      amount: amt,
-      description: expDesc.trim() || (isUrdu ? 'گاڑی کا خرچہ' : 'Vehicle Expense'),
-      source: 'manual'
-    });
-
-    setExpAmount('');
-    setExpDesc('');
-    setShowAddExpenseModal(false);
-    refreshData();
-    showToast(isUrdu ? 'گاڑی کا خرچہ کامیابی سے درج ہو گیا!' : 'Expense recorded successfully!');
-  };
-
-  // Handlers - Vehicle Income
-  const handleAddVehicleIncome = (e: React.FormEvent) => {
-    e.preventDefault();
-    const amt = parseFloat(incAmount);
-    if (!amt || amt <= 0) return;
-    const vNo = incVehicleNo.trim() || (vehicles.length > 0 ? vehicles[0].reg : 'LHR-7860');
-
-    addVehicleIncome({
-      vehicleNo: vNo,
-      date: new Date().toISOString().slice(0, 10),
-      amount: amt,
-      partyName: incPartyName.trim(),
-      description: incDesc.trim() || (isUrdu ? 'کرایہ آمدن' : 'Freight Income'),
-      source: 'manual'
-    });
-
-    setIncAmount('');
-    setIncPartyName('');
-    setIncDesc('');
-    setShowAddIncomeModal(false);
-    refreshData();
-    showToast(isUrdu ? 'گاڑی کی آمدن کامیابی سے درج ہو گئی!' : 'Income recorded successfully!');
-  };
-
-  // WhatsApp & Phone Calling
-  const handleSendPartyWhatsApp = (party: LedgerParty) => {
-    const text = formatPartyWhatsAppReminder(party, lang);
-    const clean = getCleanPhoneForWhatsApp(party.phone);
-    const url = clean 
-      ? `https://api.whatsapp.com/send?phone=${clean}&text=${encodeURIComponent(text)}`
-      : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    try {
-      window.open(url, '_blank');
-    } catch {
-      window.location.href = url;
+    const paged = selectedAccountEntries.slice(0, entriesLimit);
+    for (const entry of paged) {
+      const list = dateMap.get(entry.date) || [];
+      list.push(entry);
+      dateMap.set(entry.date, list);
     }
-  };
 
-  const handleSendBrokerWhatsApp = (broker: LedgerBroker, tx?: BrokerTransaction) => {
-    const text = formatBrokerWhatsAppReminder(broker, tx, lang);
-    const clean = getCleanPhoneForWhatsApp(broker.phone);
-    const url = clean 
-      ? `https://api.whatsapp.com/send?phone=${clean}&text=${encodeURIComponent(text)}`
-      : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    try {
-      window.open(url, '_blank');
-    } catch {
-      window.location.href = url;
+    for (const [date, entries] of dateMap.entries()) {
+      groups.push({ date, entries });
     }
+
+    return groups;
+  }, [selectedAccountEntries, entriesLimit]);
+
+  // Cashbook summary for selected date
+  const dayCashSummary = useMemo(() => {
+    return calculateDayCashSummary(selectedCashDate, cashEntries);
+  }, [selectedCashDate, cashEntries]);
+
+  const selectedDayCashList = useMemo(() => {
+    return getCashEntries(selectedCashDate);
+  }, [selectedCashDate, cashEntries]);
+
+  // 5-Second Undo Handler
+  const triggerUndo = (type: 'entry' | 'cash', item: LedgerEntry | CashEntry) => {
+    if (undoItem?.timeoutId) clearTimeout(undoItem.timeoutId);
+
+    const timeoutId = setTimeout(() => {
+      setUndoItem(null);
+    }, 5000);
+
+    setUndoItem({ type, item, timeoutId });
   };
 
-  const handleDirectCall = (phone?: string) => {
-    if (!phone) return;
-    window.location.href = `tel:${phone.replace(/[^0-9+]/g, '')}`;
+  const handleExecuteUndo = () => {
+    if (!undoItem) return;
+    clearTimeout(undoItem.timeoutId);
+    if (undoItem.type === 'entry') {
+      restoreLedgerEntry(undoItem.item as LedgerEntry);
+    } else {
+      restoreCashEntry(undoItem.item as CashEntry);
+    }
+    setUndoItem(null);
+    reloadData();
   };
 
-  return (
-    <div className="w-full max-w-5xl mx-auto px-3 sm:px-4 py-4 space-y-4">
-      {/* Header Banner */}
-      <div className="bg-[#162A4D] text-white p-4 sm:p-5 rounded-3xl shadow-md flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20">
-            <BookOpen className="w-6 h-6 text-amber-400" />
+  // Import All Pending Documents
+  const handleImportAllPendingDocs = () => {
+    for (const docItem of pendingDocs) {
+      importPendingDocumentToKhata(docItem);
+    }
+    setDismissPendingBanner(true);
+    reloadData();
+  };
+
+  // ----------------- RENDER: PIN LOCK SCREEN -----------------
+  if (!isUnlocked && settings.pinHash) {
+    return (
+      <div className="min-h-[85vh] flex items-center justify-center p-3 sm:p-4">
+        <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[28px] sm:rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200 dark:border-slate-800 text-center">
+          <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-200 dark:border-emerald-800 shadow-inner">
+            <Lock className="w-8 h-8" />
           </div>
-          <div>
-            <h1 className="text-lg sm:text-xl font-black flex items-center gap-2">
-              <span>{isUrdu ? 'حساب کتاب و لیجر سسٹم' : 'Ledger & Account System'}</span>
-              <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/40 px-2 py-0.5 rounded-full font-bold">
-                {isUrdu ? 'مفت و محفوظ' : 'Free & Secure'}
-              </span>
-            </h1>
-            <p className="text-xs text-white/80">
-              {isUrdu 
-                ? 'پارٹی کھاتہ، بروکر کمیشن، گاڑیوں کا نفع و نقصان اور رسید اسکیننگ' 
-                : 'Party Ledger, Broker Commission, Vehicle Profit/Loss & Receipt OCR'}
-            </p>
+
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
+            {isUrdu ? 'کھاتہ پن لاک' : 'Khata PIN Lock'}
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
+            {isUrdu ? 'محفوظ کھاتہ دیکھنے کے لیے 4 ہندسوں کا پن کوڈ درج کریں' : 'Enter 4-digit PIN to access private ledger'}
+          </p>
+
+          {/* Dots Indicator */}
+          <div className="flex justify-center gap-3.5 mb-6">
+            {[0, 1, 2, 3].map(idx => (
+              <div
+                key={idx}
+                className={`w-4 h-4 rounded-full border-2 transition-all duration-150 ${
+                  pinInput.length > idx
+                    ? 'bg-emerald-500 border-emerald-500 scale-125'
+                    : 'border-slate-300 dark:border-slate-700 bg-transparent'
+                }`}
+              />
+            ))}
+          </div>
+
+          {pinError && (
+            <div className="mb-4 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 p-3 rounded-2xl border border-rose-200 dark:border-rose-900/50">
+              {pinError}
+            </div>
+          )}
+
+          {/* Touch-Optimized Numeric Keypad (Ergonomic minimum 52px height) */}
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-3 mb-6 max-w-[280px] mx-auto select-none">
+            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
+              <button
+                key={num}
+                type="button"
+                disabled={lockoutRemaining > 0}
+                onClick={() => {
+                  if (pinInput.length < 4) {
+                    const next = pinInput + num;
+                    setPinInput(next);
+                    if (next.length === 4) handlePinSubmit(next);
+                  }
+                }}
+                className="h-14 sm:h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xl font-black text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 active:bg-emerald-100 dark:active:bg-emerald-950 transition-all disabled:opacity-40"
+              >
+                {num}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={lockoutRemaining > 0 || pinInput.length === 0}
+              onClick={() => setPinInput('')}
+              className="h-14 sm:h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all disabled:opacity-40"
+            >
+              {isUrdu ? 'صاف' : 'Clear'}
+            </button>
+            <button
+              type="button"
+              disabled={lockoutRemaining > 0}
+              onClick={() => {
+                if (pinInput.length < 4) {
+                  const next = pinInput + '0';
+                  setPinInput(next);
+                  if (next.length === 4) handlePinSubmit(next);
+                }
+              }}
+              className="h-14 sm:h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xl font-black text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all disabled:opacity-40"
+            >
+              0
+            </button>
+            <button
+              type="button"
+              disabled={lockoutRemaining > 0 || pinInput.length === 0}
+              onClick={() => setPinInput(prev => prev.slice(0, -1))}
+              className="h-14 sm:h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all disabled:opacity-40 flex items-center justify-center"
+            >
+              <Delete className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Reset Link */}
+          <button
+            type="button"
+            onClick={() => {
+              if (auth.currentUser) {
+                if (window.confirm(isUrdu ? 'گوگل اکاؤنٹ کی تصدیق کے ساتھ پن لاک ختم کریں؟' : 'Reset PIN lock with Google authentication?')) {
+                  saveKhataSettings({ pinHash: '', pinSalt: '', pinFailedAttempts: 0, pinLockoutUntil: 0 });
+                  setIsUnlocked(true);
+                }
+              } else {
+                if (window.confirm(isUrdu ? 'کیا آپ اس ڈیوائس پر پن لاک غیر فعال کرنا چاہتے ہیں؟' : 'Disable Khata PIN lock on this device?')) {
+                  saveKhataSettings({ pinHash: '', pinSalt: '', pinFailedAttempts: 0, pinLockoutUntil: 0 });
+                  setIsUnlocked(true);
+                }
+              }
+            }}
+            className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold hover:underline min-h-[44px] flex items-center justify-center mx-auto"
+          >
+            {isUrdu ? 'پن کوڈ بھول گئے؟ ری سیٹ کریں' : 'Forgot PIN? Reset Lock'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ----------------- RENDER: ACCOUNT DETAIL VIEW -----------------
+  if (selectedAccount) {
+    const isParty = selectedAccount.kind === 'party';
+    const gaveLabel = isParty
+      ? isUrdu ? 'آپ نے دیا' : 'You Gave'
+      : isUrdu ? 'ادائیگی کی' : 'Paid';
+    const gotLabel = isParty
+      ? isUrdu ? 'آپ کو ملا' : 'You Got'
+      : isUrdu ? 'کمیشن واجب الادا' : 'Commission Due';
+
+    const hasMoreEntries = selectedAccountEntries.length > entriesLimit;
+
+    return (
+      <div className="w-full max-w-4xl mx-auto px-2 sm:px-4 flex flex-col h-[calc(100dvh-4.25rem)] overflow-hidden">
+        {/* Sticky Mobile App Bar */}
+        <div className="shrink-0 -mx-2 sm:-mx-4 px-3 sm:px-4 py-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2 mb-2">
+          <button
+            type="button"
+            onClick={() => setSelectedAccountId(null)}
+            className="min-h-[44px] min-w-[44px] flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-bold active:scale-95 transition-all"
+          >
+            <ChevronLeft className={`w-5 h-5 ${isUrdu ? 'rotate-180' : ''}`} />
+            <span>{isUrdu ? 'کھاتہ فہرست' : 'Back'}</span>
+          </button>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={async () => {
+                const { doc, filename } = generateAccountStatementPdf({
+                  account: selectedAccount,
+                  entries: selectedAccountEntries,
+                  businessName: settings.businessName
+                });
+                await downloadOrSharePdf(doc, filename);
+              }}
+              title={isUrdu ? 'کھاتہ پی ڈی ایف ڈاؤن لوڈ یا شیئر کریں' : 'Download/Share Statement PDF'}
+              className="min-h-[44px] px-3.5 py-1.5 rounded-2xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden xs:inline">{isUrdu ? 'پی ڈی ایف' : 'PDF'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowReminderModal(selectedAccount)}
+              className="min-h-[44px] px-3.5 py-1.5 rounded-2xl bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
+            >
+              <Phone className="w-4 h-4" />
+              <span>{isUrdu ? 'یاد دہانی' : 'Remind'}</span>
+            </button>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            refreshData();
-            showToast(isUrdu ? 'کھاتہ کا تازہ ترین ڈیٹا لوڈ ہو گیا' : 'Ledger synced');
-          }}
-          className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white transition-all cursor-pointer border border-white/20 shrink-0"
-          title={isUrdu ? 'تازہ کریں' : 'Refresh'}
-        >
-          <RotateCcw className="w-4 h-4" />
-        </button>
+        {/* Scrollable Account Content (Hero + Transactions) */}
+        <div className="flex-1 overflow-y-auto overscroll-contain pb-28 pr-0.5 space-y-3.5">
+          {/* Hero Account Summary Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-3xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                  {selectedAccount.kind === 'broker' ? (isUrdu ? 'بروکر / کمیشن ایجنٹ' : 'Broker') : (isUrdu ? 'کسٹمر / پارٹی' : 'Party')}
+                </span>
+                {selectedAccount.dueDate && (
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {isUrdu ? `تاریخ: ${selectedAccount.dueDate}` : `Due: ${selectedAccount.dueDate}`}
+                  </span>
+                )}
+              </div>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+                {selectedAccount.name}
+              </h1>
+              {selectedAccount.phone && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                  📞 {formatPhoneForDisplay(selectedAccount.phone)}
+                </p>
+              )}
+            </div>
+
+            {/* Large Balance Display */}
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
+                {selectedAccountBalance.balance > 0
+                  ? (isUrdu ? 'آپ کو ملنا ہے (وصولی)' : "You will get (Receivable)")
+                  : selectedAccountBalance.balance < 0
+                  ? (isUrdu ? 'آپ کو دینا ہے (واجب الادا)' : "You will give (Payable)")
+                  : (isUrdu ? 'حساب بیباق ہے' : 'Settled Balance')}
+              </span>
+              <div
+                className={`text-2xl sm:text-3xl font-black tracking-tight ${
+                  selectedAccountBalance.balance > 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : selectedAccountBalance.balance < 0
+                    ? 'text-rose-600 dark:text-rose-400'
+                    : 'text-slate-700 dark:text-slate-300'
+                }`}
+              >
+                PKR {Math.abs(selectedAccountBalance.balance).toLocaleString('en-US')}
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Edit/Delete Actions */}
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+            <span className="text-slate-400">
+              {isUrdu ? `کل ٹرانزیکشنز: ${selectedAccountEntries.length}` : `Entries: ${selectedAccountEntries.length}`}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingAccount(selectedAccount);
+                  setShowAddAccountModal(true);
+                }}
+                className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-bold p-1.5"
+              >
+                {isUrdu ? 'کھاتہ تبدیل کریں' : 'Edit Account'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(isUrdu ? `کیا آپ واقعی "${selectedAccount.name}" کا کھاتہ حذف کرنا چاہتے ہیں؟` : `Delete account "${selectedAccount.name}"?`)) {
+                    deleteLedgerAccount(selectedAccount.id);
+                    setSelectedAccountId(null);
+                    reloadData();
+                  }
+                }}
+                className="text-rose-600 dark:text-rose-400 font-bold p-1.5 hover:underline"
+              >
+                {isUrdu ? 'کھاتہ حذف کریں' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Transactions Section Grouped by Date */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+              <BookOpen className="w-4 h-4 text-emerald-600" />
+              {isUrdu ? 'لین دین کی تفصیل' : 'Transactions'}
+            </h3>
+            <span className="text-[11px] text-slate-400">
+              {isUrdu ? 'حالیہ اندراج اوپر ہے' : 'Latest on top'}
+            </span>
+          </div>
+
+          {selectedAccountEntries.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-10 border border-slate-200 dark:border-slate-800 text-center">
+              <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400">
+                <FileText className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                {isUrdu ? 'ابھی کوئی لین دین درج نہیں ہے' : 'No transactions recorded yet'}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                {isUrdu ? 'نیچے بٹن کے ذریعے رقم کا اندراج کریں' : 'Tap the action buttons below to record an entry'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {groupedAccountEntries.map(group => {
+                const todayStr = new Date().toISOString().split('T')[0];
+                const isToday = group.date === todayStr;
+
+                return (
+                  <div key={group.date} className="space-y-2">
+                    {/* Date Divider Badge */}
+                    <div className="flex items-center justify-center">
+                      <span className="text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase tracking-wide">
+                        {isToday ? (isUrdu ? 'آج' : 'Today') : group.date}
+                      </span>
+                    </div>
+
+                    {group.entries.map(entry => {
+                      const isGave = entry.type === 'gave';
+                      return (
+                        <div
+                          key={entry.id}
+                          className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center justify-between gap-3"
+                        >
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div
+                              className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                                isGave
+                                  ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
+                                  : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
+                              }`}
+                            >
+                              {isGave ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownLeft className="w-5 h-5" />}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`text-[11px] font-extrabold px-2 py-0.5 rounded-lg ${
+                                    isGave
+                                      ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+                                      : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                  }`}
+                                >
+                                  {isGave ? gaveLabel : gotLabel}
+                                </span>
+                              </div>
+                              {entry.note && (
+                                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 mt-1 truncate">
+                                  {entry.note}
+                                </p>
+                              )}
+                              {entry.source === 'auto' && (
+                                <span className="inline-block text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
+                                  ⚡ {isUrdu ? 'دستاویز سے منسلک' : 'Auto-linked'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <div
+                              className={`text-base font-black ${
+                                isGave ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                              }`}
+                            >
+                              {isGave ? '-' : '+'} PKR {entry.amount.toLocaleString('en-US')}
+                            </div>
+                            <div className="flex items-center justify-end gap-3 mt-1 text-xs">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingEntry(entry);
+                                  setShowAddEntryModal(entry.type);
+                                }}
+                                className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-semibold"
+                              >
+                                {isUrdu ? 'تبدیل' : 'Edit'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const deleted = deleteLedgerEntry(entry.id);
+                                  if (deleted) {
+                                    triggerUndo('entry', deleted);
+                                    reloadData();
+                                  }
+                                }}
+                                className="text-rose-500 hover:text-rose-700 font-semibold"
+                              >
+                                {isUrdu ? 'حذف' : 'Delete'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+
+              {hasMoreEntries && (
+                <div className="text-center pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setEntriesLimit(prev => prev + 50)}
+                    className="min-h-[44px] px-5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 active:scale-95 transition-all"
+                  >
+                    {isUrdu ? 'مزید لوڈ کریں (50 مزید)' : 'Load More Entries'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        </div>
+
+        {/* Sticky Tactile Bottom Action Bar with Safe-Area Inset */}
+        <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-30 shadow-2xl pb-[max(env(safe-area-inset-bottom),0.85rem)]">
+          <div className="max-w-4xl mx-auto grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingEntry(null);
+                setShowAddEntryModal('gave');
+              }}
+              className="min-h-[50px] sm:min-h-[54px] py-3 px-4 rounded-2xl bg-rose-600 hover:bg-rose-700 active:scale-[0.97] text-white font-black text-sm sm:text-base shadow-lg shadow-rose-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <ArrowUpRight className="w-5 h-5" />
+              <span>{gaveLabel}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingEntry(null);
+                setShowAddEntryModal('got');
+              }}
+              className="min-h-[50px] sm:min-h-[54px] py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.97] text-white font-black text-sm sm:text-base shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <ArrowDownLeft className="w-5 h-5" />
+              <span>{gotLabel}</span>
+            </button>
+          </div>
+        </div>
+
+        {renderEntryModal()}
+        {renderReminderModal()}
+        {renderUndoSnackbar()}
+      </div>
+    );
+  }
+
+  // ----------------- RENDER: MAIN LIST & TABS -----------------
+  return (
+    <div className="w-full max-w-4xl mx-auto px-2 sm:px-4 flex flex-col h-[calc(100dvh-4.25rem)] overflow-hidden">
+      {/* Top Header Bar */}
+      <div className="flex items-center justify-between pt-1.5 pb-1 mb-2 shrink-0">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <BookOpen className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-600 shrink-0" />
+            <span>{isUrdu ? 'ڈیجیٹل کھاتہ' : 'Digital Khata'}</span>
+          </h1>
+          <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+            {settings.businessName ? `${settings.businessName} • ` : ''}
+            {isUrdu ? 'آف لائن فرسٹ کاروباری حساب کتاب' : 'Offline-first business ledger & cashbook'}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {activeTab !== 'cashbook' && (
+            <button
+              type="button"
+              onClick={async () => {
+                const list = accounts.filter(a => a.kind === currentKind);
+                const { doc, filename } = generateAllAccountsSummaryPdf({
+                  accounts: list,
+                  allEntries,
+                  businessName: settings.businessName
+                });
+                await downloadOrSharePdf(doc, filename);
+              }}
+              title={isUrdu ? 'مکمل رپورٹ پی ڈی ایف ڈاؤن لوڈ کریں' : 'Download All Accounts Summary PDF'}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 active:scale-95 transition-all"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowSettingsModal(true)}
+            title={isUrdu ? 'کھاتہ سیٹنگز، پن لاک اور بیک اپ' : 'Khata Settings, PIN Lock & Backup'}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 active:scale-95 transition-all"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      {/* Navigation Sub-Tabs */}
-      <div className="grid grid-cols-3 gap-2 p-1.5 bg-[#f0f0e4] rounded-2xl border border-[#d5d5c5]">
+      {/* Tabs List (Horizontal Swipe & Touch Friendly) */}
+      <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 mb-2.5 overflow-x-auto no-scrollbar scroll-smooth touch-pan-x shrink-0">
         <button
           type="button"
-          onClick={() => setSubTab('parties')}
-          className={`py-2.5 px-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            subTab === 'parties'
-              ? 'bg-[#162A4D] text-white shadow-xs'
-              : 'text-[#4a4a35] hover:bg-white/60'
+          onClick={() => setActiveTab('parties')}
+          className={`min-h-[44px] shrink-0 min-w-fit py-2 px-4 rounded-xl font-extrabold text-xs sm:text-sm whitespace-nowrap transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === 'parties'
+              ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <Users className="w-4 h-4" />
-          <span>{isUrdu ? 'پارٹی کھاتہ' : 'Party Ledger'}</span>
+          <span>👥</span>
+          <span>{isUrdu ? 'پارٹیاں' : 'Parties'}</span>
         </button>
 
         <button
           type="button"
-          onClick={() => setSubTab('brokers')}
-          className={`py-2.5 px-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            subTab === 'brokers'
-              ? 'bg-[#162A4D] text-white shadow-xs'
-              : 'text-[#4a4a35] hover:bg-white/60'
+          onClick={() => setActiveTab('brokers')}
+          className={`min-h-[44px] shrink-0 min-w-fit py-2 px-4 rounded-xl font-extrabold text-xs sm:text-sm whitespace-nowrap transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === 'brokers'
+              ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <Briefcase className="w-4 h-4" />
-          <span>{isUrdu ? 'بروکر کھاتہ' : 'Broker Ledger'}</span>
+          <span>🤝</span>
+          <span>{isUrdu ? 'بروکرز' : 'Brokers'}</span>
         </button>
 
         <button
           type="button"
-          onClick={() => setSubTab('vehicleProfitLoss')}
-          className={`py-2.5 px-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-            subTab === 'vehicleProfitLoss'
-              ? 'bg-[#162A4D] text-white shadow-xs'
-              : 'text-[#4a4a35] hover:bg-white/60'
+          onClick={() => setActiveTab('cashbook')}
+          className={`min-h-[44px] shrink-0 min-w-fit py-2 px-4 rounded-xl font-extrabold text-xs sm:text-sm whitespace-nowrap transition-all flex items-center justify-center gap-1.5 ${
+            activeTab === 'cashbook'
+              ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <TrendingUp className="w-4 h-4" />
-          <span>{isUrdu ? 'گاڑی نفع / نقصان' : 'Vehicle P&L'}</span>
+          <span>💵</span>
+          <span>{isUrdu ? 'روزنامچہ' : 'Cashbook'}</span>
         </button>
+
+        {/* 4th Reserved Tab Structure Slot */}
+        <div
+          title={isUrdu ? 'گاڑی نفع نقصان - جلد آرہا ہے' : 'Vehicle Profit/Loss - Coming Soon'}
+          className="min-h-[44px] shrink-0 min-w-fit py-2 px-4 rounded-xl font-semibold text-xs text-slate-400 dark:text-slate-600 cursor-not-allowed flex items-center justify-center gap-1.5 select-none whitespace-nowrap opacity-60"
+        >
+          <span>🚛</span>
+          <span>{isUrdu ? 'گاڑی P&L' : 'Vehicle P&L'}</span>
+        </div>
       </div>
 
-      {/* Toast Notification */}
-      {feedbackToast && (
-        <div className="bg-emerald-50 border-2 border-emerald-400 text-emerald-950 p-2.5 rounded-2xl text-xs font-bold text-center shadow-xs animate-in fade-in">
-          {feedbackToast}
+      {/* Main Scrollable Viewport (Banner + Tab Content) */}
+      <div className="flex-1 overflow-y-auto overscroll-contain pb-24 pr-0.5">
+
+      {/* Pending Documents Import Banner */}
+      {!dismissPendingBanner && pendingDocs.length > 0 && activeTab !== 'cashbook' && (
+        <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 rounded-2xl p-3 mb-3.5 flex items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200 truncate">
+                {isUrdu
+                  ? `${pendingDocs.length} دستاویزات کے بقایا جات دستیاب ہیں`
+                  : `${pendingDocs.length} pending document balance(s)`}
+              </p>
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-400 truncate">
+                {isUrdu ? 'کھاتہ میں شامل کریں' : 'Import receivables into Khata'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={handleImportAllPendingDocs}
+              className="min-h-[38px] px-3 py-1 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors shadow-sm active:scale-95"
+            >
+              {isUrdu ? 'شامل کریں' : 'Import'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDismissPendingBanner(true)}
+              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-lg text-emerald-700 dark:text-emerald-400"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* 1. PARTY LEDGER (کھاتہ پارٹی) */}
-      {/* ========================================================= */}
-      {subTab === 'parties' && (
-        <div className="space-y-4">
-          {/* Top Parties Ranking Widget (Feature Requirement #3) */}
-          {topParties.length > 0 && (
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 p-4 rounded-3xl shadow-xs space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs sm:text-sm font-black text-amber-950 flex items-center gap-1.5">
-                  <Crown className="w-4 h-4 text-amber-600" />
-                  <span>{isUrdu ? 'سب سے زیادہ کام کروانے والی ٹاپ پارٹیز (Top Parties Ranking)' : 'Top Parties by Charged Volume'}</span>
-                </span>
-                <span className="text-[10px] bg-amber-200/80 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-bold">
-                  {isUrdu ? 'کاروباری حجم' : 'Volume Share'}
-                </span>
+      {/* CASHBOOK TAB CONTENT */}
+      {activeTab === 'cashbook' ? (
+        renderCashbookView()
+      ) : (
+        /* PARTIES & BROKERS TAB CONTENT */
+        <>
+          {/* Two Prominent Summary Cards (Mobile High-Contrast) */}
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 mb-3.5">
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-2xl p-3.5 sm:p-4">
+              <span className="text-[11px] sm:text-xs font-bold text-emerald-800 dark:text-emerald-300 block mb-0.5">
+                {isUrdu ? 'آپ کو ملنا ہے (وصولی)' : 'You will get'}
+              </span>
+              <div className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+                PKR {accountsSummary.totalWillGet.toLocaleString('en-US')}
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {topParties.map((tp) => (
+            <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-2xl p-3.5 sm:p-4">
+              <span className="text-[11px] sm:text-xs font-bold text-rose-800 dark:text-rose-300 block mb-0.5">
+                {isUrdu ? 'آپ کو دینا ہے (واجب الادا)' : 'You will give'}
+              </span>
+              <div className="text-lg sm:text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight">
+                PKR {accountsSummary.totalWillGive.toLocaleString('en-US')}
+              </div>
+            </div>
+          </div>
+
+          {/* Search Bar & Desktop Add Button */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder={isUrdu ? 'نام یا فون نمبر تلاش کریں...' : 'Search by name or phone...'}
+                className="w-full pl-9 pr-9 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[44px]"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center absolute right-0 top-0 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEditingAccount(null);
+                setShowAddAccountModal(true);
+              }}
+              className="hidden sm:flex min-h-[44px] py-2.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm items-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95 transition-all shrink-0 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{currentKind === 'broker' ? (isUrdu ? 'نیا بروکر' : 'Add Broker') : (isUrdu ? 'نیا کھاتہ' : 'Add Account')}</span>
+            </button>
+          </div>
+
+          {/* Filter Chips & Sort Dropdown */}
+          <div className="flex items-center justify-between gap-2 mb-3.5 overflow-x-auto no-scrollbar pb-1">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setFilterType('all')}
+                className={`min-h-[38px] py-1.5 px-3 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+                  filterType === 'all'
+                    ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                }`}
+              >
+                {isUrdu ? 'تمام' : 'All'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterType('get')}
+                className={`min-h-[38px] py-1.5 px-3 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+                  filterType === 'get'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                }`}
+              >
+                {isUrdu ? 'ملنا ہے' : "You'll get"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterType('give')}
+                className={`min-h-[38px] py-1.5 px-3 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+                  filterType === 'give'
+                    ? 'bg-rose-600 text-white'
+                    : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
+                }`}
+              >
+                {isUrdu ? 'دینا ہے' : "You'll give"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilterType('overdue')}
+                className={`min-h-[38px] py-1.5 px-3 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+                  filterType === 'overdue'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
+                }`}
+              >
+                {isUrdu ? 'واجب الادا' : 'Overdue'}
+                {accountsSummary.overdueCount > 0 && ` (${accountsSummary.overdueCount})`}
+              </button>
+            </div>
+
+            {/* Sort Toggle */}
+            <div className="shrink-0 flex items-center gap-1">
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as any)}
+                aria-label={isUrdu ? 'کھاتہ جات کی ترتیب' : 'Sort Accounts'}
+                className="min-h-[38px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1 text-xs text-slate-700 dark:text-slate-300 font-semibold focus:outline-none"
+              >
+                <option value="recent">{isUrdu ? 'حالیہ' : 'Recent'}</option>
+                <option value="name">{isUrdu ? 'نام' : 'Name'}</option>
+                <option value="balance">{isUrdu ? 'رقم' : 'Balance'}</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Accounts List Rows */}
+          {filteredAccounts.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 text-center">
+              <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400">
+                <Users className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                {isUrdu ? 'کوئی کھاتہ نہیں ملا' : 'No Accounts Found'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4">
+                {isUrdu
+                  ? 'نیا کھاتہ شامل کریں اور باقاعدہ حساب رکھیں'
+                  : 'Add a new party or broker to start tracking balances'}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingAccount(null);
+                  setShowAddAccountModal(true);
+                }}
+                className="min-h-[44px] py-2.5 px-5 rounded-2xl bg-emerald-600 text-white font-bold text-xs shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
+              >
+                {currentKind === 'broker' ? (isUrdu ? 'نیا بروکر شامل کریں' : 'Add Broker') : (isUrdu ? 'نیا کھاتہ شامل کریں' : 'Add Account')}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredAccounts.map(account => {
+                const entries = allEntries.filter(e => e.accountId === account.id);
+                const { balance } = calculateAccountBalance(account, entries);
+                const cleanPhone = formatPhoneForDisplay(account.phone);
+                const today = new Date().toISOString().split('T')[0];
+
+                let dueDateBadge = null;
+                if (account.dueDate && balance > 0) {
+                  if (account.dueDate < today) {
+                    dueDateBadge = (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-extrabold bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+                        {isUrdu ? 'وقت گزر گیا' : 'Overdue'}
+                      </span>
+                    );
+                  } else if (account.dueDate === today) {
+                    dueDateBadge = (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-extrabold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                        {isUrdu ? 'آج آخری تاریخ' : 'Due Today'}
+                      </span>
+                    );
+                  } else {
+                    const days = Math.ceil((new Date(account.dueDate).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24));
+                    dueDateBadge = (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                        {isUrdu ? `${days} دن باقی` : `${days}d`}
+                      </span>
+                    );
+                  }
+                }
+
+                return (
                   <div
-                    key={tp.id}
-                    className="bg-white/90 p-3 rounded-2xl border border-amber-200 flex items-center justify-between gap-2 shadow-2xs hover:shadow-xs transition-all"
+                    key={account.id}
+                    onClick={() => {
+                      setSelectedAccountId(account.id);
+                      setEntriesLimit(50);
+                    }}
+                    className="min-h-[64px] bg-white dark:bg-slate-900 rounded-2xl p-3.5 sm:p-4 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3 group shadow-2xs"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs shrink-0 ${
-                        tp.rank === 1 ? 'bg-amber-400 text-amber-950' : tp.rank === 2 ? 'bg-slate-300 text-slate-800' : tp.rank === 3 ? 'bg-amber-700 text-white' : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {tp.rank}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-11 h-11 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-700 dark:text-slate-300 shrink-0 text-base shadow-inner">
+                        {account.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <h4 className="font-bold text-xs text-slate-900 truncate">{tp.name}</h4>
-                        <span className="text-[10px] text-slate-500 font-mono block">
-                          Rs {tp.totalCharged.toLocaleString()} ({tp.percentageShare}%)
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="text-sm font-extrabold text-slate-900 dark:text-white truncate">
+                            {account.name}
+                          </h4>
+                          {dueDateBadge}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+                          {cleanPhone && <span className="font-medium">📞 {cleanPhone}</span>}
+                          <span>•</span>
+                          <span>{account.updatedAt.split('T')[0]}</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <span className={`text-[11px] font-mono font-black ${
-                        tp.runningBalance > 0 ? 'text-emerald-700' : tp.runningBalance < 0 ? 'text-amber-700' : 'text-slate-500'
-                      }`}>
-                        {tp.runningBalance > 0 ? `+${tp.runningBalance.toLocaleString()}` : tp.runningBalance.toLocaleString()}
-                      </span>
+
+                    <div className="text-right shrink-0 flex items-center gap-2.5">
+                      <div>
+                        <div
+                          className={`text-sm sm:text-base font-black tracking-tight ${
+                            balance > 0
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : balance < 0
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : 'text-slate-400'
+                          }`}
+                        >
+                          PKR {Math.abs(balance).toLocaleString('en-US')}
+                        </div>
+                        <span className="text-[10px] text-slate-400 block font-semibold">
+                          {balance > 0
+                            ? (isUrdu ? 'ملنا ہے' : "You'll get")
+                            : balance < 0
+                            ? (isUrdu ? 'دینا ہے' : "You'll give")
+                            : (isUrdu ? 'بیباق' : 'Settled')}
+                        </span>
+                      </div>
+
+                      {/* 44x44px Touch Hitbox for Reminder Button */}
+                      <button
+                        type="button"
+                        onClick={e => {
+                          e.stopPropagation();
+                          setShowReminderModal(account);
+                        }}
+                        title={isUrdu ? 'یاد دہانی بھیجیں' : 'Send Reminder'}
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 hover:text-emerald-600 active:scale-95 transition-all"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </button>
+
+                      <ChevronRight className={`w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:translate-x-0.5 transition-transform ${isUrdu ? 'rotate-180' : ''}`} />
                     </div>
                   </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Mobile Ergonomic Floating Action Button (FAB) */}
+          <div className="fixed bottom-6 right-4 sm:hidden z-30">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingAccount(null);
+                setShowAddAccountModal(true);
+              }}
+              className="min-h-[52px] px-5 rounded-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-sm shadow-xl shadow-emerald-600/30 flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Plus className="w-5 h-5" />
+              <span>{currentKind === 'broker' ? (isUrdu ? 'نیا بروکر' : 'Add Broker') : (isUrdu ? 'نیا کھاتہ' : 'Add Account')}</span>
+            </button>
+          </div>
+        </>
+      )}
+      </div>
+
+      {/* RENDER MODALS */}
+      {renderAddAccountModal()}
+      {renderReminderModal()}
+      {renderSettingsModal()}
+      {renderUndoSnackbar()}
+    </div>
+  );
+
+  // ----------------- RENDER: CASHBOOK VIEW -----------------
+  function renderCashbookView() {
+    return (
+      <div className="space-y-3.5">
+        {/* Date Selector Navigation (Touch Optimized) */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-2.5 sm:p-3 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => {
+              const d = new Date(selectedCashDate);
+              d.setDate(d.getDate() - 1);
+              setSelectedCashDate(d.toISOString().split('T')[0]);
+            }}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 active:scale-95 transition-all"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-emerald-600" />
+            <input
+              type="date"
+              value={selectedCashDate}
+              onChange={e => setSelectedCashDate(e.target.value)}
+              aria-label={isUrdu ? 'روزنامچہ کی تاریخ منتخب کریں' : 'Select Cashbook Date'}
+              className="bg-transparent font-black text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none"
+            />
+            {selectedCashDate !== new Date().toISOString().split('T')[0] && (
+              <button
+                type="button"
+                onClick={() => setSelectedCashDate(new Date().toISOString().split('T')[0])}
+                className="text-[11px] px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 font-extrabold active:scale-95"
+              >
+                {isUrdu ? 'آج' : 'Today'}
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              const d = new Date(selectedCashDate);
+              d.setDate(d.getDate() + 1);
+              setSelectedCashDate(d.toISOString().split('T')[0]);
+            }}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 active:scale-95 transition-all"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Day Cash Summary Card */}
+        <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-3xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50">
+              <span className="text-[11px] text-slate-500 font-bold block mb-0.5">
+                {isUrdu ? 'اوپننگ بیلنس' : 'Opening Cash'}
+              </span>
+              <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-200">
+                PKR {dayCashSummary.openingBalance.toLocaleString('en-US')}
+              </span>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30">
+              <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold block mb-0.5">
+                {isUrdu ? 'کل کیش ان (+)' : 'Cash In (+)'}
+              </span>
+              <span className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400">
+                + PKR {dayCashSummary.totalIn.toLocaleString('en-US')}
+              </span>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/30">
+              <span className="text-[11px] text-rose-700 dark:text-rose-400 font-bold block mb-0.5">
+                {isUrdu ? 'کل کیش آؤٹ (-)' : 'Cash Out (-)'}
+              </span>
+              <span className="text-xs sm:text-sm font-black text-rose-600 dark:text-rose-400">
+                - PKR {dayCashSummary.totalOut.toLocaleString('en-US')}
+              </span>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800">
+              <span className="text-[11px] text-slate-600 dark:text-slate-300 font-bold block mb-0.5">
+                {isUrdu ? 'کلوزنگ بیلنس' : 'Closing Cash'}
+              </span>
+              <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+                PKR {dayCashSummary.closingBalance.toLocaleString('en-US')}
+              </span>
+            </div>
+          </div>
+
+          {/* Two Large Action Buttons */}
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingCashEntry(null);
+                setShowAddCashModal('in');
+              }}
+              className="min-h-[48px] py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            >
+              <ArrowDownLeft className="w-4 h-4" />
+              <span>{isUrdu ? 'کیش ان (آمدن)' : 'Cash In (+)'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEditingCashEntry(null);
+                setShowAddCashModal('out');
+              }}
+              className="min-h-[48px] py-3 px-4 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs sm:text-sm shadow-md shadow-rose-600/20 flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+            >
+              <ArrowUpRight className="w-4 h-4" />
+              <span>{isUrdu ? 'کیش آؤٹ (خرچہ)' : 'Cash Out (-)'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Selected Day Cash Transactions List */}
+        <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-3xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
+          <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-emerald-600" />
+            <span>{isUrdu ? `روزنامچہ اندراج برائے: ${selectedCashDate}` : `Cash Entries for ${selectedCashDate}`}</span>
+          </h3>
+
+          {selectedDayCashList.length === 0 ? (
+            <div className="text-center py-8 text-slate-400 text-xs">
+              {isUrdu ? 'آج کے دن کا کوئی کیش اندراج نہیں ہے۔ اوپر بٹن دبا کر اندراج کریں۔' : 'No cash entries for this date. Use Cash In / Cash Out buttons above.'}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {selectedDayCashList.map(entry => {
+                const isIn = entry.type === 'in';
+                return (
+                  <div
+                    key={entry.id}
+                    className="min-h-[56px] flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                          isIn ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60' : 'bg-rose-100 text-rose-600 dark:bg-rose-950/60'
+                        }`}
+                      >
+                        {isIn ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 capitalize">
+                          {entry.category || (isIn ? 'Cash In' : 'Expense')}
+                        </span>
+                        {entry.note && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                            {entry.note}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className={`text-sm font-black ${isIn ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {isIn ? '+' : '-'} PKR {entry.amount.toLocaleString('en-US')}
+                      </div>
+                      <div className="flex items-center justify-end gap-3 mt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingCashEntry(entry);
+                            setShowAddCashModal(entry.type);
+                          }}
+                          className="text-[11px] text-slate-500 hover:text-slate-800 font-semibold p-1"
+                        >
+                          {isUrdu ? 'تبدیل' : 'Edit'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const deleted = deleteCashEntry(entry.id);
+                            if (deleted) {
+                              triggerUndo('cash', deleted);
+                              reloadData();
+                            }
+                          }}
+                          className="text-[11px] text-rose-500 hover:text-rose-700 font-semibold p-1"
+                        >
+                          {isUrdu ? 'حذف' : 'Delete'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {renderCashModal()}
+      </div>
+    );
+  }
+
+  // ----------------- RENDER: ADD / EDIT ACCOUNT MODAL (Bottom Sheet) -----------------
+  function renderAddAccountModal() {
+    if (!showAddAccountModal) return null;
+
+    return (
+      <AccountFormModal
+        isOpen={showAddAccountModal}
+        onClose={() => setShowAddAccountModal(false)}
+        initialAccount={editingAccount}
+        kind={currentKind}
+        lang={lang}
+        onSaved={account => {
+          setShowAddAccountModal(false);
+          reloadData();
+          setSelectedAccountId(account.id);
+        }}
+      />
+    );
+  }
+
+  // ----------------- RENDER: ADD / EDIT ENTRY MODAL (Bottom Sheet) -----------------
+  function renderEntryModal() {
+    if (!showAddEntryModal || !selectedAccount) return null;
+
+    return (
+      <EntryFormModal
+        isOpen={Boolean(showAddEntryModal)}
+        onClose={() => {
+          setShowAddEntryModal(null);
+          setEditingEntry(null);
+        }}
+        type={showAddEntryModal}
+        accountId={selectedAccount.id}
+        accountKind={selectedAccount.kind}
+        initialEntry={editingEntry}
+        lang={lang}
+        onSaved={() => {
+          setShowAddEntryModal(null);
+          setEditingEntry(null);
+          reloadData();
+        }}
+      />
+    );
+  }
+
+  // ----------------- RENDER: ADD / EDIT CASH MODAL (Bottom Sheet) -----------------
+  function renderCashModal() {
+    if (!showAddCashModal) return null;
+
+    return (
+      <CashFormModal
+        isOpen={Boolean(showAddCashModal)}
+        onClose={() => {
+          setShowAddCashModal(null);
+          setEditingCashEntry(null);
+        }}
+        type={showAddCashModal}
+        initialDate={selectedCashDate}
+        initialEntry={editingCashEntry}
+        lang={lang}
+        onSaved={() => {
+          setShowAddCashModal(null);
+          setEditingCashEntry(null);
+          reloadData();
+        }}
+      />
+    );
+  }
+
+  // ----------------- RENDER: MULTI-CHANNEL REMINDER MODAL -----------------
+  function renderReminderModal() {
+    if (!showReminderModal) return null;
+
+    const entries = allEntries.filter(e => e.accountId === showReminderModal.id);
+    const { balance } = calculateAccountBalance(showReminderModal, entries);
+    const cleanPhone = normalizePakistaniPhone(showReminderModal.phone);
+    const rawPhone = showReminderModal.phone || '';
+    const reminderText = formatKhataReminderMessage(
+      showReminderModal,
+      balance,
+      settings.businessName,
+      lang
+    );
+
+    const whatsappUrl = cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(reminderText)}`
+      : null;
+
+    const smsUrl = rawPhone
+      ? `sms:${rawPhone}?body=${encodeURIComponent(reminderText)}`
+      : null;
+
+    const callUrl = rawPhone ? `tel:${rawPhone}` : null;
+
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 pb-[max(env(safe-area-inset-bottom),1.25rem)]">
+          {/* Mobile Bottom Sheet Handle */}
+          <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden" />
+
+          <div className="flex items-center justify-between mb-3.5">
+            <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-emerald-600" />
+              <span>{isUrdu ? 'ادائیگی کی یاد دہانی بھیجیں' : 'Send Payment Reminder'}</span>
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowReminderModal(null)}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3.5 mb-3.5 border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{showReminderModal.name}</span>
+              <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                PKR {Math.abs(balance).toLocaleString('en-US')}
+              </span>
+            </div>
+            {rawPhone && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                📞 {formatPhoneForDisplay(rawPhone)}
+              </p>
+            )}
+          </div>
+
+          {/* Message Preview */}
+          <div className="mb-4">
+            <span className="text-xs font-bold text-slate-500 block mb-1">
+              {isUrdu ? 'پیغام کا متن:' : 'Message Preview:'}
+            </span>
+            <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-200 whitespace-pre-line border border-slate-200 dark:border-slate-700 leading-relaxed font-sans max-h-32 overflow-y-auto">
+              {reminderText}
+            </div>
+          </div>
+
+          {/* Three Touch Actions */}
+          <div className="space-y-2">
+            {whatsappUrl ? (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowReminderModal(null)}
+                className="w-full min-h-[48px] py-3 px-4 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-[#25D366]/20 active:scale-95 transition-all"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>{isUrdu ? 'واٹس ایپ پر میسج کریں' : 'Send via WhatsApp'}</span>
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="w-full min-h-[48px] py-3 px-4 rounded-2xl bg-slate-200 text-slate-400 text-xs font-bold"
+              >
+                {isUrdu ? 'فون نمبر موجود نہیں' : 'No Phone Number'}
+              </button>
+            )}
+
+            {smsUrl && (
+              <a
+                href={smsUrl}
+                onClick={() => setShowReminderModal(null)}
+                className="w-full min-h-[48px] py-3 px-4 rounded-2xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-95 transition-all"
+              >
+                <Smartphone className="w-4 h-4" />
+                <span>{isUrdu ? 'موبائل ایس ایم ایس (SMS) بھیجیں' : 'Send Direct SMS'}</span>
+              </a>
+            )}
+
+            {callUrl && (
+              <a
+                href={callUrl}
+                onClick={() => setShowReminderModal(null)}
+                className="w-full min-h-[48px] py-3 px-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-95 transition-all"
+              >
+                <Phone className="w-4 h-4" />
+                <span>{isUrdu ? 'براہ راست کال کریں' : 'Direct Phone Call'}</span>
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ----------------- RENDER: SETTINGS & BACKUP MODAL -----------------
+  function renderSettingsModal() {
+    if (!showSettingsModal) return null;
+
+    return (
+      <SettingsBackupModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        lang={lang}
+        onUpdated={() => {
+          reloadData();
+        }}
+      />
+    );
+  }
+
+  // ----------------- RENDER: 5-SECOND UNDO SNACKBAR -----------------
+  function renderUndoSnackbar() {
+    if (!undoItem) return null;
+
+    return (
+      <div className="fixed bottom-20 left-3 right-3 max-w-md mx-auto z-50">
+        <div className="bg-slate-900 text-white dark:bg-white dark:text-slate-900 p-3.5 rounded-2xl shadow-2xl flex items-center justify-between border border-slate-700 dark:border-slate-300">
+          <div className="flex items-center gap-2 text-xs">
+            <RotateCcw className="w-4 h-4 text-emerald-400" />
+            <span>
+              {isUrdu ? 'اندراج حذف کر دیا گیا' : 'Entry deleted'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleExecuteUndo}
+            className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white font-extrabold text-xs hover:bg-emerald-700 transition-colors shadow-sm active:scale-95"
+          >
+            {isUrdu ? 'واپس لائیں (Undo)' : 'Undo (5s)'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+};
+
+// =========================================================================
+// SUB-COMPONENT: ACCOUNT FORM BOTTOM SHEET (Add / Edit Account)
+// =========================================================================
+interface AccountFormModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialAccount: LedgerAccount | null;
+  kind: 'party' | 'broker';
+  lang: Language;
+  onSaved: (account: LedgerAccount) => void;
+}
+
+const AccountFormModal: React.FC<AccountFormModalProps> = ({
+  isOpen,
+  onClose,
+  initialAccount,
+  kind,
+  lang,
+  onSaved
+}) => {
+  const isUrdu = lang === 'ur';
+
+  const [name, setName] = useState(initialAccount?.name || '');
+  const [phone, setPhone] = useState(initialAccount?.phone ? formatPhoneForDisplay(initialAccount.phone) : '');
+  const [note, setNote] = useState(initialAccount?.note || '');
+  const [openingAmount, setOpeningAmount] = useState(
+    initialAccount?.openingAmount ? String(initialAccount.openingAmount) : '0'
+  );
+  const [openingDirection, setOpeningDirection] = useState<'get' | 'give'>(
+    initialAccount?.openingDirection || 'get'
+  );
+  const [dueDate, setDueDate] = useState(initialAccount?.dueDate || '');
+  const [phoneError, setPhoneError] = useState('');
+  const [showManualContactsCard, setShowManualContactsCard] = useState(false);
+
+  const handleContactPicker = async () => {
+    if (typeof navigator !== 'undefined' && 'contacts' in navigator && (navigator as any).contacts?.select) {
+      try {
+        const contacts = await (navigator as any).contacts.select(['name', 'tel'], { multiple: false });
+        if (contacts && contacts[0]) {
+          const c = contacts[0];
+          if (c.name && c.name[0]) setName(c.name[0]);
+          if (c.tel && c.tel[0]) setPhone(formatPhoneForDisplay(c.tel[0]));
+          return;
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    setShowManualContactsCard(true);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    let normalizedPhone: string | null = null;
+    if (phone.trim()) {
+      normalizedPhone = normalizePakistaniPhone(phone);
+      if (!normalizedPhone) {
+        setPhoneError(isUrdu ? 'درست پاکستانی موبائل نمبر درج کریں (مثال: 03001234567)' : 'Enter valid Pakistani phone (e.g. 03001234567)');
+        return;
+      }
+    }
+
+    const evaluatedOpening = evaluateArithmetic(openingAmount) ?? Number(openingAmount) ?? 0;
+
+    const saved = saveOrUpdateLedgerAccount({
+      id: initialAccount?.id,
+      kind,
+      name: name.trim(),
+      phone: normalizedPhone || '',
+      note: note.trim(),
+      openingAmount: Math.abs(evaluatedOpening),
+      openingDirection,
+      dueDate: dueDate || undefined
+    });
+
+    onSaved(saved);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto pb-[max(env(safe-area-inset-bottom),1.25rem)]">
+        {/* Drag Handle */}
+        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden" />
+
+        <div className="flex items-center justify-between mb-3.5">
+          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+            {initialAccount
+              ? (isUrdu ? 'کھاتہ تبدیل کریں' : 'Edit Account')
+              : kind === 'broker'
+              ? (isUrdu ? 'نیا بروکر کھاتہ' : 'New Broker Account')
+              : (isUrdu ? 'نیا کسٹمر کھاتہ' : 'New Party Account')}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          {/* Name & Contact Picker Button */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                {isUrdu ? 'نام (لازمی)' : 'Account Name (Required)'}
+              </label>
+              <button
+                type="button"
+                onClick={handleContactPicker}
+                className="text-[11px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1 min-h-[36px]"
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>{isUrdu ? 'فون سے منتخب کریں' : 'Pick Contact'}</span>
+              </button>
+            </div>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder={isUrdu ? 'مثال: حاجی اسلم ٹریڈرز' : 'e.g. Haji Aslam Traders'}
+              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          {/* Quick Manual Contact Card */}
+          {showManualContactsCard && (
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800">
+              <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300 block mb-1">
+                {isUrdu ? 'پاکستانی نیٹ ورک کوڈ چنیں:' : 'Select Network Prefix:'}
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {['0300', '0301', '0321', '0333', '0345', '0312'].map(prefix => (
+                  <button
+                    key={prefix}
+                    type="button"
+                    onClick={() => {
+                      setPhone(prefix);
+                      setShowManualContactsCard(false);
+                    }}
+                    className="min-h-[36px] px-3 py-1 rounded-xl bg-white dark:bg-slate-900 text-xs font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-300 shadow-2xs active:scale-95"
+                  >
+                    {prefix}
+                  </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Search Bar & Add Party Button */}
-          <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center bg-white border-2 border-[#d5d5c5] rounded-2xl px-3 py-2 shadow-2xs focus-within:border-[#162A4D]">
-              <Search className="w-4 h-4 text-[#8e8e75] shrink-0" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={isUrdu ? 'پارٹی کا نام، فون یا شہر تلاش کریں...' : 'Search party by name, city, phone...'}
-                className="w-full bg-transparent text-xs sm:text-sm text-[#2b2b1f] focus:outline-none px-2 font-bold"
-              />
-              {searchQuery && (
-                <button type="button" onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-slate-600">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowAddPartyModal(true)}
-              className="py-2.5 px-3.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{isUrdu ? 'نئی پارٹی' : 'Add Party'}</span>
-            </button>
-          </div>
-
-          {/* Parties List */}
-          {filteredParties.length === 0 ? (
-            <div className="bg-white p-8 rounded-3xl border-2 border-dashed border-[#d5d5c5] text-center space-y-2">
-              <Users className="w-10 h-10 text-slate-300 mx-auto" />
-              <p className="text-sm font-bold text-slate-700">
-                {isUrdu ? 'کوئی پارٹی کھاتہ موجود نہیں ہے۔' : 'No party accounts found.'}
-              </p>
-              <p className="text-xs text-slate-400">
-                {isUrdu ? 'اوپر "نئی پارٹی" کے بٹن پر کلک کر کے کھاتہ شروع کریں۔' : 'Click "Add Party" above to create an account.'}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {filteredParties.map((party) => {
-                const bal = party.runningBalance;
-                const isReceivable = bal > 0;
-                const isPayable = bal < 0;
-
-                return (
-                  <div
-                    key={party.id}
-                    className="bg-white p-4 rounded-3xl border-2 border-[#e0e0d2] shadow-2xs hover:shadow-xs transition-all space-y-3"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <h3 className="font-black text-sm sm:text-base text-slate-900 truncate">
-                          {party.name}
-                        </h3>
-                        <p className="text-[11px] text-slate-500 flex items-center gap-2 flex-wrap">
-                          {party.city && <span>📍 {party.city}</span>}
-                          {party.phone && <span>📞 {party.phone}</span>}
-                        </p>
-                      </div>
-
-                      {/* Running Balance Badge */}
-                      <div className={`px-3 py-1 rounded-2xl text-right shrink-0 border ${
-                        isReceivable
-                          ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
-                          : isPayable
-                            ? 'bg-amber-50 border-amber-300 text-amber-900'
-                            : 'bg-slate-50 border-slate-300 text-slate-700'
-                      }`}>
-                        <span className="text-[10px] font-bold block opacity-80">
-                          {isReceivable ? (isUrdu ? 'واجب الوصول (لینے ہیں)' : 'Receivable') : isPayable ? (isUrdu ? 'ایڈوانس (دینے ہیں)' : 'Payable/Advance') : (isUrdu ? 'حساب بے باق' : 'Clear')}
-                        </span>
-                        <span className="font-mono font-black text-sm sm:text-base">
-                          Rs {Math.abs(bal).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Stats summary */}
-                    <div className="grid grid-cols-2 gap-2 p-2 bg-[#fdfbf7] rounded-2xl border border-[#ecece0] text-[11px]">
-                      <div>
-                        <span className="text-[10px] text-slate-400 block">{isUrdu ? 'کل چارج شدہ کرایہ:' : 'Total Charged:'}</span>
-                        <span className="font-mono font-bold text-slate-700">Rs {(party.totalCharged || 0).toLocaleString()}</span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-slate-400 block">{isUrdu ? 'کل وصول شدہ رقم:' : 'Total Received:'}</span>
-                        <span className="font-mono font-bold text-emerald-700">Rs {(party.totalReceived || 0).toLocaleString()}</span>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons: Call, WhatsApp Reminder, Add Entry, History */}
-                    <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                      {party.phone && (
-                        <button
-                          type="button"
-                          onClick={() => handleDirectCall(party.phone)}
-                          className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                          title={isUrdu ? 'کال کریں' : 'Call'}
-                        >
-                          <Phone className="w-3.5 h-3.5 text-blue-600" />
-                          <span className="hidden sm:inline">{isUrdu ? 'کال' : 'Call'}</span>
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => handleSendPartyWhatsApp(party)}
-                        className="py-1.5 px-2.5 bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#1b7e3e] border border-[#25D366]/40 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                        title={isUrdu ? 'واٹس ایپ یاد دہانی' : 'WhatsApp Reminder'}
-                      >
-                        <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
-                        <span>{isUrdu ? 'واٹس ایپ یاد دہانی' : 'WhatsApp'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setShowAddPartyTxModal(party.id)}
-                        className="py-1.5 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>{isUrdu ? 'اندراج' : 'Entry'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPartyHistory(party.id)}
-                        className="py-1.5 px-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>{isUrdu ? 'کھاتہ تفصیل' : 'History'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (window.confirm(isUrdu ? `کیا آپ واقعی ${party.name} کا کھاتہ حذف کرنا چاہتے ہیں؟` : `Delete party ${party.name}?`)) {
-                            deleteParty(party.id);
-                            refreshData();
-                            showToast(isUrdu ? 'پارٹی کھاتہ حذف کر دیا گیا' : 'Party deleted');
-                          }
-                        }}
-                        className="p-2 text-slate-400 hover:text-red-600 transition-all cursor-pointer ml-auto"
-                        title={isUrdu ? 'حذف کریں' : 'Delete'}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ========================================================= */}
-      {/* 2. BROKER LEDGER (بروکر کھاتہ) */}
-      {/* ========================================================= */}
-      {subTab === 'brokers' && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center bg-white border-2 border-[#d5d5c5] rounded-2xl px-3 py-2 shadow-2xs focus-within:border-[#162A4D]">
-              <Search className="w-4 h-4 text-[#8e8e75] shrink-0" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={isUrdu ? 'بروکر یا ایجنٹ کا نام تلاش کریں...' : 'Search broker by name, phone...'}
-                className="w-full bg-transparent text-xs sm:text-sm text-[#2b2b1f] focus:outline-none px-2 font-bold"
-              />
-              {searchQuery && (
-                <button type="button" onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-slate-600">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowAddBrokerModal(true)}
-              className="py-2.5 px-3.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-2xl font-black text-xs sm:text-sm shadow-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{isUrdu ? 'نیا بروکر' : 'Add Broker'}</span>
-            </button>
-          </div>
-
-          {/* Brokers List */}
-          {filteredBrokers.length === 0 ? (
-            <div className="bg-white p-8 rounded-3xl border-2 border-dashed border-[#d5d5c5] text-center space-y-2">
-              <Briefcase className="w-10 h-10 text-slate-300 mx-auto" />
-              <p className="text-sm font-bold text-slate-700">
-                {isUrdu ? 'کوئی بروکر کھاتہ موجود نہیں ہے۔' : 'No broker accounts found.'}
-              </p>
-              <p className="text-xs text-slate-400">
-                {isUrdu ? 'اوپر "نیا بروکر" بٹن دبائیں اور کمیشن کا حساب محفوظ کریں۔' : 'Click "Add Broker" to manage commissions and loads.'}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {filteredBrokers.map((broker) => {
-                const unpaid = broker.unpaidCommission || 0;
-
-                return (
-                  <div
-                    key={broker.id}
-                    className="bg-white p-4 rounded-3xl border-2 border-[#e0e0d2] shadow-2xs hover:shadow-xs transition-all space-y-3"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="font-black text-sm sm:text-base text-slate-900 truncate">
-                          {broker.name}
-                        </h3>
-                        <p className="text-[11px] text-slate-500 flex items-center gap-2">
-                          {broker.city && <span>📍 {broker.city}</span>}
-                          {broker.phone && <span>📞 {broker.phone}</span>}
-                        </p>
-                      </div>
-
-                      <div className="bg-blue-50 border border-blue-200 px-3 py-1 rounded-2xl text-right">
-                        <span className="text-[10px] font-bold text-blue-800 block">
-                          {isUrdu ? 'غیر ادا شدہ کمیشن:' : 'Unpaid Commission:'}
-                        </span>
-                        <span className={`font-mono font-black text-sm sm:text-base ${
-                          unpaid > 0 ? 'text-amber-700' : 'text-slate-600'
-                        }`}>
-                          Rs {unpaid.toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="p-2 bg-[#fdfbf7] rounded-2xl border border-[#ecece0] text-[11px] flex items-center justify-between">
-                      <span className="text-slate-500">{isUrdu ? 'کل طے شدہ کمیشن:' : 'Total Commission:'}</span>
-                      <span className="font-mono font-bold text-slate-800">Rs {(broker.totalCommission || 0).toLocaleString()}</span>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                      {broker.phone && (
-                        <button
-                          type="button"
-                          onClick={() => handleDirectCall(broker.phone)}
-                          className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                          title={isUrdu ? 'کال کریں' : 'Call'}
-                        >
-                          <Phone className="w-3.5 h-3.5 text-blue-600" />
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => handleSendBrokerWhatsApp(broker)}
-                        className="py-1.5 px-2.5 bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#1b7e3e] border border-[#25D366]/40 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
-                        <span>{isUrdu ? 'واٹس ایپ' : 'WhatsApp'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setShowAddBrokerTxModal(broker.id)}
-                        className="py-1.5 px-2.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-300 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>{isUrdu ? 'نیا لوڈ / کمیشن' : 'Add Load'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setSelectedBrokerHistory(broker.id)}
-                        className="py-1.5 px-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>{isUrdu ? 'ہسٹری' : 'History'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (window.confirm(isUrdu ? `حذف کریں ${broker.name}?` : `Delete broker ${broker.name}?`)) {
-                            deleteBroker(broker.id);
-                            refreshData();
-                            showToast(isUrdu ? 'بروکر کھاتہ حذف کر دیا گیا' : 'Broker deleted');
-                          }
-                        }}
-                        className="p-2 text-slate-400 hover:text-red-600 transition-all cursor-pointer ml-auto"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ========================================================= */}
-      {/* 3. VEHICLE PROFIT & LOSS (گاڑی نفع و نقصان) */}
-      {/* ========================================================= */}
-      {subTab === 'vehicleProfitLoss' && (
-        <div className="space-y-4">
-          {/* Controls: Vehicle selector & Date Range Picker */}
-          <div className="bg-white p-4 rounded-3xl border-2 border-[#e0e0d2] shadow-2xs space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Vehicle Selector */}
-              <div>
-                <label className="block text-xs font-black text-slate-700 mb-1">
-                  {isUrdu ? 'گاڑی منتخب کریں:' : 'Select Vehicle:'}
-                </label>
-                <select
-                  value={selectedVehicle}
-                  onChange={(e) => setSelectedVehicle(e.target.value)}
-                  className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-[#162A4D]"
-                >
-                  <option value="all">{isUrdu ? 'تمام گاڑیاں (مجموعی بیڑا)' : 'All Vehicles (Entire Fleet)'}</option>
-                  {vehicles.map(v => (
-                    <option key={v.id} value={v.reg}>{v.reg} - {v.model}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Date Range Selector */}
-              <div>
-                <label className="block text-xs font-black text-slate-700 mb-1">
-                  {isUrdu ? 'مدت منتخب کریں (Date Range):' : 'Select Date Range:'}
-                </label>
-                <div className="grid grid-cols-4 gap-1">
-                  {[
-                    { id: 'today', labelUr: 'آج', labelEn: 'Today' },
-                    { id: 'week', labelUr: '7 دن', labelEn: '7 Days' },
-                    { id: 'month', labelUr: 'رواں ماہ', labelEn: 'Month' },
-                    { id: 'custom', labelUr: 'مخصوص', labelEn: 'Custom' }
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setDateRangeType(tab.id as any)}
-                      className={`py-1.5 px-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        dateRangeType === tab.id
-                          ? 'bg-[#162A4D] text-white'
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                      }`}
-                    >
-                      {isUrdu ? tab.labelUr : tab.labelEn}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Custom Date Pickers */}
-            {dateRangeType === 'custom' && (
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
-                <div>
-                  <span className="text-[10px] text-slate-500 font-bold block mb-0.5">{isUrdu ? 'تاریخ آغاز:' : 'From:'}</span>
-                  <input
-                    type="date"
-                    value={customStart}
-                    onChange={(e) => setCustomStart(e.target.value)}
-                    className="w-full bg-[#fdfbf7] border border-[#d5d5c5] rounded-xl px-2 py-1.5 text-xs font-mono font-bold"
-                  />
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 font-bold block mb-0.5">{isUrdu ? 'تاریخ اختتام:' : 'To:'}</span>
-                  <input
-                    type="date"
-                    value={customEnd}
-                    onChange={(e) => setCustomEnd(e.target.value)}
-                    className="w-full bg-[#fdfbf7] border border-[#d5d5c5] rounded-xl px-2 py-1.5 text-xs font-mono font-bold"
-                  />
-                </div>
-              </div>
+          {/* Phone Number */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              {isUrdu ? 'فون نمبر (اختیاری - یاد دہانی کے لیے)' : 'Phone Number (Optional)'}
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={e => {
+                setPhone(e.target.value);
+                setPhoneError('');
+              }}
+              placeholder="03001234567"
+              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            {phoneError && (
+              <p className="text-xs text-rose-600 mt-1">{phoneError}</p>
             )}
           </div>
 
-          {/* Profit / Loss KPI Summary Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            {/* 1. Total Income */}
-            <div className="bg-white p-3.5 rounded-3xl border-2 border-[#e0e0d2] shadow-2xs text-center space-y-1">
-              <span className="text-[10px] font-bold text-slate-500 block uppercase">
-                {isUrdu ? 'کل حاصل آمدن' : 'Total Income'}
-              </span>
-              <span className="font-mono font-black text-base sm:text-lg text-emerald-700 block">
-                Rs {pnlSummary.totalIncome.toLocaleString()}
-              </span>
-            </div>
-
-            {/* 2. Total Expenses */}
-            <div className="bg-white p-3.5 rounded-3xl border-2 border-[#e0e0d2] shadow-2xs text-center space-y-1">
-              <span className="text-[10px] font-bold text-slate-500 block uppercase">
-                {isUrdu ? 'کل اخراجات' : 'Total Expenses'}
-              </span>
-              <span className="font-mono font-black text-base sm:text-lg text-red-600 block">
-                Rs {pnlSummary.totalExpenses.toLocaleString()}
-              </span>
-            </div>
-
-            {/* 3. Net Profit / Loss */}
-            <div className={`p-3.5 rounded-3xl border-2 shadow-2xs text-center space-y-1 ${
-              pnlSummary.isProfit ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-red-50 border-red-300 text-red-950'
-            }`}>
-              <span className="text-[10px] font-bold block uppercase opacity-80">
-                {pnlSummary.isProfit ? (isUrdu ? 'خالص نفع / بچت' : 'Net Profit') : (isUrdu ? 'خسارہ' : 'Net Loss')}
-              </span>
-              <span className={`font-mono font-black text-base sm:text-lg block ${
-                pnlSummary.isProfit ? 'text-emerald-700' : 'text-red-700'
-              }`}>
-                Rs {Math.abs(pnlSummary.netProfit).toLocaleString()}
-              </span>
-            </div>
-
-            {/* 4. Profit Per KM */}
-            <div className="bg-indigo-50 border-2 border-indigo-200 p-3.5 rounded-3xl shadow-2xs text-center space-y-1 text-indigo-950">
-              <span className="text-[10px] font-bold block uppercase opacity-80">
-                {isUrdu ? 'نفع فی کلومیٹر' : 'Profit Per KM'}
-              </span>
-              <span className="font-mono font-black text-base sm:text-lg text-indigo-800 block">
-                {pnlSummary.profitPerKm === 'N/A' ? 'N/A' : `Rs ${pnlSummary.profitPerKm} / KM`}
-              </span>
-            </div>
+          {/* Opening Balance */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              {isUrdu ? 'شروع کا بقایا بیلنس (Opening Balance)' : 'Opening Balance (PKR)'}
+            </label>
+            <input
+              type="text"
+              value={openingAmount}
+              onChange={e => setOpeningAmount(e.target.value)}
+              placeholder="0"
+              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+            />
           </div>
 
-          {/* Expense Breakdown & Quick Entry Actions */}
-          <div className="bg-white p-4 rounded-3xl border-2 border-[#e0e0d2] shadow-2xs space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-black text-xs sm:text-sm text-slate-900">
-                {isUrdu ? 'تفصیلی اخراجات بریک ڈاؤن:' : 'Expense Breakdown:'}
-              </h3>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setShowAddIncomeModal(true)}
-                  className="py-1.5 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{isUrdu ? 'آمدن شامل کریں' : 'Add Income'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowAddExpenseModal(true)}
-                  className="py-1.5 px-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{isUrdu ? 'خرچہ درج کریں' : 'Add Expense'}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-200">
-                <span className="text-[10px] text-amber-800 block font-bold">{isUrdu ? 'ایندھن (ڈیزل):' : 'Fuel:'}</span>
-                <span className="font-mono font-black text-sm text-amber-950">Rs {pnlSummary.fuelExpenses.toLocaleString()}</span>
-              </div>
-              <div className="p-2.5 bg-blue-50 rounded-2xl border border-blue-200">
-                <span className="text-[10px] text-blue-800 block font-bold">{isUrdu ? 'ٹول پلازہ ٹیکس:' : 'Tolls:'}</span>
-                <span className="font-mono font-black text-sm text-blue-950">Rs {pnlSummary.tollExpenses.toLocaleString()}</span>
-              </div>
-              <div className="p-2.5 bg-purple-50 rounded-2xl border border-purple-200">
-                <span className="text-[10px] text-purple-800 block font-bold">{isUrdu ? 'مرمت و دیگر:' : 'Repairs & Misc:'}</span>
-                <span className="font-mono font-black text-sm text-purple-950">Rs {pnlSummary.otherExpenses.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================= */}
-      {/* MODAL 1: ADD NEW PARTY */}
-      {/* ========================================================= */}
-      {showAddPartyModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 animate-in fade-in">
-          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl border-2 border-[#162A4D] space-y-4">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="font-black text-base text-slate-900">
-                {isUrdu ? 'نئی پارٹی کھاتہ بنائیں' : 'Create New Party Account'}
-              </h3>
-              <button type="button" onClick={() => setShowAddPartyModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
+          {/* Opening Direction */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+              {isUrdu ? 'شروع کی رقم کی نوعیت' : 'Balance Direction'}
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setOpeningDirection('get')}
+                className={`min-h-[44px] py-2.5 px-3 rounded-2xl text-xs font-bold transition-all border ${
+                  openingDirection === 'get'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                {isUrdu ? 'ملنا ہے (You will get)' : "You will get"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpeningDirection('give')}
+                className={`min-h-[44px] py-2.5 px-3 rounded-2xl text-xs font-bold transition-all border ${
+                  openingDirection === 'give'
+                    ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                {isUrdu ? 'دینا ہے (You will give)' : "You will give"}
               </button>
             </div>
-
-            <form onSubmit={handleCreateParty} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'پارٹی کا نام:' : 'Party Name:'} *</label>
-                <input
-                  type="text"
-                  required
-                  value={partyName}
-                  onChange={(e) => setPartyName(e.target.value)}
-                  placeholder={isUrdu ? 'مثلاً: چوہدری ٹریڈرز' : 'e.g. Chaudhry Traders'}
-                  className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs sm:text-sm font-bold focus:border-[#162A4D] focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'موبائل نمبر:' : 'Phone:'}</label>
-                  <input
-                    type="tel"
-                    value={partyPhone}
-                    onChange={(e) => setPartyPhone(e.target.value)}
-                    placeholder="03001234567"
-                    className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-mono font-bold focus:border-[#162A4D] focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'شہر:' : 'City:'}</label>
-                  <input
-                    type="text"
-                    value={partyCity}
-                    onChange={(e) => setPartyCity(e.target.value)}
-                    placeholder={isUrdu ? 'لاہور' : 'Lahore'}
-                    className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-bold focus:border-[#162A4D] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  {isUrdu ? 'ابتدائی بقایا رقم (روپے) [مثبت = لینا ہے]:' : 'Opening Balance (PKR) [+ = Receivable]:'}
-                </label>
-                <input
-                  type="number"
-                  value={partyOpeningBal}
-                  onChange={(e) => setPartyOpeningBal(e.target.value)}
-                  placeholder="0"
-                  className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-mono font-bold focus:border-[#162A4D] focus:outline-none"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddPartyModal(false)}
-                  className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
-                >
-                  {isUrdu ? 'منسوخ' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  className="py-2.5 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer"
-                >
-                  {isUrdu ? 'محفوظ کریں' : 'Save Party'}
-                </button>
-              </div>
-            </form>
           </div>
-        </div>
-      )}
 
-      {/* ========================================================= */}
-      {/* MODAL 2: ADD PARTY TRANSACTION */}
-      {/* ========================================================= */}
-      {showAddPartyTxModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 animate-in fade-in">
-          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl border-2 border-[#162A4D] space-y-4">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="font-black text-base text-slate-900">
-                {isUrdu ? 'کھاتہ اندراج (Debit / Credit)' : 'Record Transaction'}
-              </h3>
-              <button type="button" onClick={() => setShowAddPartyTxModal(null)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddPartyTx} className="space-y-3">
-              {/* Type Switcher */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setTxType('debit')}
-                  className={`py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
-                    txType === 'debit'
-                      ? 'bg-red-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-700'
-                  }`}
-                >
-                  <ArrowUpRight className="w-4 h-4" />
-                  <span>{isUrdu ? 'کرایہ / بل (Debit)' : 'Billed / Debit'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setTxType('credit')}
-                  className={`py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
-                    txType === 'credit'
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-700'
-                  }`}
-                >
-                  <ArrowDownLeft className="w-4 h-4" />
-                  <span>{isUrdu ? 'وصولی / جمع (Credit)' : 'Received / Credit'}</span>
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'رقم (روپے):' : 'Amount (PKR):'} *</label>
-                <input
-                  type="number"
-                  required
-                  value={txAmount}
-                  onChange={(e) => setTxAmount(e.target.value)}
-                  placeholder="0"
-                  className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-sm font-mono font-black focus:border-[#162A4D] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'تفصیل:' : 'Description:'}</label>
-                <input
-                  type="text"
-                  value={txDescription}
-                  onChange={(e) => setTxDescription(e.target.value)}
-                  placeholder={isUrdu ? 'مثلاً: کرایہ کراچی مال' : 'e.g. Karachi freight payment'}
-                  className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-bold focus:border-[#162A4D] focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'حوالہ نمبر:' : 'Ref / Invoice #:'}</label>
-                  <input
-                    type="text"
-                    value={txRefNo}
-                    onChange={(e) => setTxRefNo(e.target.value)}
-                    placeholder="INV-102"
-                    className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'گاڑی نمبر:' : 'Vehicle #:'}</label>
-                  <input
-                    type="text"
-                    value={txVehicleNo}
-                    onChange={(e) => setTxVehicleNo(e.target.value)}
-                    placeholder="LHR-7860"
-                    className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-bold"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddPartyTxModal(null)}
-                  className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
-                >
-                  {isUrdu ? 'منسوخ' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  className="py-2.5 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer"
-                >
-                  {isUrdu ? 'اندراج کریں' : 'Save Entry'}
-                </button>
-              </div>
-            </form>
+          {/* Due Date */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              {isUrdu ? 'ادائیگی کی آخری تاریخ (Due Date - اختیاری)' : 'Payment Due Date (Optional)'}
+            </label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={e => setDueDate(e.target.value)}
+              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none"
+            />
           </div>
+
+          {/* Note */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              {isUrdu ? 'نوٹ / تفصیل' : 'Note (Optional)'}
+            </label>
+            <input
+              type="text"
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder={isUrdu ? 'تفصیل لکھیں...' : 'Enter note...'}
+              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none"
+            />
+          </div>
+
+          <div className="pt-2 flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-[48px] flex-1 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-xs active:scale-95"
+            >
+              {isUrdu ? 'منسوخ' : 'Cancel'}
+            </button>
+            <button
+              type="submit"
+              className="min-h-[48px] flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 active:scale-95"
+            >
+              {isUrdu ? 'محفوظ کریں' : 'Save Account'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// =========================================================================
+// SUB-COMPONENT: ENTRY FORM BOTTOM SHEET (Live Arithmetic Toolbar)
+// =========================================================================
+interface EntryFormModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  type: 'gave' | 'got';
+  accountId: string;
+  accountKind: 'party' | 'broker';
+  initialEntry: LedgerEntry | null;
+  lang: Language;
+  onSaved: (entry: LedgerEntry) => void;
+}
+
+const EntryFormModal: React.FC<EntryFormModalProps> = ({
+  isOpen,
+  onClose,
+  type,
+  accountId,
+  accountKind,
+  initialEntry,
+  lang,
+  onSaved
+}) => {
+  const isUrdu = lang === 'ur';
+  const isParty = accountKind === 'party';
+  const isGave = type === 'gave';
+
+  const modalTitle = isParty
+    ? isGave
+      ? isUrdu ? 'آپ نے دیا (رقم یا سامان)' : 'You Gave'
+      : isUrdu ? 'آپ کو ملا (وصولی)' : 'You Got'
+    : isGave
+    ? isUrdu ? 'ادائیگی کی (کمیشن ادائیگی)' : 'Paid'
+    : isUrdu ? 'کمیشن واجب الادا' : 'Commission Due';
+
+  const [amountStr, setAmountStr] = useState(
+    initialEntry?.amount ? String(initialEntry.amount) : ''
+  );
+  const [date, setDate] = useState(
+    initialEntry?.date || new Date().toISOString().split('T')[0]
+  );
+  const [note, setNote] = useState(initialEntry?.note || '');
+
+  const evaluatedAmount = useMemo(() => {
+    return evaluateArithmetic(amountStr);
+  }, [amountStr]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalAmount = evaluatedAmount ?? Number(amountStr);
+    if (!finalAmount || finalAmount <= 0) return;
+
+    const saved = saveOrUpdateLedgerEntry({
+      id: initialEntry?.id,
+      accountId,
+      type,
+      amount: finalAmount,
+      date,
+      note: note.trim()
+    });
+
+    onSaved(saved);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 pb-[max(env(safe-area-inset-bottom),1.25rem)]">
+        {/* Mobile Pull Handle */}
+        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden" />
+
+        <div className="flex items-center justify-between mb-3.5">
+          <h3
+            className={`text-base sm:text-lg font-black flex items-center gap-2 ${
+              isGave ? 'text-rose-600' : 'text-emerald-600'
+            }`}
+          >
+            {isGave ? <ArrowUpRight className="w-5 h-5" /> : <ArrowDownLeft className="w-5 h-5" />}
+            <span>{modalTitle}</span>
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
-      )}
 
-      {/* ========================================================= */}
-      {/* MODAL 3: PARTY HISTORY */}
-      {/* ========================================================= */}
-      {selectedPartyHistory && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 animate-in fade-in">
-          <div className="bg-white w-full max-w-2xl max-h-[90vh] rounded-3xl p-5 shadow-2xl border-2 border-[#162A4D] flex flex-col space-y-3">
-            <div className="flex items-center justify-between border-b pb-2">
-              <div>
-                <h3 className="font-black text-base text-slate-900">
-                  {parties.find(p => p.id === selectedPartyHistory)?.name}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {isUrdu ? 'مکمل کھاتہ تفصیل و ٹرانزیکشن ہسٹری' : 'Account Statement & Transaction History'}
-                </p>
-              </div>
-              <button type="button" onClick={() => setSelectedPartyHistory(null)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-              {partyTxs.filter(t => t.partyId === selectedPartyHistory).length === 0 ? (
-                <div className="p-6 text-center text-xs font-bold text-slate-400">
-                  {isUrdu ? 'اس پارٹی کا ابھی تک کوئی اندراج موجود نہیں ہے۔' : 'No transactions recorded yet.'}
-                </div>
-              ) : (
-                partyTxs.filter(t => t.partyId === selectedPartyHistory).map(tx => (
-                  <div
-                    key={tx.id}
-                    className="p-3 bg-[#fdfbf7] rounded-2xl border border-slate-200 flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
-                          tx.type === 'debit' ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'
-                        }`}>
-                          {tx.type === 'debit' ? (isUrdu ? 'کرایہ / بل' : 'Debit') : (isUrdu ? 'وصولی' : 'Credit')}
-                        </span>
-                        <span className="font-bold text-slate-900 truncate">{tx.description}</span>
-                      </div>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">
-                        📅 {tx.date} {tx.referenceNo ? `| Ref: ${tx.referenceNo}` : ''} {tx.vehicleNo ? `| 🚛 ${tx.vehicleNo}` : ''}
-                      </span>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <span className={`font-mono font-black text-sm ${
-                        tx.type === 'debit' ? 'text-red-600' : 'text-emerald-700'
-                      }`}>
-                        {tx.type === 'debit' ? `+Rs ${tx.amount.toLocaleString()}` : `-Rs ${tx.amount.toLocaleString()}`}
-                      </span>
-                    </div>
-                  </div>
-                ))
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          {/* Amount Field with Mobile-Friendly Arithmetic Toolbar */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                {isUrdu ? 'رقم درج کریں' : 'Amount (PKR)'}
+              </label>
+              {evaluatedAmount !== null && (
+                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                  = PKR {evaluatedAmount.toLocaleString('en-US')}
+                </span>
               )}
             </div>
 
-            <div className="border-t pt-2 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500">{isUrdu ? 'مجموعی بقایا:' : 'Net Balance:'}</span>
-              <span className="font-mono font-black text-sm text-slate-900">
-                Rs {(parties.find(p => p.id === selectedPartyHistory)?.runningBalance || 0).toLocaleString()}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+            <input
+              type="text"
+              required
+              autoFocus
+              value={amountStr}
+              onChange={e => setAmountStr(e.target.value)}
+              placeholder="0"
+              className="w-full min-h-[50px] px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-xl font-mono font-black text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+            />
 
-      {/* ========================================================= */}
-      {/* MODAL 4: ADD BROKER */}
-      {/* ========================================================= */}
-      {showAddBrokerModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 animate-in fade-in">
-          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl border-2 border-blue-900 space-y-4">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="font-black text-base text-slate-900">
-                {isUrdu ? 'نیا بروکر / کمیشن ایجنٹ درج کریں' : 'Register New Broker'}
-              </h3>
-              <button type="button" onClick={() => setShowAddBrokerModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
+            {/* Mobile Calculator Toolbar (Thumb-Friendly arithmetic chips) */}
+            <div className="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar py-0.5">
+              {['+', '-', '*', '/'].map(op => (
+                <button
+                  key={op}
+                  type="button"
+                  onClick={() => setAmountStr(prev => `${prev} ${op} `)}
+                  className="min-h-[36px] min-w-[36px] px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-black text-sm active:scale-90 transition-transform"
+                >
+                  {op}
+                </button>
+              ))}
+              {['+500', '+1000', '+5000'].map(inc => (
+                <button
+                  key={inc}
+                  type="button"
+                  onClick={() => {
+                    const addVal = parseInt(inc.replace('+', ''), 10);
+                    const current = evaluateArithmetic(amountStr) ?? Number(amountStr) ?? 0;
+                    setAmountStr(String(current + addVal));
+                  }}
+                  className="min-h-[36px] px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-extrabold text-xs active:scale-90 transition-transform whitespace-nowrap"
+                >
+                  {inc}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setAmountStr('')}
+                className="min-h-[36px] px-2.5 py-1 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs active:scale-90"
+              >
+                C
               </button>
             </div>
+          </div>
 
-            <form onSubmit={handleCreateBroker} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'بروکر کا نام:' : 'Broker Name:'} *</label>
-                <input
-                  type="text"
-                  required
-                  value={brokerName}
-                  onChange={(e) => setBrokerName(e.target.value)}
-                  placeholder={isUrdu ? 'مثلاً: ملک ندیم بروکر' : 'e.g. Malik Nadeem Broker'}
-                  className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs sm:text-sm font-bold focus:border-blue-900 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'موبائل نمبر:' : 'Phone:'}</label>
-                  <input
-                    type="tel"
-                    value={brokerPhone}
-                    onChange={(e) => setBrokerPhone(e.target.value)}
-                    placeholder="03001234567"
-                    className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-mono font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'شہر / اڈا:' : 'City / Stand:'}</label>
-                  <input
-                    type="text"
-                    value={brokerCity}
-                    onChange={(e) => setBrokerCity(e.target.value)}
-                    placeholder={isUrdu ? 'فیصل آباد' : 'Faisalabad'}
-                    className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-bold"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
+          {/* Date with Quick Chips */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                {isUrdu ? 'تاریخ' : 'Date'}
+              </label>
+              <div className="flex gap-1">
                 <button
                   type="button"
-                  onClick={() => setShowAddBrokerModal(false)}
-                  className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                  onClick={() => setDate(new Date().toISOString().split('T')[0])}
+                  className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 p-0.5"
                 >
-                  {isUrdu ? 'منسوخ' : 'Cancel'}
+                  {isUrdu ? 'آج' : 'Today'}
                 </button>
-                <button
-                  type="submit"
-                  className="py-2.5 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer"
-                >
-                  {isUrdu ? 'محفوظ کریں' : 'Save Broker'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================= */}
-      {/* MODAL 5: ADD BROKER TRANSACTION */}
-      {/* ========================================================= */}
-      {showAddBrokerTxModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 animate-in fade-in">
-          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl border-2 border-blue-900 space-y-4">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="font-black text-base text-slate-900">
-                {isUrdu ? 'بروکر لوڈ و کمیشن اندراج' : 'Record Broker Load & Commission'}
-              </h3>
-              <button type="button" onClick={() => setShowAddBrokerTxModal(null)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddBrokerTx} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'لوڈ کی تفصیل:' : 'Load Description:'} *</label>
-                <input
-                  type="text"
-                  required
-                  value={bLoadDesc}
-                  onChange={(e) => setBLoadDesc(e.target.value)}
-                  placeholder={isUrdu ? 'مثلاً: ٹیکسٹائل اسپننگ دھاگہ (لاہور تا کراچی)' : 'e.g. Yarn Load (LHR to KHI)'}
-                  className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-bold"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'کمیشن رقم (روپے):' : 'Commission (PKR):'} *</label>
-                  <input
-                    type="number"
-                    required
-                    value={bCommission}
-                    onChange={(e) => setBCommission(e.target.value)}
-                    placeholder="2500"
-                    className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-mono font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'گاڑی نمبر:' : 'Vehicle #:'}</label>
-                  <input
-                    type="text"
-                    value={bVehicleNo}
-                    onChange={(e) => setBVehicleNo(e.target.value)}
-                    placeholder="LHR-7860"
-                    className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-bold"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'ادائیگی کا اسٹیٹس:' : 'Payment Status:'}</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setBStatus('unpaid')}
-                    className={`py-2 px-3 rounded-xl text-xs font-black ${
-                      bStatus === 'unpaid' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-700'
-                    }`}
-                  >
-                    {isUrdu ? 'غیر ادا شدہ (بقایا)' : 'Unpaid'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBStatus('paid')}
-                    className={`py-2 px-3 rounded-xl text-xs font-black ${
-                      bStatus === 'paid' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700'
-                    }`}
-                  >
-                    {isUrdu ? 'ادا شدہ (Paid)' : 'Paid'}
-                  </button>
-                </div>
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
+                <span className="text-slate-300">•</span>
                 <button
                   type="button"
-                  onClick={() => setShowAddBrokerTxModal(null)}
-                  className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                  onClick={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - 1);
+                    setDate(d.toISOString().split('T')[0]);
+                  }}
+                  className="text-[11px] font-extrabold text-slate-500 p-0.5"
                 >
-                  {isUrdu ? 'منسوخ' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  className="py-2.5 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer"
-                >
-                  {isUrdu ? 'محفوظ کریں' : 'Save Entry'}
+                  {isUrdu ? 'کل' : 'Yesterday'}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================= */}
-      {/* MODAL 6: BROKER HISTORY & TOGGLE */}
-      {/* ========================================================= */}
-      {selectedBrokerHistory && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 animate-in fade-in">
-          <div className="bg-white w-full max-w-2xl max-h-[90vh] rounded-3xl p-5 shadow-2xl border-2 border-blue-900 flex flex-col space-y-3">
-            <div className="flex items-center justify-between border-b pb-2">
-              <div>
-                <h3 className="font-black text-base text-slate-900">
-                  {brokers.find(b => b.id === selectedBrokerHistory)?.name}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {isUrdu ? 'بروکر کے لوڈز اور کمیشن کی تفصیل' : 'Broker Loads and Commission Status'}
-                </p>
-              </div>
-              <button type="button" onClick={() => setSelectedBrokerHistory(null)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
             </div>
+            <input
+              type="date"
+              required
+              value={date}
+              onChange={e => setDate(e.target.value)}
+              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none"
+            />
+          </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-              {brokerTxs.filter(t => t.brokerId === selectedBrokerHistory).length === 0 ? (
-                <div className="p-6 text-center text-xs font-bold text-slate-400">
-                  {isUrdu ? 'اس بروکر کا کوئی لوڈ ریکارڈ موجود نہیں ہے۔' : 'No loads recorded yet.'}
-                </div>
-              ) : (
-                brokerTxs.filter(t => t.brokerId === selectedBrokerHistory).map(tx => (
-                  <div
-                    key={tx.id}
-                    className="p-3 bg-[#fdfbf7] rounded-2xl border border-slate-200 flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div className="min-w-0">
-                      <h4 className="font-bold text-slate-900 truncate">{tx.loadDescription}</h4>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">
-                        📅 {tx.date} {tx.vehicleNo ? `| 🚛 ${tx.vehicleNo}` : ''}
-                      </span>
-                    </div>
+          {/* Note & Quick Tag Chips */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              {isUrdu ? 'تفصیل / نوٹ' : 'Description / Note'}
+            </label>
+            <input
+              type="text"
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder={isUrdu ? 'تفصیل لکھیں...' : 'Enter note or reference...'}
+              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none mb-2"
+            />
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="font-mono font-black text-sm text-slate-900">
-                        Rs {tx.commission.toLocaleString()}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          toggleBrokerTransactionStatus(tx.id);
-                          refreshData();
-                        }}
-                        className={`px-2 py-1 rounded-xl text-[10px] font-bold cursor-pointer transition-all ${
-                          tx.status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'
-                        }`}
-                      >
-                        {tx.status === 'paid' ? (isUrdu ? 'ادا شدہ ✓' : 'Paid ✓') : (isUrdu ? 'بقایا ⏳' : 'Unpaid ⏳')}
-                      </button>
-                    </div>
-                  </div>
-                ))
+            {/* Quick Note Tags (Mobile Touch friendly) */}
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { ur: 'نقد وصولی', en: 'Cash' },
+                { ur: 'آن لائن بینک', en: 'Bank Transfer' },
+                { ur: 'ڈیزل خرچہ', en: 'Fuel' },
+                { ur: 'کرایہ بیلنس', en: 'Freight' },
+                { ur: 'ایڈوانس', en: 'Advance' }
+              ].map(tag => (
+                <button
+                  key={tag.en}
+                  type="button"
+                  onClick={() => setNote(isUrdu ? tag.ur : tag.en)}
+                  className="min-h-[34px] px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 active:scale-95"
+                >
+                  {isUrdu ? tag.ur : tag.en}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-2 flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-[50px] flex-1 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-xs active:scale-95"
+            >
+              {isUrdu ? 'منسوخ' : 'Cancel'}
+            </button>
+            <button
+              type="submit"
+              disabled={!amountStr.trim() || evaluatedAmount === null || evaluatedAmount <= 0}
+              className={`min-h-[50px] flex-1 py-3 rounded-2xl text-white font-extrabold text-xs shadow-lg transition-all active:scale-[0.98] disabled:opacity-40 cursor-pointer ${
+                isGave ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/25' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25'
+              }`}
+            >
+              {isUrdu ? 'اندراج محفوظ کریں' : 'Save Entry'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// =========================================================================
+// SUB-COMPONENT: CASH FORM BOTTOM SHEET (Cashbook In / Out)
+// =========================================================================
+interface CashFormModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  type: 'in' | 'out';
+  initialDate: string;
+  initialEntry: CashEntry | null;
+  lang: Language;
+  onSaved: (entry: CashEntry) => void;
+}
+
+const CashFormModal: React.FC<CashFormModalProps> = ({
+  isOpen,
+  onClose,
+  type,
+  initialDate,
+  initialEntry,
+  lang,
+  onSaved
+}) => {
+  const isUrdu = lang === 'ur';
+  const isIn = type === 'in';
+
+  const [amountStr, setAmountStr] = useState(
+    initialEntry?.amount ? String(initialEntry.amount) : ''
+  );
+  const [date, setDate] = useState(initialEntry?.date || initialDate);
+  const [category, setCategory] = useState(initialEntry?.category || (isIn ? 'advance' : 'fuel'));
+  const [note, setNote] = useState(initialEntry?.note || '');
+
+  const evaluatedAmount = useMemo(() => {
+    return evaluateArithmetic(amountStr);
+  }, [amountStr]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalAmount = evaluatedAmount ?? Number(amountStr);
+    if (!finalAmount || finalAmount <= 0) return;
+
+    const saved = saveOrUpdateCashEntry({
+      id: initialEntry?.id,
+      type,
+      amount: finalAmount,
+      date,
+      category,
+      note: note.trim()
+    });
+
+    onSaved(saved);
+  };
+
+  if (!isOpen) return null;
+
+  const categories = [
+    { id: 'fuel', icon: '⛽', ur: 'ڈیزل', en: 'Fuel' },
+    { id: 'toll', icon: '🛣️', ur: 'ٹول', en: 'Toll' },
+    { id: 'maintenance', icon: '🔧', ur: 'مرمت', en: 'Repair' },
+    { id: 'food', icon: '☕', ur: 'کھانا', en: 'Food' },
+    { id: 'kharcha', icon: '👤', ur: 'خرچہ', en: 'Kharcha' },
+    { id: 'challan', icon: '📄', ur: 'چالان', en: 'Challan' },
+    { id: 'advance', icon: '💸', ur: 'ایڈوانس', en: 'Advance' },
+    { id: 'other', icon: '📦', ur: 'دیگر', en: 'Other' }
+  ];
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 pb-[max(env(safe-area-inset-bottom),1.25rem)]">
+        {/* Mobile Handle */}
+        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden" />
+
+        <div className="flex items-center justify-between mb-3.5">
+          <h3
+            className={`text-base sm:text-lg font-black flex items-center gap-2 ${
+              isIn ? 'text-emerald-600' : 'text-rose-600'
+            }`}
+          >
+            {isIn ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+            <span>{isIn ? (isUrdu ? 'کیش ان (آمدن)' : 'Cash In (+)') : (isUrdu ? 'کیش آؤٹ (خرچہ)' : 'Cash Out (-)')}</span>
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          {/* Amount Field with Calculator Quick Chips */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                {isUrdu ? 'رقم درج کریں' : 'Amount (PKR)'}
+              </label>
+              {evaluatedAmount !== null && (
+                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                  = PKR {evaluatedAmount.toLocaleString('en-US')}
+                </span>
               )}
             </div>
-          </div>
-        </div>
-      )}
+            <input
+              type="text"
+              required
+              autoFocus
+              value={amountStr}
+              onChange={e => setAmountStr(e.target.value)}
+              placeholder="0"
+              className="w-full min-h-[50px] px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-xl font-mono font-black text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+            />
 
-      {/* ========================================================= */}
-      {/* MODAL 7: ADD VEHICLE EXPENSE (WITH RECEIPT OCR!) */}
-      {/* ========================================================= */}
-      {showAddExpenseModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 animate-in fade-in">
-          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl border-2 border-red-700 space-y-4">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="font-black text-base text-slate-900">
-                {isUrdu ? 'گاڑی کا خرچہ درج کریں' : 'Record Vehicle Expense'}
-              </h3>
-              <button type="button" onClick={() => setShowAddExpenseModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
+            {/* Quick Math Toolbar */}
+            <div className="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar py-0.5">
+              {['+', '-', '*', '/'].map(op => (
+                <button
+                  key={op}
+                  type="button"
+                  onClick={() => setAmountStr(prev => `${prev} ${op} `)}
+                  className="min-h-[36px] min-w-[36px] px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-black text-sm active:scale-90"
+                >
+                  {op}
+                </button>
+              ))}
+              {['+500', '+1000', '+5000'].map(inc => (
+                <button
+                  key={inc}
+                  type="button"
+                  onClick={() => {
+                    const addVal = parseInt(inc.replace('+', ''), 10);
+                    const current = evaluateArithmetic(amountStr) ?? Number(amountStr) ?? 0;
+                    setAmountStr(String(current + addVal));
+                  }}
+                  className="min-h-[36px] px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-extrabold text-xs active:scale-90"
+                >
+                  {inc}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setAmountStr('')}
+                className="min-h-[36px] px-2.5 py-1 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 font-bold text-xs"
+              >
+                C
               </button>
             </div>
+          </div>
 
-            {/* Receipt OCR Scanner Box */}
-            <div className="p-3 bg-amber-50 rounded-2xl border border-amber-300 flex items-center justify-between gap-2">
-              <div>
-                <span className="text-xs font-bold text-amber-900 block flex items-center gap-1">
-                  <Receipt className="w-3.5 h-3.5 text-amber-700" />
-                  <span>{isUrdu ? 'رسید / پرچی کیمرہ اسکین' : 'Receipt OCR Scanner'}</span>
-                </span>
-                <span className="text-[10px] text-amber-700 block">
-                  {isUrdu ? 'پٹرول پمپ پرچی یا مرمت کا بل اسکین کریں' : 'Scan pump slip or workshop receipt'}
-                </span>
-              </div>
-              <CameraOcrInput
-                mode="receipt"
-                lang={lang}
-                onScanResult={(amount) => {
-                  setExpAmount(amount);
-                  showToast(isUrdu ? `رسید سے رقم مل گئی: Rs. ${amount}` : `Scanned amount: Rs. ${amount}`);
-                }}
-              />
-            </div>
-
-            <form onSubmit={handleAddVehicleExpense} className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'گاڑی نمبر:' : 'Vehicle #:'}</label>
-                  <input
-                    type="text"
-                    value={expVehicleNo}
-                    onChange={(e) => setExpVehicleNo(e.target.value)}
-                    placeholder={vehicles[0]?.reg || 'LHR-7860'}
-                    className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'خرچہ کی قسم:' : 'Category:'}</label>
-                  <select
-                    value={expCategory}
-                    onChange={(e) => setExpCategory(e.target.value as any)}
-                    className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-bold"
-                  >
-                    <option value="fuel">{isUrdu ? 'ڈیزل / ایندھن' : 'Fuel'}</option>
-                    <option value="toll">{isUrdu ? 'ٹول ٹیکس' : 'Toll'}</option>
-                    <option value="repair">{isUrdu ? 'مرمت و کام' : 'Repair'}</option>
-                    <option value="challan">{isUrdu ? 'چالان / جرمانہ' : 'Challan'}</option>
-                    <option value="driver">{isUrdu ? 'ڈرائیور خوراک' : 'Driver'}</option>
-                    <option value="other">{isUrdu ? 'دیگر خرچہ' : 'Other'}</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'رقم (روپے):' : 'Amount (PKR):'} *</label>
-                <input
-                  type="number"
-                  required
-                  value={expAmount}
-                  onChange={(e) => setExpAmount(e.target.value)}
-                  placeholder="0"
-                  className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-sm font-mono font-black focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'تفصیل / نوٹ:' : 'Description / Note:'}</label>
-                <input
-                  type="text"
-                  value={expDesc}
-                  onChange={(e) => setExpDesc(e.target.value)}
-                  placeholder={isUrdu ? 'مثلاً: آئل فلٹر تبدیلی' : 'e.g. Oil filter change'}
-                  className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-bold"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
+          {/* Category Touch Grid (Min 44px Height) */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+              {isUrdu ? 'کیٹگری منتخب کریں' : 'Select Category'}
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {categories.map(c => (
                 <button
+                  key={c.id}
                   type="button"
-                  onClick={() => setShowAddExpenseModal(false)}
-                  className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                  onClick={() => setCategory(c.id)}
+                  className={`min-h-[44px] py-2 px-1.5 rounded-2xl text-xs font-bold flex flex-col items-center justify-center transition-all active:scale-95 ${
+                    category === c.id
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-md'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                  }`}
                 >
-                  {isUrdu ? 'منسوخ' : 'Cancel'}
+                  <span className="text-sm">{c.icon}</span>
+                  <span className="text-[10px] mt-0.5 truncate">{isUrdu ? c.ur : c.en}</span>
                 </button>
-                <button
-                  type="submit"
-                  className="py-2.5 px-5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer"
-                >
-                  {isUrdu ? 'خرچہ محفوظ کریں' : 'Save Expense'}
-                </button>
-              </div>
-            </form>
+              ))}
+            </div>
+          </div>
+
+          {/* Date & Note */}
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              {isUrdu ? 'تاریخ' : 'Date'}
+            </label>
+            <input
+              type="date"
+              required
+              value={date}
+              onChange={e => setDate(e.target.value)}
+              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              {isUrdu ? 'تفصیل' : 'Description'}
+            </label>
+            <input
+              type="text"
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder={isUrdu ? 'تفصیل لکھیں...' : 'Enter details...'}
+              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none"
+            />
+          </div>
+
+          <div className="pt-2 flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-[50px] flex-1 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-xs active:scale-95"
+            >
+              {isUrdu ? 'منسوخ' : 'Cancel'}
+            </button>
+            <button
+              type="submit"
+              disabled={!amountStr.trim() || evaluatedAmount === null || evaluatedAmount <= 0}
+              className={`min-h-[50px] flex-1 py-3 rounded-2xl text-white font-extrabold text-xs shadow-lg transition-all active:scale-[0.98] disabled:opacity-40 cursor-pointer ${
+                isIn ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/25' : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/25'
+              }`}
+            >
+              {isUrdu ? 'محفوظ کریں' : 'Save Cash Entry'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// =========================================================================
+// SUB-COMPONENT: SETTINGS, PIN LOCK & BACKUP MODAL
+// =========================================================================
+interface SettingsBackupModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  lang: Language;
+  onUpdated: () => void;
+}
+
+const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
+  isOpen,
+  onClose,
+  lang,
+  onUpdated
+}) => {
+  const isUrdu = lang === 'ur';
+
+  const [settings, setSettings] = useState<KhataSettings>(() => getKhataSettings());
+  const [businessName, setBusinessName] = useState(settings.businessName || '');
+  const [newPin, setNewPin] = useState('');
+  const [pinMessage, setPinMessage] = useState('');
+  const [backupMessage, setBackupMessage] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  if (!isOpen) return null;
+
+  const handleSaveBusinessName = () => {
+    saveKhataSettings({ businessName: businessName.trim() });
+    onUpdated();
+    setBackupMessage(isUrdu ? 'کاروبار کا نام محفوظ ہو گیا' : 'Business name saved');
+    setTimeout(() => setBackupMessage(''), 3000);
+  };
+
+  const handleSetNewPin = async () => {
+    if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
+      setPinMessage(isUrdu ? '4 ہندسوں کا پن کوڈ درج کریں' : 'Enter 4-digit numeric PIN');
+      return;
+    }
+    const salt = generatePinSalt();
+    const hash = await hashPin(newPin, salt);
+    saveKhataSettings({ pinHash: hash, pinSalt: salt, pinFailedAttempts: 0, pinLockoutUntil: 0 });
+    setNewPin('');
+    setPinMessage(isUrdu ? 'پن کوڈ محفوظ ہو گیا' : 'PIN saved successfully');
+    onUpdated();
+    setTimeout(() => setPinMessage(''), 3000);
+  };
+
+  const handleRemovePin = () => {
+    saveKhataSettings({ pinHash: '', pinSalt: '', pinFailedAttempts: 0, pinLockoutUntil: 0 });
+    setPinMessage(isUrdu ? 'پن لاک ختم کر دیا گیا' : 'PIN lock removed');
+    onUpdated();
+    setTimeout(() => setPinMessage(''), 3000);
+  };
+
+  const handleExportBackup = () => {
+    const jsonStr = exportKhataBackup();
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `driverdost-khata-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setBackupMessage(isUrdu ? 'بیک اپ فائل ڈاؤن لوڈ ہو گئی' : 'Backup downloaded');
+    setTimeout(() => setBackupMessage(''), 3000);
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = event => {
+      const content = event.target?.result as string;
+      if (!content) return;
+
+      const mode = window.confirm(
+        isUrdu
+          ? 'کیا آپ موجودہ ریکارڈز میں ضم (Merge) کرنا چاہتے ہیں؟ (OK = Merge, Cancel = Replace)'
+          : 'Merge with existing records? (OK = Merge, Cancel = Replace all)'
+      )
+        ? 'merge'
+        : 'replace';
+
+      const res = importKhataBackup(content, mode);
+      if (res.success) {
+        setBackupMessage(
+          isUrdu
+            ? `کامیابی! ${res.accountsCount} کھاتے اور ${res.entriesCount} ٹرانزیکشنز بحال ہو گئے۔`
+            : `Success! ${res.accountsCount} accounts restored.`
+        );
+        onUpdated();
+      } else {
+        setBackupMessage(isUrdu ? `خرابی: ${res.error}` : `Error: ${res.error}`);
+      }
+      setTimeout(() => setBackupMessage(''), 4000);
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto pb-[max(env(safe-area-inset-bottom),1.25rem)]">
+        {/* Mobile Handle */}
+        <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden" />
+
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <Settings className="w-5 h-5 text-emerald-600" />
+            <span>{isUrdu ? 'کھاتہ سیٹنگز و بیک اپ' : 'Khata Settings & Security'}</span>
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* 1. Custom Business Name */}
+        <div className="mb-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
+          <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block mb-1.5">
+            {isUrdu ? 'کاروبار یا ٹرانسپورٹ کمپنی کا نام (پی ڈی ایف پر آئے گا)' : 'Business Name (Shown on Statements)'}
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={businessName}
+              onChange={e => setBusinessName(e.target.value)}
+              placeholder={isUrdu ? 'مثال: المدینہ گڈز' : 'e.g. Al-Madina Goods'}
+              className="flex-1 min-h-[44px] px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleSaveBusinessName}
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-600 text-white font-extrabold text-xs active:scale-95"
+            >
+              {isUrdu ? 'محفوظ' : 'Save'}
+            </button>
           </div>
         </div>
-      )}
 
-      {/* ========================================================= */}
-      {/* MODAL 8: ADD VEHICLE INCOME */}
-      {/* ========================================================= */}
-      {showAddIncomeModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 animate-in fade-in">
-          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl border-2 border-emerald-700 space-y-4">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="font-black text-base text-slate-900">
-                {isUrdu ? 'گاڑی کی کرایہ آمدن درج کریں' : 'Record Vehicle Income'}
-              </h3>
-              <button type="button" onClick={() => setShowAddIncomeModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
+        {/* 2. PIN Lock Setup */}
+        <div className="mb-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+              <KeyRound className="w-4 h-4 text-emerald-600" />
+              <span>{isUrdu ? 'کھاتہ پن کوڈ پروٹیکشن' : 'Khata PIN Protection'}</span>
+            </span>
+            {settings.pinHash ? (
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60">
+                {isUrdu ? 'فعال ہے' : 'Active'}
+              </span>
+            ) : (
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                {isUrdu ? 'غیر فعال' : 'Disabled'}
+              </span>
+            )}
+          </div>
+
+          <div className="flex gap-2 mb-2">
+            <input
+              type="password"
+              maxLength={4}
+              value={newPin}
+              onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
+              placeholder={isUrdu ? '4 ہندسوں کا نیا پن' : '4-digit PIN'}
+              className="flex-1 min-h-[44px] px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-center font-mono tracking-widest text-slate-900 dark:text-white focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleSetNewPin}
+              className="min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-600 text-white font-extrabold text-xs active:scale-95"
+            >
+              {isUrdu ? 'پن سیٹ' : 'Set PIN'}
+            </button>
+            {settings.pinHash && (
+              <button
+                type="button"
+                onClick={handleRemovePin}
+                className="min-h-[44px] px-3 py-2 rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 font-extrabold text-xs active:scale-95"
+              >
+                {isUrdu ? 'ہٹائیں' : 'Remove'}
               </button>
-            </div>
-
-            <form onSubmit={handleAddVehicleIncome} className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'گاڑی نمبر:' : 'Vehicle #:'}</label>
-                  <input
-                    type="text"
-                    value={incVehicleNo}
-                    onChange={(e) => setIncVehicleNo(e.target.value)}
-                    placeholder={vehicles[0]?.reg || 'LHR-7860'}
-                    className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'پارٹی کا نام:' : 'Party Name:'}</label>
-                  <input
-                    type="text"
-                    value={incPartyName}
-                    onChange={(e) => setIncPartyName(e.target.value)}
-                    placeholder={isUrdu ? 'الفلاح کاٹن' : 'Al-Falah Cotton'}
-                    className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-bold"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'کرایہ رقم (روپے):' : 'Amount (PKR):'} *</label>
-                <input
-                  type="number"
-                  required
-                  value={incAmount}
-                  onChange={(e) => setIncAmount(e.target.value)}
-                  placeholder="0"
-                  className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-sm font-mono font-black focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">{isUrdu ? 'تفصیل:' : 'Description:'}</label>
-                <input
-                  type="text"
-                  value={incDesc}
-                  onChange={(e) => setIncDesc(e.target.value)}
-                  placeholder={isUrdu ? 'مثلاً: سمندری تا کراچی کرایہ' : 'e.g. Samundri to Karachi freight'}
-                  className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-2 text-xs font-bold"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddIncomeModal(false)}
-                  className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
-                >
-                  {isUrdu ? 'منسوخ' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  className="py-2.5 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer"
-                >
-                  {isUrdu ? 'آمدن محفوظ کریں' : 'Save Income'}
-                </button>
-              </div>
-            </form>
+            )}
           </div>
+          {pinMessage && (
+            <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">{pinMessage}</p>
+          )}
         </div>
-      )}
+
+        {/* 3. Export / Import Backup */}
+        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2.5">
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+            {isUrdu ? 'کھاتہ بیک اپ اور ڈیٹا بحالی' : 'Data Backup & Restore'}
+          </span>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handleExportBackup}
+              className="min-h-[44px] py-2.5 px-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{isUrdu ? 'بیک اپ ڈاؤن لوڈ' : 'Export JSON'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="min-h-[44px] py-2.5 px-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+            >
+              <Upload className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{isUrdu ? 'بیک اپ بحال کریں' : 'Import JSON'}</span>
+            </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImportFile}
+              accept=".json"
+              className="hidden"
+            />
+          </div>
+
+          {backupMessage && (
+            <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">{backupMessage}</p>
+          )}
+        </div>
+
+        <div className="mt-4 text-center">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full min-h-[48px] py-3 rounded-2xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-extrabold text-xs active:scale-95 transition-all"
+          >
+            {isUrdu ? 'بند کریں' : 'Close'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
