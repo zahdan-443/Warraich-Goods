@@ -80,9 +80,9 @@ export const db = (() => {
 
 // Validate Connection to Firestore on boot
 if (typeof window !== 'undefined') {
-  getDocFromServer(doc(db, 'test', 'connection')).catch((error) => {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('[Firebase] Client offline or initializing.');
+  getDocFromServer(doc(db, 'settings', 'companyProfile')).catch((error) => {
+    if (error instanceof Error && (error.message.includes('the client is offline') || error.message.includes('permission-denied'))) {
+      console.warn('[Firebase] Client offline, initializing, or unauthenticated boot check.');
     }
   });
 }
