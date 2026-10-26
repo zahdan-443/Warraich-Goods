@@ -56,6 +56,7 @@ import { LedgerView } from './components/views/LedgerView';
 import { ViewHeader } from './components/ViewHeader';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
+import { GuestSavePromptModal } from './components/GuestSavePromptModal';
 import { Home, ArrowLeft } from 'lucide-react';
 import { checkExpiringDocuments, processExpiryNotifications } from './utils/documentExpiry';
 import { dispatchDailyDigestNotification } from './utils/dailyDigestNotification';
@@ -180,6 +181,21 @@ export default function App() {
   const [verifySubSection, setVerifySubSection] = useState<'vehicle' | 'license' | 'challan' | 'history' | 'bilty'>('vehicle');
   const [initialBiltySearch, setInitialBiltySearch] = useState<string>('');
   const [initialBiltyToken, setInitialBiltyToken] = useState<string>('');
+
+  // Guest Save Verification Modal State (Google Sign In prompt for Firebase Cloud backup)
+  const [showGuestSaveModal, setShowGuestSaveModal] = useState<boolean>(false);
+  const [pendingGuestSaveAction, setPendingGuestSaveAction] = useState<(() => void) | null>(null);
+  const [guestSavePromptDesc, setGuestSavePromptDesc] = useState<string>('');
+
+  const triggerGuestSaveCheck = (action: () => void, description?: string) => {
+    if (!auth.currentUser && !userEmail) {
+      setPendingGuestSaveAction(() => action);
+      if (description) setGuestSavePromptDesc(description);
+      setShowGuestSaveModal(true);
+      return;
+    }
+    action();
+  };
 
   useEffect(() => {
     // Check URL parameters first for direct Bilty verification links (from QR code scan or WhatsApp link)
@@ -721,30 +737,39 @@ export default function App() {
 
   // Handlers for Trips
   const handleSaveTrip = (tripObj: Omit<Trip, 'id' | 'name'>, tripName: string) => {
-    const newTrip: Trip = {
-      ...tripObj,
-      id: Date.now(),
-      name: tripName
-    };
-    if (isOffline) {
-      const offlineItem: OfflineAction = {
+    const execute = () => {
+      const newTrip: Trip = {
+        ...tripObj,
         id: Date.now(),
-        type: 'trip',
-        data: newTrip,
-        timestamp: new Date().toLocaleTimeString()
+        name: tripName
       };
-      const newQ = [offlineItem, ...offlineQueue];
-      setOfflineQueue(newQ);
-      saveStoredOfflineQueue(newQ);
-    }
-    const updated = [newTrip, ...trips];
-    setTrips(updated);
-    saveStoredTrips(updated);
+      if (isOffline) {
+        const offlineItem: OfflineAction = {
+          id: Date.now(),
+          type: 'trip',
+          data: newTrip,
+          timestamp: new Date().toLocaleTimeString()
+        };
+        const newQ = [offlineItem, ...offlineQueue];
+        setOfflineQueue(newQ);
+        saveStoredOfflineQueue(newQ);
+      }
+      const updated = [newTrip, ...trips];
+      setTrips(updated);
+      saveStoredTrips(updated);
 
-    pushAppNotification(
-      lang === 'ur' ? 'سفر کا حساب محفوظ ہو گیا' : 'Trip Cost Saved',
-      lang === 'ur' ? `روٹ: ${tripName} کے اخراجات محفوظ ہو گئے۔` : `Trip expenses for ${tripName} saved successfully.`,
-      'system'
+      pushAppNotification(
+        lang === 'ur' ? 'سفر کا حساب محفوظ ہو گیا' : 'Trip Cost Saved',
+        lang === 'ur' ? `روٹ: ${tripName} کے اخراجات محفوظ ہو گئے۔` : `Trip expenses for ${tripName} saved successfully.`,
+        'system'
+      );
+    };
+
+    triggerGuestSaveCheck(
+      execute,
+      lang === 'ur'
+        ? 'سفر اور گاڑی کا مالی حساب محفوظ رکھنے کے لیے گوگل سائن ان کریں۔ فائر بیس کلاؤڈ آپ کے ڈیٹا کو محفوظ رکھتا ہے۔'
+        : 'Sign in with Google to protect your trip expenses and accounts on secure Firebase Cloud.'
     );
   };
 
@@ -761,18 +786,27 @@ export default function App() {
 
   // Handlers for Vehicles
   const handleAddVehicle = (vehObj: Omit<Vehicle, 'id'>) => {
-    const newVeh: Vehicle = {
-      ...vehObj,
-      id: Date.now()
-    };
-    const updated = [...vehicles, newVeh];
-    setVehicles(updated);
-    saveStoredVehicles(updated);
+    const execute = () => {
+      const newVeh: Vehicle = {
+        ...vehObj,
+        id: Date.now()
+      };
+      const updated = [...vehicles, newVeh];
+      setVehicles(updated);
+      saveStoredVehicles(updated);
 
-    pushAppNotification(
-      lang === 'ur' ? 'گاڑی کا ریکارڈ شامل ہو گیا' : 'Vehicle Registered',
-      lang === 'ur' ? `گاڑی نمبر ${newVeh.reg} کا اندراج مکمل ہو گیا۔` : `Vehicle ${newVeh.reg} added to fleet.`,
-      'fleet'
+      pushAppNotification(
+        lang === 'ur' ? 'گاڑی کا ریکارڈ شامل ہو گیا' : 'Vehicle Registered',
+        lang === 'ur' ? `گاڑی نمبر ${newVeh.reg} کا اندراج مکمل ہو گیا۔` : `Vehicle ${newVeh.reg} added to fleet.`,
+        'fleet'
+      );
+    };
+
+    triggerGuestSaveCheck(
+      execute,
+      lang === 'ur'
+        ? 'گاڑی کا ریکارڈ اور فلیٹ پروفائل فائر بیس پر محفوظ کرنے کے لیے گوگل سائن ان کریں۔'
+        : 'Sign in with Google to save your vehicle profile securely on Firebase Cloud.'
     );
   };
 
@@ -795,18 +829,27 @@ export default function App() {
 
   // Handlers for Drivers
   const handleAddDriver = (drvObj: Omit<Driver, 'id'>) => {
-    const newDrv: Driver = {
-      ...drvObj,
-      id: Date.now()
-    };
-    const updated = [...drivers, newDrv];
-    setDrivers(updated);
-    saveStoredDrivers(updated);
+    const execute = () => {
+      const newDrv: Driver = {
+        ...drvObj,
+        id: Date.now()
+      };
+      const updated = [...drivers, newDrv];
+      setDrivers(updated);
+      saveStoredDrivers(updated);
 
-    pushAppNotification(
-      lang === 'ur' ? 'ڈرائیور کا اندراج مکمل' : 'Driver Added',
-      lang === 'ur' ? `ڈرائیور: ${newDrv.name} (${newDrv.phone}) شامل ہو گئے۔` : `Driver ${newDrv.name} added.`,
-      'fleet'
+      pushAppNotification(
+        lang === 'ur' ? 'ڈرائیور کا اندراج مکمل' : 'Driver Added',
+        lang === 'ur' ? `ڈرائیور: ${newDrv.name} (${newDrv.phone}) شامل ہو گئے۔` : `Driver ${newDrv.name} added.`,
+        'fleet'
+      );
+    };
+
+    triggerGuestSaveCheck(
+      execute,
+      lang === 'ur'
+        ? 'ڈرائیور کا ریکارڈ اور دستاویزات فائر بیس کلاؤڈ پر محفوظ کرنے کے لیے گوگل سائن ان کریں۔'
+        : 'Sign in with Google to save your driver records securely on Firebase Cloud.'
     );
   };
 
@@ -1202,6 +1245,29 @@ export default function App() {
         />
 
         <InstallPwaModal lang={lang} />
+
+        <GuestSavePromptModal
+          isOpen={showGuestSaveModal}
+          onClose={() => {
+            setShowGuestSaveModal(false);
+            setPendingGuestSaveAction(null);
+          }}
+          onProceedWithoutAuth={() => {
+            if (pendingGuestSaveAction) {
+              pendingGuestSaveAction();
+              setPendingGuestSaveAction(null);
+            }
+          }}
+          onAuthSuccess={async (email) => {
+            await handleAuthSuccess(email);
+            if (pendingGuestSaveAction) {
+              pendingGuestSaveAction();
+              setPendingGuestSaveAction(null);
+            }
+          }}
+          lang={lang}
+          saveDescription={guestSavePromptDesc}
+        />
       </React.Suspense>
 
       {/* FLOATING UPPER-LEFT "BACK TO DASHBOARD" BUTTON (Appears at top-left matching header position when scrolled) */}

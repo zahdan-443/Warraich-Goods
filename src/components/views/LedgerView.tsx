@@ -36,11 +36,13 @@ import {
   calculateLockoutDuration,
   isPinLocked,
   formatKhataReminderMessage,
+  formatAccountStatementWhatsAppMessage,
   exportKhataBackup,
   importKhataBackup,
   getPendingDocumentBalances,
   importPendingDocumentToKhata,
-  PendingDocBalance
+  PendingDocBalance,
+  calculateVehicleProfitLoss
 } from '../../utils/ledgerStorage';
 import {
   generateAccountStatementPdf,
@@ -82,9 +84,13 @@ import {
   ChevronLeft,
   Smartphone,
   Delete,
-  Calculator
+  Calculator,
+  Truck,
+  Fuel,
+  BarChart3
 } from 'lucide-react';
 import { auth } from '../../utils/firebase';
+import { GuestSavePromptModal } from '../GuestSavePromptModal';
 
 interface LedgerViewProps {
   lang: Language;
@@ -103,8 +109,27 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
 }) => {
   const isUrdu = lang === 'ur';
 
-  // Active Tab: 'parties' | 'brokers' | 'cashbook'
-  const [activeTab, setActiveTab] = useState<'parties' | 'brokers' | 'cashbook'>('parties');
+  // Active Tab: 'parties' | 'brokers' | 'cashbook' | 'vehiclePnl'
+  const [activeTab, setActiveTab] = useState<'parties' | 'brokers' | 'cashbook' | 'vehiclePnl'>('parties');
+
+  // Vehicle P&L Filter States
+  const [pnlVehicle, setPnlVehicle] = useState<string>('all');
+  const [pnlMonth, setPnlMonth] = useState<string>('all');
+
+  // Guest Save Verification Modal State (Google Sign In prompt for Firebase Cloud backup)
+  const [showGuestSaveModal, setShowGuestSaveModal] = useState<boolean>(false);
+  const [pendingGuestSaveAction, setPendingGuestSaveAction] = useState<(() => void) | null>(null);
+  const [guestSaveDescription, setGuestSaveDescription] = useState<string>('');
+
+  const triggerGuestSaveCheck = (action: () => void, description?: string) => {
+    if (!auth.currentUser) {
+      setPendingGuestSaveAction(() => action);
+      if (description) setGuestSaveDescription(description);
+      setShowGuestSaveModal(true);
+      return;
+    }
+    action();
+  };
 
   // Accounts & Entries State
   const [accounts, setAccounts] = useState<LedgerAccount[]>([]);
@@ -268,7 +293,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
   // Filtered Accounts
   const currentKind = activeTab === 'parties' ? 'party' : 'broker';
   const filteredAccounts = useMemo(() => {
-    if (activeTab === 'cashbook') return [];
+    if (activeTab === 'cashbook' || activeTab === 'vehiclePnl') return [];
 
     let list = accounts.filter(a => a.kind === currentKind);
     const today = new Date().toISOString().split('T')[0];
@@ -385,11 +410,18 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
 
   // Import All Pending Documents
   const handleImportAllPendingDocs = () => {
-    for (const docItem of pendingDocs) {
-      importPendingDocumentToKhata(docItem);
-    }
-    setDismissPendingBanner(true);
-    reloadData();
+    triggerGuestSaveCheck(
+      () => {
+        for (const docItem of pendingDocs) {
+          importPendingDocumentToKhata(docItem);
+        }
+        setDismissPendingBanner(true);
+        reloadData();
+      },
+      isUrdu
+        ? 'دستاویزات کے بقایا جات کھاتہ میں محفوظ کرنے کے لیے گوگل سائن ان کریں تاکہ ڈیٹا فائر بیس کلاؤڈ پر محفوظ رہے۔'
+        : 'Sign in with Google to save document balances securely on Firebase Cloud.'
+    );
   };
 
   // ----------------- RENDER: PIN LOCK SCREEN -----------------
@@ -516,6 +548,23 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
 
     const hasMoreEntries = selectedAccountEntries.length > entriesLimit;
 
+    const handleShareAccountStatementWhatsApp = (accountToShare: LedgerAccount) => {
+      const text = formatAccountStatementWhatsAppMessage(
+        accountToShare,
+        selectedAccountEntries,
+        settings.businessName,
+        lang
+      );
+      const cleanPhone = normalizePakistaniPhone(accountToShare.phone);
+      const waUrl = cleanPhone
+        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
+        : `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+      if (typeof window !== 'undefined') {
+        window.open(waUrl, '_blank');
+      }
+    };
+
     return (
       <div className="w-full max-w-4xl mx-auto px-2 sm:px-4 flex flex-col h-[calc(100dvh-4.25rem)] overflow-hidden">
         {/* Sticky Mobile App Bar */}
@@ -541,7 +590,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
                 await downloadOrSharePdf(doc, filename);
               }}
               title={isUrdu ? 'کھاتہ پی ڈی ایف ڈاؤن لوڈ یا شیئر کریں' : 'Download/Share Statement PDF'}
-              className="min-h-[44px] px-3.5 py-1.5 rounded-2xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all"
+              className="min-h-[44px] px-3 py-1.5 rounded-2xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all"
             >
               <Download className="w-4 h-4" />
               <span className="hidden xs:inline">{isUrdu ? 'پی ڈی ایف' : 'PDF'}</span>
@@ -549,8 +598,18 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
 
             <button
               type="button"
+              onClick={() => handleShareAccountStatementWhatsApp(selectedAccount)}
+              title={isUrdu ? 'کھاتہ اسٹیٹمنٹ واٹس ایپ پر شیئر کریں' : 'Share Account Statement on WhatsApp'}
+              className="min-h-[44px] px-3 py-1.5 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>{isUrdu ? 'واٹس ایپ شیئر' : 'WhatsApp'}</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setShowReminderModal(selectedAccount)}
-              className="min-h-[44px] px-3.5 py-1.5 rounded-2xl bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
+              className="min-h-[44px] px-3 py-1.5 rounded-2xl bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
             >
               <Phone className="w-4 h-4" />
               <span>{isUrdu ? 'یاد دہانی' : 'Remind'}</span>
@@ -609,11 +668,19 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
           </div>
 
           {/* Quick Edit/Delete Actions */}
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
             <span className="text-slate-400">
               {isUrdu ? `کل ٹرانزیکشنز: ${selectedAccountEntries.length}` : `Entries: ${selectedAccountEntries.length}`}
             </span>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => handleShareAccountStatementWhatsApp(selectedAccount)}
+                className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 font-extrabold flex items-center gap-1.5 p-1.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl px-2.5 border border-emerald-200 dark:border-emerald-800 active:scale-95 transition-all"
+              >
+                <MessageCircle className="w-3.5 h-3.5 text-[#25D366]" />
+                <span>{isUrdu ? 'واٹس ایپ اسٹیٹمنٹ' : 'WhatsApp Statement'}</span>
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -831,7 +898,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5">
-          {activeTab !== 'cashbook' && (
+          {activeTab !== 'cashbook' && activeTab !== 'vehiclePnl' && (
             <button
               type="button"
               onClick={async () => {
@@ -902,21 +969,26 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
           <span>{isUrdu ? 'روزنامچہ' : 'Cashbook'}</span>
         </button>
 
-        {/* 4th Reserved Tab Structure Slot */}
-        <div
-          title={isUrdu ? 'گاڑی نفع نقصان - جلد آرہا ہے' : 'Vehicle Profit/Loss - Coming Soon'}
-          className="min-h-[44px] shrink-0 min-w-fit py-2 px-4 rounded-xl font-semibold text-xs text-slate-400 dark:text-slate-600 cursor-not-allowed flex items-center justify-center gap-1.5 select-none whitespace-nowrap opacity-60"
+        {/* 4th Tab: Vehicle P&L (گاڑی نفع و نقصان) */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('vehiclePnl')}
+          className={`min-h-[44px] shrink-0 min-w-fit py-2 px-4 rounded-xl font-extrabold text-xs sm:text-sm whitespace-nowrap transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeTab === 'vehiclePnl'
+              ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
         >
           <span>🚛</span>
           <span>{isUrdu ? 'گاڑی P&L' : 'Vehicle P&L'}</span>
-        </div>
+        </button>
       </div>
 
       {/* Main Scrollable Viewport (Banner + Tab Content) */}
       <div className="flex-1 overflow-y-auto overscroll-contain pb-24 pr-0.5">
 
       {/* Pending Documents Import Banner */}
-      {!dismissPendingBanner && pendingDocs.length > 0 && activeTab !== 'cashbook' && (
+      {!dismissPendingBanner && pendingDocs.length > 0 && activeTab !== 'cashbook' && activeTab !== 'vehiclePnl' && (
         <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 rounded-2xl p-3 mb-3.5 flex items-center justify-between gap-3 shadow-sm">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
@@ -952,9 +1024,11 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
         </div>
       )}
 
-      {/* CASHBOOK TAB CONTENT */}
+      {/* TAB CONTENT: CASHBOOK / VEHICLE P&L / PARTIES & BROKERS */}
       {activeTab === 'cashbook' ? (
         renderCashbookView()
+      ) : activeTab === 'vehiclePnl' ? (
+        renderVehiclePnlView()
       ) : (
         /* PARTIES & BROKERS TAB CONTENT */
         <>
@@ -1233,8 +1307,419 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
       {renderReminderModal()}
       {renderSettingsModal()}
       {renderUndoSnackbar()}
+      {renderGuestSaveModal()}
     </div>
   );
+
+  // ----------------- RENDER: GUEST SAVE VERIFICATION MODAL -----------------
+  function renderGuestSaveModal() {
+    return (
+      <GuestSavePromptModal
+        isOpen={showGuestSaveModal}
+        onClose={() => {
+          setShowGuestSaveModal(false);
+          setPendingGuestSaveAction(null);
+        }}
+        onProceedWithoutAuth={() => {
+          if (pendingGuestSaveAction) {
+            pendingGuestSaveAction();
+            setPendingGuestSaveAction(null);
+          }
+        }}
+        onAuthSuccess={() => {
+          if (pendingGuestSaveAction) {
+            pendingGuestSaveAction();
+            setPendingGuestSaveAction(null);
+          }
+          reloadData();
+        }}
+        lang={lang}
+        saveDescription={guestSaveDescription}
+      />
+    );
+  }
+
+  // ----------------- RENDER: VEHICLE P&L VIEW (گاڑی کا نفع و نقصان) -----------------
+  function renderVehiclePnlView() {
+    // Unique vehicles from props.vehicles + trips
+    const vehicleOptions = Array.from(
+      new Set([
+        ...vehicles.map(v => v.reg).filter(Boolean),
+        ...trips.map(t => (t as any).vehicleNo).filter(Boolean)
+      ])
+    );
+
+    // Unique months from trips
+    const monthOptions = Array.from(
+      new Set(trips.map(t => t.month).filter(Boolean))
+    );
+
+    const pnl = calculateVehicleProfitLoss(
+      pnlVehicle,
+      pnlMonth,
+      undefined,
+      undefined,
+      trips
+    );
+
+    const profitMargin =
+      pnl.totalIncome > 0
+        ? ((pnl.netProfit / pnl.totalIncome) * 100).toFixed(1)
+        : '0.0';
+
+    const handleSharePnlWhatsApp = () => {
+      const vehText = pnlVehicle === 'all' ? (isUrdu ? 'تمام فلیٹ گاڑیاں' : 'All Fleet Vehicles') : pnlVehicle;
+      const monthText = pnlMonth === 'all' ? (isUrdu ? 'مکمل ریکارڈ' : 'All Time') : pnlMonth;
+
+      const text =
+        `📊 *${isUrdu ? 'گاڑی نفع و نقصان رپورٹ (Vehicle P&L)' : 'Vehicle Profit & Loss Report'}*\n` +
+        `🚛 *${isUrdu ? 'گاڑی' : 'Vehicle'}:* ${vehText}\n` +
+        `📅 *${isUrdu ? 'مہینہ / مدت' : 'Period'}:* ${monthText}\n` +
+        `-------------------------\n` +
+        `🟢 *${isUrdu ? 'کل آمدن / کرایہ' : 'Total Revenue'}:* PKR ${pnl.totalIncome.toLocaleString('en-US')}\n` +
+        `🔴 *${isUrdu ? 'کل سفر اخراجات' : 'Total Expenses'}:* PKR ${pnl.totalExpenses.toLocaleString('en-US')}\n` +
+        `  • ڈیزل (Diesel): PKR ${(pnl.dieselCost || 0).toLocaleString('en-US')}\n` +
+        `  • ٹول ٹیکس (Tolls): PKR ${(pnl.tollCost || 0).toLocaleString('en-US')}\n` +
+        `  • ڈرائیور خرچہ (Driver): PKR ${(pnl.driverCost || 0).toLocaleString('en-US')}\n` +
+        `  • لوڈنگ و دیگر: PKR ${(pnl.otherCost || 0).toLocaleString('en-US')}\n` +
+        `-------------------------\n` +
+        `${pnl.isProfit ? '🟢 *خالص بچت و منافع (Net Profit):*' : '🔴 *خسارہ / نقصان (Net Loss):*'} PKR ${Math.abs(pnl.netProfit).toLocaleString('en-US')}\n` +
+        `📈 *${isUrdu ? 'منافع مارجن' : 'Profit Margin'}:* ${profitMargin}%\n` +
+        (pnl.profitPerKm !== 'N/A' ? `🛣️ *${isUrdu ? 'منافع فی کلومیٹر' : 'Profit/KM'}:* Rs ${pnl.profitPerKm} / KM\n` : '') +
+        `📝 *${isUrdu ? 'کل مکمل ٹرپس' : 'Total Trips'}:* ${pnl.tripsCount || 0}\n\n` +
+        `_ڈرائیور دوست - روڈ فریٹ اور کھاتہ مینجمنٹ_`;
+
+      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      window.open(url, '_blank');
+    };
+
+    return (
+      <div className="space-y-3.5 pb-20 animate-in fade-in duration-200">
+        {/* Filters and Controls */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 border border-slate-200 dark:border-slate-800 shadow-2xs">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2 flex-1">
+              {/* Vehicle Select */}
+              <div className="relative flex-1">
+                <label className="block text-[10px] font-bold text-slate-400 mb-0.5">
+                  {isUrdu ? 'گاڑی منتخب کریں' : 'Select Vehicle'}
+                </label>
+                <select
+                  value={pnlVehicle}
+                  onChange={e => setPnlVehicle(e.target.value)}
+                  className="w-full py-2 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[40px]"
+                >
+                  <option value="all">{isUrdu ? '🚛 تمام گاڑیاں (All Fleet)' : '🚛 All Fleet Vehicles'}</option>
+                  {vehicleOptions.map(veh => (
+                    <option key={veh} value={veh}>
+                      🚛 {veh}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Month Select */}
+              <div className="relative min-w-[130px]">
+                <label className="block text-[10px] font-bold text-slate-400 mb-0.5">
+                  {isUrdu ? 'مہینہ / مدت' : 'Select Month'}
+                </label>
+                <select
+                  value={pnlMonth}
+                  onChange={e => setPnlMonth(e.target.value)}
+                  className="w-full py-2 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[40px]"
+                >
+                  <option value="all">{isUrdu ? '📅 تمام مہینے' : '📅 All Months'}</option>
+                  {monthOptions.map(m => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+              <button
+                type="button"
+                onClick={handleSharePnlWhatsApp}
+                title={isUrdu ? 'واٹس ایپ پر شیئر کریں' : 'Share on WhatsApp'}
+                className="min-h-[40px] px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer"
+              >
+                <Share2 className="w-4 h-4" />
+                <span className="hidden sm:inline">{isUrdu ? 'شیئر رپورٹ' : 'Share'}</span>
+              </button>
+              {onNavigate && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('vehicleAccount')}
+                  className="min-h-[40px] px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-emerald-600/20 transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{isUrdu ? 'نیا گاڑی حساب' : 'Add Vehicle Account'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 4 Main KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          {/* Card 1: Revenue */}
+          <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-2xl p-3.5 sm:p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] sm:text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                {isUrdu ? 'کل کرایہ / آمدن' : 'Total Revenue'}
+              </span>
+              <TrendingUp className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+              PKR {pnl.totalIncome.toLocaleString('en-US')}
+            </div>
+            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-0.5 block">
+              {pnl.tripsCount || 0} {isUrdu ? 'ٹرپس وصولی' : 'trip revenues'}
+            </span>
+          </div>
+
+          {/* Card 2: Expenses */}
+          <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-2xl p-3.5 sm:p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] sm:text-xs font-bold text-rose-800 dark:text-rose-300">
+                {isUrdu ? 'کل آپریشنل اخراجات' : 'Total Expenses'}
+              </span>
+              <TrendingDown className="w-4 h-4 text-rose-600" />
+            </div>
+            <div className="text-lg sm:text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight">
+              PKR {pnl.totalExpenses.toLocaleString('en-US')}
+            </div>
+            <span className="text-[10px] text-rose-700 dark:text-rose-400 mt-0.5 block">
+              {isUrdu ? 'ڈیزل، ٹول و دیگر تمام اخراجات' : 'Diesel, toll & operational'}
+            </span>
+          </div>
+
+          {/* Card 3: Net Profit / Loss */}
+          <div
+            className={`border rounded-2xl p-3.5 sm:p-4 ${
+              pnl.isProfit
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
+                : 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-600/20'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] sm:text-xs font-bold opacity-90">
+                {pnl.isProfit
+                  ? isUrdu
+                    ? 'خالص منافع / بچت'
+                    : 'Net Profit'
+                  : isUrdu
+                  ? 'خسارہ / نقصان'
+                  : 'Net Loss'}
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-white/20">
+                {profitMargin}%
+              </span>
+            </div>
+            <div className="text-lg sm:text-2xl font-black tracking-tight">
+              PKR {Math.abs(pnl.netProfit).toLocaleString('en-US')}
+            </div>
+            <span className="text-[10px] opacity-85 mt-0.5 block">
+              {pnl.isProfit
+                ? isUrdu
+                  ? 'آمدن اخراجات سے زیادہ ہے'
+                  : 'Positive margin'
+                : isUrdu
+                ? 'اخراجات آمدن سے بڑھ گئے'
+                : 'Deficit'}
+            </span>
+          </div>
+
+          {/* Card 4: Distance & Mileage Performance */}
+          <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] sm:text-xs font-bold text-slate-600 dark:text-slate-300">
+                {isUrdu ? 'کارکردگی و فاصلہ' : 'Performance'}
+              </span>
+              <Truck className="w-4 h-4 text-slate-500" />
+            </div>
+            <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+              {pnl.profitPerKm !== 'N/A' ? `Rs ${pnl.profitPerKm} / KM` : `${pnl.totalDistanceKm} KM`}
+            </div>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 block">
+              {pnl.totalDistanceKm > 0
+                ? `${pnl.totalDistanceKm} ${isUrdu ? 'کل کلومیٹر فاصلہ' : 'Total KM driven'}`
+                : isUrdu
+                ? `${pnl.tripsCount} مکمل ٹرپس`
+                : `${pnl.tripsCount} recorded trips`}
+            </span>
+          </div>
+        </div>
+
+        {/* Expense Breakdown Progress */}
+        {pnl.totalExpenses > 0 && (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white mb-2.5 flex items-center justify-between">
+              <span>{isUrdu ? 'اخراجات کی تقسیم (Expense Breakdown)' : 'Expense Breakdown'}</span>
+              <span className="text-xs font-bold text-slate-400">
+                PKR {pnl.totalExpenses.toLocaleString('en-US')}
+              </span>
+            </h4>
+
+            {/* Visual Multi-Segment Bar */}
+            <div className="w-full h-3 rounded-full bg-slate-100 dark:bg-slate-800 flex overflow-hidden mb-3">
+              <div
+                title="Diesel"
+                style={{ width: `${Math.min(100, Math.round(((pnl.dieselCost || 0) / pnl.totalExpenses) * 100))}%` }}
+                className="bg-amber-500 h-full"
+              />
+              <div
+                title="Tolls"
+                style={{ width: `${Math.min(100, Math.round(((pnl.tollCost || 0) / pnl.totalExpenses) * 100))}%` }}
+                className="bg-blue-500 h-full"
+              />
+              <div
+                title="Driver"
+                style={{ width: `${Math.min(100, Math.round(((pnl.driverCost || 0) / pnl.totalExpenses) * 100))}%` }}
+                className="bg-purple-500 h-full"
+              />
+              <div
+                title="Other"
+                style={{ width: `${Math.min(100, Math.round(((pnl.otherCost || 0) / pnl.totalExpenses) * 100))}%` }}
+                className="bg-rose-400 h-full"
+              />
+            </div>
+
+            {/* Breakdown Chips */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50">
+                <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 block">
+                  ⛽ {isUrdu ? 'ڈیزل خرچ' : 'Diesel'}
+                </span>
+                <span className="font-extrabold text-amber-900 dark:text-amber-200">
+                  PKR {(pnl.dieselCost || 0).toLocaleString('en-US')}
+                </span>
+              </div>
+              <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50">
+                <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300 block">
+                  🛣️ {isUrdu ? 'ٹول ٹیکس' : 'Tolls'}
+                </span>
+                <span className="font-extrabold text-blue-900 dark:text-blue-200">
+                  PKR {(pnl.tollCost || 0).toLocaleString('en-US')}
+                </span>
+              </div>
+              <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50">
+                <span className="text-[10px] font-bold text-purple-800 dark:text-purple-300 block">
+                  🧑‍✈️ {isUrdu ? 'ڈرائیور خرچہ' : 'Driver'}
+                </span>
+                <span className="font-extrabold text-purple-900 dark:text-purple-200">
+                  PKR {(pnl.driverCost || 0).toLocaleString('en-US')}
+                </span>
+              </div>
+              <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50">
+                <span className="text-[10px] font-bold text-rose-800 dark:text-rose-300 block">
+                  📦 {isUrdu ? 'لوڈنگ و دیگر' : 'Other'}
+                </span>
+                <span className="font-extrabold text-rose-900 dark:text-rose-200">
+                  PKR {(pnl.otherCost || 0).toLocaleString('en-US')}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Trips / Vehicle Accounts P&L List */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-2xs">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <FileText className="w-4 h-4 text-emerald-600" />
+              <span>{isUrdu ? 'گاڑی حساب اور ٹرپس تاریخ' : 'Vehicle Account & Trip Log'}</span>
+            </h4>
+            <span className="text-xs text-slate-400 font-bold">
+              {pnl.filteredTrips.length} {isUrdu ? 'ریکارڈز' : 'records'}
+            </span>
+          </div>
+
+          {pnl.filteredTrips.length === 0 ? (
+            <div className="text-center py-10 px-4">
+              <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-3 text-slate-400">
+                <Truck className="w-7 h-7" />
+              </div>
+              <h5 className="font-extrabold text-sm sm:text-base text-slate-800 dark:text-slate-200 mb-1">
+                {isUrdu ? 'اس گاڑی کا کوئی حساب درج نہیں' : 'No records found for this vehicle'}
+              </h5>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
+                {isUrdu
+                  ? 'گاڑی حساب درج کریں تاکہ آمدن اور اخراجات کا خودکار نفع نقصان یہاں ظاہر ہو۔'
+                  : 'Add trip or vehicle accounts to see automatic profit & loss calculations.'}
+              </p>
+              {onNavigate && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('vehicleAccount')}
+                  className="min-h-[42px] px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{isUrdu ? 'گاڑی کا حساب درج کریں' : 'Add Vehicle Account'}</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {pnl.filteredTrips.map(t => {
+                const inc = t.totalIncome || t.expectedIncome || 0;
+                const exp = t.total || 0;
+                const net = inc - exp;
+                const isTripProfitable = net >= 0;
+
+                return (
+                  <div
+                    key={t.id}
+                    className="p-3 sm:p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3 hover:border-emerald-500/40 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                          {t.name || (isUrdu ? 'ٹرپ ریکارڈ' : 'Trip Record')}
+                        </span>
+                        {(t as any).vehicleNo && (
+                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                            🚛 {(t as any).vehicleNo}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-2">
+                        <span>📅 {t.date}</span>
+                        {t.dist > 0 && <span>• {t.dist} KM</span>}
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="flex items-center gap-2 justify-end">
+                        <span className="text-[11px] text-slate-500">
+                          آمدن: <strong className="text-emerald-600 font-black">+{inc.toLocaleString()}</strong>
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          خرچ: <strong className="text-rose-600 font-black">-{exp.toLocaleString()}</strong>
+                        </span>
+                      </div>
+                      <div
+                        className={`text-xs sm:text-sm font-black mt-0.5 ${
+                          isTripProfitable
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-600 dark:text-rose-400'
+                        }`}
+                      >
+                        {isTripProfitable ? 'نفع: ' : 'خسارہ: '} PKR {Math.abs(net).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // ----------------- RENDER: CASHBOOK VIEW -----------------
   function renderCashbookView() {
@@ -1448,6 +1933,8 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
         initialAccount={editingAccount}
         kind={currentKind}
         lang={lang}
+        existingAccounts={accounts}
+        onCheckGuestSave={triggerGuestSaveCheck}
         onSaved={account => {
           setShowAddAccountModal(false);
           reloadData();
@@ -1473,6 +1960,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
         accountKind={selectedAccount.kind}
         initialEntry={editingEntry}
         lang={lang}
+        onCheckGuestSave={triggerGuestSaveCheck}
         onSaved={() => {
           setShowAddEntryModal(null);
           setEditingEntry(null);
@@ -1497,6 +1985,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
         initialDate={selectedCashDate}
         initialEntry={editingCashEntry}
         lang={lang}
+        onCheckGuestSave={triggerGuestSaveCheck}
         onSaved={() => {
           setShowAddCashModal(null);
           setEditingCashEntry(null);
@@ -1523,7 +2012,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
 
     const whatsappUrl = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(reminderText)}`
-      : null;
+      : `https://wa.me/?text=${encodeURIComponent(reminderText)}`;
 
     const smsUrl = rawPhone
       ? `sms:${rawPhone}?body=${encodeURIComponent(reminderText)}`
@@ -1577,26 +2066,20 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
 
           {/* Three Touch Actions */}
           <div className="space-y-2">
-            {whatsappUrl ? (
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setShowReminderModal(null)}
-                className="w-full min-h-[48px] py-3 px-4 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-[#25D366]/20 active:scale-95 transition-all"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>{isUrdu ? 'واٹس ایپ پر میسج کریں' : 'Send via WhatsApp'}</span>
-              </a>
-            ) : (
-              <button
-                type="button"
-                disabled
-                className="w-full min-h-[48px] py-3 px-4 rounded-2xl bg-slate-200 text-slate-400 text-xs font-bold"
-              >
-                {isUrdu ? 'فون نمبر موجود نہیں' : 'No Phone Number'}
-              </button>
-            )}
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setShowReminderModal(null)}
+              className="w-full min-h-[48px] py-3 px-4 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-[#25D366]/20 active:scale-95 transition-all"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>
+                {cleanPhone
+                  ? (isUrdu ? 'واٹس ایپ پر میسج کریں' : 'Send via WhatsApp')
+                  : (isUrdu ? 'واٹس ایپ پر شیئر کریں (رابطہ چنیں)' : 'Share via WhatsApp')}
+              </span>
+            </a>
 
             {smsUrl && (
               <a
@@ -1676,7 +2159,9 @@ interface AccountFormModalProps {
   initialAccount: LedgerAccount | null;
   kind: 'party' | 'broker';
   lang: Language;
+  existingAccounts?: LedgerAccount[];
   onSaved: (account: LedgerAccount) => void;
+  onCheckGuestSave?: (onProceed: () => void, description?: string) => void;
 }
 
 const AccountFormModal: React.FC<AccountFormModalProps> = ({
@@ -1685,7 +2170,9 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
   initialAccount,
   kind,
   lang,
-  onSaved
+  existingAccounts,
+  onSaved,
+  onCheckGuestSave
 }) => {
   const isUrdu = lang === 'ur';
 
@@ -1702,18 +2189,38 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
   const [phoneError, setPhoneError] = useState('');
   const [showManualContactsCard, setShowManualContactsCard] = useState(false);
 
+  const savedContacts = useMemo(() => {
+    if (!existingAccounts) return [];
+    return existingAccounts
+      .filter(a => a.phone && a.phone.trim().length > 0 && (!initialAccount || a.id !== initialAccount.id))
+      .slice(0, 6);
+  }, [existingAccounts, initialAccount]);
+
   const handleContactPicker = async () => {
+    setPhoneError('');
     if (typeof navigator !== 'undefined' && 'contacts' in navigator && (navigator as any).contacts?.select) {
       try {
         const contacts = await (navigator as any).contacts.select(['name', 'tel'], { multiple: false });
         if (contacts && contacts[0]) {
           const c = contacts[0];
-          if (c.name && c.name[0]) setName(c.name[0]);
-          if (c.tel && c.tel[0]) setPhone(formatPhoneForDisplay(c.tel[0]));
+          if (c.name && c.name[0] && (!name.trim() || name.trim() === '')) {
+            setName(c.name[0]);
+          }
+          if (c.tel && c.tel[0]) {
+            const raw = c.tel[0];
+            const normalized = normalizePakistaniPhone(raw);
+            if (normalized) {
+              setPhone(formatPhoneForDisplay(normalized));
+            } else {
+              setPhone(raw.replace(/[^\d+]/g, ''));
+            }
+            setPhoneError('');
+          }
+          setShowManualContactsCard(false);
           return;
         }
-      } catch {
-        // Fallback
+      } catch (err) {
+        console.warn('Native contact picker cancelled or unsupported:', err);
       }
     }
     setShowManualContactsCard(true);
@@ -1734,18 +2241,30 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
 
     const evaluatedOpening = evaluateArithmetic(openingAmount) ?? Number(openingAmount) ?? 0;
 
-    const saved = saveOrUpdateLedgerAccount({
-      id: initialAccount?.id,
-      kind,
-      name: name.trim(),
-      phone: normalizedPhone || '',
-      note: note.trim(),
-      openingAmount: Math.abs(evaluatedOpening),
-      openingDirection,
-      dueDate: dueDate || undefined
-    });
+    const executeSave = () => {
+      const saved = saveOrUpdateLedgerAccount({
+        id: initialAccount?.id,
+        kind,
+        name: name.trim(),
+        phone: normalizedPhone || '',
+        note: note.trim(),
+        openingAmount: Math.abs(evaluatedOpening),
+        openingDirection,
+        dueDate: dueDate || undefined
+      });
+      onSaved(saved);
+    };
 
-    onSaved(saved);
+    if (onCheckGuestSave) {
+      onCheckGuestSave(
+        executeSave,
+        isUrdu
+          ? 'کھاتہ کا نیا اکاؤنٹ فائر بیس کلاؤڈ پر محفوظ کرنے کے لیے گوگل سائن ان کریں۔'
+          : 'Sign in with Google to save this ledger account securely on Firebase Cloud.'
+      );
+    } else {
+      executeSave();
+    }
   };
 
   if (!isOpen) return null;
@@ -1774,21 +2293,11 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
-          {/* Name & Contact Picker Button */}
+          {/* Name */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                {isUrdu ? 'نام (لازمی)' : 'Account Name (Required)'}
-              </label>
-              <button
-                type="button"
-                onClick={handleContactPicker}
-                className="text-[11px] text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1 min-h-[36px]"
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-                <span>{isUrdu ? 'فون سے منتخب کریں' : 'Pick Contact'}</span>
-              </button>
-            </div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              {isUrdu ? 'کھاتہ دار / پارٹی کا نام (لازمی)' : 'Account / Party Name (Required)'}
+            </label>
             <input
               type="text"
               required
@@ -1799,49 +2308,130 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
             />
           </div>
 
-          {/* Quick Manual Contact Card */}
-          {showManualContactsCard && (
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800">
-              <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300 block mb-1">
-                {isUrdu ? 'پاکستانی نیٹ ورک کوڈ چنیں:' : 'Select Network Prefix:'}
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {['0300', '0301', '0321', '0333', '0345', '0312'].map(prefix => (
-                  <button
-                    key={prefix}
-                    type="button"
-                    onClick={() => {
-                      setPhone(prefix);
-                      setShowManualContactsCard(false);
-                    }}
-                    className="min-h-[36px] px-3 py-1 rounded-xl bg-white dark:bg-slate-900 text-xs font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-300 shadow-2xs active:scale-95"
-                  >
-                    {prefix}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Phone Number */}
+          {/* Phone Number Field with Prominent Phone Book Selector */}
           <div>
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-              {isUrdu ? 'فون نمبر (اختیاری - یاد دہانی کے لیے)' : 'Phone Number (Optional)'}
-            </label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={e => {
-                setPhone(e.target.value);
-                setPhoneError('');
-              }}
-              placeholder="03001234567"
-              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{isUrdu ? 'موبائل نمبر (اختیاری - واٹس ایپ اور یاد دہانی)' : 'Phone Number (Optional - for WhatsApp & Reminders)'}</span>
+              </label>
+              <button
+                type="button"
+                onClick={handleContactPicker}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-xs font-black active:scale-95 transition-all shadow-2xs"
+                title={isUrdu ? 'موبائل کی فون بک سے نمبر چنیں' : 'Pick from mobile phone book'}
+              >
+                <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{isUrdu ? '📱 فون بک سے چنیں' : '📱 Phone Book'}</span>
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => {
+                  setPhone(e.target.value);
+                  setPhoneError('');
+                }}
+                placeholder="03001234567"
+                className="w-full min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+              />
+              {phone && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhone('');
+                    setPhoneError('');
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
             {phoneError && (
-              <p className="text-xs text-rose-600 mt-1">{phoneError}</p>
+              <p className="text-xs text-rose-600 mt-1 font-medium">{phoneError}</p>
             )}
           </div>
+
+          {/* Quick Manual Contact Card / Selector */}
+          {showManualContactsCard && (
+            <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5">
+                  <Smartphone className="w-4 h-4 text-emerald-600" />
+                  <span>{isUrdu ? 'فون بک اور فوری نمبر سلیکٹر' : 'Phone Book & Quick Select'}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowManualContactsCard(false)}
+                  className="p-1 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {typeof navigator !== 'undefined' && 'contacts' in navigator && (
+                <button
+                  type="button"
+                  onClick={handleContactPicker}
+                  className="w-full min-h-[40px] px-3 py-2 rounded-xl bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-xs active:scale-95 transition-all"
+                >
+                  <Smartphone className="w-4 h-4" />
+                  <span>{isUrdu ? 'موبائل فون بک لسٹ کھولیں' : 'Open Device Contacts'}</span>
+                </button>
+              )}
+
+              {/* Network Prefixes */}
+              <div>
+                <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 block mb-1">
+                  {isUrdu ? 'پاکستانی موبائل کوڈ چنیں:' : 'Select Network Prefix:'}
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {['0300', '0301', '0302', '0312', '0321', '0333', '0345'].map(prefix => (
+                    <button
+                      key={prefix}
+                      type="button"
+                      onClick={() => {
+                        setPhone(prefix);
+                        setShowManualContactsCard(false);
+                      }}
+                      className="min-h-[32px] px-2.5 py-1 rounded-xl bg-white dark:bg-slate-900 text-xs font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-300 shadow-2xs active:scale-95"
+                    >
+                      {prefix}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Saved Contacts from Isolated User Store */}
+              {savedContacts.length > 0 && (
+                <div>
+                  <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 block mb-1">
+                    {isUrdu ? 'محفوظ کھاتوں سے نمبر منتخب کریں:' : 'Select from Saved Accounts:'}
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-28 overflow-y-auto pr-0.5">
+                    {savedContacts.map(sc => (
+                      <button
+                        key={sc.id}
+                        type="button"
+                        onClick={() => {
+                          if (!name.trim()) setName(sc.name);
+                          setPhone(formatPhoneForDisplay(sc.phone));
+                          setPhoneError('');
+                          setShowManualContactsCard(false);
+                        }}
+                        className="text-left px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 hover:border-emerald-400 active:scale-95 transition-all"
+                      >
+                        <div className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">{sc.name}</div>
+                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">📞 {formatPhoneForDisplay(sc.phone)}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Opening Balance */}
           <div>
@@ -1948,6 +2538,7 @@ interface EntryFormModalProps {
   initialEntry: LedgerEntry | null;
   lang: Language;
   onSaved: (entry: LedgerEntry) => void;
+  onCheckGuestSave?: (onProceed: () => void, description?: string) => void;
 }
 
 const EntryFormModal: React.FC<EntryFormModalProps> = ({
@@ -1958,7 +2549,8 @@ const EntryFormModal: React.FC<EntryFormModalProps> = ({
   accountKind,
   initialEntry,
   lang,
-  onSaved
+  onSaved,
+  onCheckGuestSave
 }) => {
   const isUrdu = lang === 'ur';
   const isParty = accountKind === 'party';
@@ -1989,16 +2581,28 @@ const EntryFormModal: React.FC<EntryFormModalProps> = ({
     const finalAmount = evaluatedAmount ?? Number(amountStr);
     if (!finalAmount || finalAmount <= 0) return;
 
-    const saved = saveOrUpdateLedgerEntry({
-      id: initialEntry?.id,
-      accountId,
-      type,
-      amount: finalAmount,
-      date,
-      note: note.trim()
-    });
+    const executeSave = () => {
+      const saved = saveOrUpdateLedgerEntry({
+        id: initialEntry?.id,
+        accountId,
+        type,
+        amount: finalAmount,
+        date,
+        note: note.trim()
+      });
+      onSaved(saved);
+    };
 
-    onSaved(saved);
+    if (onCheckGuestSave) {
+      onCheckGuestSave(
+        executeSave,
+        isUrdu
+          ? 'کھاتہ کی رقم کا اندراج فائر بیس کلاؤڈ پر محفوظ کرنے کے لیے گوگل سائن ان کریں۔'
+          : 'Sign in with Google to save this ledger transaction securely on Firebase Cloud.'
+      );
+    } else {
+      executeSave();
+    }
   };
 
   if (!isOpen) return null;
@@ -2193,6 +2797,7 @@ interface CashFormModalProps {
   initialEntry: CashEntry | null;
   lang: Language;
   onSaved: (entry: CashEntry) => void;
+  onCheckGuestSave?: (onProceed: () => void, description?: string) => void;
 }
 
 const CashFormModal: React.FC<CashFormModalProps> = ({
@@ -2202,7 +2807,8 @@ const CashFormModal: React.FC<CashFormModalProps> = ({
   initialDate,
   initialEntry,
   lang,
-  onSaved
+  onSaved,
+  onCheckGuestSave
 }) => {
   const isUrdu = lang === 'ur';
   const isIn = type === 'in';
@@ -2223,16 +2829,28 @@ const CashFormModal: React.FC<CashFormModalProps> = ({
     const finalAmount = evaluatedAmount ?? Number(amountStr);
     if (!finalAmount || finalAmount <= 0) return;
 
-    const saved = saveOrUpdateCashEntry({
-      id: initialEntry?.id,
-      type,
-      amount: finalAmount,
-      date,
-      category,
-      note: note.trim()
-    });
+    const executeSave = () => {
+      const saved = saveOrUpdateCashEntry({
+        id: initialEntry?.id,
+        type,
+        amount: finalAmount,
+        date,
+        category,
+        note: note.trim()
+      });
+      onSaved(saved);
+    };
 
-    onSaved(saved);
+    if (onCheckGuestSave) {
+      onCheckGuestSave(
+        executeSave,
+        isUrdu
+          ? 'روزنامچہ کی انٹری فائر بیس کلاؤڈ پر محفوظ کرنے کے لیے گوگل سائن ان کریں۔'
+          : 'Sign in with Google to save this cashbook entry securely on Firebase Cloud.'
+      );
+    } else {
+      executeSave();
+    }
   };
 
   if (!isOpen) return null;

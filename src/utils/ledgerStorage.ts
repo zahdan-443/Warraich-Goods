@@ -25,7 +25,7 @@ import {
   VehicleExpenseEntry,
   VehicleIncomeEntry
 } from '../types';
-import { safeStorage, getStoredBilties } from './storage';
+import { safeStorage, getStoredBilties, getScopedItem, setScopedItem } from './storage';
 import { auth, db } from './firebase';
 import {
   doc,
@@ -56,8 +56,16 @@ export const KHATA_STORAGE_KEYS = {
 
 function getParsed<T>(key: string, fallback: T): T {
   try {
-    const raw = safeStorage.getItem(key);
-    if (!raw) return fallback;
+    const raw = getScopedItem(key);
+    if (!raw) {
+      // Check legacy unscoped key for migration if scoped key does not exist yet
+      const legacyRaw = safeStorage.getItem(key);
+      if (legacyRaw !== null) {
+        setScopedItem(key, legacyRaw);
+        return JSON.parse(legacyRaw);
+      }
+      return fallback;
+    }
     return JSON.parse(raw);
   } catch {
     return fallback;
@@ -66,7 +74,7 @@ function getParsed<T>(key: string, fallback: T): T {
 
 function setJson(key: string, value: any): void {
   try {
-    safeStorage.setItem(key, JSON.stringify(value));
+    setScopedItem(key, JSON.stringify(value));
   } catch (err) {
     console.warn(`[KhataStorage] Failed to persist ${key}:`, err);
   }
@@ -1090,6 +1098,95 @@ export function formatKhataReminderMessage(
   }
 }
 
+export function formatAccountStatementWhatsAppMessage(
+  account: LedgerAccount,
+  entries: LedgerEntry[],
+  customBusinessName?: string,
+  lang: Language = 'ur'
+): string {
+  const isUrdu = lang === 'ur';
+  const business = (customBusinessName && customBusinessName.trim()) ? customBusinessName.trim() : 'وارڑائچ گڈز ٹرانسپورٹ';
+  const { balance, totalGave, totalGot } = calculateAccountBalance(account, entries);
+  const cleanPhone = normalizePakistaniPhone(account.phone);
+  const displayPhone = formatPhoneForDisplay(cleanPhone || account.phone);
+  const todayStr = new Date().toLocaleDateString(isUrdu ? 'ur-PK' : 'en-PK', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+
+  const kindLabel = account.kind === 'broker'
+    ? (isUrdu ? 'بروکر / کمیشن ایجنٹ' : 'Broker / Agent')
+    : (isUrdu ? 'کسٹمر / پارٹی' : 'Customer / Party');
+
+  let balanceText = '';
+  if (balance > 0) {
+    balanceText = isUrdu
+      ? `بقایا واجب الوصول (آپ نے وصول کرنا ہے): PKR ${balance.toLocaleString('en-US')}`
+      : `Outstanding Balance (Receivable): PKR ${balance.toLocaleString('en-US')}`;
+  } else if (balance < 0) {
+    balanceText = isUrdu
+      ? `بقایا واجب الادا (آپ نے ادا کرنا ہے): PKR ${Math.abs(balance).toLocaleString('en-US')}`
+      : `Outstanding Balance (Payable): PKR ${Math.abs(balance).toLocaleString('en-US')}`;
+  } else {
+    balanceText = isUrdu ? `حساب بالکل کلیئر ہے (صفر بقایا)` : `Account is fully settled (Zero Balance)`;
+  }
+
+  // Sorted recent entries (latest 5)
+  const sortedEntries = [...entries]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5);
+
+  let txListText = '';
+  if (sortedEntries.length > 0) {
+    txListText = sortedEntries
+      .map((e, idx) => {
+        const typeLabel = e.type === 'gave'
+          ? (isUrdu ? 'دیا' : 'Gave')
+          : (isUrdu ? 'ملا' : 'Got');
+        const noteStr = e.note ? ` - ${e.note}` : '';
+        return `${idx + 1}. ${e.date} | ${typeLabel}: PKR ${e.amount.toLocaleString('en-US')}${noteStr}`;
+      })
+      .join('\n');
+  }
+
+  if (isUrdu) {
+    return (
+      `📋 *کھاتہ اسٹیٹمنٹ / اکاؤنٹ تفصیل*\n` +
+      `🏢 *${business}*\n` +
+      `📅 تاریخ: ${todayStr}\n\n` +
+      `👤 کھاتہ دار: *${account.name}* (${kindLabel})\n` +
+      (displayPhone ? `📞 فون: ${displayPhone}\n` : '') +
+      (account.dueDate ? `⏳ آخری تاریخ ادائیگی: ${account.dueDate}\n` : '') +
+      `--------------------------------\n` +
+      `💰 *${balanceText}*\n` +
+      `--------------------------------\n` +
+      `کل دیا (Gave): PKR ${totalGave.toLocaleString('en-US')}\n` +
+      `کل وصولی (Got): PKR ${totalGot.toLocaleString('en-US')}\n` +
+      (txListText ? `\n📝 *حالیہ 5 ٹرانزیکشنز:*\n${txListText}\n` : '') +
+      `\n🙏 برائے مہربانی اپنا کھاتہ چیک فرمائیں۔ کسی بھی فرق کی صورت میں رابطہ کریں۔ شکریہ!` +
+      `\n— ${business}`
+    );
+  } else {
+    return (
+      `📋 *ACCOUNT STATEMENT*\n` +
+      `🏢 *${business}*\n` +
+      `📅 Date: ${todayStr}\n\n` +
+      `👤 Account: *${account.name}* (${kindLabel})\n` +
+      (displayPhone ? `📞 Phone: ${displayPhone}\n` : '') +
+      (account.dueDate ? `⏳ Due Date: ${account.dueDate}\n` : '') +
+      `--------------------------------\n` +
+      `💰 *${balanceText}*\n` +
+      `--------------------------------\n` +
+      `Total Gave: PKR ${totalGave.toLocaleString('en-US')}\n` +
+      `Total Got: PKR ${totalGot.toLocaleString('en-US')}\n` +
+      (txListText ? `\n📝 *Recent 5 Transactions:*\n${txListText}\n` : '') +
+      `\n🙏 Please review and confirm your statement. Thank you!` +
+      `\n— ${business}`
+    );
+  }
+}
+
 // ----------------- DOCUMENT AUTO-LINK HELPERS (AUTHORISED ACCOUNTS) -----------------
 
 export interface PendingDocBalance {
@@ -1253,8 +1350,14 @@ export function calculateVehicleProfitLoss(
   _incomes: any,
   trips: Trip[]
 ) {
+  const vLower = vehicleFilter ? vehicleFilter.toLowerCase() : 'all';
   const filteredTrips = trips.filter(t => {
-    const matchVehicle = vehicleFilter === 'all' || !t.fuelTypeRaw || t.fuelTypeRaw === vehicleFilter;
+    const matchVehicle =
+      vLower === 'all' ||
+      (t as any).vehicleNo?.toLowerCase() === vLower ||
+      t.name?.toLowerCase().includes(vLower) ||
+      !t.fuelTypeRaw ||
+      t.fuelTypeRaw === vehicleFilter;
     const matchMonth = monthFilter === 'all' || !t.month || t.month === monthFilter;
     return matchVehicle && matchMonth;
   });
@@ -1264,13 +1367,27 @@ export function calculateVehicleProfitLoss(
   const netProfit = totalIncome - totalExpenses;
   const totalDistanceKm = filteredTrips.reduce((sum, t) => sum + (Number(t.dist) || 0), 0);
 
+  const dieselCost = filteredTrips.reduce((sum, t) => sum + (Number(t.fuelCost) || 0), 0);
+  const tollCost = filteredTrips.reduce((sum, t) => sum + (Number(t.toll) || 0), 0);
+  const driverCost = filteredTrips.reduce((sum, t) => sum + (Number(t.driver) || 0), 0);
+  const otherCost = filteredTrips.reduce(
+    (sum, t) => sum + ((Number(t.loading) || 0) + (Number(t.other) || 0)),
+    0
+  );
+
   return {
     totalIncome,
     totalExpenses,
     netProfit,
     isProfit: netProfit >= 0,
     totalDistanceKm,
-    profitPerKm: totalDistanceKm > 0 ? Math.round(netProfit / totalDistanceKm) : 'N/A'
+    profitPerKm: totalDistanceKm > 0 ? Math.round(netProfit / totalDistanceKm) : 'N/A',
+    tripsCount: filteredTrips.length,
+    filteredTrips,
+    dieselCost,
+    tollCost,
+    driverCost,
+    otherCost
   };
 }
 

@@ -39,10 +39,10 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // User profile entries and nested collections (trips, vehicles, drivers, routes, fuel, bilties)
+    // User profile entries and nested collections (trips, vehicles, drivers, routes, fuel, private ledger)
+    // Strictly confidential: Only the individual account owner can read or write their own documents
     match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());
-      allow write: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
 
       match /collections/{collectionId} {
         allow read, write: if isSignedIn() && request.auth.uid == userId;

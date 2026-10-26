@@ -66,9 +66,21 @@ export const safeStorage = {
   },
   removeItem: (key: string): void => {
     memoryStorage.delete(key);
+    // Also delete any scoped variants of this key (e.g. wg_v2_<scope>_<key>, ah-<key>, <key>__*)
+    for (const k of Array.from(memoryStorage.keys())) {
+      if (k === key || k.endsWith(`_${key}`) || k.startsWith(`${key}__`) || k === `ah-${key}`) {
+        memoryStorage.delete(k);
+      }
+    }
     try {
       if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
         localStorage.removeItem(key);
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const lKey = localStorage.key(i);
+          if (lKey && (lKey === key || lKey.endsWith(`_${key}`) || lKey.startsWith(`${key}__`) || lKey === `ah-${key}`)) {
+            localStorage.removeItem(lKey);
+          }
+        }
       }
     } catch {
       // ignore
@@ -151,6 +163,16 @@ export function setScopedItem(baseKey: string, value: string): void {
   const scope = getActiveUserScope();
   const scopedKey = getScopedStorageKey(baseKey, scope);
   safeStorage.setItem(scopedKey, value);
+}
+
+/**
+ * Removes data from user-scoped storage key and legacy fallback keys
+ */
+export function removeScopedItem(baseKey: string): void {
+  const scope = getActiveUserScope();
+  const scopedKey = getScopedStorageKey(baseKey, scope);
+  safeStorage.removeItem(scopedKey);
+  safeStorage.removeItem(baseKey);
 }
 
 // ---------------------------------------------------------------------------

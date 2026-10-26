@@ -11,6 +11,7 @@ import {
   calculateLockoutDuration,
   isPinLocked,
   formatKhataReminderMessage,
+  formatAccountStatementWhatsAppMessage,
   calculateDayCashSummary,
   exportKhataBackup,
   importKhataBackup,
@@ -548,6 +549,40 @@ describe('Digital Khata (کھاتہ) Unit Tests', () => {
       expect(res.netProfit).toBe(10000);
       expect(res.isProfit).toBe(true);
       expect(res.profitPerKm).toBe(50);
+      expect(res.dieselCost).toBe(8000);
+      expect(res.tollCost).toBe(1500);
+      expect(res.driverCost).toBe(1000);
+      expect(res.tripsCount).toBe(1);
+
+      // Test vehicle specific filter
+      const resVeh = calculateVehicleProfitLoss('LHR-7860', 'all', undefined, undefined, [
+        ...mockTrips,
+        {
+          id: 2,
+          name: 'گاڑی حساب (LHR-7860)',
+          vehicleNo: 'LHR-7860',
+          fuelType: 'Diesel',
+          fuelTypeRaw: 'diesel',
+          dist: 100,
+          consumed: '25L',
+          fuelCost: 5000,
+          toll: 500,
+          loading: 0,
+          driver: 1000,
+          other: 0,
+          total: 6500,
+          date: '2026-10-16',
+          time: '11:00 AM',
+          month: 'Oct 26',
+          totalIncome: 12000,
+          netProfit: 5500,
+          isReturn: false
+        } as any
+      ]);
+      expect(resVeh.tripsCount).toBe(1);
+      expect(resVeh.totalIncome).toBe(12000);
+      expect(resVeh.totalExpenses).toBe(6500);
+      expect(resVeh.netProfit).toBe(5500);
     });
 
     it('ranks parties descending by volume in getTopPartiesRanking', () => {
@@ -578,6 +613,82 @@ describe('Digital Khata (کھاتہ) Unit Tests', () => {
 
       syncFreightRecordsToLedger(true);
       expect(getStoredParties().some(p => p.name === 'Classified Consignor')).toBe(true);
+    });
+  });
+
+  describe('10. WhatsApp Ledger Statement & Payment Reminders', () => {
+    it('formats WhatsApp account statement correctly in Urdu without forbidden terms', () => {
+      const account: LedgerAccount = {
+        id: 'acc-wa-1',
+        kind: 'party',
+        name: 'چوہدری طارق گڈز',
+        phone: '03001234567',
+        openingAmount: 50000,
+        openingDirection: 'get',
+        dueDate: '2026-11-05',
+        source: 'manual',
+        createdAt: '2026-10-01',
+        updatedAt: '2026-10-01'
+      };
+
+      const entries: LedgerEntry[] = [
+        {
+          id: 'ent-1',
+          accountId: 'acc-wa-1',
+          type: 'got',
+          amount: 20000,
+          date: '2026-10-10',
+          note: 'بینک ٹرانسفر',
+          source: 'manual',
+          createdAt: '2026-10-10',
+          updatedAt: '2026-10-10'
+        }
+      ];
+
+      const statement = formatAccountStatementWhatsAppMessage(
+        account,
+        entries,
+        'وارڑائچ لاجسٹکس',
+        'ur'
+      );
+
+      expect(statement).toContain('کھاتہ اسٹیٹمنٹ');
+      expect(statement).toContain('چوہدری طارق گڈز');
+      expect(statement).toContain('وارڑائچ لاجسٹکس');
+      expect(statement).toContain('03001234567');
+      expect(statement).toContain('30,000'); // 50,000 - 20,000 = 30,000
+      expect(statement).toContain('واجب الوصول');
+      expect(statement).toContain('بینک ٹرانسفر');
+      // Must not leak or contain forbidden terminology
+      expect(statement.toLowerCase()).not.toContain('bilty');
+      expect(statement).not.toContain('بلٹی');
+    });
+
+    it('formats WhatsApp account statement correctly in English for payable balance', () => {
+      const account: LedgerAccount = {
+        id: 'acc-wa-2',
+        kind: 'broker',
+        name: 'Lahore Freight Brokers',
+        phone: '923219876543',
+        openingAmount: 15000,
+        openingDirection: 'give',
+        source: 'manual',
+        createdAt: '2026-10-01',
+        updatedAt: '2026-10-01'
+      };
+
+      const statement = formatAccountStatementWhatsAppMessage(
+        account,
+        [],
+        'Driver Dost Transport',
+        'en'
+      );
+
+      expect(statement).toContain('ACCOUNT STATEMENT');
+      expect(statement).toContain('Lahore Freight Brokers');
+      expect(statement).toContain('03219876543');
+      expect(statement).toContain('Payable');
+      expect(statement).toContain('15,000');
     });
   });
 });
