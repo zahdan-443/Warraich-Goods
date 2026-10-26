@@ -6,16 +6,17 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check if user is the Owner / Admin (via email, custom claims, or admin collection)
+    // Helper function to check if user is the Owner / Admin with verified email
     function isOwner() {
-      return isSignedIn() && (
-        (request.auth.token.email != null && request.auth.token.email == 'warraichgoods43@gmail.com') ||
-        (request.auth.token.role != null && (request.auth.token.role == 'owner' || request.auth.token.role == 'admin')) ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-      );
+      return isSignedIn() &&
+        request.auth.token != null &&
+        request.auth.token.email != null &&
+        request.auth.token.email == 'warraichgoods43@gmail.com' &&
+        'email_verified' in request.auth.token &&
+        request.auth.token.email_verified == true;
     }
 
-    // Helper function to check if user is an Owner or in access/biltyAccess.allowedUIDs / allowedEmails
+    // Helper function to check if user is authorized to manage bilties
     function isBiltyAuthorized() {
       return isSignedIn() && (
         isOwner() ||
@@ -23,10 +24,42 @@ service cloud.firestore {
           exists(/databases/$(database)/documents/access/biltyAccess) &&
           (
             request.auth.uid in get(/databases/$(database)/documents/access/biltyAccess).data.allowedUIDs ||
-            (request.auth.token.email != null && request.auth.token.email in get(/databases/$(database)/documents/access/biltyAccess).data.allowedEmails)
+            (
+              request.auth.token != null &&
+              request.auth.token.email != null &&
+              request.auth.token.email in get(/databases/$(database)/documents/access/biltyAccess).data.allowedEmails
+            )
           )
         )
       );
+    }
+
+    // Helper function to prevent non-owners from promoting themselves or setting admin/owner roles
+    function isNotSelfPromoting() {
+      return isOwner() || (
+        (resource == null ?
+          (!('role' in request.resource.data) || (request.resource.data.role != 'owner' && request.resource.data.role != 'admin')) :
+          (!('role' in request.resource.data) || request.resource.data.role == resource.data.role)
+        )
+      );
+    }
+
+    // Helper function to enforce non-PII and non-financial fields in public verifications
+    function hasOnlyPublicBiltyFields() {
+      let allowedKeys = [
+        'id', 'biltyNo', 'vehicleNo', 'date', 'branch', 'driverName',
+        'sendingCity', 'receivingCity', 'senderName', 'receiverName',
+        'qty', 'itemDescription', 'weight', 'consignor', 'consignee',
+        'receivedBy', 'podConfirmation', 'isDelivered', 'verifiedPublicly',
+        'createdAt', 'updatedAt'
+      ];
+      let forbiddenKeys = [
+        'senderCnic', 'receiverCnic', 'senderMobile', 'receiverMobile',
+        'mobileNo', 'senderPhone', 'receiverPhone', 'total', 'advance',
+        'payable', 'freight', 'price', 'cnic', 'phone'
+      ];
+      return request.resource.data.keys().hasOnly(allowedKeys) &&
+             !request.resource.data.keys().hasAny(forbiddenKeys);
     }
 
     // Default deny catch-all
@@ -40,30 +73,14 @@ service cloud.firestore {
     }
 
     // User profile entries and nested collections (trips, vehicles, drivers, routes, fuel, private ledger)
-    // Strictly confidential: Only the individual account owner can read or write their own documents
+    // - Owner can read all user profiles (for user management)
+    // - Users can read/write their own profile (with self-promotion protection)
+    // - Users can read/write all their own nested collections
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());
+      allow write: if isSignedIn() && request.auth.uid == userId && isNotSelfPromoting();
 
-      match /collections/{collectionId} {
-        allow read, write: if isSignedIn() && request.auth.uid == userId;
-      }
-
-      // Digital Khata / کھاتہ accounts and entries (per-document sync)
-      match /ledgerAccounts/{accountId} {
-        allow read, write: if isSignedIn() && request.auth.uid == userId;
-
-        match /entries/{entryId} {
-          allow read, write: if isSignedIn() && request.auth.uid == userId;
-        }
-      }
-
-      // Cashbook daily transactions
-      match /cashbookEntries/{entryId} {
-        allow read, write: if isSignedIn() && request.auth.uid == userId;
-      }
-
-      // Khata settings and PIN lock configuration
-      match /khataSettings/{settingId} {
+      match /{subcollection=**} {
         allow read, write: if isSignedIn() && request.auth.uid == userId;
       }
     }
@@ -73,18 +90,19 @@ service cloud.firestore {
       allow read, write: if isOwner();
     }
 
-    // Private bilties collection (strictly restricted to authorized users/owner)
+    // Explicitly DENY top-level private bilties (private bilties live under users/{userId}/collections/bilties)
     match /bilties/{biltyId} {
-      allow read, write: if isBiltyAuthorized();
+      allow read, write: if false;
     }
 
-    // Public bilty verification records (read allowed for anyone for QR verification; write restricted to authorized users)
+    // Public bilty verification records (read allowed for anyone for QR verification; write strictly restricted to authorized users with schema validation)
     match /publicBiltyVerifications/{docId} {
       allow read: if true;
-      allow write: if isBiltyAuthorized();
+      allow create, update: if isBiltyAuthorized() && hasOnlyPublicBiltyFields();
+      allow delete: if isOwner();
     }
 
-    // Counters collection for transaction-based sequential Bilty allocation (read for signed in users, write restricted to bilty-authorized)
+    // Counters collection for transaction-based sequential Bilty allocation
     match /counters/{counterId} {
       allow read: if isSignedIn();
       allow write: if isBiltyAuthorized();
