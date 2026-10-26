@@ -31,7 +31,7 @@ import { BiltyVerificationCard } from './BiltyVerificationCard';
 import { PodConfirmationModal } from './PodConfirmationModal';
 import { PublicImage } from '../PublicImage';
 import { getStoredBilties } from '../../utils/storage';
-import { getBiltyVerificationUrl, decodeBiltyPayload } from '../../utils/biltyHelpers';
+import { getBiltyVerificationUrl } from '../../utils/biltyHelpers';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
 
@@ -126,67 +126,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
     setIsBiltyLoading(true);
     setVerifiedBilty(null);
 
-    // 1. Direct Self-Contained Tamper-Evident Token Verification (100% Instant, Zero-Failure)
-    if (token) {
-      const decoded = decodeBiltyPayload(token);
-      if (decoded && (decoded.biltyNo || decoded.vehicleNo)) {
-        const fullRecord: BiltyRecord = {
-          id: Date.now(),
-          biltyNo: decoded.biltyNo || rawTerm || 'WG-VERIFIED',
-          vehicleNo: decoded.vehicleNo || '',
-          date: decoded.date || '',
-          branch: decoded.branch || 'samundri',
-          sendingCity: decoded.sendingCity || '',
-          receivingCity: decoded.receivingCity || '',
-          senderName: decoded.senderName || '',
-          senderMobile: '',
-          receiverName: decoded.receiverName || '',
-          receiverMobile: '',
-          senderCnic: '',
-          qty: decoded.qty || '',
-          itemDescription: decoded.itemDescription || '',
-          weight: decoded.weight || '',
-          total: Number(decoded.total) || 0,
-          advance: Number(decoded.advance) || 0,
-          payable: Number(decoded.payable) || 0,
-          driverName: decoded.driverName || '',
-          mobileNo: '',
-          consignor: decoded.consignor || decoded.senderName || '',
-          consignee: decoded.consignee || decoded.receiverName || '',
-          receivedBy: ''
-        };
 
-        // Check local matching bilty for existing POD confirmation
-        const localBilties = getStoredBilties();
-        const localCheck = localBilties.find(b => b.biltyNo === fullRecord.biltyNo);
-        if (localCheck && (localCheck.podConfirmation || localCheck.isDelivered)) {
-          fullRecord.podConfirmation = localCheck.podConfirmation;
-          fullRecord.isDelivered = true;
-          fullRecord.receivedBy = localCheck.receivedBy || localCheck.podConfirmation?.receiverName || '';
-        }
-
-        setVerifiedBilty(fullRecord);
-        setIsBiltyLoading(false);
-
-        // Also check remote Firestore public doc in background for POD status
-        if (db && fullRecord.biltyNo) {
-          getDoc(doc(db, 'bilties', fullRecord.biltyNo.trim().toUpperCase())).then((snap) => {
-            if (snap.exists()) {
-              const d = snap.data();
-              if (d?.podConfirmation || d?.isDelivered) {
-                setVerifiedBilty(prev => prev ? {
-                  ...prev,
-                  podConfirmation: d.podConfirmation || prev.podConfirmation,
-                  isDelivered: true,
-                  receivedBy: d.receivedBy || d.podConfirmation?.receiverName || prev.receivedBy
-                } : null);
-              }
-            }
-          }).catch(() => {});
-        }
-        return;
-      }
-    }
 
     const cleanLower = rawTerm.toLowerCase();
     const normalizedTerm = cleanLower.replace(/[^a-z0-9]/g, '');
@@ -236,7 +176,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
         let remoteDocData: any = null;
         for (const docKey of candidateKeys) {
           try {
-            const snap = await getDoc(doc(db, 'bilties', docKey));
+            const snap = await getDoc(doc(db, 'publicBiltyVerifications', docKey));
             if (snap.exists() && snap.data()) {
               remoteDocData = snap.data();
               break;

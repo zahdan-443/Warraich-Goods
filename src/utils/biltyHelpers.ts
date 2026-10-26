@@ -25,138 +25,23 @@ export function sanitizeContactOrCnic(val?: string | null): string {
 }
 
 /**
- * Official canonical base URL for the Warraich Goods live deployment on GitHub Pages
+ * Official canonical base URL for public bilty verification on company website
  */
-export const OFFICIAL_APP_BASE_URL = 'https://zahdan-443.github.io/Warraich-Goods/';
+export const OFFICIAL_APP_BASE_URL = 'https://zahdan-443.github.io/Warraichgoodstransportcompany/';
 
 /**
- * Compact, URL-safe Base64 encoder for Bilty Verification Token
- * Encodes essential cargo, party and financial data directly into the QR code
- * to guarantee 100% instantaneous, zero-failure offline & online verification anywhere.
- */
-export function encodeBiltyPayload(bilty: Partial<BiltyRecord>): string {
-  try {
-    const compact = {
-      b: (bilty.biltyNo || '').trim(),
-      v: (bilty.vehicleNo || '').trim(),
-      d: (bilty.date || '').trim(),
-      br: bilty.branch || 'samundri',
-      f: (bilty.sendingCity || '').trim(),
-      t: (bilty.receivingCity || '').trim(),
-      s: (bilty.senderName || bilty.consignor || '').trim(),
-      r: (bilty.receiverName || bilty.consignee || '').trim(),
-      i: (bilty.itemDescription || '').trim(),
-      w: (bilty.weight || '').trim(),
-      q: (bilty.qty || '').trim(),
-      tt: Number(bilty.total) || 0,
-      ad: Number(bilty.advance) || 0,
-      py: Number(bilty.payable) || 0,
-      dr: (bilty.driverName || '').trim(),
-      ts: Date.now()
-    };
-    const jsonStr = JSON.stringify(compact);
-    // Base64 URL-safe encoding
-    const b64 = typeof window !== 'undefined' && window.btoa
-      ? window.btoa(unescape(encodeURIComponent(jsonStr)))
-      : Buffer.from(jsonStr).toString('base64');
-    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  } catch (err) {
-    console.warn('Failed to encode bilty payload:', err);
-    return '';
-  }
-}
-
-/**
- * Decodes URL-safe verification payload token into a structured BiltyRecord
- */
-export function decodeBiltyPayload(token: string): Partial<BiltyRecord> | null {
-  if (!token || typeof token !== 'string') return null;
-  try {
-    let base64 = token.trim().replace(/-/g, '+').replace(/_/g, '/');
-    while (base64.length % 4) {
-      base64 += '=';
-    }
-    const jsonStr = typeof window !== 'undefined' && window.atob
-      ? decodeURIComponent(escape(window.atob(base64)))
-      : Buffer.from(base64, 'base64').toString('utf-8');
-    const data = JSON.parse(jsonStr);
-
-    if (!data.b && !data.v) return null;
-
-    return {
-      biltyNo: data.b || '',
-      vehicleNo: data.v || '',
-      date: data.d || '',
-      branch: (data.br === 'kamalia' ? 'kamalia' : 'samundri') as BiltyBranch,
-      sendingCity: data.f || '',
-      receivingCity: data.t || '',
-      senderName: data.s || '',
-      receiverName: data.r || '',
-      itemDescription: data.i || '',
-      weight: data.w || '',
-      qty: data.q || '',
-      total: Number(data.tt) || 0,
-      advance: Number(data.ad) || 0,
-      payable: Number(data.py) || 0,
-      driverName: data.dr || '',
-      consignor: data.s || '',
-      consignee: data.r || ''
-    };
-  } catch (err) {
-    console.warn('Failed to decode bilty verification payload:', err);
-    return null;
-  }
-}
-
-/**
- * Generates dynamic verification URL in the standard format:
- * https://[app-url]?page=verify&bilty=[BiltyNo]&vdata=[token]
+ * Generates official verification URL in the required secure format:
+ * https://zahdan-443.github.io/Warraichgoodstransportcompany/?page=verify&bilty={BILTY_NUMBER}
  * 
- * Accurately includes the repo path (/Warraich-Goods/) on GitHub Pages
- * and embeds a self-contained tamper-evident token so scanned QR codes
- * verify instantly without network friction or missing database records.
+ * Contains ONLY the company website verification URL and normalized bilty number.
+ * Excludes party details, financial amounts, Base64 records, or vdata tokens.
  */
 export function getBiltyVerificationUrl(biltyInput: string | Partial<BiltyRecord>): string {
   const isObj = typeof biltyInput === 'object' && biltyInput !== null;
-  const biltyNo = (isObj ? (biltyInput.biltyNo || '') : String(biltyInput || '')).trim();
-  let baseUrl = OFFICIAL_APP_BASE_URL;
+  const rawBiltyNo = (isObj ? (biltyInput.biltyNo || '') : String(biltyInput || '')).trim();
+  const normalizedNo = rawBiltyNo.toUpperCase();
 
-  if (typeof window !== 'undefined' && window.location) {
-    const { origin, pathname, hostname } = window.location;
-
-    if (hostname.includes('github.io')) {
-      // GitHub Pages hosting: ensure repository slug is retained
-      const segments = pathname.split('/').filter(Boolean);
-      const repoSlug = segments.length > 0 ? segments[0] : 'Warraich-Goods';
-      baseUrl = `${origin}/${repoSlug}/`;
-    } else if (
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1' ||
-      hostname.includes('run.app') ||
-      hostname.includes('web.app')
-    ) {
-      // Local dev server or Cloud Run / Firebase preview container
-      const basePath = pathname.endsWith('/')
-        ? pathname
-        : pathname.substring(0, pathname.lastIndexOf('/') + 1);
-      baseUrl = `${origin}${basePath || '/'}`;
-    } else {
-      // Default to official production base
-      baseUrl = OFFICIAL_APP_BASE_URL;
-    }
-  }
-
-  const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
-  let url = `${normalizedBase}?page=verify&bilty=${encodeURIComponent(biltyNo)}`;
-
-  if (isObj) {
-    const token = encodeBiltyPayload(biltyInput);
-    if (token) {
-      url += `&vdata=${encodeURIComponent(token)}`;
-    }
-  }
-
-  return url;
+  return `https://zahdan-443.github.io/Warraichgoodstransportcompany/?page=verify&bilty=${encodeURIComponent(normalizedNo)}`;
 }
 
 /**
