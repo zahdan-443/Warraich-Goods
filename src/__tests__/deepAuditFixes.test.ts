@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { extractPublicBiltyVerification, getBiltyAccessConfig } from '../utils/storage';
 import { validateVehicleAccountFinancials, formatSafeCurrencyPKR, formatPKR } from '../utils/calculator';
+import { getBiltyVerificationUrl } from '../utils/biltyHelpers';
 import { BiltyRecord } from '../types';
 
 describe('Deep Audit Fixes Verification Suite', () => {
@@ -10,8 +11,8 @@ describe('Deep Audit Fixes Verification Suite', () => {
     }
   });
 
-  describe('Public Bilty Verification PII Stripping', () => {
-    it('should extract public bilty verification without sensitive PII (CNIC and direct phone numbers)', () => {
+  describe('Public Bilty Verification Privacy & QR URL', () => {
+    it('should extract public bilty verification without PII, party names, or financial amounts', () => {
       const fullBilty: BiltyRecord = {
         id: 12345,
         biltyNo: 'AH-2026-0001',
@@ -39,17 +40,31 @@ describe('Deep Audit Fixes Verification Suite', () => {
       // Verify necessary fields for QR code validation are present
       expect(publicVerification.biltyNo).toBe('AH-2026-0001');
       expect(publicVerification.vehicleNo).toBe('LES-1234');
-      expect(publicVerification.senderName).toBe('Warraich Traders');
-      expect(publicVerification.receiverName).toBe('Karachi Wholesale');
-      expect(publicVerification.total).toBe(150000);
-      expect(publicVerification.payable).toBe(100000);
+      expect(publicVerification.sendingCity).toBe('Lahore');
+      expect(publicVerification.receivingCity).toBe('Karachi');
+      expect(publicVerification.itemDescription).toBe('Rice');
+      expect(publicVerification.qty).toBe('100 Bags');
+      expect(publicVerification.weight).toBe('5000 kg');
       expect(publicVerification.verifiedPublicly).toBe(true);
 
-      // Verify that PII properties do not exist on public verification payload
+      // Verify that PII, party names, and financial properties DO NOT exist on public verification payload
+      expect((publicVerification as any).senderName).toBeUndefined();
+      expect((publicVerification as any).receiverName).toBeUndefined();
+      expect((publicVerification as any).consignor).toBeUndefined();
+      expect((publicVerification as any).consignee).toBeUndefined();
+      expect((publicVerification as any).total).toBeUndefined();
+      expect((publicVerification as any).advance).toBeUndefined();
+      expect((publicVerification as any).payable).toBeUndefined();
       expect((publicVerification as any).senderCnic).toBeUndefined();
       expect((publicVerification as any).senderMobile).toBeUndefined();
       expect((publicVerification as any).receiverMobile).toBeUndefined();
       expect((publicVerification as any).mobileNo).toBeUndefined();
+    });
+
+    it('should generate official verification QR URL without vdata or financial tokens', () => {
+      const url = getBiltyVerificationUrl('AH-2026-0001');
+      expect(url).toBe('https://zahdan-443.github.io/Warraichgoodstransportcompany/?page=verify&bilty=AH-2026-0001');
+      expect(url).not.toContain('vdata');
     });
   });
 

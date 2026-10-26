@@ -254,19 +254,19 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
         if (action.type === 'bilty' && Array.isArray(action.data)) {
           const userDocRef = doc(db, 'users', user.uid, 'collections', 'bilties');
           await withTimeout(setDoc(userDocRef, { items: action.data, updatedAt: new Date().toISOString() }, { merge: true }), 3000);
-          // Also process public verification copies for each bilty
+          // Also process public verification copies for each bilty in publicBiltyVerifications
           for (const b of action.data) {
             if (b?.biltyNo) {
               const safeData = extractPublicBiltyVerification(b);
               const normalizedNo = String(b.biltyNo).trim().toUpperCase();
-              const pubRef = doc(db, 'bilties', normalizedNo);
+              const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
               await withTimeout(setDoc(pubRef, safeData, { merge: true }), 3000).catch(() => {});
             }
           }
           processedCount++;
         } else if (action.type === 'public_bilty' && action.data?.biltyNo) {
           const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
-          const pubRef = doc(db, 'bilties', normalizedNo);
+          const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
           await withTimeout(setDoc(pubRef, action.data, { merge: true }), 3000);
           processedCount++;
         } else if (['trip', 'trips', 'vehicle', 'vehicles', 'driver', 'drivers', 'fuel', 'routes'].includes(action.type)) {
@@ -281,7 +281,7 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
           processedCount++;
         } else if (action.type === 'pod_confirmation' && action.data?.biltyNo) {
           const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
-          const pubRef = doc(db, 'bilties', normalizedNo);
+          const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
           await withTimeout(setDoc(pubRef, action.data, { merge: true }), 3000);
           processedCount++;
         } else {
@@ -290,13 +290,13 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
       } else if (action.type === 'public_bilty' && action.data?.biltyNo) {
         // Public bilty writes can proceed even if user profile is pending, provided client has network
         const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
-        const pubRef = doc(db, 'bilties', normalizedNo);
+        const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
         await withTimeout(setDoc(pubRef, action.data, { merge: true }), 3000);
         processedCount++;
       } else if (action.type === 'pod_confirmation' && action.data?.biltyNo) {
-        // POD confirmation can be submitted by consignee without user login
+        // POD confirmation update
         const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
-        const pubRef = doc(db, 'bilties', normalizedNo);
+        const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
         await withTimeout(setDoc(pubRef, action.data, { merge: true }), 3000);
         processedCount++;
       } else {
@@ -422,59 +422,54 @@ export function saveStoredBilties(bilties: BiltyRecord[]) {
 }
 
 /**
- * Public Verification Safe Document (Strictly excludes PII such as CNIC and mobile numbers)
+ * Public Verification Safe Document (Strictly excludes PII such as CNIC, mobile numbers, party names, financial amounts, and delivery photos)
  */
 export interface PublicBiltyVerification {
   biltyNo: string;
-  vehicleNo: string;
   date: string;
-  branch?: string;
   sendingCity: string;
   receivingCity: string;
-  senderName: string;
-  receiverName: string;
-  qty: string;
   itemDescription: string;
-  weight: string;
-  total: number;
-  advance: number;
-  payable: number;
-  consignor?: string;
-  consignee?: string;
-  receivedBy?: string;
-  podConfirmation?: PodConfirmation;
+  weight?: string;
+  qty?: string;
+  vehicleNo?: string;
   isDelivered?: boolean;
   verifiedPublicly: true;
   createdAt: string;
+  updatedAt?: string;
 }
 
 /**
- * Extracts only safe, non-PII fields from a Bilty record for public QR verification
+ * Extracts only safe, non-PII, non-financial fields from a Bilty record for public verification
  */
 export function extractPublicBiltyVerification(bilty: Partial<BiltyRecord>): PublicBiltyVerification {
-  return {
-    biltyNo: bilty.biltyNo || '',
-    vehicleNo: bilty.vehicleNo || '',
+  const normalizedNo = bilty.biltyNo ? String(bilty.biltyNo).trim().toUpperCase() : '';
+  const isDeliveredVal = bilty.isDelivered || !!bilty.podConfirmation;
+
+  const result: PublicBiltyVerification = {
+    biltyNo: normalizedNo,
     date: bilty.date || '',
-    branch: bilty.branch || 'samundri',
     sendingCity: bilty.sendingCity || '',
     receivingCity: bilty.receivingCity || '',
-    senderName: bilty.senderName || bilty.consignor || '',
-    receiverName: bilty.receiverName || bilty.consignee || '',
-    qty: bilty.qty || '',
     itemDescription: bilty.itemDescription || '',
-    weight: bilty.weight || '',
-    total: typeof bilty.total === 'number' ? bilty.total : 0,
-    advance: typeof bilty.advance === 'number' ? bilty.advance : 0,
-    payable: typeof bilty.payable === 'number' ? bilty.payable : 0,
-    consignor: bilty.consignor || bilty.senderName || '',
-    consignee: bilty.consignee || bilty.receiverName || '',
-    receivedBy: bilty.receivedBy || bilty.podConfirmation?.receiverName || '',
-    podConfirmation: bilty.podConfirmation,
-    isDelivered: bilty.isDelivered || !!bilty.podConfirmation,
     verifiedPublicly: true,
     createdAt: new Date().toISOString()
   };
+
+  if (bilty.weight) {
+    result.weight = bilty.weight;
+  }
+  if (bilty.qty) {
+    result.qty = bilty.qty;
+  }
+  if (bilty.vehicleNo) {
+    result.vehicleNo = bilty.vehicleNo;
+  }
+  if (typeof isDeliveredVal === 'boolean') {
+    result.isDelivered = isDeliveredVal;
+  }
+
+  return result;
 }
 
 /**
@@ -537,12 +532,12 @@ export async function confirmBiltyDelivery(
 
   try {
     const normalizedNo = String(bilty.biltyNo).trim().toUpperCase();
-    const pubRef = doc(db, 'bilties', normalizedNo);
+    const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
     await withTimeout(setDoc(pubRef, payload, { merge: true }), 4000);
 
     const cleanAlpha = normalizedNo.replace(/[^A-Z0-9]/g, '');
     if (cleanAlpha && cleanAlpha !== normalizedNo) {
-      const pubRef2 = doc(db, 'bilties', cleanAlpha);
+      const pubRef2 = doc(db, 'publicBiltyVerifications', cleanAlpha);
       await withTimeout(setDoc(pubRef2, payload, { merge: true }), 4000).catch(() => {});
     }
 
@@ -579,7 +574,7 @@ export async function confirmBiltyDelivery(
 }
 
 /**
- * Writes a public verification copy to Firestore at top-level bilties/{biltyNo}
+ * Writes a public verification copy to Firestore at top-level publicBiltyVerifications/{biltyNo}
  * Online: writes directly with timeout. Offline: enqueues action for retry.
  */
 export async function syncPublicBiltyVerification(bilty: BiltyRecord): Promise<boolean> {
@@ -594,11 +589,11 @@ export async function syncPublicBiltyVerification(bilty: BiltyRecord): Promise<b
   }
 
   try {
-    const docRef = doc(db, 'bilties', normalizedNo);
+    const docRef = doc(db, 'publicBiltyVerifications', normalizedNo);
     await withTimeout(setDoc(docRef, safeData, { merge: true }), 3000);
     const cleanId = normalizedNo.replace(/[^A-Z0-9]/g, '');
     if (cleanId && cleanId !== normalizedNo) {
-      const docRef2 = doc(db, 'bilties', cleanId);
+      const docRef2 = doc(db, 'publicBiltyVerifications', cleanId);
       await withTimeout(setDoc(docRef2, safeData, { merge: true }), 3000).catch(() => {});
     }
     return true;
@@ -1495,4 +1490,29 @@ export function restoreFullBackupFromJson(jsonString: string): { success: boolea
   } catch (err: any) {
     return { success: false, message: err.message || 'Failed to restore backup', count: 0 };
   }
+}
+
+/**
+ * Safe Migration Helper: Publishes existing private bilties to publicBiltyVerifications.
+ * Reads existing stored bilties, extracts only non-PII, non-financial fields using
+ * extractPublicBiltyVerification, and uploads them to publicBiltyVerifications/{biltyNo}.
+ * Does NOT alter or delete production private bilties or bulk-modify existing private documents.
+ */
+export async function publishExistingBiltiesToPublicVerifications(): Promise<{ total: number; published: number; errors: string[] }> {
+  const bilties = getStoredBilties();
+  let publishedCount = 0;
+  const errors: string[] = [];
+
+  for (const b of bilties) {
+    if (b.biltyNo) {
+      try {
+        const success = await syncPublicBiltyVerification(b);
+        if (success) publishedCount++;
+      } catch (err: any) {
+        errors.push(`Bilty ${b.biltyNo}: ${err?.message || String(err)}`);
+      }
+    }
+  }
+
+  return { total: bilties.length, published: publishedCount, errors };
 }
