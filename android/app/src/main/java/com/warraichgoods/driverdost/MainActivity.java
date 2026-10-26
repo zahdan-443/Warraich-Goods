@@ -18,7 +18,7 @@ import io.capawesome.capacitorjs.plugins.firebase.authentication.FirebaseAuthent
 import com.warraichgoods.driverdost.dashcam.DashcamPlugin;
 
 public class MainActivity extends BridgeActivity {
-    private boolean isFullScreen = true;
+    private boolean isFullScreen = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -51,8 +51,8 @@ public class MainActivity extends BridgeActivity {
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         }
 
-        // Apply Immersive Fullscreen (Hides Battery Bar & Status Bar with ZERO permissions)
-        applyFullScreen(true);
+        // Guarantee Phone Navigation Bar (Back, Home, Recents) is always visible and never hidden
+        applyFullScreen(false);
 
         setupNativeBridge();
     }
@@ -60,8 +60,8 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus && isFullScreen) {
-            applyFullScreen(true);
+        if (hasFocus) {
+            applyFullScreen(isFullScreen);
         }
     }
 
@@ -72,21 +72,22 @@ public class MainActivity extends BridgeActivity {
                 WindowInsetsControllerCompat insetsController =
                     WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
                 if (insetsController != null) {
+                    // Play Store navigation policy: Never hide the system navigation bar (Back, Home, Recents)
+                    insetsController.show(WindowInsetsCompat.Type.navigationBars());
+
                     if (enable) {
                         insetsController.setSystemBarsBehavior(
-                            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                            WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
                         );
                         insetsController.hide(WindowInsetsCompat.Type.statusBars());
                     } else {
                         insetsController.show(WindowInsetsCompat.Type.statusBars());
                     }
+                    insetsController.show(WindowInsetsCompat.Type.navigationBars());
                 }
             } catch (Exception e) {
-                if (enable) {
-                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-                } else {
-                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-                }
+                // Never add FLAG_FULLSCREEN to prevent navigation buttons from being hidden
+                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
             }
         });
     }

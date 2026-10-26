@@ -98,7 +98,14 @@ export const Header: React.FC<HeaderProps> = ({
     } else if (typeof document !== 'undefined') {
       if (next) {
         if (document.documentElement.requestFullscreen) {
-          document.documentElement.requestFullscreen().catch(() => {});
+          // Play Store standard: navigationUI 'show' ensures back/home buttons remain visible
+          try {
+            document.documentElement.requestFullscreen({ navigationUI: 'show' } as FullscreenOptions).catch(() => {
+              document.documentElement.requestFullscreen().catch(() => {});
+            });
+          } catch {
+            document.documentElement.requestFullscreen().catch(() => {});
+          }
         }
       } else {
         if (document.exitFullscreen && document.fullscreenElement) {
@@ -501,7 +508,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
 
-                {/* Full Screen / Immersive Mode (Notch & Battery Bar Hide - Zero Permissions) */}
+                {/* Full Screen / Status Bar Display (Phone Navigation Buttons Always Visible) */}
                 <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 rounded-2xl bg-white border border-[#ecece0] shadow-2xs">
@@ -509,10 +516,10 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     <div className="text-left">
                       <div className="font-serif font-bold text-sm text-[#4a4a35]">
-                        {lang === 'ur' ? 'مکمل فل اسکرین موڈ' : 'Full Screen Immersive'}
+                        {lang === 'ur' ? 'اسکرین ویو اور اسٹیٹس بار' : 'Screen View & Status Bar'}
                       </div>
                       <div className="text-xs text-[#8e8e75]">
-                        {lang === 'ur' ? 'نچ اور بیٹری بار چھپا کر فل اسکرین کریں' : 'Hide notch & battery status bar'}
+                        {lang === 'ur' ? 'فون نیویگیشن اور بیک بٹن ہمیشہ نظر آئیں گے' : 'Phone navigation & back button remain visible'}
                       </div>
                     </div>
                   </div>
