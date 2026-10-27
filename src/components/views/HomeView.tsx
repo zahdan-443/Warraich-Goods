@@ -170,7 +170,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showHomePrivacyModal, setShowHomePrivacyModal] = useState(false);
   const [showSafarDiaryModal, setShowSafarDiaryModal] = useState(false);
-  const [showQuickOpsModal, setShowQuickOpsModal] = useState(false);
   const [showTollCalculatorModal, setShowTollCalculatorModal] = useState(false);
 
   // Owner Panel Dismissed State
@@ -242,9 +241,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
       } else if (showSafarDiaryModal) {
         setShowSafarDiaryModal(false);
         e.preventDefault();
-      } else if (showQuickOpsModal) {
-        setShowQuickOpsModal(false);
-        e.preventDefault();
       } else if (showRecentLogs) {
         setShowRecentLogs(false);
         e.preventDefault();
@@ -252,7 +248,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     };
     window.addEventListener('app-back-button', handleBack);
     return () => window.removeEventListener('app-back-button', handleBack);
-  }, [showTollCalculatorModal, showSafarDiaryModal, showQuickOpsModal, showRecentLogs]);
+  }, [showTollCalculatorModal, showSafarDiaryModal, showRecentLogs]);
 
   const openModalWithHistory = (setter: React.Dispatch<React.SetStateAction<boolean>>) => {
     window.history.pushState({ modal: true }, '');
@@ -607,15 +603,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
             highlight={true}
           />
 
-          {/* 7. Other Tools & Operations (Restored with quick-ops-icon.png) */}
-          <QuickActionButton
-            href="#quickOps"
-            onClick={() => openModalWithHistory(setShowQuickOpsModal)}
-            imgSrc={quickOpsIconData}
-            fallbackIcon={<Wrench className="w-12 h-12 text-[#8b9d77]" />}
-            fullName={lang === 'ur' ? 'مزید سہولتیں و آپریشنز' : 'More Services & Operations'}
-            highlight={true}
-          />
 
           {/* 8. Vehicles Verification */}
           <QuickActionButton
@@ -825,238 +812,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 className="px-6 py-2.5 rounded-full bg-[#4a4a35] text-white font-serif font-bold text-xs hover:bg-[#383827] transition-all cursor-pointer shadow-sm"
               >
                 {lang === 'ur' ? 'ڈائری بند کریں' : 'Close Safar Diary'}
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* Quick Operations Modal */}
-      {showQuickOpsModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div 
-            dir={lang === 'ur' ? 'rtl' : 'ltr'}
-            className={`bg-white rounded-[40px] max-w-4xl w-full p-6 md:p-10 shadow-2xl border border-[#ecece0] max-h-[90vh] overflow-y-auto space-y-8 ${lang === 'ur' ? 'text-right' : 'text-left'}`}
-          >
-            
-            {/* Modal Header */}
-            <header className="flex justify-between items-start border-b border-[#ecece0] pb-6">
-              <div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#8b9d77]/15 text-[#5a5a40] uppercase tracking-wider mb-2">
-                  <Wrench className="w-3 h-3 text-[#8b9d77]" />
-                  {lang === 'ur' ? 'کوئیک پورٹل' : 'Quick Portal'}
-                </span>
-                <h2 className="text-2xl md:text-3xl font-serif font-bold text-[#4a4a35]">
-                  {lang === 'ur' ? 'کوئیک آپریشنز اور مانیٹرنگ' : 'Quick Operations'}
-                </h2>
-                <p className="text-[#8e8e75] text-xs mt-1">
-                  {lang === 'ur' ? 'تمام فلیٹ ٹولز، پورٹل اور سرکاری تصدیقی خدمات تک فوری رسائی' : 'Direct access to fleet management tools and official Punjab verification portals.'}
-                </p>
-              </div>
-              <button
-                onClick={() => setShowQuickOpsModal(false)}
-                className="p-3 bg-[#f0f0e4] hover:bg-[#5a5a40] hover:text-white rounded-full text-[#5a5a40] transition-all cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </header>
-
-            {/* Quick Operations Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              
-              {/* Dashcam Video Recorder */}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowQuickOpsModal(false);
-                  onNavigate('dashcam');
-                }}
-                className="p-5 rounded-3xl bg-blue-500/10 border border-blue-300/80 hover:border-blue-500 hover:bg-blue-500/20 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95"
-              >
-                <div className="p-3 bg-white rounded-2xl border border-blue-300 group-hover:border-blue-500 shadow-2xs shrink-0 text-blue-800">
-                  <Camera className="w-6 h-6 text-blue-700" />
-                </div>
-                <span className="font-serif font-bold text-xs text-blue-950 group-hover:text-blue-800 transition-colors">
-                  {lang === 'ur' ? 'ڈیش کیم ریکارڈر' : 'Dashcam Recorder'}
-                </span>
-              </button>
-
-              {/* Financial Ledger (حساب کتاب) */}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowQuickOpsModal(false);
-                  onNavigate('ledger');
-                }}
-                className="p-5 rounded-3xl bg-emerald-500/10 border border-emerald-300/80 hover:border-emerald-500 hover:bg-emerald-500/20 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95"
-              >
-                <div className="p-3 bg-white rounded-2xl border border-emerald-300 group-hover:border-emerald-500 shadow-2xs shrink-0 text-emerald-800">
-                  <BookOpen className="w-6 h-6 text-emerald-700" />
-                </div>
-                <span className="font-serif font-bold text-xs text-emerald-950 group-hover:text-emerald-800 transition-colors">
-                  {lang === 'ur' ? 'حساب کتاب (لیجر)' : 'Financial Ledger'}
-                </span>
-              </button>
-
-              {/* Safar Diary (Shifted to Quick Operations as requested) */}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowQuickOpsModal(false);
-                  openModalWithHistory(setShowSafarDiaryModal);
-                }}
-                className="p-5 rounded-3xl bg-amber-500/10 border border-amber-300/80 hover:border-amber-500 hover:bg-amber-500/20 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95"
-              >
-                <div className="p-3 bg-white rounded-2xl border border-amber-300 group-hover:border-amber-500 shadow-2xs shrink-0 text-amber-800">
-                  <BookOpen className="w-6 h-6 text-amber-700" />
-                </div>
-                <span className="font-serif font-bold text-xs text-amber-950 group-hover:text-amber-800 transition-colors">
-                  {lang === 'ur' ? 'سفر ڈائری لاگز' : 'Safar Diary'}
-                </span>
-              </button>
-
-              {/* Map & Live Route Weather */}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowQuickOpsModal(false);
-                  onNavigate('map');
-                }}
-                className="p-5 rounded-3xl bg-emerald-500/10 border border-emerald-300/80 hover:border-emerald-500 hover:bg-emerald-500/20 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95"
-              >
-                <div className="p-3 bg-white rounded-2xl border border-emerald-300 group-hover:border-emerald-500 shadow-2xs shrink-0 text-emerald-800">
-                  <MapPin className="w-6 h-6 text-emerald-700" />
-                </div>
-                <span className="font-serif font-bold text-xs text-emerald-950 group-hover:text-emerald-800 transition-colors">
-                  {lang === 'ur' ? 'نقشہ و روٹ موسم' : 'Route & Weather Map'}
-                </span>
-              </button>
-
-              {/* Vehicles */}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowQuickOpsModal(false);
-                  onNavigate('vehicle');
-                }}
-                className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95"
-              >
-                <div className="p-3 bg-white rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs shrink-0">
-                  <Truck className="w-6 h-6 text-[#8b9d77]" />
-                </div>
-                <span className="font-serif font-bold text-xs text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
-                  {lang === 'ur' ? 'گاڑیاں اور فلیٹ' : 'Vehicles Fleet'}
-                </span>
-              </button>
-
-              {/* Drivers */}
-              <a
-                href="#drivers"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowQuickOpsModal(false);
-                  onNavigate('drivers');
-                }}
-                title={lang === 'ur' ? 'ڈرائیورز ڈائریکٹری' : 'Drivers List'}
-                className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95 no-underline"
-              >
-                <div className="p-3 bg-white rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs shrink-0">
-                  <Users className="w-6 h-6 text-[#8b9d77]" />
-                </div>
-                <span className="font-serif font-bold text-xs text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
-                  {lang === 'ur' ? 'ڈرائیورز ڈائریکٹری' : 'Drivers List'}
-                </span>
-              </a>
-
-              {/* Routes & Tolls */}
-              <a
-                href="#routes"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowQuickOpsModal(false);
-                  onNavigate('routes');
-                }}
-                title={lang === 'ur' ? 'روٹس اور ٹول ٹیکس' : 'Routes & Tolls'}
-                className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95 no-underline"
-              >
-                <div className="p-3 bg-white rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs shrink-0">
-                  <Compass className="w-6 h-6 text-[#8b9d77]" />
-                </div>
-                <span className="font-serif font-bold text-xs text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
-                  {lang === 'ur' ? 'روٹس اور ٹول ٹیکس' : 'Routes & Tolls'}
-                </span>
-              </a>
-
-              {/* Fuel Log */}
-              <a
-                href="#fuel"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowQuickOpsModal(false);
-                  onNavigate('fuel');
-                }}
-                title={lang === 'ur' ? 'فیول لاگ ریکارڈ' : 'Fuel Consumption'}
-                className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95 no-underline"
-              >
-                <div className="p-3 bg-white rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs shrink-0">
-                  <Fuel className="w-6 h-6 text-[#8b9d77]" />
-                </div>
-                <span className="font-serif font-bold text-xs text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
-                  {lang === 'ur' ? 'فیول لاگ ریکارڈ' : 'Fuel Consumption'}
-                </span>
-              </a>
-
-              {/* Verification Portals */}
-              <a
-                href="#verify"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowQuickOpsModal(false);
-                  onNavigate('verify');
-                }}
-                title={lang === 'ur' ? 'سرکاری تصدیق' : 'Gov Verification'}
-                className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-[#8b9d77]/10 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95 no-underline"
-              >
-                <div className="p-3 bg-white rounded-2xl border border-[#ecece0] group-hover:border-[#8b9d77] shadow-2xs shrink-0">
-                  <ShieldCheck className="w-6 h-6 text-[#8b9d77]" />
-                </div>
-                <span className="font-serif font-bold text-xs text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors">
-                  {lang === 'ur' ? 'سرکاری تصدیق' : 'Gov Verification'}
-                </span>
-              </a>
-
-              {/* Bilty Generator (ONLY visible IF authorized) */}
-              {isBiltyAuthorized && (
-                <a
-                  href="#bilty"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowQuickOpsModal(false);
-                    onNavigate('bilty');
-                  }}
-                  title={lang === 'ur' ? 'بلٹی جنریٹر' : 'Bilty Generator'}
-                  className="p-5 rounded-3xl bg-amber-500/10 border border-amber-300 hover:border-amber-500 hover:bg-amber-500/20 transition-all cursor-pointer group flex flex-col items-center justify-center text-center gap-2.5 shadow-2xs active:scale-95 no-underline"
-                >
-                  <div className="p-3 bg-white rounded-2xl border border-amber-300 group-hover:border-amber-500 shadow-2xs shrink-0 text-amber-700">
-                    <Receipt className="w-6 h-6" />
-                  </div>
-                  <span className="font-serif font-bold text-xs text-amber-950 group-hover:text-amber-800 transition-colors">
-                    {lang === 'ur' ? 'بلٹی جنریٹر' : 'Bilty Generator'}
-                  </span>
-                </a>
-              )}
-
-            </div>
-
-            {/* Modal Footer Close Button */}
-            <div className="text-center pt-2 border-t border-[#ecece0]">
-              <button
-                type="button"
-                onClick={() => setShowQuickOpsModal(false)}
-                className="px-6 py-2.5 rounded-full bg-[#4a4a35] text-white font-serif font-bold text-xs hover:bg-[#383827] transition-all cursor-pointer shadow-sm"
-              >
-                {lang === 'ur' ? 'پورٹل بند کریں' : 'Close Quick Operations'}
               </button>
             </div>
 

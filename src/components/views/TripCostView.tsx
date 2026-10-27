@@ -21,14 +21,19 @@ import {
   ChevronUp,
   Sparkles,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  BookOpen,
+  Plus,
+  Trash2,
+  Calendar,
+  Search
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { fetchOSRMRouteDistance, PAKISTAN_CITIES } from '../../utils/mapRoutes';
 import { getLogoBase64, sharePdfFileOrWhatsApp, escapeHtml, sanitizeHtml } from '../../utils/pdfHelper';
 import { validateFinancialNumber, validateTripFinancials } from '../../utils/calculator';
-import { getStoredFuelPrices, fetchLiveFuelPrices, FuelPricesData } from '../../utils/fuelPrice';
+import { getStoredFuelPrices, fetchLiveFuelPrices } from '../../utils/fuelPrice';
 import { getRouteComparisonOptions, RouteComparisonResult, RouteOptionComparison } from '../../utils/routeComparison';
 import { getStoredRoutes } from '../../utils/storage';
 
@@ -55,13 +60,19 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 }) => {
   const isUrdu = lang === 'ur';
 
-  // Screen View Mode: 'input' or 'result'
+  // Sub-tab state: 'calculator' (سفر خرچہ) or 'diary' (سفر ڈائری)
+  const [activeTab, setActiveTab] = useState<'calculator' | 'diary'>('calculator');
+
+  // Screen View Mode for Calculator: 'input' or 'result'
   const [viewMode, setViewMode] = useState<'input' | 'result'>('input');
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [copyToast, setCopyToast] = useState<boolean>(false);
 
-  // Input States (Strict 1-box per line sequence)
+  // Diary Search & Filter
+  const [diarySearch, setDiarySearch] = useState<string>('');
+
+  // Input States
   const initialFuel = getStoredFuelPrices();
   const [originCity, setOriginCity] = useState<string>('Samundri');
   const [destCity, setDestCity] = useState<string>('Lahore');
@@ -74,13 +85,13 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   const [isRouteLoading, setIsRouteLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Feature B: Route Comparison States
+  // Route Comparison States
   const [showRouteComparison, setShowRouteComparison] = useState<boolean>(false);
   const [comparisonResult, setComparisonResult] = useState<RouteComparisonResult | null>(null);
   const [isLoadingComparison, setIsLoadingComparison] = useState<boolean>(false);
   const [selectedComparisonRouteId, setSelectedComparisonRouteId] = useState<string | null>(null);
 
-  // Optional Expected Freight Income (متوقع کرایہ آمدن)
+  // Expected Freight Income
   const [expectedIncome, setExpectedIncome] = useState<string>('');
 
   // Result Calculation Object
@@ -128,7 +139,6 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   }, []);
 
   useEffect(() => {
-
     try {
       const prefillStr = localStorage.getItem('ah-prefill-toll-calc');
       if (prefillStr) {
@@ -160,9 +170,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
         }
         localStorage.removeItem('ah-prefill-toll-calc');
       }
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
   }, []);
 
   useEffect(() => {
@@ -188,7 +196,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     };
   }, [originCity, destCity]);
 
-  // Feature B: Auto-fetch route comparison options when enabled or when cities/parameters change
+  // Auto-fetch route comparison options when enabled or when cities/parameters change
   useEffect(() => {
     let isMounted = true;
     if (showRouteComparison && originCity && destCity && originCity !== destCity) {
@@ -231,7 +239,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   // Back button listener: Return from Result mode to Input mode
   useEffect(() => {
     const handleBackButton = (e: Event) => {
-      if (viewMode === 'result') {
+      if (activeTab === 'calculator' && viewMode === 'result') {
         e.preventDefault();
         setViewMode('input');
         try {
@@ -241,7 +249,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     };
     window.addEventListener('app-back-button', handleBackButton);
     return () => window.removeEventListener('app-back-button', handleBackButton);
-  }, [viewMode]);
+  }, [activeTab, viewMode]);
 
   const formatCityDisplay = (cityName: string) => {
     const match = PAKISTAN_CITIES.find(
@@ -567,32 +575,6 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     }
   };
 
-  const handleWhatsAppShare = async () => {
-    if (!lastCalc) return;
-    const msg = buildWhatsAppMsg();
-
-    try {
-      const result = await generateTripCostPdf();
-      if (result) {
-        await sharePdfFileOrWhatsApp({
-          pdfBlob: result.pdfBlob,
-          fileName: result.fileName,
-          title: `سفر خرچہ رپورٹ - ${lastCalc.origin} تا ${lastCalc.dest}`,
-          textSummary: msg,
-        });
-        return;
-      }
-    } catch (e) {
-      console.warn('Trip PDF share fallback:', e);
-    }
-
-    try {
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
-    } catch {
-      window.location.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-    }
-  };
-
   const handleExportPDF = async () => {
     if (!lastCalc || isExportingPdf) return;
     setIsExportingPdf(true);
@@ -612,838 +594,899 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     }
   };
 
-  // ════════════════════════════════════════════════════════════
-  // RENDER SCREEN 1: INPUT FORM (Smooth Scrollable, Generous Spacing & High Visibility)
-  // ════════════════════════════════════════════════════════════
-  if (viewMode === 'input') {
+  // Filtered trips for Safar Diary
+  const filteredTrips = trips.filter(t => {
+    if (!diarySearch.trim()) return true;
+    const term = diarySearch.toLowerCase().trim();
     return (
-      <div 
-        className={`w-full max-w-xl mx-auto flex flex-col p-3 sm:p-5 pb-10 sm:pb-16 font-sans ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} 
-        dir={isUrdu ? 'rtl' : 'ltr'}
-      >
-        {/* 7 Inputs - Smooth scrollable sequence with generous spacing */}
-        <div className="w-full flex-1 flex flex-col space-y-3 sm:space-y-3.5 py-1">
-          
-          {/* Fields 1 & 2: Origin & Destination Cities - Single Line Side-by-Side */}
-          <div className="grid grid-cols-2 gap-2 sm:gap-3">
-            {/* Field 1: Origin City / از (روانگی) */}
-            <div className="bg-white p-2.5 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-              <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1 sm:mb-1.5 flex items-center gap-1 sm:gap-1.5 truncate">
-                <MapPin className="w-3.5 h-3.5 text-[#8b9d77] shrink-0" />
-                <span className="truncate">{isUrdu ? 'از (روانگی)' : 'From City'}</span>
-              </label>
-              <select
-                value={originCity}
-                onChange={(e) => setOriginCity(e.target.value)}
-                className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-2 sm:px-3 py-2 text-xs sm:text-sm font-black text-[#2b2b1f] focus:border-[#8b9d77] focus:outline-none cursor-pointer shadow-2xs truncate"
-              >
-                {PAKISTAN_CITIES.map((c) => (
-                  <option key={c.nameEn} value={c.nameEn}>
-                    {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Field 2: Destination City / تا (منزل) */}
-            <div className="bg-white p-2.5 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-              <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1 sm:mb-1.5 flex items-center gap-1 sm:gap-1.5 truncate">
-                <Navigation className="w-3.5 h-3.5 text-[#8b9d77] shrink-0" />
-                <span className="truncate">{isUrdu ? 'تا (منزل)' : 'To City'}</span>
-              </label>
-              <select
-                value={destCity}
-                onChange={(e) => setDestCity(e.target.value)}
-                className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-2 sm:px-3 py-2 text-xs sm:text-sm font-black text-[#2b2b1f] focus:border-[#8b9d77] focus:outline-none cursor-pointer shadow-2xs truncate"
-              >
-                {PAKISTAN_CITIES.map((c) => (
-                  <option key={c.nameEn} value={c.nameEn}>
-                    {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* FEATURE B: Cheapest vs Fastest Route Comparison Toggle & Cards */}
-          <div className="bg-[#fdfbf7] p-3 sm:p-3.5 rounded-2xl border border-[#ecece0] shadow-2xs space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-[#8b9d77]/20 flex items-center justify-center text-[#4a5e38]">
-                  <ArrowLeftRight className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-xs sm:text-sm font-bold text-[#4a4a35]">
-                    {isUrdu ? 'روٹ موازنہ (کم خرچ بمقابلہ تیز ترین)' : 'Route Comparison (Cheapest vs Fastest)'}
-                  </h3>
-                  <p className="text-xs text-[#8e8e75]">
-                    {isUrdu ? 'ٹول ٹیکس، فاصلہ و فیول لاگت کا موازنہ' : 'Compare toll, distance & fuel trade-off'}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowRouteComparison(!showRouteComparison)}
-                className={`px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs active:scale-95 ${
-                  showRouteComparison
-                    ? 'bg-[#4a5e38] text-white shadow-xs'
-                    : 'bg-white hover:bg-slate-100 text-[#4a4a35] border border-[#d5d5c5]'
-                }`}
-              >
-                <span>{showRouteComparison ? (isUrdu ? 'موازنہ فعال' : 'Active') : (isUrdu ? 'موازنہ دیکھیں' : 'Compare Routes')}</span>
-                {showRouteComparison ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-
-            {/* Expanded Route Comparison Cards */}
-            {showRouteComparison && (
-              <div className="space-y-3 pt-2 border-t border-[#ecece0] animate-in fade-in duration-150">
-                {isLoadingComparison ? (
-                  <div className="py-6 text-center text-xs text-[#8e8e75] font-bold animate-pulse flex items-center justify-center gap-2">
-                    <Clock className="w-4 h-4 text-[#8b9d77]" />
-                    <span>{isUrdu ? 'روٹس اور لاگت کا موازنہ کیا جا رہا ہے...' : 'Analyzing route trade-offs & toll matrix...'}</span>
-                  </div>
-                ) : comparisonResult && comparisonResult.hasMultipleRoutes ? (
-                  /* Multiple Viable Routes: Side-by-Side Cards (Fastest vs Cheapest) */
-                  <div className="space-y-2">
-                    <p className="text-xs text-[#5a5a40]">
-                      {isUrdu
-                        ? 'نیچے دیے گئے کارڈ پر کلک کریں تاکہ وہ فاصلہ اور ٹول کیلکولیٹر میں لاگو ہو سکے:'
-                        : 'Tap a route card to apply its distance and toll to the calculator:'}
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {/* Fastest Route Card */}
-                      {comparisonResult.fastestRoute && (
-                        <div
-                          onClick={() => handleSelectRouteOption(comparisonResult.fastestRoute!)}
-                          className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
-                            selectedComparisonRouteId === comparisonResult.fastestRoute.id
-                              ? 'bg-emerald-50/80 border-emerald-500 shadow-xs ring-2 ring-emerald-500/20'
-                              : 'bg-white border-[#d5d5c5] hover:border-[#8b9d77]'
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between gap-1 mb-1.5">
-                              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
-                                <Zap className="w-3 h-3 text-amber-600" />
-                                <span>{isUrdu ? 'تیز ترین روٹ' : 'Fastest Route'}</span>
-                              </span>
-                              <span className="font-mono text-xs font-bold text-slate-700">
-                                {isUrdu ? comparisonResult.fastestRoute.estimatedTimeFormattedUr : comparisonResult.fastestRoute.estimatedTimeFormattedEn}
-                              </span>
-                            </div>
-
-                            <h4 className="font-bold text-xs text-[#2b2b1f] line-clamp-1">
-                              {isUrdu ? comparisonResult.fastestRoute.nameUr : comparisonResult.fastestRoute.nameEn}
-                            </h4>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-1.5 py-1.5 px-2 bg-[#fdfbf7] rounded-xl border border-[#ecece0] text-xs">
-                            <div>
-                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'فاصلہ' : 'Distance'}</span>
-                              <span className="font-mono font-bold text-[#4a4a35]">{comparisonResult.fastestRoute.distanceKm} KM</span>
-                            </div>
-                            <div>
-                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'ٹول ٹیکس' : 'Toll Cost'}</span>
-                              <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.fastestRoute.tollCost.toLocaleString()}</span>
-                            </div>
-                            <div>
-                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'ڈیزل لاگت' : 'Fuel Cost'}</span>
-                              <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.fastestRoute.fuelCost.toLocaleString()}</span>
-                            </div>
-                            <div>
-                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'کل لاگت' : 'Total Cost'}</span>
-                              <span className="font-mono font-bold text-emerald-700">Rs {comparisonResult.fastestRoute.totalTripCost.toLocaleString()}</span>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            className={`w-full py-2 min-h-[38px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-98 cursor-pointer ${
-                              selectedComparisonRouteId === comparisonResult.fastestRoute.id
-                                ? 'bg-emerald-600 text-white shadow-xs'
-                                : 'bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35]'
-                            }`}
-                          >
-                            {selectedComparisonRouteId === comparisonResult.fastestRoute.id ? (
-                              <>
-                                <Check className="w-3.5 h-3.5" />
-                                <span>{isUrdu ? 'منتخب شدہ' : 'Selected'}</span>
-                              </>
-                            ) : (
-                              <span>{isUrdu ? 'یہ روٹ منتخب کریں' : 'Select This Route'}</span>
-                            )}
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Cheapest Route Card */}
-                      {comparisonResult.cheapestRoute && (
-                        <div
-                          onClick={() => handleSelectRouteOption(comparisonResult.cheapestRoute!)}
-                          className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
-                            selectedComparisonRouteId === comparisonResult.cheapestRoute.id
-                              ? 'bg-emerald-50/80 border-emerald-500 shadow-xs ring-2 ring-emerald-500/20'
-                              : 'bg-white border-[#d5d5c5] hover:border-[#8b9d77]'
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between gap-1 mb-1.5">
-                              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-1">
-                                <Wallet className="w-3 h-3 text-emerald-700" />
-                                <span>{isUrdu ? 'سب سے کم خرچ روٹ' : 'Cheapest Route'}</span>
-                              </span>
-                              <span className="font-mono text-xs font-bold text-slate-700">
-                                {isUrdu ? comparisonResult.cheapestRoute.estimatedTimeFormattedUr : comparisonResult.cheapestRoute.estimatedTimeFormattedEn}
-                              </span>
-                            </div>
-
-                            <h4 className="font-bold text-xs text-[#2b2b1f] line-clamp-1">
-                              {isUrdu ? comparisonResult.cheapestRoute.nameUr : comparisonResult.cheapestRoute.nameEn}
-                            </h4>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-1.5 py-1.5 px-2 bg-[#fdfbf7] rounded-xl border border-[#ecece0] text-xs">
-                            <div>
-                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'فاصلہ' : 'Distance'}</span>
-                              <span className="font-mono font-bold text-[#4a4a35]">{comparisonResult.cheapestRoute.distanceKm} KM</span>
-                            </div>
-                            <div>
-                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'ٹول ٹیکس' : 'Toll Cost'}</span>
-                              <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.cheapestRoute.tollCost.toLocaleString()}</span>
-                            </div>
-                            <div>
-                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'ڈیزل لاگت' : 'Fuel Cost'}</span>
-                              <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.cheapestRoute.fuelCost.toLocaleString()}</span>
-                            </div>
-                            <div>
-                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'کل لاگت' : 'Total Cost'}</span>
-                              <span className="font-mono font-bold text-emerald-700">Rs {comparisonResult.cheapestRoute.totalTripCost.toLocaleString()}</span>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            className={`w-full py-2 min-h-[38px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-98 cursor-pointer ${
-                              selectedComparisonRouteId === comparisonResult.cheapestRoute.id
-                                ? 'bg-emerald-600 text-white shadow-xs'
-                                : 'bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35]'
-                            }`}
-                          >
-                            {selectedComparisonRouteId === comparisonResult.cheapestRoute.id ? (
-                              <>
-                                <Check className="w-3.5 h-3.5" />
-                                <span>{isUrdu ? 'منتخب شدہ' : 'Selected'}</span>
-                              </>
-                            ) : (
-                              <span>{isUrdu ? 'یہ روٹ منتخب کریں' : 'Select This Route'}</span>
-                            )}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  /* Single Route Available: Show Single Route Card & Requirement 4 Notice */
-                  <div className="space-y-2.5">
-                    {comparisonResult && comparisonResult.routes[0] && (
-                      <div 
-                        onClick={() => handleSelectRouteOption(comparisonResult.routes[0])}
-                        className="p-3.5 rounded-2xl bg-white border border-[#ecece0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs cursor-pointer hover:border-[#8b9d77]"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#8b9d77]/20 text-[#4a5e38]">
-                              {isUrdu ? 'دستیاب واحد روٹ' : 'Current Active Route'}
-                            </span>
-                            <span className="text-xs font-mono font-bold text-slate-700">
-                              {comparisonResult.routes[0].distanceKm} KM • {isUrdu ? comparisonResult.routes[0].estimatedTimeFormattedUr : comparisonResult.routes[0].estimatedTimeFormattedEn}
-                            </span>
-                          </div>
-                          <h4 className="font-bold text-xs text-[#2b2b1f]">
-                            {isUrdu ? comparisonResult.routes[0].nameUr : comparisonResult.routes[0].nameEn}
-                          </h4>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div className="text-right text-xs font-mono font-bold text-emerald-800">
-                            Rs {comparisonResult.routes[0].totalTripCost.toLocaleString()}
-                          </div>
-                          <button
-                            type="button"
-                            className="px-3 py-1.5 rounded-xl bg-[#4a5e38] text-white text-xs font-bold transition-all cursor-pointer"
-                          >
-                            {isUrdu ? 'لاگو کریں' : 'Apply'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Requirement 4 Notice: Inform user route comparison isn't possible yet without additional route data */}
-                    <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs flex items-start gap-2 leading-relaxed">
-                      <Info className="w-4 h-4 shrink-0 text-amber-700 mt-0.5" />
-                      <div>
-                        <p className="font-semibold">
-                          {isUrdu ? 'متبادل روٹ موازنہ نوٹس:' : 'Route Comparison Notice:'}
-                        </p>
-                        <p className="text-xs text-amber-800 mt-0.5">
-                          {isUrdu
-                            ? (comparisonResult?.informationalNoticeUr || 'اس شہر کے جوڑے کے لیے فی الوقت صرف ایک روٹ ڈیٹا دستیاب ہے۔ متبادل روٹ ڈیٹا کے بغیر موازنہ ممکن نہیں۔')
-                            : (comparisonResult?.informationalNoticeEn || 'Only one route currently exists in the dataset for this city pair. Alternate route comparison requires additional route data.')}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Field 3: Route Distance / روٹ فاصلہ (کلومیٹر) */}
-          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs sm:text-sm font-black text-[#383827]">
-                {isUrdu ? 'روٹ فاصلہ (کلومیٹر)' : 'Route Distance (Kilometers)'}
-              </label>
-              {isRouteLoading && (
-                <span className="text-xs text-[#8b9d77] font-black animate-pulse">
-                  {isUrdu ? 'نقشہ لوڈ ہو رہا ہے...' : 'Fetching OSRM route...'}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77] transition-all shadow-2xs">
-              <input
-                type="number"
-                inputMode="decimal"
-                value={distance}
-                onChange={(e) => setDistance(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                onClick={(e) => (e.target as HTMLInputElement).select()}
-                placeholder="180"
-                className="flex-1 bg-transparent text-left font-mono font-black text-sm sm:text-base text-[#2b2b1f] focus:outline-none dir-ltr pr-2 min-w-0"
-              />
-              <span className="text-xs font-mono font-black text-[#4a5a3a] bg-[#e6e6d8] px-2 py-0.5 rounded-lg shrink-0 select-none">
-                KM
-              </span>
-            </div>
-            {/* Quick distance preset chips */}
-            <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
-              <span className="text-xs text-[#8e8e75] font-bold">{isUrdu ? 'فوری فاصلہ:' : 'Quick:'}</span>
-              {[25, 50, 100, 200].map((delta) => (
-                <button
-                  key={delta}
-                  type="button"
-                  onClick={() => {
-                    const current = parseFloat(distance) || 0;
-                    setDistance(String(current + delta));
-                  }}
-                  className="px-2 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded-md text-xs font-mono font-bold transition-all cursor-pointer border border-[#d5d5c5]"
-                >
-                  +{delta} KM
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Field 4: Fuel Rate / ڈیزل ریٹ (روپے / لٹر) */}
-          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-            <div className="flex items-center justify-between mb-1.5 gap-2">
-              <label className="block text-xs sm:text-sm font-black text-[#383827]">
-                {isUrdu ? 'ڈیزل ریٹ (روپے / لٹر)' : 'Diesel Rate (PKR / Liter)'}
-              </label>
-              <button
-                type="button"
-                onClick={() => setFuelPrice(liveDieselBenchmark)}
-                className="text-xs sm:text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg px-2 py-0.5 transition-all flex items-center gap-1 cursor-pointer shrink-0"
-                title={isUrdu ? 'سرکاری لائیو ریٹ لگائیں' : 'Apply Live Rate'}
-              >
-                <span>{isUrdu ? `سرکاری ریٹ: Rs. ${liveDieselBenchmark}` : `Live: Rs. ${liveDieselBenchmark}`}</span>
-              </button>
-            </div>
-            <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77] transition-all shadow-2xs">
-              <input
-                type="number"
-                inputMode="decimal"
-                value={fuelPrice}
-                onChange={(e) => setFuelPrice(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                onClick={(e) => (e.target as HTMLInputElement).select()}
-                placeholder={liveDieselBenchmark}
-                className="flex-1 bg-transparent text-left font-mono font-black text-sm sm:text-base text-[#2b2b1f] focus:outline-none dir-ltr pr-2 min-w-0"
-              />
-              <span className="text-xs font-mono font-black text-[#4a5a3a] bg-[#e6e6d8] px-2 py-0.5 rounded-lg shrink-0 select-none">
-                PKR
-              </span>
-            </div>
-          </div>
-
-          {/* Field 5: Mileage / گاڑی کی ایوریج (کلومیٹر / لٹر) */}
-          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-            <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1.5">
-              {isUrdu ? 'گاڑی کی ایوریج (کلومیٹر / لٹر)' : 'Vehicle Mileage Average (KM / L)'}
-            </label>
-            <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77] transition-all shadow-2xs">
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.1"
-                value={mileage}
-                onChange={(e) => setMileage(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                onClick={(e) => (e.target as HTMLInputElement).select()}
-                placeholder="7.0"
-                className="flex-1 bg-transparent text-left font-mono font-black text-sm sm:text-base text-[#2b2b1f] focus:outline-none dir-ltr pr-2 min-w-0"
-              />
-              <span className="text-xs font-mono font-black text-[#4a5a3a] bg-[#e6e6d8] px-2 py-0.5 rounded-lg shrink-0 select-none">
-                KM/L
-              </span>
-            </div>
-          </div>
-
-          {/* Field 6: Combined Expenses / ڈرائیور، ٹول و دیگر اخراجات (روپے) */}
-          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-            <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1.5">
-              {isUrdu ? 'ڈرائیور، ٹول و دیگر اخراجات (روپے)' : 'Driver, Toll & Misc Expenses (PKR)'}
-            </label>
-            <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77] transition-all shadow-2xs">
-              <input
-                type="number"
-                inputMode="decimal"
-                value={combinedExpenses}
-                onChange={(e) => setCombinedExpenses(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                onClick={(e) => (e.target as HTMLInputElement).select()}
-                placeholder="3200"
-                className="flex-1 bg-transparent text-left font-mono font-black text-sm sm:text-base text-[#2b2b1f] focus:outline-none dir-ltr pr-2 min-w-0"
-              />
-              <span className="text-xs font-mono font-black text-[#4a5a3a] bg-[#e6e6d8] px-2 py-0.5 rounded-lg shrink-0 select-none">
-                PKR
-              </span>
-            </div>
-            {/* Quick expense preset chips */}
-            <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
-              <span className="text-xs text-[#8e8e75] font-bold">{isUrdu ? 'فوری خرچہ:' : 'Quick:'}</span>
-              {[500, 1000, 2000, 3000, 5000].map((amt) => (
-                <button
-                  key={amt}
-                  type="button"
-                  onClick={() => {
-                    const current = parseFloat(combinedExpenses) || 0;
-                    setCombinedExpenses(String(current + amt));
-                  }}
-                  className="px-2 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded-md text-xs font-mono font-bold transition-all cursor-pointer border border-[#d5d5c5]"
-                >
-                  +{amt}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Field 7: Expected Freight Income / متوقع کرایہ آمدن (اختیاری) */}
-          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs sm:text-sm font-black text-[#383827]">
-                {isUrdu ? 'متوقع کرایہ آمدن (اختیاری)' : 'Expected Freight Income (Optional)'}
-              </label>
-              <span className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-bold">
-                {isUrdu ? 'نفع فی کلومیٹر تخمینہ' : 'Profit/KM Preview'}
-              </span>
-            </div>
-            <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-emerald-600 transition-all shadow-2xs">
-              <input
-                type="number"
-                inputMode="decimal"
-                value={expectedIncome}
-                onChange={(e) => setExpectedIncome(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                onClick={(e) => (e.target as HTMLInputElement).select()}
-                placeholder={isUrdu ? 'مثلاً: 45000' : 'e.g. 45000'}
-                className="flex-1 bg-transparent text-left font-mono font-black text-sm sm:text-base text-[#2b2b1f] focus:outline-none dir-ltr pr-2 min-w-0"
-              />
-              <span className="text-xs font-mono font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-lg shrink-0 select-none">
-                PKR
-              </span>
-            </div>
-
-            {/* Live Profitability Preview (Before Saving Trip) */}
-            {parseFloat(expectedIncome) > 0 && (() => {
-              const effDist = (parseFloat(distance) || 0) * (isReturn ? 2 : 1);
-              const p = parseFloat(fuelPrice) || 0;
-              const m = parseFloat(mileage) || 7;
-              const exp = parseFloat(combinedExpenses) || 0;
-              const expInc = parseFloat(expectedIncome) || 0;
-              const consumedL = m > 0 ? effDist / m : 0;
-              const fuelCost = consumedL * p;
-              const totalExp = Math.round(fuelCost + exp);
-              const netP = expInc - totalExp;
-              const pPerKm = effDist > 0 ? Number((netP / effDist).toFixed(2)) : 'N/A';
-              const isProfit = netP >= 0;
-
-              return (
-                <div className={`mt-2.5 p-3 rounded-xl border-2 transition-all space-y-2 ${
-                  isProfit ? 'bg-emerald-50/90 border-emerald-400' : 'bg-rose-50/90 border-rose-400'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                      {isUrdu ? 'متوقع منافع / نقصان کا فوری تخمینہ:' : 'Live Profitability Preview:'}
-                    </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-black flex items-center gap-1 ${
-                      isProfit ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
-                    }`}>
-                      {isProfit ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                      {isProfit ? (isUrdu ? 'متوقع نفع' : 'Expected Profit') : (isUrdu ? 'متوقع نقصان' : 'Expected Loss')}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
-                    <div className="bg-white/95 p-2 rounded-lg border border-slate-200">
-                      <span className="text-xs text-slate-500 block">{isUrdu ? 'کل سفری خرچ' : 'Total Expense'}</span>
-                      <span className="font-mono font-bold text-slate-800">PKR {totalExp.toLocaleString()}</span>
-                    </div>
-                    <div className="bg-white/95 p-2 rounded-lg border border-slate-200">
-                      <span className="text-xs text-slate-500 block">{isUrdu ? 'خالص نفع / نقصان' : 'Net Profit/Loss'}</span>
-                      <span className={`font-mono font-bold ${isProfit ? 'text-emerald-700' : 'text-rose-600'}`}>
-                        {isProfit ? '+' : '-'}PKR {Math.abs(netP).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="bg-white/95 p-2 rounded-lg border border-slate-200">
-                      <span className="text-xs text-slate-500 block">{isUrdu ? 'نفع فی KM' : 'Profit / KM'}</span>
-                      <span className="font-mono font-bold text-indigo-700">
-                        {pPerKm === 'N/A' ? 'N/A' : `PKR ${pPerKm}`}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Field 7: Round Trip / واپسی کا چکر (دگنا فاصلہ) */}
-          <label className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex items-center justify-between cursor-pointer active:bg-[#f6f5ee] transition-all">
-            <div className="flex items-center gap-2.5">
-              <input
-                type="checkbox"
-                checked={isReturn}
-                onChange={(e) => setIsReturn(e.target.checked)}
-                className="w-5 h-5 rounded-lg accent-[#8b9d77] cursor-pointer"
-              />
-              <span className="text-xs sm:text-sm font-black text-[#383827]">
-                {isUrdu ? 'واپسی کا چکر (راؤنڈ ٹرپ - دگنا فاصلہ)' : 'Round Trip (Return Journey - 2x Distance)'}
-              </span>
-            </div>
-            {isReturn && (
-              <span className="text-xs font-bold text-[#8b9d77] bg-[#eef4ea] px-2 py-0.5 rounded-md">
-                2x {isUrdu ? 'فاصلہ' : 'Distance'}
-              </span>
-            )}
-          </label>
-
-          {/* Error notice */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-3 rounded-2xl text-center">
-              {error}
-            </div>
-          )}
-        </div>
-
-        {/* Bottom Actions - 2 buttons prominently positioned above the bottom navigation bar with generous clearance */}
-        <div className="w-full pt-4 pb-6 flex items-center gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={handleCalculate}
-            className="flex-1 py-4 sm:py-4.5 bg-[#4a4a35] hover:bg-[#383827] active:bg-[#2e2e21] text-white rounded-2xl font-black text-base sm:text-lg shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5 border-2 border-[#8b9d77]/60"
-          >
-            <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-[#8b9d77]" />
-            <span>{isUrdu ? 'حساب لگائیں (Calculate)' : 'Calculate Cost'}</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleReset}
-            title={isUrdu ? 'صاف کریں' : 'Reset'}
-            className="p-4 sm:p-4.5 bg-white border-2 border-[#d5d5c5] hover:bg-[#f0f0e4] active:bg-[#e4e4d6] text-[#4a4a35] rounded-2xl font-bold transition-all active:scale-[0.98] cursor-pointer shadow-2xs"
-          >
-            <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-        </div>
-      </div>
+      t.name.toLowerCase().includes(term) ||
+      (t.origin && t.origin.toLowerCase().includes(term)) ||
+      (t.dest && t.dest.toLowerCase().includes(term)) ||
+      (t.date && t.date.toLowerCase().includes(term))
     );
-  }
+  });
 
-  // ════════════════════════════════════════════════════════════
-  // RENDER SCREEN 2: DEDICATED RESULT BREAKDOWN SCREEN (Scrollable)
-  // ════════════════════════════════════════════════════════════
-  const fmt = (n: number | undefined | null) => 'Rs ' + (Number(n) || 0).toLocaleString('en-US');
+  const totalFuelConsumed = trips.reduce((sum, t) => sum + (parseFloat(t.consumed) || 0), 0);
+  const totalExpenses = trips.reduce((sum, t) => sum + (Number(t.total) || 0), 0);
+
+  const fmtCurrency = (n: number | undefined | null) => 'Rs ' + (Number(n) || 0).toLocaleString('en-US');
 
   return (
-    <div 
-      className={`w-full max-w-xl mx-auto flex flex-col p-3 sm:p-5 pb-12 sm:pb-16 font-sans ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`} 
+    <div
+      className={`w-full max-w-2xl mx-auto flex flex-col p-3 sm:p-5 pb-10 sm:pb-16 font-sans ${isUrdu ? 'dir-rtl' : 'dir-ltr'}`}
       dir={isUrdu ? 'rtl' : 'ltr'}
     >
-      {/* Top Header */}
-      <div className="w-full flex items-center justify-between pb-3 shrink-0 border-b border-[#e0e0d2]">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
-            <PublicImage
-              fileName="trip-icon.png"
-              alt="Trip Expense and Freight Cost Summary"
-              width={40}
-              height={40}
-              className="w-full h-full object-cover rounded-xl"
-              fallbackIcon={<Calculator className="w-5 h-5 text-[#8b9d77]" />}
-            />
-          </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-[#4a4a35] leading-tight">
-              {isUrdu ? 'سفری لاگت اور اخراجات کا نتیجہ' : 'Trip Cost Result Breakdown'}
-            </h1>
-            <p className="text-xs text-[#8e8e75]">
-              {lastCalc?.origin} ➔ {lastCalc?.dest}
-            </p>
-          </div>
-        </div>
+      {/* Top Navigation Tabs: سفر خرچہ vs سفر ڈائری */}
+      <div className="bg-[#f0f0e4] p-1.5 rounded-2xl border border-[#d5d5c5] flex items-center justify-between mb-4 shadow-2xs">
         <button
           type="button"
-          onClick={() => {
-            setViewMode('input');
-            try {
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            } catch {}
-          }}
-          className="px-3 py-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+          onClick={() => setActiveTab('calculator')}
+          className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            activeTab === 'calculator'
+              ? 'bg-white text-[#4a4a35] shadow-xs border border-[#ecece0]'
+              : 'text-[#8e8e75] hover:text-[#4a4a35]'
+          }`}
         >
-          <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
-          <span>{isUrdu ? 'ترمیم کریں' : 'Edit Input'}</span>
+          <Calculator className="w-4 h-4 text-[#8b9d77]" />
+          <span>{isUrdu ? 'سفر خرچہ (کیلکولیٹر)' : 'Trip Cost Calculator'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('diary')}
+          className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            activeTab === 'diary'
+              ? 'bg-white text-[#4a4a35] shadow-xs border border-[#ecece0]'
+              : 'text-[#8e8e75] hover:text-[#4a4a35]'
+          }`}
+        >
+          <BookOpen className="w-4 h-4 text-[#8b9d77]" />
+          <span>{isUrdu ? 'سفر ڈائری (لاگز)' : 'Safar Diary Logs'}</span>
+          {trips.length > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-[#8b9d77] text-white">
+              {trips.length}
+            </span>
+          )}
         </button>
       </div>
 
-      {/* Main Result Card */}
-      {lastCalc && (
-        <div className="w-full space-y-3.5 py-4 flex-1">
-          {/* Total Cost Highlight Card */}
-          <div className="bg-[#8b9d77] text-white p-5 rounded-3xl shadow-md text-center space-y-1">
-            <span className="text-xs sm:text-sm font-bold opacity-90 block">
-              {isUrdu ? 'کل متوقع سفری اخراجات (Total Freight Cost)' : 'Total Estimated Trip Cost'}
-            </span>
-            <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight">
-              PKR {(Number(lastCalc.total) || 0).toLocaleString('en-US')}
-            </div>
-            <span className="text-xs opacity-80 block">
-              {lastCalc.dist} KM {lastCalc.isReturn ? (isUrdu ? '(راؤنڈ ٹرپ دگنا فاصلہ)' : '(Round Trip 2x Distance)') : ''}
-            </span>
-          </div>
+      {/* TAB 1: TRIP COST CALCULATOR VIEW */}
+      {activeTab === 'calculator' && (
+        <>
+          {viewMode === 'input' ? (
+            <div className="w-full flex-1 flex flex-col space-y-3 sm:space-y-3.5 py-1">
+              {/* Fields 1 & 2: Origin & Destination Cities - Single Line Side-by-Side */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                {/* Field 1: Origin City */}
+                <div className="bg-white p-2.5 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+                  <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1 sm:mb-1.5 flex items-center gap-1 sm:gap-1.5 truncate">
+                    <MapPin className="w-3.5 h-3.5 text-[#8b9d77] shrink-0" />
+                    <span className="truncate">{isUrdu ? 'از (روانگی)' : 'From City'}</span>
+                  </label>
+                  <select
+                    value={originCity}
+                    onChange={(e) => setOriginCity(e.target.value)}
+                    className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-2 sm:px-3 py-2 text-xs sm:text-sm font-black text-[#2b2b1f] focus:border-[#8b9d77] focus:outline-none cursor-pointer shadow-2xs truncate"
+                  >
+                    {PAKISTAN_CITIES.map((c) => (
+                      <option key={c.nameEn} value={c.nameEn}>
+                        {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-          {/* Profitability & Profit per KM Preview Card */}
-          {lastCalc && (
-            <div className={`p-4 rounded-3xl border-2 shadow-sm space-y-2.5 transition-all ${
-              lastCalc.expectedIncomeVal && (lastCalc.netProfitVal ?? 0) >= 0 
-                ? 'bg-emerald-50/90 border-emerald-400 text-emerald-950' 
-                : lastCalc.expectedIncomeVal && (lastCalc.netProfitVal ?? 0) < 0
-                  ? 'bg-red-50/90 border-red-400 text-red-950'
-                  : 'bg-amber-50/80 border-amber-300 text-amber-950'
-            }`}>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
-                  <TrendingUp className="w-4 h-4 text-emerald-700" />
-                  <span>{isUrdu ? 'ٹرپ نفع و نقصان کا تخمینہ (Profitability Preview)' : 'Trip Profit & Loss Preview'}</span>
-                </span>
-                {lastCalc.expectedIncomeVal ? (
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-black border ${
-                    (lastCalc.netProfitVal ?? 0) >= 0 
-                      ? 'bg-emerald-600 text-white border-emerald-700' 
-                      : 'bg-red-600 text-white border-red-700'
-                  }`}>
-                    {(lastCalc.netProfitVal ?? 0) >= 0 ? (isUrdu ? 'خالص نفع / بچت' : 'Net Profit') : (isUrdu ? 'خسارہ' : 'Net Loss')}
-                  </span>
-                ) : (
-                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-200/80 text-amber-900 border border-amber-300">
-                    {isUrdu ? 'کرایہ آمدن شامل کریں' : 'Add Freight Income'}
-                  </span>
+                {/* Field 2: Destination City */}
+                <div className="bg-white p-2.5 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+                  <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1 sm:mb-1.5 flex items-center gap-1 sm:gap-1.5 truncate">
+                    <Navigation className="w-3.5 h-3.5 text-[#8b9d77] shrink-0" />
+                    <span className="truncate">{isUrdu ? 'تا (منزل)' : 'To City'}</span>
+                  </label>
+                  <select
+                    value={destCity}
+                    onChange={(e) => setDestCity(e.target.value)}
+                    className="w-full bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-2 sm:px-3 py-2 text-xs sm:text-sm font-black text-[#2b2b1f] focus:border-[#8b9d77] focus:outline-none cursor-pointer shadow-2xs truncate"
+                  >
+                    {PAKISTAN_CITIES.map((c) => (
+                      <option key={c.nameEn} value={c.nameEn}>
+                        {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Route Comparison Toggle & Cards */}
+              <div className="bg-[#fdfbf7] p-3 sm:p-3.5 rounded-2xl border border-[#ecece0] shadow-2xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-xl bg-[#8b9d77]/20 flex items-center justify-center text-[#4a5e38]">
+                      <ArrowLeftRight className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs sm:text-sm font-bold text-[#4a4a35]">
+                        {isUrdu ? 'روٹ موازنہ (کم خرچ بمقابلہ تیز ترین)' : 'Route Comparison (Cheapest vs Fastest)'}
+                      </h3>
+                      <p className="text-xs text-[#8e8e75]">
+                        {isUrdu ? 'ٹول ٹیکس، فاصلہ و فیول لاگت کا موازنہ' : 'Compare toll, distance & fuel trade-off'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowRouteComparison(!showRouteComparison)}
+                    className={`px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs active:scale-95 ${
+                      showRouteComparison
+                        ? 'bg-[#4a5e38] text-white shadow-xs'
+                        : 'bg-white hover:bg-slate-100 text-[#4a4a35] border border-[#d5d5c5]'
+                    }`}
+                  >
+                    <span>{showRouteComparison ? (isUrdu ? 'موازنہ فعال' : 'Active') : (isUrdu ? 'موازنہ دیکھیں' : 'Compare Routes')}</span>
+                    {showRouteComparison ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+
+                {showRouteComparison && (
+                  <div className="space-y-3 pt-2 border-t border-[#ecece0] animate-in fade-in duration-150">
+                    {isLoadingComparison ? (
+                      <div className="py-6 text-center text-xs text-[#8e8e75] font-bold animate-pulse flex items-center justify-center gap-2">
+                        <Clock className="w-4 h-4 text-[#8b9d77]" />
+                        <span>{isUrdu ? 'روٹس اور لاگت کا موازنہ کیا جا رہا ہے...' : 'Analyzing route trade-offs & toll matrix...'}</span>
+                      </div>
+                    ) : comparisonResult && comparisonResult.hasMultipleRoutes ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-[#5a5a40]">
+                          {isUrdu
+                            ? 'نیچے دیے گئے کارڈ پر کلک کریں تاکہ وہ فاصلہ اور ٹول کیلکولیٹر میں لاگو ہو سکے:'
+                            : 'Tap a route card to apply its distance and toll to the calculator:'}
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {comparisonResult.fastestRoute && (
+                            <div
+                              onClick={() => handleSelectRouteOption(comparisonResult.fastestRoute!)}
+                              className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                                selectedComparisonRouteId === comparisonResult.fastestRoute.id
+                                  ? 'bg-emerald-50/80 border-emerald-500 shadow-xs ring-2 ring-emerald-500/20'
+                                  : 'bg-white border-[#d5d5c5] hover:border-[#8b9d77]'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center justify-between gap-1 mb-1.5">
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                                    <Zap className="w-3 h-3 text-amber-600" />
+                                    <span>{isUrdu ? 'تیز ترین روٹ' : 'Fastest Route'}</span>
+                                  </span>
+                                  <span className="font-mono text-xs font-bold text-slate-700">
+                                    {isUrdu ? comparisonResult.fastestRoute.estimatedTimeFormattedUr : comparisonResult.fastestRoute.estimatedTimeFormattedEn}
+                                  </span>
+                                </div>
+                                <h4 className="font-bold text-xs text-[#2b2b1f] line-clamp-1">
+                                  {isUrdu ? comparisonResult.fastestRoute.nameUr : comparisonResult.fastestRoute.nameEn}
+                                </h4>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-1.5 py-1.5 px-2 bg-[#fdfbf7] rounded-xl border border-[#ecece0] text-xs">
+                                <div>
+                                  <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'فاصلہ' : 'Distance'}</span>
+                                  <span className="font-mono font-bold text-[#4a4a35]">{comparisonResult.fastestRoute.distanceKm} KM</span>
+                                </div>
+                                <div>
+                                  <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'ٹول ٹیکس' : 'Toll Cost'}</span>
+                                  <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.fastestRoute.tollCost.toLocaleString()}</span>
+                                </div>
+                                <div>
+                                  <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'ڈیزل لاگت' : 'Fuel Cost'}</span>
+                                  <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.fastestRoute.fuelCost.toLocaleString()}</span>
+                                </div>
+                                <div>
+                                  <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'کل لاگت' : 'Total Cost'}</span>
+                                  <span className="font-mono font-bold text-emerald-700">Rs {comparisonResult.fastestRoute.totalTripCost.toLocaleString()}</span>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                className={`w-full py-2 min-h-[38px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-98 cursor-pointer ${
+                                  selectedComparisonRouteId === comparisonResult.fastestRoute.id
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35]'
+                                }`}
+                              >
+                                {selectedComparisonRouteId === comparisonResult.fastestRoute.id ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>{isUrdu ? 'منتخب شدہ' : 'Selected'}</span>
+                                  </>
+                                ) : (
+                                  <span>{isUrdu ? 'یہ روٹ منتخب کریں' : 'Select This Route'}</span>
+                                )}
+                              </button>
+                            </div>
+                          )}
+
+                          {comparisonResult.cheapestRoute && (
+                            <div
+                              onClick={() => handleSelectRouteOption(comparisonResult.cheapestRoute!)}
+                              className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                                selectedComparisonRouteId === comparisonResult.cheapestRoute.id
+                                  ? 'bg-emerald-50/80 border-emerald-500 shadow-xs ring-2 ring-emerald-500/20'
+                                  : 'bg-white border-[#d5d5c5] hover:border-[#8b9d77]'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center justify-between gap-1 mb-1.5">
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-1">
+                                    <Wallet className="w-3 h-3 text-emerald-700" />
+                                    <span>{isUrdu ? 'سب سے کم خرچ روٹ' : 'Cheapest Route'}</span>
+                                  </span>
+                                  <span className="font-mono text-xs font-bold text-slate-700">
+                                    {isUrdu ? comparisonResult.cheapestRoute.estimatedTimeFormattedUr : comparisonResult.cheapestRoute.estimatedTimeFormattedEn}
+                                  </span>
+                                </div>
+                                <h4 className="font-bold text-xs text-[#2b2b1f] line-clamp-1">
+                                  {isUrdu ? comparisonResult.cheapestRoute.nameUr : comparisonResult.cheapestRoute.nameEn}
+                                </h4>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-1.5 py-1.5 px-2 bg-[#fdfbf7] rounded-xl border border-[#ecece0] text-xs">
+                                <div>
+                                  <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'فاصلہ' : 'Distance'}</span>
+                                  <span className="font-mono font-bold text-[#4a4a35]">{comparisonResult.cheapestRoute.distanceKm} KM</span>
+                                </div>
+                                <div>
+                                  <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'ٹول ٹیکس' : 'Toll Cost'}</span>
+                                  <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.cheapestRoute.tollCost.toLocaleString()}</span>
+                                </div>
+                                <div>
+                                  <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'ڈیزل لاگت' : 'Fuel Cost'}</span>
+                                  <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.cheapestRoute.fuelCost.toLocaleString()}</span>
+                                </div>
+                                <div>
+                                  <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'کل لاگت' : 'Total Cost'}</span>
+                                  <span className="font-mono font-bold text-emerald-700">Rs {comparisonResult.cheapestRoute.totalTripCost.toLocaleString()}</span>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                className={`w-full py-2 min-h-[38px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1 active:scale-98 cursor-pointer ${
+                                  selectedComparisonRouteId === comparisonResult.cheapestRoute.id
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'bg-[#f0f0e4] hover:bg-[#8b9d77] hover:text-white text-[#4a4a35]'
+                                }`}
+                              >
+                                {selectedComparisonRouteId === comparisonResult.cheapestRoute.id ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>{isUrdu ? 'منتخب شدہ' : 'Selected'}</span>
+                                  </>
+                                ) : (
+                                  <span>{isUrdu ? 'یہ روٹ منتخب کریں' : 'Select This Route'}</span>
+                                )}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {comparisonResult && comparisonResult.routes[0] && (
+                          <div
+                            onClick={() => handleSelectRouteOption(comparisonResult.routes[0])}
+                            className="p-3.5 rounded-2xl bg-white border border-[#ecece0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs cursor-pointer hover:border-[#8b9d77]"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#8b9d77]/20 text-[#4a5e38]">
+                                  {isUrdu ? 'دستیاب واحد روٹ' : 'Current Active Route'}
+                                </span>
+                                <span className="text-xs font-mono font-bold text-slate-700">
+                                  {comparisonResult.routes[0].distanceKm} KM • {isUrdu ? comparisonResult.routes[0].estimatedTimeFormattedUr : comparisonResult.routes[0].estimatedTimeFormattedEn}
+                                </span>
+                              </div>
+                              <h4 className="font-bold text-xs text-[#2b2b1f]">
+                                {isUrdu ? comparisonResult.routes[0].nameUr : comparisonResult.routes[0].nameEn}
+                              </h4>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <div className="text-right text-xs font-mono font-bold text-emerald-800">
+                                Rs {comparisonResult.routes[0].totalTripCost.toLocaleString()}
+                              </div>
+                              <button
+                                type="button"
+                                className="px-3 py-1.5 rounded-xl bg-[#4a5e38] text-white text-xs font-bold transition-all cursor-pointer"
+                              >
+                                {isUrdu ? 'لاگو کریں' : 'Apply'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs flex items-start gap-2 leading-relaxed">
+                          <Info className="w-4 h-4 shrink-0 text-amber-700 mt-0.5" />
+                          <div>
+                            <p className="font-semibold">
+                              {isUrdu ? 'متبادل روٹ موازنہ نوٹس:' : 'Route Comparison Notice:'}
+                            </p>
+                            <p className="text-xs text-amber-800 mt-0.5">
+                              {isUrdu
+                                ? (comparisonResult?.informationalNoticeUr || 'اس شہر کے جوڑے کے لیے فی الوقت صرف ایک روٹ ڈیٹا دستیاب ہے۔ متبادل روٹ ڈیٹا کے بغیر موازنہ ممکن نہیں۔')
+                                : (comparisonResult?.informationalNoticeEn || 'Only one route currently exists in the dataset for this city pair. Alternate route comparison requires additional route data.')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {/* Inline quick edit for expected income if not set */}
-              <div className="flex items-center gap-2 pt-1 pb-0.5">
-                <span className="text-xs font-bold text-slate-700 shrink-0">
-                  {isUrdu ? 'متوقع کرایہ آمدن:' : 'Expected Freight:'}
-                </span>
-                <div className="flex-1 flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1 focus-within:border-emerald-500 shadow-2xs">
+              {/* Field 3: Route Distance */}
+              <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs sm:text-sm font-black text-[#383827]">
+                    {isUrdu ? 'روٹ فاصلہ (کلومیٹر)' : 'Route Distance (Kilometers)'}
+                  </label>
+                  {isRouteLoading && (
+                    <span className="text-xs text-[#8b9d77] font-black animate-pulse">
+                      {isUrdu ? 'نقشہ لوڈ ہو رہا ہے...' : 'Fetching OSRM route...'}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77] transition-all shadow-2xs">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={distance}
+                    onChange={(e) => setDistance(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                    placeholder="180"
+                    className="flex-1 bg-transparent text-left font-mono font-black text-sm sm:text-base text-[#2b2b1f] focus:outline-none dir-ltr pr-2 min-w-0"
+                  />
+                  <span className="text-xs font-mono font-black text-[#4a5a3a] bg-[#e6e6d8] px-2 py-0.5 rounded-lg shrink-0 select-none">
+                    KM
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
+                  <span className="text-xs text-[#8e8e75] font-bold">{isUrdu ? 'فوری فاصلہ:' : 'Quick:'}</span>
+                  {[25, 50, 100, 200].map((delta) => (
+                    <button
+                      key={delta}
+                      type="button"
+                      onClick={() => {
+                        const current = parseFloat(distance) || 0;
+                        setDistance(String(current + delta));
+                      }}
+                      className="px-2 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded-md text-xs font-mono font-bold transition-all cursor-pointer border border-[#d5d5c5]"
+                    >
+                      +{delta} KM
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Field 4: Fuel Rate */}
+              <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+                <div className="flex items-center justify-between mb-1.5 gap-2">
+                  <label className="block text-xs sm:text-sm font-black text-[#383827]">
+                    {isUrdu ? 'ڈیزل ریٹ (روپے / لٹر)' : 'Diesel Rate (PKR / Liter)'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFuelPrice(liveDieselBenchmark)}
+                    className="text-xs sm:text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg px-2 py-0.5 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                    title={isUrdu ? 'سرکاری لائیو ریٹ لگائیں' : 'Apply Live Rate'}
+                  >
+                    <span>{isUrdu ? `سرکاری ریٹ: Rs. ${liveDieselBenchmark}` : `Live: Rs. ${liveDieselBenchmark}`}</span>
+                  </button>
+                </div>
+                <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77] transition-all shadow-2xs">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={fuelPrice}
+                    onChange={(e) => setFuelPrice(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                    placeholder={liveDieselBenchmark}
+                    className="flex-1 bg-transparent text-left font-mono font-black text-sm sm:text-base text-[#2b2b1f] focus:outline-none dir-ltr pr-2 min-w-0"
+                  />
+                  <span className="text-xs font-mono font-black text-[#4a5a3a] bg-[#e6e6d8] px-2 py-0.5 rounded-lg shrink-0 select-none">
+                    PKR
+                  </span>
+                </div>
+              </div>
+
+              {/* Field 5: Mileage */}
+              <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+                <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1.5">
+                  {isUrdu ? 'گاڑی کی ایوریج (کلومیٹر / لٹر)' : 'Vehicle Mileage Average (KM / L)'}
+                </label>
+                <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77] transition-all shadow-2xs">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.1"
+                    value={mileage}
+                    onChange={(e) => setMileage(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                    placeholder="7.0"
+                    className="flex-1 bg-transparent text-left font-mono font-black text-sm sm:text-base text-[#2b2b1f] focus:outline-none dir-ltr pr-2 min-w-0"
+                  />
+                  <span className="text-xs font-mono font-black text-[#4a5a3a] bg-[#e6e6d8] px-2 py-0.5 rounded-lg shrink-0 select-none">
+                    KM/L
+                  </span>
+                </div>
+              </div>
+
+              {/* Field 6: Combined Expenses */}
+              <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+                <label className="block text-xs sm:text-sm font-black text-[#383827] mb-1.5">
+                  {isUrdu ? 'ڈرائیور، ٹول و دیگر اخراجات (روپے)' : 'Driver, Toll & Misc Expenses (PKR)'}
+                </label>
+                <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-[#8b9d77] transition-all shadow-2xs">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={combinedExpenses}
+                    onChange={(e) => setCombinedExpenses(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                    placeholder="3200"
+                    className="flex-1 bg-transparent text-left font-mono font-black text-sm sm:text-base text-[#2b2b1f] focus:outline-none dir-ltr pr-2 min-w-0"
+                  />
+                  <span className="text-xs font-mono font-black text-[#4a5a3a] bg-[#e6e6d8] px-2 py-0.5 rounded-lg shrink-0 select-none">
+                    PKR
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
+                  <span className="text-xs text-[#8e8e75] font-bold">{isUrdu ? 'فوری خرچہ:' : 'Quick:'}</span>
+                  {[500, 1000, 2000, 3000, 5000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => {
+                        const current = parseFloat(combinedExpenses) || 0;
+                        setCombinedExpenses(String(current + amt));
+                      }}
+                      className="px-2 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded-md text-xs font-mono font-bold transition-all cursor-pointer border border-[#d5d5c5]"
+                    >
+                      +{amt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Field 7: Expected Freight Income */}
+              <div className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex flex-col justify-center">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs sm:text-sm font-black text-[#383827]">
+                    {isUrdu ? 'متوقع کرایہ آمدن (اختیاری)' : 'Expected Freight Income (Optional)'}
+                  </label>
+                  <span className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-bold">
+                    {isUrdu ? 'نفع فی کلومیٹر تخمینہ' : 'Profit/KM Preview'}
+                  </span>
+                </div>
+                <div className="flex items-center bg-[#fdfbf7] border-2 border-[#d5d5c5] rounded-xl px-3 py-1.5 focus-within:border-emerald-600 transition-all shadow-2xs">
                   <input
                     type="number"
                     inputMode="decimal"
                     value={expectedIncome}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setExpectedIncome(val);
-                      const incNum = Math.max(0, parseFloat(val) || 0);
-                      if (lastCalc) {
-                        const netP = incNum > 0 ? incNum - lastCalc.total : undefined;
-                        const pKm = incNum > 0 
-                          ? (lastCalc.dist > 0 ? Number(((incNum - lastCalc.total) / lastCalc.dist).toFixed(2)) : 'N/A')
-                          : undefined;
-                        setLastCalc({
-                          ...lastCalc,
-                          expectedIncomeVal: incNum > 0 ? incNum : undefined,
-                          netProfitVal: netP,
-                          profitPerKmVal: pKm
-                        });
-                      }
-                    }}
-                    placeholder={isUrdu ? 'کرایہ رقم درج کریں (PKR)' : 'Enter freight (PKR)'}
-                    className="w-full bg-transparent font-mono font-bold text-xs text-slate-900 focus:outline-none"
+                    onChange={(e) => setExpectedIncome(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                    placeholder={isUrdu ? 'مثلاً: 45000' : 'e.g. 45000'}
+                    className="flex-1 bg-transparent text-left font-mono font-black text-sm sm:text-base text-[#2b2b1f] focus:outline-none dir-ltr pr-2 min-w-0"
                   />
-                  <span className="text-xs font-mono font-bold text-slate-500">PKR</span>
+                  <span className="text-xs font-mono font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-lg shrink-0 select-none">
+                    PKR
+                  </span>
                 </div>
+
+                {parseFloat(expectedIncome) > 0 && (() => {
+                  const effDist = (parseFloat(distance) || 0) * (isReturn ? 2 : 1);
+                  const p = parseFloat(fuelPrice) || 0;
+                  const m = parseFloat(mileage) || 7;
+                  const exp = parseFloat(combinedExpenses) || 0;
+                  const expInc = parseFloat(expectedIncome) || 0;
+                  const consumedL = m > 0 ? effDist / m : 0;
+                  const fuelCost = consumedL * p;
+                  const totalExp = Math.round(fuelCost + exp);
+                  const netP = expInc - totalExp;
+                  const pPerKm = effDist > 0 ? Number((netP / effDist).toFixed(2)) : 'N/A';
+                  const isProfit = netP >= 0;
+
+                  return (
+                    <div className={`mt-2.5 p-3 rounded-xl border-2 transition-all space-y-2 ${
+                      isProfit ? 'bg-emerald-50/90 border-emerald-400' : 'bg-rose-50/90 border-rose-400'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                          {isUrdu ? 'متوقع منافع / نقصان کا فوری تخمینہ:' : 'Live Profitability Preview:'}
+                        </span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-black flex items-center gap-1 ${
+                          isProfit ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                        }`}>
+                          {isProfit ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                          {isProfit ? (isUrdu ? 'متوقع نفع' : 'Expected Profit') : (isUrdu ? 'متوقع نقصان' : 'Expected Loss')}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
+                        <div className="bg-white/95 p-2 rounded-lg border border-slate-200">
+                          <span className="text-xs text-slate-500 block">{isUrdu ? 'کل سفری خرچ' : 'Total Expense'}</span>
+                          <span className="font-mono font-bold text-slate-800">PKR {totalExp.toLocaleString()}</span>
+                        </div>
+                        <div className="bg-white/95 p-2 rounded-lg border border-slate-200">
+                          <span className="text-xs text-slate-500 block">{isUrdu ? 'خالص نفع / نقصان' : 'Net Profit/Loss'}</span>
+                          <span className={`font-mono font-bold ${isProfit ? 'text-emerald-700' : 'text-rose-600'}`}>
+                            {isProfit ? '+' : '-'}PKR {Math.abs(netP).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="bg-white/95 p-2 rounded-lg border border-slate-200">
+                          <span className="text-xs text-slate-500 block">{isUrdu ? 'نفع فی KM' : 'Profit / KM'}</span>
+                          <span className="font-mono font-bold text-indigo-700">
+                            {pPerKm === 'N/A' ? 'N/A' : `PKR ${pPerKm}`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
-              {lastCalc.expectedIncomeVal && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-center">
-                  <div className="bg-white/80 p-2.5 rounded-2xl border border-emerald-200/60 shadow-2xs">
-                    <span className="text-xs text-slate-600 font-bold block">{isUrdu ? 'کل کرایہ آمدن' : 'Expected Income'}</span>
-                    <span className="font-mono font-black text-sm sm:text-base text-slate-900">
-                      Rs {lastCalc.expectedIncomeVal.toLocaleString()}
+              {/* Field 7: Round Trip */}
+              <label className="bg-white p-3 sm:p-3.5 rounded-2xl border-2 border-[#e0e0d2] shadow-2xs flex items-center justify-between cursor-pointer active:bg-[#f6f5ee] transition-all">
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={isReturn}
+                    onChange={(e) => setIsReturn(e.target.checked)}
+                    className="w-5 h-5 rounded-lg accent-[#8b9d77] cursor-pointer"
+                  />
+                  <span className="text-xs sm:text-sm font-black text-[#383827]">
+                    {isUrdu ? 'واپسی کا چکر (راؤنڈ ٹرپ - دگنا فاصلہ)' : 'Round Trip (Return Journey - 2x Distance)'}
+                  </span>
+                </div>
+                {isReturn && (
+                  <span className="text-xs font-bold text-[#8b9d77] bg-[#eef4ea] px-2 py-0.5 rounded-md">
+                    2x {isUrdu ? 'فاصلہ' : 'Distance'}
+                  </span>
+                )}
+              </label>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-3 rounded-2xl text-center">
+                  {error}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="w-full pt-4 pb-6 flex items-center gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleCalculate}
+                  className="flex-1 py-4 sm:py-4.5 bg-[#4a4a35] hover:bg-[#383827] active:bg-[#2e2e21] text-white rounded-2xl font-black text-base sm:text-lg shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5 border-2 border-[#8b9d77]/60"
+                >
+                  <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-[#8b9d77]" />
+                  <span>{isUrdu ? 'حساب لگائیں (Calculate)' : 'Calculate Cost'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  title={isUrdu ? 'صاف کریں' : 'Reset'}
+                  className="p-4 sm:p-4.5 bg-white border-2 border-[#d5d5c5] hover:bg-[#f0f0e4] active:bg-[#e4e4d6] text-[#4a4a35] rounded-2xl font-bold transition-all active:scale-[0.98] cursor-pointer shadow-2xs"
+                >
+                  <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* RESULT BREAKDOWN SCREEN */
+            <div className="w-full space-y-3.5 py-1">
+              <div className="w-full flex items-center justify-between pb-3 shrink-0 border-b border-[#e0e0d2]">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+                    <PublicImage
+                      fileName="trip-icon.png"
+                      alt="Trip Expense and Freight Cost Summary"
+                      width={40}
+                      height={40}
+                      className="w-full h-full object-cover rounded-xl"
+                      fallbackIcon={<Calculator className="w-5 h-5 text-[#8b9d77]" />}
+                    />
+                  </div>
+                  <div>
+                    <h1 className="text-base sm:text-lg font-bold text-[#4a4a35] leading-tight">
+                      {isUrdu ? 'سفری لاگت اور اخراجات کا نتیجہ' : 'Trip Cost Result Breakdown'}
+                    </h1>
+                    <p className="text-xs text-[#8e8e75]">
+                      {lastCalc?.origin} ➔ {lastCalc?.dest}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode('input');
+                    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
+                  }}
+                  className="px-3 py-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                >
+                  <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
+                  <span>{isUrdu ? 'ترمیم کریں' : 'Edit Input'}</span>
+                </button>
+              </div>
+
+              {lastCalc && (
+                <div className="w-full space-y-3.5 py-2">
+                  <div className="bg-[#8b9d77] text-white p-5 rounded-3xl shadow-md text-center space-y-1">
+                    <span className="text-xs sm:text-sm font-bold opacity-90 block">
+                      {isUrdu ? 'کل متوقع سفری اخراجات (Total Freight Cost)' : 'Total Estimated Trip Cost'}
+                    </span>
+                    <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight">
+                      PKR {(Number(lastCalc.total) || 0).toLocaleString('en-US')}
+                    </div>
+                    <span className="text-xs opacity-80 block">
+                      {lastCalc.dist} KM {lastCalc.isReturn ? (isUrdu ? '(راؤنڈ ٹرپ دگنا فاصلہ)' : '(Round Trip 2x Distance)') : ''}
                     </span>
                   </div>
-                  <div className="bg-white/80 p-2.5 rounded-2xl border border-emerald-200/60 shadow-2xs">
-                    <span className="text-xs text-slate-600 font-bold block">{isUrdu ? 'خالص نفع / نقصان' : 'Net Profit / Loss'}</span>
-                    <span className={`font-mono font-black text-sm sm:text-base ${
-                      (lastCalc.netProfitVal ?? 0) >= 0 ? 'text-emerald-700' : 'text-red-600'
-                    }`}>
-                      Rs {Math.abs(lastCalc.netProfitVal || 0).toLocaleString()}
-                    </span>
+
+                  {/* Breakdown Table Card */}
+                  <div className="bg-white p-4 rounded-3xl border-2 border-[#e0e0d2] shadow-2xs space-y-2.5 text-xs sm:text-sm">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#ecece0]">
+                      <span className="font-bold text-[#4a4a35]">{isUrdu ? 'ڈیزل ریٹ و ایوریج:' : 'Diesel Rate & Mileage:'}</span>
+                      <span className="font-mono font-bold text-[#383827]">
+                        PKR {lastCalc.fuelRateVal} / Ltr ({lastCalc.mileageVal} KM/L)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between pb-2 border-b border-[#ecece0]">
+                      <span className="font-bold text-[#4a4a35]">{isUrdu ? 'ڈیزل کی کھپت:' : 'Fuel Consumption:'}</span>
+                      <span className="font-mono font-bold text-[#383827]">{lastCalc.consumed} Liters</span>
+                    </div>
+
+                    <div className="flex items-center justify-between pb-2 border-b border-[#ecece0]">
+                      <span className="font-bold text-[#4a4a35]">{isUrdu ? 'ڈیزل کا کل خرچہ:' : 'Total Fuel Cost:'}</span>
+                      <span className="font-mono font-bold text-[#383827]">{fmtCurrency(lastCalc.fuelCost)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between pb-2 border-b border-[#ecece0]">
+                      <span className="font-bold text-[#4a4a35]">{isUrdu ? 'ڈرائیور، ٹول و دیگر اخراجات:' : 'Driver, Toll & Other Expenses:'}</span>
+                      <span className="font-mono font-bold text-[#383827]">{fmtCurrency(lastCalc.combinedExpensesVal || 0)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 font-black text-sm text-[#4a4a35]">
+                      <span>{isUrdu ? 'کل واصل خرچہ:' : 'Net Total Trip Cost:'}</span>
+                      <span className="font-mono text-base text-[#8b9d77]">{fmtCurrency(lastCalc.total)}</span>
+                    </div>
                   </div>
-                  <div className="bg-white/80 p-2.5 rounded-2xl border border-emerald-200/60 shadow-2xs col-span-2 sm:col-span-1">
-                    <span className="text-xs text-slate-600 font-bold block">{isUrdu ? 'نفع فی کلومیٹر' : 'Profit Per KM'}</span>
-                    <span className="font-mono font-black text-sm sm:text-base text-indigo-700">
-                      {lastCalc.profitPerKmVal === 'N/A' || lastCalc.profitPerKmVal === undefined 
-                        ? 'N/A' 
-                        : `Rs ${lastCalc.profitPerKmVal} / KM`}
-                    </span>
+
+                  {saveSuccess && (
+                    <div className="bg-[#eef4ea] border border-[#8b9d77] text-[#3d5a2d] p-3 rounded-2xl text-xs font-bold flex items-center justify-between gap-2 shadow-2xs">
+                      <div className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-[#8b9d77] shrink-0" />
+                        <span>{isUrdu ? 'یہ ٹرپ سفر ڈائری لاگز میں محفوظ کر لیا گیا ہے۔' : 'Trip saved to Safar Diary logs.'}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('diary')}
+                        className="px-2.5 py-1 bg-[#8b9d77] text-white rounded-lg text-xs font-bold shadow-2xs shrink-0 cursor-pointer"
+                      >
+                        {isUrdu ? 'ڈائری دیکھیں' : 'View Diary'}
+                      </button>
+                    </div>
+                  )}
+
+                  {copyToast && (
+                    <div className="bg-emerald-50 border-2 border-emerald-400 text-emerald-950 p-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm animate-in fade-in">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>{isUrdu ? 'واٹس ایپ ٹیکسٹ میسج کاپی ہو گیا! 📲' : 'WhatsApp message copied! 📲'}</span>
+                    </div>
+                  )}
+
+                  <div className="w-full pt-3 pb-6 shrink-0 space-y-2.5">
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={handleQuickWhatsAppText}
+                        className="min-h-[50px] py-2.5 px-2 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1"
+                      >
+                        <Share2 className="w-4 h-4" />
+                        <span>{isUrdu ? 'واٹس ایپ 📲' : 'WhatsApp 📲'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isExportingPdf}
+                        onClick={handleExportPDF}
+                        className={`min-h-[50px] py-2.5 px-2 text-white rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                          isExportingPdf ? 'bg-[#4a4a35]/70 opacity-80 cursor-wait' : 'bg-[#4a4a35] hover:bg-[#383827]'
+                        }`}
+                      >
+                        <FileDown className={`w-4 h-4 text-[#8b9d77] ${isExportingPdf ? 'animate-bounce' : ''}`} />
+                        <span>{isExportingPdf ? (isUrdu ? 'بن رہی ہے...' : 'Generating...') : (isUrdu ? 'پی ڈی ایف 📄' : 'PDF 📄')}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleSaveToDiary}
+                        className="min-h-[50px] py-2.5 px-2 bg-white border-2 border-[#8b9d77] text-[#4a4a35] hover:bg-[#eef4ea] rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1"
+                      >
+                        <BookmarkPlus className="w-4 h-4 text-[#8b9d77]" />
+                        <span>{isUrdu ? 'ڈائری محفوظ 💾' : 'Save Trip 💾'}</span>
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => { setViewMode('input'); }}
+                      className="w-full py-3 bg-white border border-[#e0e0d2] text-[#4a4a35] hover:bg-[#f6f5ee] rounded-2xl font-bold text-xs shadow-2xs transition-all active:scale-95 cursor-pointer text-center"
+                    >
+                      {isUrdu ? 'نیا ٹرپ حساب کریں' : 'New Trip Calculation'}
+                    </button>
                   </div>
                 </div>
               )}
             </div>
           )}
+        </>
+      )}
 
-          {/* Breakdown Table Card */}
-          <div className="bg-white p-4 rounded-3xl border-2 border-[#e0e0d2] shadow-2xs space-y-2.5 text-xs sm:text-sm">
-            <div className="flex items-center justify-between pb-2 border-b border-[#ecece0]">
-              <span className="font-bold text-[#4a4a35]">{isUrdu ? 'ڈیزل ریٹ و ایوریج:' : 'Diesel Rate & Mileage:'}</span>
-              <span className="font-mono font-bold text-[#383827]">
-                PKR {lastCalc.fuelRateVal} / Ltr ({lastCalc.mileageVal} KM/L)
+      {/* TAB 2: SAFAR DIARY (سفر ڈائری لاگز) VIEW */}
+      {activeTab === 'diary' && (
+        <div className="w-full space-y-4">
+          {/* Summary Stats Cards */}
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="p-3.5 bg-white rounded-2xl border border-[#ecece0] text-center shadow-2xs">
+              <span className="text-[11px] text-[#8e8e75] font-bold block mb-0.5">
+                {isUrdu ? 'کل محفوظ ٹرپس' : 'Total Trips'}
+              </span>
+              <span className="font-mono text-xl font-black text-[#4a4a35]">
+                {trips.length}
               </span>
             </div>
 
-            <div className="flex items-center justify-between pb-2 border-b border-[#ecece0]">
-              <span className="font-bold text-[#4a4a35]">{isUrdu ? 'ڈیزل کی کھپت:' : 'Fuel Consumption:'}</span>
-              <span className="font-mono font-bold text-[#383827]">
-                {lastCalc.consumed} Liters
+            <div className="p-3.5 bg-white rounded-2xl border border-[#ecece0] text-center shadow-2xs">
+              <span className="text-[11px] text-[#8e8e75] font-bold block mb-0.5">
+                {isUrdu ? 'کل ڈیزل کھپت' : 'Fuel Consumed'}
+              </span>
+              <span className="font-mono text-xl font-black text-[#8b9d77]">
+                {totalFuelConsumed.toFixed(0)} <span className="text-xs">L</span>
               </span>
             </div>
 
-            <div className="flex items-center justify-between pb-2 border-b border-[#ecece0]">
-              <span className="font-bold text-[#4a4a35]">{isUrdu ? 'ڈیزل کا کل خرچہ:' : 'Total Fuel Cost:'}</span>
-              <span className="font-mono font-bold text-[#383827]">
-                {fmt(lastCalc.fuelCost)}
+            <div className="p-3.5 bg-white rounded-2xl border border-[#ecece0] text-center shadow-2xs">
+              <span className="text-[11px] text-[#8e8e75] font-bold block mb-0.5">
+                {isUrdu ? 'کل سفری اخراجات' : 'Total Expenses'}
               </span>
-            </div>
-
-            <div className="flex items-center justify-between pb-2 border-b border-[#ecece0]">
-              <span className="font-bold text-[#4a4a35]">{isUrdu ? 'ڈرائیور، ٹول و دیگر اخراجات:' : 'Driver, Toll & Other Expenses:'}</span>
-              <span className="font-mono font-bold text-[#383827]">
-                {fmt(lastCalc.combinedExpensesVal || 0)}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between pt-1 font-black text-sm text-[#4a4a35]">
-              <span>{isUrdu ? 'کل واصل خرچہ:' : 'Net Total Trip Cost:'}</span>
-              <span className="font-mono text-base text-[#8b9d77]">
-                {fmt(lastCalc.total)}
+              <span className="font-mono text-sm sm:text-base font-black text-emerald-800">
+                Rs {totalExpenses.toLocaleString()}
               </span>
             </div>
           </div>
 
-          {/* PDF error notification */}
-          {pdfError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-2.5 rounded-2xl text-xs font-bold text-center shadow-2xs">
-              {pdfError}
+          {/* Search & Action Bar */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex items-center bg-white border-2 border-[#e0e0d2] rounded-2xl px-3 py-2 shadow-2xs focus-within:border-[#8b9d77]">
+              <Search className="w-4 h-4 text-[#8b9d77] shrink-0 mr-1.5" />
+              <input
+                type="text"
+                value={diarySearch}
+                onChange={(e) => setDiarySearch(e.target.value)}
+                placeholder={isUrdu ? 'ٹرپ یا شہر کا نام تلاش کریں...' : 'Search trip or city...'}
+                className="w-full bg-transparent text-xs sm:text-sm font-bold text-[#4a4a35] focus:outline-none"
+              />
             </div>
-          )}
 
-          {/* Save confirmation */}
-          {saveSuccess && (
-            <div className="bg-[#eef4ea] border border-[#8b9d77] text-[#3d5a2d] p-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs">
-              <CheckCircle2 className="w-4 h-4 text-[#8b9d77]" />
-              <span>{isUrdu ? 'یہ ٹرپ سفر ڈائری لاگز میں محفوظ کر لیا گیا ہے۔' : 'Trip saved to Safar Diary logs.'}</span>
-            </div>
-          )}
+            <button
+              type="button"
+              onClick={() => setActiveTab('calculator')}
+              className="px-3.5 py-2.5 bg-[#8b9d77] hover:bg-[#798a67] text-white rounded-2xl font-bold text-xs shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0 active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{isUrdu ? 'نیا ٹرپ' : 'New Trip'}</span>
+            </button>
+          </div>
 
-          {/* Copy toast */}
-          {copyToast && (
-            <div className="bg-emerald-50 border-2 border-emerald-400 text-emerald-950 p-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm animate-in fade-in">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>{isUrdu ? 'واٹس ایپ ٹیکسٹ میسج کاپی ہو گیا اور واٹس ایپ اوپن ہو رہا ہے! 📲' : 'WhatsApp message copied & opening WhatsApp! 📲'}</span>
+          {/* Saved Trips List */}
+          <div className="space-y-3 pt-1">
+            {filteredTrips.length === 0 ? (
+              <div className="p-8 text-center bg-white rounded-3xl border-2 border-dashed border-[#ecece0]">
+                <BookOpen className="w-10 h-10 text-[#8e8e75]/50 mx-auto mb-2" />
+                <p className="text-sm font-bold text-[#8e8e75]">
+                  {isUrdu ? 'سفر ڈائری میں کوئی ٹرپ محفوظ نہیں ہے۔' : 'No trip records saved in Safar Diary.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('calculator')}
+                  className="mt-3 px-4 py-2 bg-[#8b9d77] text-white rounded-xl text-xs font-bold shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{isUrdu ? 'پہلا ٹرپ حساب کریں' : 'Calculate First Trip'}</span>
+                </button>
+              </div>
+            ) : (
+              filteredTrips.map((trip) => (
+                <div
+                  key={trip.id}
+                  className="bg-white p-4 rounded-3xl border-2 border-[#ecece0] hover:border-[#8b9d77] shadow-2xs transition-all space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-[#4a4a35]">
+                          {trip.name}
+                        </span>
+                        {trip.isReturn && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8b9d77]/15 text-[#4a5e38]">
+                            {isUrdu ? 'راؤنڈ ٹرپ' : 'Round Trip'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#8e8e75] mt-0.5 font-mono">
+                        {trip.dist} KM • {trip.consumed} L ({trip.fuelType || 'Diesel'})
+                      </p>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="font-mono font-black text-base text-[#4a4a35] block">
+                        Rs {(trip.total || 0).toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-[#8e8e75] font-mono">
+                        {trip.date}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Net profit / income if available */}
+                  {trip.netProfit !== undefined && (
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+                      <span className="text-slate-600 font-bold">{isUrdu ? 'خالص بچت / نفع:' : 'Net Profit:'}</span>
+                      <span className={`font-mono font-bold ${trip.netProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                        Rs {trip.netProfit.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Trip Card Footer Actions */}
+                  <div className="flex items-center justify-between pt-2 border-t border-[#f0f0e4]">
+                    <span className="text-[11px] text-[#8e8e75]">
+                      {isUrdu ? 'محفوظ شدہ ریکارڈر' : 'Saved Log'}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => onDeleteTrip(trip.id)}
+                      className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs font-bold"
+                      title={isUrdu ? 'ٹرپ حذف کریں' : 'Delete Trip'}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>{isUrdu ? 'حذف کریں' : 'Delete'}</span>
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {trips.length > 0 && (
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={onClearAllTrips}
+                className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-2xl text-xs font-bold transition-all cursor-pointer border border-rose-200"
+              >
+                {isUrdu ? 'تمام ڈائری لاگز صاف کریں' : 'Clear All Diary Logs'}
+              </button>
             </div>
           )}
         </div>
       )}
-
-      {/* Bottom Action Grid with generous spacing */}
-      <div className="w-full pt-4 pb-6 shrink-0 space-y-2.5">
-        <div className="grid grid-cols-3 gap-2">
-          {/* 1. Fast WhatsApp Text Share */}
-          <button
-            type="button"
-            onClick={handleQuickWhatsAppText}
-            className="min-h-[50px] py-2.5 px-2 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1"
-          >
-            <Share2 className="w-4 h-4" />
-            <span>{isUrdu ? 'واٹس ایپ میسج 📲' : 'WhatsApp 📲'}</span>
-          </button>
-
-          {/* 2. PDF Download */}
-          <button
-            type="button"
-            disabled={isExportingPdf}
-            onClick={handleExportPDF}
-            className={`min-h-[50px] py-2.5 px-2 text-white rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1 ${
-              isExportingPdf ? 'bg-[#4a4a35]/70 opacity-80 cursor-wait' : 'bg-[#4a4a35] hover:bg-[#383827]'
-            }`}
-          >
-            <FileDown className={`w-4 h-4 text-[#8b9d77] ${isExportingPdf ? 'animate-bounce' : ''}`} />
-            <span>{isExportingPdf ? (isUrdu ? 'بن رہی ہے...' : 'Generating...') : (isUrdu ? 'پی ڈی ایف رسید 📄' : 'PDF Receipt 📄')}</span>
-          </button>
-
-          {/* 3. Save to Diary */}
-          <button
-            type="button"
-            onClick={handleSaveToDiary}
-            className="min-h-[50px] py-2.5 px-2 bg-white border-2 border-[#8b9d77] text-[#4a4a35] hover:bg-[#eef4ea] rounded-2xl font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex flex-col items-center justify-center gap-1"
-          >
-            <BookmarkPlus className="w-4 h-4 text-[#8b9d77]" />
-            <span>{isUrdu ? 'ڈائری محفوظ 💾' : 'Save Trip 💾'}</span>
-          </button>
-        </div>
-
-        {/* Back to Home / Edit Button */}
-        <button
-          type="button"
-          onClick={() => {
-            if (onNavigate) {
-              onNavigate('home');
-            } else {
-              setViewMode('input');
-              try {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              } catch {}
-            }
-          }}
-          className="w-full py-3 bg-white border border-[#e0e0d2] text-[#4a4a35] hover:bg-[#f6f5ee] rounded-2xl font-bold text-xs shadow-2xs transition-all active:scale-95 cursor-pointer text-center"
-        >
-          {isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Return to Dashboard'}
-        </button>
-      </div>
     </div>
   );
 };
-
