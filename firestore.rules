@@ -44,6 +44,23 @@ service cloud.firestore {
       );
     }
 
+    // Helper function to validate schema keys for public bilty verifications
+    function hasValidPublicBiltyFields() {
+      let allowedKeys = [
+        'id', 'biltyNo', 'vehicleNo', 'date', 'driverName', 'mobileNo',
+        'sendingCity', 'receivingCity', 'senderName', 'senderMobile',
+        'receiverName', 'receiverMobile', 'senderCnic', 'qty',
+        'itemDescription', 'weight', 'total', 'advance', 'payable',
+        'consignor', 'consignee', 'receivedBy', 'branch', 'language',
+        'podConfirmation', 'isDelivered', 'verifiedPublicly',
+        'createdAt', 'updatedAt'
+      ];
+      return request.resource.data.keys().hasOnly(allowedKeys) &&
+             ('biltyNo' in request.resource.data) &&
+             request.resource.data.biltyNo is string &&
+             request.resource.data.biltyNo.size() > 0;
+    }
+
     // Default deny catch-all
     match /{document=**} {
       allow read, write: if false;
@@ -57,7 +74,7 @@ service cloud.firestore {
     // User profile entries and nested collections (trips, vehicles, drivers, routes, fuel, private ledger, private bilties)
     // - Owner can read all user profiles
     // - Users can read/write their own profile (with self-promotion protection)
-    // - Users can read/write all their own nested collections
+    // - Users can read/write all their own nested collections (e.g., users/{userId}/collections/bilties/{biltyId})
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());
       allow write: if isSignedIn() && request.auth.uid == userId && isNotSelfPromoting();
@@ -80,10 +97,11 @@ service cloud.firestore {
     // Public bilty verification records:
     // - Anyone can read anonymously for QR document authenticity verification.
     // - ONLY authorized users (isBiltyAuthorized()) can create or update public verification documents.
+    // - Writes must contain valid bilty fields and a non-empty biltyNo string.
     // - Owner can delete records if needed.
     match /publicBiltyVerifications/{docId} {
       allow read: if true;
-      allow create, update: if isBiltyAuthorized();
+      allow create, update: if isBiltyAuthorized() && hasValidPublicBiltyFields();
       allow delete: if isOwner();
     }
 

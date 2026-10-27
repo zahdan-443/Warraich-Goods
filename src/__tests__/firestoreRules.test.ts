@@ -21,10 +21,10 @@ describe('Firestore Rules Security Audit & Structure', () => {
     expect(rulesContent).toMatch(/match \/bilties\/\{biltyId\} \{\s*allow read, write: if false;\s*\}/);
   });
 
-  it('should allow public read access for publicBiltyVerifications and restrict writes to bilty-authorized users', () => {
+  it('should allow public read access for publicBiltyVerifications and restrict writes to bilty-authorized users with field validation', () => {
     expect(rulesContent).toContain('match /publicBiltyVerifications/{docId}');
     expect(rulesContent).toContain('allow read: if true;');
-    expect(rulesContent).toContain('allow create, update: if isBiltyAuthorized();');
+    expect(rulesContent).toContain('allow create, update: if isBiltyAuthorized() && hasValidPublicBiltyFields();');
   });
 
   it('should secure users collection so owner can read profiles and users can manage own profile without self-promotion', () => {
