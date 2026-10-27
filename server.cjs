@@ -28,7 +28,17 @@ var import_vite = require("vite");
 var import_dotenv = __toESM(require("dotenv"), 1);
 import_dotenv.default.config();
 var app = (0, import_express.default)();
-var PORT = 3e3;
+var port = Number(process.env.PORT) || 3e3;
+var portArgIndex = process.argv.indexOf("--port");
+if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+  const parsed = Number(process.argv[portArgIndex + 1]);
+  if (!isNaN(parsed) && parsed > 0) port = parsed;
+}
+var host = "0.0.0.0";
+var hostArgIndex = process.argv.indexOf("--host");
+if (hostArgIndex !== -1 && process.argv[hostArgIndex + 1]) {
+  host = process.argv[hostArgIndex + 1];
+}
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE");
@@ -96,9 +106,24 @@ async function startServer() {
       res.sendFile(import_path.default.join(distPath, "index.html"));
     });
   }
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Driver Dost Server running on http://0.0.0.0:${PORT}`);
+  const server = app.listen(port, host, () => {
+    console.log(`Driver Dost Server running on http://${host}:${port}`);
   });
+  server.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      console.warn(`Port ${port} is currently in use, process will exit cleanly.`);
+      process.exit(0);
+    } else {
+      console.error("Server error:", err);
+    }
+  });
+  const shutdown = () => {
+    server.close(() => {
+      process.exit(0);
+    });
+  };
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 }
 startServer().catch((err) => {
   console.error("Failed to start Driver Dost server:", err);
