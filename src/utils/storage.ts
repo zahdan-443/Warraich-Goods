@@ -516,29 +516,27 @@ export async function confirmBiltyDelivery(
 
   // 2. Prepare payload for public & cloud sync
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
-  const payload = {
+  const publicPayload = {
     biltyNo: bilty.biltyNo,
-    podConfirmation,
     isDelivered: true,
-    receivedBy: trimmedName,
     verifiedPublicly: true,
     updatedAt: confirmedAt
   };
 
   if (!isOnline || !db) {
-    enqueueOfflineAction('pod_confirmation', payload);
+    enqueueOfflineAction('pod_confirmation', publicPayload);
     return { success: true, offlineQueued: true, podConfirmation };
   }
 
   try {
     const normalizedNo = String(bilty.biltyNo).trim().toUpperCase();
     const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-    await withTimeout(setDoc(pubRef, payload, { merge: true }), 4000);
+    await withTimeout(setDoc(pubRef, publicPayload, { merge: true }), 4000);
 
     const cleanAlpha = normalizedNo.replace(/[^A-Z0-9]/g, '');
     if (cleanAlpha && cleanAlpha !== normalizedNo) {
       const pubRef2 = doc(db, 'publicBiltyVerifications', cleanAlpha);
-      await withTimeout(setDoc(pubRef2, payload, { merge: true }), 4000).catch(() => {});
+      await withTimeout(setDoc(pubRef2, publicPayload, { merge: true }), 4000).catch(() => {});
     }
 
     // If current signed-in user has this in their private collection, update that too
@@ -568,7 +566,7 @@ export async function confirmBiltyDelivery(
     return { success: true, offlineQueued: false, podConfirmation };
   } catch (err) {
     console.warn('POD direct write timed out or failed, enqueuing offline action:', err);
-    enqueueOfflineAction('pod_confirmation', payload);
+    enqueueOfflineAction('pod_confirmation', publicPayload);
     return { success: true, offlineQueued: true, podConfirmation };
   }
 }

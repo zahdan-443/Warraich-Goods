@@ -56,21 +56,13 @@ export const AI_STUDIO_CONFIG: FirebaseConfigType = {
 };
 
 export const resolveActiveFirebaseConfig = (): FirebaseConfigType => {
-  const isBrowser = typeof window !== 'undefined';
-  const hostname = isBrowser ? window.location.hostname : '';
-  const isGithubPages = hostname.includes('github.io');
-  const isLiveDomain = hostname.includes('warraich') || hostname.includes('firebaseapp.com') || hostname.includes('web.app');
-
-  if (isGithubPages || isLiveDomain) {
-    return WARRAICH_GOODS_CONFIG;
+  // If explicitly overridden via environment variable to use sandbox project
+  if (import.meta.env.VITE_FIREBASE_PROJECT_ID === 'tonal-flames-kj1d7') {
+    return AI_STUDIO_CONFIG;
   }
 
-  // If environment variables specify a custom project, respect them
-  if (import.meta.env.VITE_FIREBASE_PROJECT_ID === 'warraich-goods') {
-    return WARRAICH_GOODS_CONFIG;
-  }
-
-  return AI_STUDIO_CONFIG;
+  // Official primary Firebase project for Driver Dost (GitHub Pages, Android, web, and local development)
+  return WARRAICH_GOODS_CONFIG;
 };
 
 export const ACTIVE_FIREBASE_CONFIG: FirebaseConfigType = resolveActiveFirebaseConfig();

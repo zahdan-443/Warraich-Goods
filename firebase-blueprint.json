@@ -136,6 +136,26 @@
         "reporterUid": { "type": "string" }
       },
       "required": ["category", "lat", "lng", "createdAt", "expiresAt", "reporterUid"]
+    },
+    "PublicBiltyVerification": {
+      "title": "PublicBiltyVerification",
+      "description": "Public bilty verification document stripped of all PII and financial values for public verification",
+      "type": "object",
+      "properties": {
+        "biltyNo": { "type": "string" },
+        "date": { "type": "string" },
+        "sendingCity": { "type": "string" },
+        "receivingCity": { "type": "string" },
+        "itemDescription": { "type": "string" },
+        "weight": { "type": "string" },
+        "qty": { "type": "string" },
+        "vehicleNo": { "type": "string" },
+        "isDelivered": { "type": "boolean" },
+        "verifiedPublicly": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["biltyNo", "verifiedPublicly"]
     }
   },
   "firestore": {
@@ -150,6 +170,10 @@
     "/users/{userId}/collections/{collectionId}": {
       "schema": "UserData",
       "description": "User isolated nested collections for trips, vehicles, drivers, routes, fuel, and bilties"
+    },
+    "/publicBiltyVerifications/{docId}": {
+      "schema": "PublicBiltyVerification",
+      "description": "Public bilty verification records readable anonymously for website QR verification"
     },
     "/admins/{adminId}": {
       "schema": "UserProfile",

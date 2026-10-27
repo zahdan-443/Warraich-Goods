@@ -134,7 +134,7 @@ A comprehensive UI/UX overhaul across Driver Dost to deliver screen-fitted layou
 ## 5. Verification & Testing Plan
 
 1. **Automated Testing (`npm run test`)**:
-   - Run Vitest suite to ensure all unit test suites pass without regression.
+   - Run Vitest suite to ensure all unit test suites pass without regression (116 tests passing).
 2. **Type Safety & Linting (`npm run lint`)**:
    - Verify `tsc --noEmit` produces 0 errors across all modified components.
 3. **Build & Bundle Verification (`compile_applet`)**:
@@ -143,3 +143,29 @@ A comprehensive UI/UX overhaul across Driver Dost to deliver screen-fitted layou
    - Verify Ledger and Weather views fit screen without viewport spillover.
    - Verify From/To city dropdowns render in a single horizontal row on both mobile and desktop.
    - Verify Bilty output prints and downloads as a clean 1-page A4 document with the official card background.
+
+---
+
+## 6. Firebase Integration & QR Verification Status (`warraich-goods`)
+
+### Architecture & Current Status:
+1. **Target Project Confirmed**: `warraich-goods` (Project ID: `warraich-goods`, App ID: `1:805249879186:web:0ccfeaa631bb1a07e5ea4b`, Messaging Sender: `805249879186`, Database: `(default)`). Configured in `src/utils/firebaseConfig.ts` to be the authoritative default across web, Android, and local dev.
+2. **Public Verification Collection**: `publicBiltyVerifications`.
+   - Documents are keyed by normalized document number (e.g., `WG-2026-0001`).
+   - Strictly stripped of all PII (CNIC, phone numbers, party names, financial figures) via `extractPublicBiltyVerification` in `src/utils/storage.ts`.
+   - Anonymous reads enabled: `allow read: if true;` in `firestore.rules`.
+   - Authorized writes enforced: `allow create, update: if isBiltyAuthorized() && hasOnlyPublicBiltyFields();`.
+3. **Private User Data & Security**:
+   - Top-level `bilties/{biltyId}` is strictly blocked (`allow read, write: if false;`).
+   - Private user data resides in `/users/{userId}/**` and `/usersData/{userId}`, isolated strictly to `request.auth.uid == userId`.
+   - Verified Owner access: `isOwner()` strictly validates `warraichgoods43@gmail.com` with `email_verified == true`.
+   - Bilty feature access configuration: `/access/biltyAccess` is readable and writable exclusively by `isOwner()`.
+4. **QR Code Verification URL**:
+   - Strictly canonical: `https://zahdan-443.github.io/Warraichgoodstransportcompany/?page=verify&bilty={BILTY_NUMBER}` without tokens or vdata.
+5. **Blueprint Synchronization**:
+   - `firebase-blueprint.json` updated with `PublicBiltyVerification` entity and `/publicBiltyVerifications/{docId}` path definition.
+6. **Required Firebase Console Manual Steps**:
+   - **Google Authentication**: Ensure Google Sign-In provider is enabled under **Authentication > Sign-in method** in the Firebase Console for project `warraich-goods`.
+   - **Authorized Domains**: Add `zahdan-443.github.io` and AI Studio sandbox domains to **Authentication > Settings > Authorized domains**.
+   - **Deploy Firestore Rules**: Deploy the audited `firestore.rules` file to the Firebase Console under **Firestore Database > Rules**.
+   - **Optional Access List**: For any authorized staff emails besides the owner, create document `/access/biltyAccess` with fields `allowedUIDs: []` and `allowedEmails: ['staff@example.com']`.

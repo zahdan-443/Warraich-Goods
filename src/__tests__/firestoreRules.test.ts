@@ -17,28 +17,50 @@ describe('Firestore Rules Security Audit & Structure', () => {
     expect(rulesContent).toContain('request.auth.token.email_verified == true');
   });
 
+  it('should harden isBiltyAuthorized with isStaffAuthorized checking list types and email verification', () => {
+    expect(rulesContent).toContain('function isStaffAuthorized(data)');
+    expect(rulesContent).toContain('data.allowedUIDs is list');
+    expect(rulesContent).toContain('data.allowedEmails is list');
+    expect(rulesContent).toContain('request.auth.token.email_verified == true');
+    expect(rulesContent).toContain('function isBiltyAuthorized()');
+  });
+
   it('should explicitly deny top-level bilties collection', () => {
     expect(rulesContent).toMatch(/match \/bilties\/\{biltyId\} \{\s*allow read, write: if false;\s*\}/);
   });
 
-  it('should restrict publicBiltyVerifications writes to bilty-authorized users with non-PII field validation', () => {
+  it('should restrict publicBiltyVerifications writes to bilty-authorized users with strict non-PII whitelist', () => {
     expect(rulesContent).toContain('match /publicBiltyVerifications/{docId}');
     expect(rulesContent).toContain('allow read: if true;');
     expect(rulesContent).toContain('allow create, update: if isBiltyAuthorized() && hasOnlyPublicBiltyFields();');
+    expect(rulesContent).toContain('allow delete: if isOwner();');
+    
+    // Explicit forbidden keys in defense-in-depth guard
     expect(rulesContent).toContain('senderCnic');
     expect(rulesContent).toContain('senderMobile');
     expect(rulesContent).toContain('total');
     expect(rulesContent).toContain('payable');
+    expect(rulesContent).toContain('driverName');
+    expect(rulesContent).toContain('senderName');
+    expect(rulesContent).toContain('receiverName');
   });
 
   it('should secure users collection so owner can read profiles and users can manage own profile without self-promotion', () => {
     expect(rulesContent).toContain('match /users/{userId}');
     expect(rulesContent).toContain('allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());');
     expect(rulesContent).toContain('allow write: if isSignedIn() && request.auth.uid == userId && isNotSelfPromoting();');
+    expect(rulesContent).toContain('match /{subcollection=**} {');
+    expect(rulesContent).toContain('allow read, write: if isSignedIn() && request.auth.uid == userId;');
   });
 
-  it('should restrict access/biltyAccess to owner only', () => {
+  it('should restrict access/biltyAccess and admins to owner only', () => {
     expect(rulesContent).toContain('match /access/biltyAccess');
     expect(rulesContent).toContain('allow read, write: if isOwner();');
+    expect(rulesContent).toContain('match /admins/{adminId}');
+  });
+
+  it('should restrict counters collection to authorized bilty operations', () => {
+    expect(rulesContent).toContain('match /counters/{counterId}');
+    expect(rulesContent).toContain('allow read, write: if isBiltyAuthorized();');
   });
 });

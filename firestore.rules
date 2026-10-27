@@ -6,7 +6,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check if user is the Owner / Admin with verified email
+    // Helper function to check if user is the verified App Owner
     function isOwner() {
       return isSignedIn() &&
         request.auth.token != null &&
@@ -16,20 +16,30 @@ service cloud.firestore {
         request.auth.token.email_verified == true;
     }
 
-    // Helper function to check if user is authorized to manage bilties
+    // Helper function to safely check if non-owner is explicitly authorized bilty staff
+    // Hardened against missing or malformed fields, unverified emails, and non-list structures
+    function isStaffAuthorized(data) {
+      return (
+        ('allowedUIDs' in data &&
+         data.allowedUIDs is list &&
+         request.auth.uid in data.allowedUIDs) ||
+        ('allowedEmails' in data &&
+         data.allowedEmails is list &&
+         request.auth.token != null &&
+         request.auth.token.email != null &&
+         'email_verified' in request.auth.token &&
+         request.auth.token.email_verified == true &&
+         request.auth.token.email in data.allowedEmails)
+      );
+    }
+
+    // Helper function to check if user is authorized to manage bilties (Owner or authorized staff)
     function isBiltyAuthorized() {
       return isSignedIn() && (
         isOwner() ||
         (
           exists(/databases/$(database)/documents/access/biltyAccess) &&
-          (
-            request.auth.uid in get(/databases/$(database)/documents/access/biltyAccess).data.allowedUIDs ||
-            (
-              request.auth.token != null &&
-              request.auth.token.email != null &&
-              request.auth.token.email in get(/databases/$(database)/documents/access/biltyAccess).data.allowedEmails
-            )
-          )
+          isStaffAuthorized(get(/databases/$(database)/documents/access/biltyAccess).data)
         )
       );
     }
@@ -45,24 +55,24 @@ service cloud.firestore {
     }
 
     // Helper function to enforce non-PII and non-financial fields in public verifications
+    // Strictly whitelists only the allowed fields and forbids any names, CNICs, phones, or financial values
     function hasOnlyPublicBiltyFields() {
       let allowedKeys = [
-        'id', 'biltyNo', 'vehicleNo', 'date', 'branch', 'driverName',
-        'sendingCity', 'receivingCity', 'senderName', 'receiverName',
-        'qty', 'itemDescription', 'weight', 'consignor', 'consignee',
-        'receivedBy', 'podConfirmation', 'isDelivered', 'verifiedPublicly',
-        'createdAt', 'updatedAt'
+        'biltyNo', 'date', 'sendingCity', 'receivingCity',
+        'itemDescription', 'weight', 'qty', 'vehicleNo',
+        'isDelivered', 'verifiedPublicly', 'createdAt', 'updatedAt'
       ];
       let forbiddenKeys = [
         'senderCnic', 'receiverCnic', 'senderMobile', 'receiverMobile',
         'mobileNo', 'senderPhone', 'receiverPhone', 'total', 'advance',
-        'payable', 'freight', 'price', 'cnic', 'phone'
+        'payable', 'freight', 'price', 'cnic', 'phone', 'driverName',
+        'senderName', 'receiverName', 'consignor', 'consignee', 'receivedBy', 'podConfirmation'
       ];
       return request.resource.data.keys().hasOnly(allowedKeys) &&
              !request.resource.data.keys().hasAny(forbiddenKeys);
     }
 
-    // Default deny catch-all
+    // Global default deny catch-all
     match /{document=**} {
       allow read, write: if false;
     }
@@ -104,8 +114,7 @@ service cloud.firestore {
 
     // Counters collection for transaction-based sequential Bilty allocation
     match /counters/{counterId} {
-      allow read: if isSignedIn();
-      allow write: if isBiltyAuthorized();
+      allow read, write: if isBiltyAuthorized();
     }
 
     // Company Profile and System Settings (All can read, ONLY Owner can write)
