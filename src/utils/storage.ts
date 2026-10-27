@@ -422,52 +422,49 @@ export function saveStoredBilties(bilties: BiltyRecord[]) {
 }
 
 /**
- * Public Verification Safe Document (Strictly excludes PII such as CNIC, mobile numbers, party names, financial amounts, and delivery photos)
+ * Public Verification Document containing full bilty record details for complete document verification
  */
-export interface PublicBiltyVerification {
+export interface PublicBiltyVerification extends Partial<BiltyRecord> {
   biltyNo: string;
-  date: string;
-  sendingCity: string;
-  receivingCity: string;
-  itemDescription: string;
-  weight?: string;
-  qty?: string;
-  vehicleNo?: string;
-  isDelivered?: boolean;
   verifiedPublicly: true;
   createdAt: string;
   updatedAt?: string;
 }
 
 /**
- * Extracts only safe, non-PII, non-financial fields from a Bilty record for public verification
+ * Extracts complete bilty record fields for public QR verification
  */
 export function extractPublicBiltyVerification(bilty: Partial<BiltyRecord>): PublicBiltyVerification {
   const normalizedNo = bilty.biltyNo ? String(bilty.biltyNo).trim().toUpperCase() : '';
-  const isDeliveredVal = bilty.isDelivered || !!bilty.podConfirmation;
 
   const result: PublicBiltyVerification = {
+    ...bilty,
     biltyNo: normalizedNo,
+    id: typeof bilty.id === 'number' ? bilty.id : Date.now(),
+    vehicleNo: bilty.vehicleNo || '',
     date: bilty.date || '',
+    driverName: bilty.driverName || '',
+    mobileNo: bilty.mobileNo || '',
     sendingCity: bilty.sendingCity || '',
     receivingCity: bilty.receivingCity || '',
+    senderName: bilty.senderName || '',
+    senderMobile: bilty.senderMobile || '',
+    receiverName: bilty.receiverName || '',
+    receiverMobile: bilty.receiverMobile || '',
+    senderCnic: bilty.senderCnic || '',
+    qty: bilty.qty || '',
     itemDescription: bilty.itemDescription || '',
+    weight: bilty.weight || '',
+    total: typeof bilty.total === 'number' ? bilty.total : Number(bilty.total || 0),
+    advance: typeof bilty.advance === 'number' ? bilty.advance : Number(bilty.advance || 0),
+    payable: typeof bilty.payable === 'number' ? bilty.payable : Number(bilty.payable || 0),
+    consignor: bilty.consignor || bilty.senderName || '',
+    consignee: bilty.consignee || bilty.receiverName || '',
+    branch: bilty.branch || 'samundri',
+    language: bilty.language || 'ur',
     verifiedPublicly: true,
     createdAt: new Date().toISOString()
   };
-
-  if (bilty.weight) {
-    result.weight = bilty.weight;
-  }
-  if (bilty.qty) {
-    result.qty = bilty.qty;
-  }
-  if (bilty.vehicleNo) {
-    result.vehicleNo = bilty.vehicleNo;
-  }
-  if (typeof isDeliveredVal === 'boolean') {
-    result.isDelivered = isDeliveredVal;
-  }
 
   return result;
 }
