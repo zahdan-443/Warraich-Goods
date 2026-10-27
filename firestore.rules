@@ -6,13 +6,13 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check if user is the Owner / Admin (via email, custom claims, or admin collection)
+    // Helper function to check if user is the authenticated Owner
+    // Strictly requires verified email warraichgoods43@gmail.com
     function isOwner() {
-      return isSignedIn() && (
-        (request.auth.token.email != null && request.auth.token.email == 'warraichgoods43@gmail.com') ||
-        (request.auth.token.role != null && (request.auth.token.role == 'owner' || request.auth.token.role == 'admin')) ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-      );
+      return isSignedIn() &&
+        request.auth.token.email != null &&
+        request.auth.token.email == 'warraichgoods43@gmail.com' &&
+        request.auth.token.email_verified == true;
     }
 
     // Helper function to check if user is an Owner or in access/biltyAccess.allowedUIDs / allowedEmails
@@ -29,6 +29,25 @@ service cloud.firestore {
       );
     }
 
+    // Strict schema validator for public verification documents
+    // Strictly prohibits party names, CNICs, phone numbers, financial amounts, and delivery photos
+    function isValidPublicBiltyVerification(data) {
+      return data.keys().hasAll(['biltyNo', 'date', 'sendingCity', 'receivingCity', 'itemDescription', 'verifiedPublicly', 'createdAt']) &&
+        data.keys().hasOnly(['biltyNo', 'date', 'sendingCity', 'receivingCity', 'itemDescription', 'weight', 'qty', 'vehicleNo', 'isDelivered', 'verifiedPublicly', 'createdAt', 'updatedAt']) &&
+        data.biltyNo is string &&
+        data.date is string &&
+        data.sendingCity is string &&
+        data.receivingCity is string &&
+        data.itemDescription is string &&
+        data.verifiedPublicly == true &&
+        data.createdAt is string &&
+        (!('weight' in data) || data.weight is string) &&
+        (!('qty' in data) || data.qty is string) &&
+        (!('vehicleNo' in data) || data.vehicleNo is string) &&
+        (!('isDelivered' in data) || data.isDelivered is bool) &&
+        (!('updatedAt' in data) || data.updatedAt is string);
+    }
+
     // Default deny catch-all
     match /{document=**} {
       allow read, write: if false;
@@ -39,12 +58,16 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // User profile entries and nested collections (trips, vehicles, drivers, routes, fuel, private ledger)
+    // User profile entries and nested collections (trips, vehicles, drivers, routes, fuel, private ledger, bilties)
     // Strictly confidential: Only the individual account owner can read or write their own documents
     match /users/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
 
       match /collections/{collectionId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /collections/{collectionId}/{docId=**} {
         allow read, write: if isSignedIn() && request.auth.uid == userId;
       }
 
@@ -78,10 +101,11 @@ service cloud.firestore {
       allow read, write: if isBiltyAuthorized();
     }
 
-    // Public bilty verification records (read allowed for anyone for QR verification; write restricted to authorized users)
+    // Public bilty verification records (anonymous read allowed for QR verification; write restricted to bilty-authorized users with strict schema validation)
     match /publicBiltyVerifications/{docId} {
       allow read: if true;
-      allow write: if isBiltyAuthorized();
+      allow create, update: if isBiltyAuthorized() && isValidPublicBiltyVerification(request.resource.data);
+      allow delete: if isOwner();
     }
 
     // Counters collection for transaction-based sequential Bilty allocation (read for signed in users, write restricted to bilty-authorized)
