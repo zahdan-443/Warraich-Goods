@@ -57,8 +57,8 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
 }) => {
   const isUrdu = lang === 'ur';
 
-  // Sub-tabs: 'pnl' (گاڑی P&L) | 'roznamcha' (روزنامچہ)
-  const [activeSubTab, setActiveSubTab] = useState<'pnl' | 'roznamcha'>('pnl');
+  // Sub-tabs: 'gari_hisaab' (گاڑی کا حساب) | 'pnl' (گاڑی P&L) | 'roznamcha' (روزنامچہ)
+  const [activeSubTab, setActiveSubTab] = useState<'gari_hisaab' | 'pnl' | 'roznamcha'>('gari_hisaab');
 
   // Vehicle info
   const [vehicleNo, setVehicleNo] = useState<string>('LHR-7860');
@@ -595,37 +595,50 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
         </div>
       </div>
 
-      {/* Main Page Two Tabs: گاڑی P&L | روزنامچہ */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-[#f0f0e4] mb-4 shadow-inner">
+      {/* Main Page Three Tabs: گاڑی کا حساب | گاڑی P&L | روزنامچہ */}
+      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-[#f0f0e4] mb-4 shadow-inner">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('gari_hisaab')}
+          className={`flex-1 py-2.5 px-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            activeSubTab === 'gari_hisaab'
+              ? 'bg-white text-[#4a4a35] shadow-md border border-[#e2e2d5]'
+              : 'text-[#8e8e75] hover:text-[#4a4a35]'
+          }`}
+        >
+          <Calculator className="w-4 h-4 text-[#8b9d77]" />
+          <span>{isUrdu ? 'گاڑی کا حساب' : 'Vehicle Trip Account'}</span>
+        </button>
+
         <button
           type="button"
           onClick={() => setActiveSubTab('pnl')}
-          className={`flex-1 py-2.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 py-2.5 px-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeSubTab === 'pnl'
               ? 'bg-white text-[#4a4a35] shadow-md border border-[#e2e2d5]'
               : 'text-[#8e8e75] hover:text-[#4a4a35]'
           }`}
         >
-          <Truck className="w-4 h-4 text-[#8b9d77]" />
+          <TrendingUp className="w-4 h-4 text-emerald-600" />
           <span>{isUrdu ? 'گاڑی P&L' : 'Vehicle P&L'}</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveSubTab('roznamcha')}
-          className={`flex-1 py-2.5 px-4 rounded-xl font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 py-2.5 px-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
             activeSubTab === 'roznamcha'
               ? 'bg-white text-[#4a4a35] shadow-md border border-[#e2e2d5]'
               : 'text-[#8e8e75] hover:text-[#4a4a35]'
           }`}
         >
-          <Wallet className="w-4 h-4 text-emerald-600" />
-          <span>{isUrdu ? 'روزنامچہ' : 'Roznamcha (Cashbook)'}</span>
+          <Wallet className="w-4 h-4 text-blue-600" />
+          <span>{isUrdu ? 'روزنامچہ' : 'Roznamcha'}</span>
         </button>
       </div>
 
-      {/* SUB-TAB 1: گاڑی P&L */}
-      {activeSubTab === 'pnl' ? (
+      {/* TAB 1: گاڑی کا حساب */}
+      {activeSubTab === 'gari_hisaab' && (
         <div className="space-y-5 animate-in fade-in duration-200">
           {formError && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-3 rounded-2xl text-center shadow-2xs">
@@ -1120,8 +1133,106 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             </div>
           </div>
         </div>
-      ) : (
-        /* SUB-TAB 2: روزنامچہ (ROZNAMCHA / CASHBOOK) */
+      )}
+
+      {/* TAB 2: گاڑی P&L */}
+      {activeSubTab === 'pnl' && (
+        <div className="space-y-5 animate-in fade-in duration-200">
+          <div className="bg-white p-4 sm:p-5 rounded-[24px] shadow-sm border border-[#ecece0] space-y-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-[#ecece0] pb-3">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-emerald-600" />
+                <h2 className="text-base sm:text-lg font-bold text-[#4a4a35]">
+                  {isUrdu ? 'گاڑی نفع و نقصان کھاتہ (Vehicle P&L Statement)' : 'Vehicle Profit & Loss Statement'}
+                </h2>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={pnlVehicle}
+                  onChange={e => setPnlVehicle(e.target.value)}
+                  className="py-2 px-3 bg-[#fdfbf7] border border-[#ecece0] rounded-xl text-xs font-bold text-[#4a4a35] focus:outline-none"
+                >
+                  <option value="all">{isUrdu ? 'تمام گاڑیاں' : 'All Fleet Vehicles'}</option>
+                  {vehicleOptions.map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={pnlMonth}
+                  onChange={e => setPnlMonth(e.target.value)}
+                  className="py-2 px-3 bg-[#fdfbf7] border border-[#ecece0] rounded-xl text-xs font-bold text-[#4a4a35] focus:outline-none"
+                >
+                  <option value="all">{isUrdu ? 'تمام مہینے' : 'All Months'}</option>
+                  {monthOptions.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* P&L Performance Summary Banner */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200">
+                <span className="text-xs text-emerald-800 font-bold block">{isUrdu ? 'کل درآمدات / آمدن' : 'Total Revenue'}</span>
+                <span className="text-sm sm:text-base font-black font-mono text-emerald-900 dir-ltr">
+                  PKR {fleetPnl.totalIncome.toLocaleString('en-US')}
+                </span>
+              </div>
+
+              <div className="bg-rose-50 p-3.5 rounded-2xl border border-rose-200">
+                <span className="text-xs text-rose-800 font-bold block">{isUrdu ? 'کل اخراجات' : 'Total Expenses'}</span>
+                <span className="text-sm sm:text-base font-black font-mono text-rose-900 dir-ltr">
+                  PKR {fleetPnl.totalExpenses.toLocaleString('en-US')}
+                </span>
+              </div>
+
+              <div className={`p-3.5 rounded-2xl border text-white ${fleetPnl.isProfit ? 'bg-[#275e23] border-[#275e23]' : 'bg-[#c0392b] border-[#c0392b]'}`}>
+                <span className="text-xs font-bold block">{fleetPnl.isProfit ? (isUrdu ? 'خالص منافع' : 'Net Profit') : (isUrdu ? 'خسارہ' : 'Net Deficit')}</span>
+                <span className="text-sm sm:text-base font-black font-mono dir-ltr">
+                  PKR {Math.abs(fleetPnl.netProfit).toLocaleString('en-US')}
+                </span>
+              </div>
+
+              <div className="bg-[#f0f0e4] p-3.5 rounded-2xl border border-[#ecece0]">
+                <span className="text-xs text-[#4a4a35] font-bold block">{isUrdu ? 'پرافٹ مارجن (%)' : 'Profit Margin (%)'}</span>
+                <span className="text-sm sm:text-base font-black font-mono text-[#4a4a35]">
+                  {profitMargin}%
+                </span>
+              </div>
+            </div>
+
+            {/* Detailed Expense Breakdown in P&L */}
+            <div className="pt-2">
+              <h3 className="text-xs sm:text-sm font-bold text-[#4a4a35] mb-2.5">
+                {isUrdu ? 'اخراجات کی زمرہ وار تفصیل (Category-wise Expenses):' : 'Category-wise Expenses:'}
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div className="bg-[#fdfbf7] p-2.5 rounded-xl border border-[#ecece0]">
+                  <span className="text-[#8e8e75] block">{isUrdu ? 'ڈیزل' : 'Fuel'}</span>
+                  <span className="font-bold font-mono text-[#4a4a35]">PKR {(fleetPnl.dieselCost || 0).toLocaleString()}</span>
+                </div>
+                <div className="bg-[#fdfbf7] p-2.5 rounded-xl border border-[#ecece0]">
+                  <span className="text-[#8e8e75] block">{isUrdu ? 'ٹول' : 'Tolls'}</span>
+                  <span className="font-bold font-mono text-[#4a4a35]">PKR {(fleetPnl.tollCost || 0).toLocaleString()}</span>
+                </div>
+                <div className="bg-[#fdfbf7] p-2.5 rounded-xl border border-[#ecece0]">
+                  <span className="text-[#8e8e75] block">{isUrdu ? 'ڈرائیور الاؤنس' : 'Driver Allowance'}</span>
+                  <span className="font-bold font-mono text-[#4a4a35]">PKR {(fleetPnl.driverCost || 0).toLocaleString()}</span>
+                </div>
+                <div className="bg-[#fdfbf7] p-2.5 rounded-xl border border-[#ecece0]">
+                  <span className="text-[#8e8e75] block">{isUrdu ? 'دیگر اخراجات' : 'Other Expenses'}</span>
+                  <span className="font-bold font-mono text-[#4a4a35]">PKR {(fleetPnl.otherCost || 0).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: روزنامچہ (ROZNAMCHA / CASHBOOK) */}
+      {activeSubTab === 'roznamcha' && (
         <div className="space-y-4 animate-in fade-in duration-200">
           {/* Date Selector Navigation */}
           <div className="bg-white rounded-2xl p-2.5 sm:p-3 border border-[#ecece0] flex items-center justify-between gap-2 shadow-2xs">
