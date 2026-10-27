@@ -181,6 +181,8 @@ export interface Trip {
   date: string;
   time: string;
   month: string;
+  origin?: string;
+  dest?: string;
 }
 
 export interface Vehicle {
