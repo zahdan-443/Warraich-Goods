@@ -148,7 +148,7 @@
 
 @theme {
   --font-sans: "Plus Jakarta Sans", "Inter", "Noto Sans Arabic", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Playfair Display", "Jameel Noori Nastaleeq", "PDMS Nastaleeq Nafees", ui-serif, Georgia, serif;
+  --font-serif: "Jameel Noori Nastaleeq", "jameel-noori-nastaleeq", "Alvi Lahori Nastaleeq", "PDMS Nastaleeq Nafees", "Playfair Display", ui-serif, Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --font-urdu: "Jameel Noori Nastaleeq", "jameel-noori-nastaleeq", "Alvi Lahori Nastaleeq", "PDMS Nastaleeq Nafees", "nastaleeq-nafees", "Noto Nastaliq Urdu", "Noto Sans Arabic", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-arabic: "Noto Sans Arabic", ui-sans-serif, system-ui, sans-serif;
@@ -176,8 +176,12 @@ body.urdu, [dir="rtl"] {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  font-size: 1.0625rem;
-  line-height: 1.85;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.font-ledger, [data-view="ledger"], .ledger-view {
+  font-family: var(--font-serif);
 }
 
 .font-nastaliq, .font-jameel {

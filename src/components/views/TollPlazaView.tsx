@@ -321,7 +321,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
                   
                   {/* Vehicle Class */}
                   <div className="space-y-1">
-                    <label className="block text-[11px] font-bold font-serif text-[#4a4a35]">
+                    <label className="block text-xs font-bold font-serif text-[#4a4a35]">
                       {t.tollCalc.vehicleClass}
                     </label>
                     <select
@@ -397,7 +397,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
                       {isUrdu ? result.routeNameUr : result.routeNameEn}
                     </span>
                     {result.totalKm > 0 && (
-                      <span className="px-2 py-0.5 rounded-md bg-[#fdfbf7] border border-[#ecece0] text-[10px] font-mono font-bold text-[#5a5a40]">
+                      <span className="px-2 py-0.5 rounded-md bg-[#fdfbf7] border border-[#ecece0] text-xs font-mono font-bold text-[#5a5a40]">
                         {result.totalKm} km
                       </span>
                     )}
@@ -407,7 +407,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
                 {/* Primary Total Banner */}
                 <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-[#162a4d] to-[#1e3a68] text-white shadow-md flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] sm:text-xs text-amber-200 uppercase tracking-wider font-bold block">
+                    <span className="text-xs sm:text-xs text-amber-200 uppercase tracking-wider font-bold block">
                       {isUrdu ? 'کل قابلِ ادا ٹول رقم' : t.tollCalc.totalToll}
                     </span>
                     <div className="font-serif font-black text-xl sm:text-2xl text-white">
@@ -416,14 +416,14 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
                   </div>
 
                   <div className="text-right">
-                    <span className={`inline-block px-2 py-0.5 rounded-lg text-[11px] font-bold ${
+                    <span className={`inline-block px-2 py-0.5 rounded-lg text-xs font-bold ${
                       hasMtag 
                         ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30' 
                         : 'bg-amber-500/20 text-amber-200 border border-amber-400/30'
                     }`}>
                       {vehicleClass === 'bike' ? (isUrdu ? 'استثنیٰ' : 'Exempt') : (hasMtag ? (isUrdu ? 'ایم ٹیگ لاگو' : 'M-Tag Active') : (isUrdu ? 'بغیر ایم ٹیگ (+50% کیش)' : 'Cash (+50%)'))}
                     </span>
-                    <span className="text-[10px] text-white/70 block mt-0.5 font-mono">
+                    <span className="text-xs text-white/70 block mt-0.5 font-mono">
                       {VEHICLE_CLASSES.find(v => v.id === vehicleClass)?.[isUrdu ? 'nameUr' : 'nameEn']}
                     </span>
                   </div>
@@ -466,7 +466,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
                 {/* Segments Breakdown (Compact List) */}
                 {result.segments.length > 0 && (
                   <div className="bg-white rounded-2xl border border-[#ecece0] p-2.5 shadow-2xs space-y-1.5">
-                    <span className="text-[10px] uppercase font-bold text-[#8e8e75] tracking-wider flex items-center gap-1">
+                    <span className="text-xs uppercase font-bold text-[#8e8e75] tracking-wider flex items-center gap-1">
                       <Layers className="w-3 h-3 text-[#8b9d77]" />
                       {isUrdu ? 'موٹروے و شاہراہ وائز بریک ڈاؤن:' : 'Motorway & Highway Breakdown:'}
                     </span>
@@ -482,7 +482,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
                               {seg.code}
                             </span>
                             <div className="truncate">
-                              <div className="font-serif font-bold text-[#4a4a35] truncate text-[11px]">
+                              <div className="font-serif font-bold text-[#4a4a35] truncate text-xs">
                                 {isUrdu ? seg.nameUr : seg.nameEn}
                               </div>
                               {seg.km && (
@@ -509,7 +509,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
           <div className="space-y-2 animate-in fade-in">
             {/* Motorway Selector Pills */}
             <div className="bg-white p-2.5 rounded-2xl border border-[#ecece0] shadow-2xs space-y-1.5">
-              <label className="block text-[11px] font-bold text-[#4a4a35]">
+              <label className="block text-xs font-bold text-[#4a4a35]">
                 {isUrdu ? 'موٹروے منتخب کریں:' : 'Select Motorway:'}
               </label>
               <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto p-1 bg-[#fdfbf7] rounded-xl border border-[#ecece0]">
@@ -518,7 +518,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
                     key={mw.code}
                     type="button"
                     onClick={() => setSelectedMwCode(mw.code)}
-                    className={`px-2 py-1 rounded-lg font-bold text-[10px] transition-all cursor-pointer ${
+                    className={`px-2 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                       selectedMwCode === mw.code
                         ? 'bg-[#162a4d] text-white shadow-xs'
                         : 'bg-white text-[#5a5a40] border border-[#ecece0] hover:bg-[#f0f0e4]'
@@ -533,7 +533,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
             {/* Vehicle Class & M-Tag Selector */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white p-2.5 rounded-2xl border border-[#ecece0] shadow-2xs">
               <div>
-                <label className="block text-[10px] font-bold text-[#4a4a35] mb-0.5">
+                <label className="block text-xs font-bold text-[#4a4a35] mb-0.5">
                   {isUrdu ? 'گاڑی کی کیٹیگری:' : 'Vehicle Category:'}
                 </label>
                 <select
@@ -559,7 +559,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
                     className="w-3.5 h-3.5 text-[#8b9d77] rounded"
                   />
                   <div className="text-xs">
-                    <span className="font-bold text-[#4a4a35] block text-[10px]">
+                    <span className="font-bold text-[#4a4a35] block text-xs">
                       {isUrdu ? 'ایم ٹیگ ریٹ' : 'M-Tag Rate'}
                     </span>
                     <span className="text-[8px] text-[#8e8e75]">
@@ -582,7 +582,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
                   </h3>
                 </div>
 
-                <span className="px-2 py-0.5 bg-white/15 rounded-full text-[11px] font-mono font-bold">
+                <span className="px-2 py-0.5 bg-white/15 rounded-full text-xs font-mono font-bold">
                   {currentMw.totalKm} km
                 </span>
               </div>
@@ -623,7 +623,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
                   <MapPin className="w-2.5 h-2.5" />
                   {isUrdu ? 'اہم ٹول پلازے اور انٹرچینجز:' : 'Key Interchanges:'}
                 </span>
-                <p className="text-[10px] text-white/90 leading-relaxed font-sans">
+                <p className="text-xs text-white/90 leading-relaxed font-sans">
                   {isUrdu ? currentMw.interchangesUr.join(' • ') : currentMw.interchanges.join(' • ')}
                 </p>
               </div>

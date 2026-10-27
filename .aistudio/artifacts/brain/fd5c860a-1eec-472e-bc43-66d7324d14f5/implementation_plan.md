@@ -169,3 +169,22 @@ A comprehensive UI/UX overhaul across Driver Dost to deliver screen-fitted layou
    - **Authorized Domains**: Add `zahdan-443.github.io` and AI Studio sandbox domains to **Authentication > Settings > Authorized domains**.
    - **Deploy Firestore Rules**: Deploy the audited `firestore.rules` file to the Firebase Console under **Firestore Database > Rules**.
    - **Optional Access List**: For any authorized staff emails besides the owner, create document `/access/biltyAccess` with fields `allowedUIDs: []` and `allowedEmails: ['staff@example.com']`.
+
+---
+
+## 7. App-Wide Typography Harmonization & Scale Balance
+
+1. **Font Family Unification**:
+   - Safar Kharch (`TripCostView`), Toll Plaza (`TollPlazaView`), and Gari Hisab (`VehicleAccountView`) utilize `--font-serif` (with `Jameel Noori Nastaleeq` prioritized for authentic Pakistani transport calligraphy and `Playfair Display` for clean Latin numbers).
+   - Applied `font-serif` directly to `LedgerView.tsx` containers, headers, action bars, and modal sheets.
+   - Declared `.font-ledger, [data-view="ledger"]` in `src/index.css` mapped to `var(--font-serif)`.
+
+2. **Ledger Oversized Fonts Toned Down**:
+   - Replaced massive `text-2xl` and `text-3xl` headings and balances with balanced, screen-fitted `text-lg sm:text-xl font-bold font-serif` and `text-base sm:text-lg font-bold font-serif`.
+   - Scaled bottom action bar buttons (`You gave` / `You got`) from `text-sm sm:text-base font-black` to `text-xs sm:text-sm font-bold font-serif`.
+   - Scaled PIN lock keypad numbers from `text-xl font-black` to `text-base sm:text-lg font-bold font-serif`.
+   - Scaled modal amount inputs from `text-xl` to `text-base sm:text-lg font-mono font-bold`.
+
+3. **Other Pages' Micro-Fonts Scaled Up**:
+   - Replaced unreadable `text-[10px]` and `text-[11px]` micro-text across `TripCostView.tsx`, `TollPlazaView.tsx`, `VehicleAccountView.tsx`, and `HomeView.tsx` with crisp, legible `text-xs` (12px) and `text-xs sm:text-sm`.
+   - Normalized `body.urdu` base font size from `1.0625rem` to `1rem` with `line-height: 1.7` to prevent relative typography runaway while preserving Nastaleeq diacritics.

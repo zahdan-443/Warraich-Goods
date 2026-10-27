@@ -537,7 +537,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             <h1 className="text-base sm:text-lg font-bold text-[#4a4a35] leading-tight">
               {isUrdu ? 'گاڑی کا حساب و منافع لیجر' : 'Vehicle Account & Net Profit Ledger'}
             </h1>
-            <p className="text-[11px] text-[#8e8e75]">
+            <p className="text-xs text-[#8e8e75]">
               {isUrdu ? 'آمدن، اخراجات اور خالص بچت کا کھاتہ' : 'Trip earnings, operational expenses and profit ledger'}
             </p>
           </div>
@@ -596,7 +596,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <h2 className="text-base sm:text-lg font-bold text-emerald-900">
                   {isUrdu ? '1. حاصل شدہ آمدن و کرایہ جات' : '1. Freight Earnings & Incomes'}
                 </h2>
-                <p className="text-[11px] text-emerald-700 font-medium">
+                <p className="text-xs text-emerald-700 font-medium">
                   {isUrdu ? 'ہر پارٹی، مال یا چکر کا کرایہ اور نام الگ الگ درج کریں' : 'Record separate freight contracts and trip legs'}
                 </p>
               </div>
@@ -627,7 +627,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                         <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
                         <span>{isUrdu ? 'کرایہ / مال / پارٹی کا نام:' : 'Freight / Cargo / Party Name:'}</span>
                       </label>
-                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-md">
+                      <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-md">
                         {isUrdu ? 'کلک کر کے نام تبدیل کریں' : 'Click to edit name'}
                       </span>
                     </div>
@@ -663,13 +663,13 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                     </div>
                     {/* Quick amount chips for income */}
                     <div className="flex items-center gap-1 pt-1 flex-wrap">
-                      <span className="text-[10px] text-emerald-800 font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
+                      <span className="text-xs text-emerald-800 font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                       {[10000, 25000, 50000, 100000].map((amt) => (
                         <button
                           key={amt}
                           type="button"
                           onClick={() => addIncomeAmount(item.id, amt)}
-                          className="px-1.5 py-0.5 bg-emerald-100 hover:bg-emerald-200 active:scale-95 text-emerald-900 rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-emerald-300"
+                          className="px-1.5 py-0.5 bg-emerald-100 hover:bg-emerald-200 active:scale-95 text-emerald-900 rounded text-xs font-mono font-bold transition-all cursor-pointer border border-emerald-300"
                         >
                           +{amt >= 1000 ? `${amt / 1000}k` : amt}
                         </button>
@@ -716,7 +716,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <h2 className="text-base sm:text-lg font-bold text-[#4a4a35]">
                   {isUrdu ? '2. تمام سفری اخراجات کی تفصیل' : '2. Detailed Trip Expenses'}
                 </h2>
-                <p className="text-[11px] text-[#8e8e75] font-medium">
+                <p className="text-xs text-[#8e8e75] font-medium">
                   {isUrdu ? 'ڈیزل، ٹول پلازہ، چالان، روٹی، مرمت اور ڈرائیور کمیشن درج کریں' : 'Fuel, motorway tolls, fines, driver meals, repairs & commission'}
                 </p>
               </div>
@@ -750,13 +750,13 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
               <div className="flex items-center gap-1 pt-1 flex-wrap">
-                <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
+                <span className="text-xs text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                 {[1000, 2000, 5000, 10000].map((amt) => (
                   <button
                     key={amt}
                     type="button"
                     onClick={() => addAmount(setDiesel, diesel, amt)}
-                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
+                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-xs font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
                   >
                     +{amt >= 1000 ? `${amt / 1000}k` : amt}
                   </button>
@@ -781,13 +781,13 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
               <div className="flex items-center gap-1 pt-1 flex-wrap">
-                <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
+                <span className="text-xs text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                 {[500, 1000, 2000, 3000].map((amt) => (
                   <button
                     key={amt}
                     type="button"
                     onClick={() => addAmount(setToll, toll, amt)}
-                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
+                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-xs font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
                   >
                     +{amt}
                   </button>
@@ -813,13 +813,13 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
               <div className="flex items-center gap-1 pt-1 flex-wrap">
-                <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
+                <span className="text-xs text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                 {[500, 1000, 2500, 5000].map((amt) => (
                   <button
                     key={amt}
                     type="button"
                     onClick={() => addAmount(setChallan, challan, amt)}
-                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
+                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-xs font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
                   >
                     +{amt}
                   </button>
@@ -845,13 +845,13 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
               <div className="flex items-center gap-1 pt-1 flex-wrap">
-                <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
+                <span className="text-xs text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                 {[300, 500, 1000, 2000].map((amt) => (
                   <button
                     key={amt}
                     type="button"
                     onClick={() => addAmount(setRotiKharcha, rotiKharcha, amt)}
-                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
+                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-xs font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
                   >
                     +{amt}
                   </button>
@@ -877,13 +877,13 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
               <div className="flex items-center gap-1 pt-1 flex-wrap">
-                <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
+                <span className="text-xs text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                 {[200, 500, 1000].map((amt) => (
                   <button
                     key={amt}
                     type="button"
                     onClick={() => addAmount(setChowkidara, chowkidara, amt)}
-                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
+                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-xs font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
                   >
                     +{amt}
                   </button>
@@ -909,13 +909,13 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
               <div className="flex items-center gap-1 pt-1 flex-wrap">
-                <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
+                <span className="text-xs text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                 {[1000, 2000, 5000, 10000].map((amt) => (
                   <button
                     key={amt}
                     type="button"
                     onClick={() => addAmount(setGariKaam, gariKaam, amt)}
-                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
+                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-xs font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
                   >
                     +{amt >= 1000 ? `${amt / 1000}k` : amt}
                   </button>
@@ -941,13 +941,13 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <span className="text-xs font-mono font-bold text-[#8e8e75] mr-1">PKR</span>
               </div>
               <div className="flex items-center gap-1 pt-1 flex-wrap">
-                <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
+                <span className="text-xs text-[#8e8e75] font-bold">{isUrdu ? 'فوری:' : 'Quick:'}</span>
                 {[2000, 5000, 10000, 15000].map((amt) => (
                   <button
                     key={amt}
                     type="button"
                     onClick={() => addAmount(setDriverCommission, driverCommission, amt)}
-                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
+                    className="px-1.5 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded text-xs font-mono font-bold transition-all cursor-pointer border border-[#deded0]"
                   >
                     +{amt >= 1000 ? `${amt / 1000}k` : amt}
                   </button>

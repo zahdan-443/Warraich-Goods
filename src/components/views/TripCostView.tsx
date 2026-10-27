@@ -676,7 +676,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                   <h3 className="text-xs sm:text-sm font-bold text-[#4a4a35]">
                     {isUrdu ? 'روٹ موازنہ (کم خرچ بمقابلہ تیز ترین)' : 'Route Comparison (Cheapest vs Fastest)'}
                   </h3>
-                  <p className="text-[10px] text-[#8e8e75]">
+                  <p className="text-xs text-[#8e8e75]">
                     {isUrdu ? 'ٹول ٹیکس، فاصلہ و فیول لاگت کا موازنہ' : 'Compare toll, distance & fuel trade-off'}
                   </p>
                 </div>
@@ -707,7 +707,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                 ) : comparisonResult && comparisonResult.hasMultipleRoutes ? (
                   /* Multiple Viable Routes: Side-by-Side Cards (Fastest vs Cheapest) */
                   <div className="space-y-2">
-                    <p className="text-[11px] text-[#5a5a40]">
+                    <p className="text-xs text-[#5a5a40]">
                       {isUrdu
                         ? 'نیچے دیے گئے کارڈ پر کلک کریں تاکہ وہ فاصلہ اور ٹول کیلکولیٹر میں لاگو ہو سکے:'
                         : 'Tap a route card to apply its distance and toll to the calculator:'}
@@ -725,7 +725,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                         >
                           <div>
                             <div className="flex items-center justify-between gap-1 mb-1.5">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
                                 <Zap className="w-3 h-3 text-amber-600" />
                                 <span>{isUrdu ? 'تیز ترین روٹ' : 'Fastest Route'}</span>
                               </span>
@@ -739,21 +739,21 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                             </h4>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-1.5 py-1.5 px-2 bg-[#fdfbf7] rounded-xl border border-[#ecece0] text-[11px]">
+                          <div className="grid grid-cols-2 gap-1.5 py-1.5 px-2 bg-[#fdfbf7] rounded-xl border border-[#ecece0] text-xs">
                             <div>
-                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'فاصلہ' : 'Distance'}</span>
+                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'فاصلہ' : 'Distance'}</span>
                               <span className="font-mono font-bold text-[#4a4a35]">{comparisonResult.fastestRoute.distanceKm} KM</span>
                             </div>
                             <div>
-                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'ٹول ٹیکس' : 'Toll Cost'}</span>
+                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'ٹول ٹیکس' : 'Toll Cost'}</span>
                               <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.fastestRoute.tollCost.toLocaleString()}</span>
                             </div>
                             <div>
-                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'ڈیزل لاگت' : 'Fuel Cost'}</span>
+                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'ڈیزل لاگت' : 'Fuel Cost'}</span>
                               <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.fastestRoute.fuelCost.toLocaleString()}</span>
                             </div>
                             <div>
-                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'کل لاگت' : 'Total Cost'}</span>
+                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'کل لاگت' : 'Total Cost'}</span>
                               <span className="font-mono font-bold text-emerald-700">Rs {comparisonResult.fastestRoute.totalTripCost.toLocaleString()}</span>
                             </div>
                           </div>
@@ -790,7 +790,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                         >
                           <div>
                             <div className="flex items-center justify-between gap-1 mb-1.5">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-1">
+                              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-1">
                                 <Wallet className="w-3 h-3 text-emerald-700" />
                                 <span>{isUrdu ? 'سب سے کم خرچ روٹ' : 'Cheapest Route'}</span>
                               </span>
@@ -804,21 +804,21 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                             </h4>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-1.5 py-1.5 px-2 bg-[#fdfbf7] rounded-xl border border-[#ecece0] text-[11px]">
+                          <div className="grid grid-cols-2 gap-1.5 py-1.5 px-2 bg-[#fdfbf7] rounded-xl border border-[#ecece0] text-xs">
                             <div>
-                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'فاصلہ' : 'Distance'}</span>
+                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'فاصلہ' : 'Distance'}</span>
                               <span className="font-mono font-bold text-[#4a4a35]">{comparisonResult.cheapestRoute.distanceKm} KM</span>
                             </div>
                             <div>
-                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'ٹول ٹیکس' : 'Toll Cost'}</span>
+                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'ٹول ٹیکس' : 'Toll Cost'}</span>
                               <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.cheapestRoute.tollCost.toLocaleString()}</span>
                             </div>
                             <div>
-                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'ڈیزل لاگت' : 'Fuel Cost'}</span>
+                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'ڈیزل لاگت' : 'Fuel Cost'}</span>
                               <span className="font-mono font-bold text-[#4a4a35]">Rs {comparisonResult.cheapestRoute.fuelCost.toLocaleString()}</span>
                             </div>
                             <div>
-                              <span className="text-[10px] text-[#8e8e75] block">{isUrdu ? 'کل لاگت' : 'Total Cost'}</span>
+                              <span className="text-xs text-[#8e8e75] block">{isUrdu ? 'کل لاگت' : 'Total Cost'}</span>
                               <span className="font-mono font-bold text-emerald-700">Rs {comparisonResult.cheapestRoute.totalTripCost.toLocaleString()}</span>
                             </div>
                           </div>
@@ -854,7 +854,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                       >
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8b9d77]/20 text-[#4a5e38]">
+                            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#8b9d77]/20 text-[#4a5e38]">
                               {isUrdu ? 'دستیاب واحد روٹ' : 'Current Active Route'}
                             </span>
                             <span className="text-xs font-mono font-bold text-slate-700">
@@ -867,7 +867,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <div className="text-right text-[11px] font-mono font-bold text-emerald-800">
+                          <div className="text-right text-xs font-mono font-bold text-emerald-800">
                             Rs {comparisonResult.routes[0].totalTripCost.toLocaleString()}
                           </div>
                           <button
@@ -887,7 +887,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                         <p className="font-semibold">
                           {isUrdu ? 'متبادل روٹ موازنہ نوٹس:' : 'Route Comparison Notice:'}
                         </p>
-                        <p className="text-[11px] text-amber-800 mt-0.5">
+                        <p className="text-xs text-amber-800 mt-0.5">
                           {isUrdu
                             ? (comparisonResult?.informationalNoticeUr || 'اس شہر کے جوڑے کے لیے فی الوقت صرف ایک روٹ ڈیٹا دستیاب ہے۔ متبادل روٹ ڈیٹا کے بغیر موازنہ ممکن نہیں۔')
                             : (comparisonResult?.informationalNoticeEn || 'Only one route currently exists in the dataset for this city pair. Alternate route comparison requires additional route data.')}
@@ -929,7 +929,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
             </div>
             {/* Quick distance preset chips */}
             <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
-              <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری فاصلہ:' : 'Quick:'}</span>
+              <span className="text-xs text-[#8e8e75] font-bold">{isUrdu ? 'فوری فاصلہ:' : 'Quick:'}</span>
               {[25, 50, 100, 200].map((delta) => (
                 <button
                   key={delta}
@@ -938,7 +938,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                     const current = parseFloat(distance) || 0;
                     setDistance(String(current + delta));
                   }}
-                  className="px-2 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded-md text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#d5d5c5]"
+                  className="px-2 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded-md text-xs font-mono font-bold transition-all cursor-pointer border border-[#d5d5c5]"
                 >
                   +{delta} KM
                 </button>
@@ -955,7 +955,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
               <button
                 type="button"
                 onClick={() => setFuelPrice(liveDieselBenchmark)}
-                className="text-[10px] sm:text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg px-2 py-0.5 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                className="text-xs sm:text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg px-2 py-0.5 transition-all flex items-center gap-1 cursor-pointer shrink-0"
                 title={isUrdu ? 'سرکاری لائیو ریٹ لگائیں' : 'Apply Live Rate'}
               >
                 <span>{isUrdu ? `سرکاری ریٹ: Rs. ${liveDieselBenchmark}` : `Live: Rs. ${liveDieselBenchmark}`}</span>
@@ -1023,7 +1023,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
             </div>
             {/* Quick expense preset chips */}
             <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
-              <span className="text-[10px] text-[#8e8e75] font-bold">{isUrdu ? 'فوری خرچہ:' : 'Quick:'}</span>
+              <span className="text-xs text-[#8e8e75] font-bold">{isUrdu ? 'فوری خرچہ:' : 'Quick:'}</span>
               {[500, 1000, 2000, 3000, 5000].map((amt) => (
                 <button
                   key={amt}
@@ -1032,7 +1032,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                     const current = parseFloat(combinedExpenses) || 0;
                     setCombinedExpenses(String(current + amt));
                   }}
-                  className="px-2 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded-md text-[10px] font-mono font-bold transition-all cursor-pointer border border-[#d5d5c5]"
+                  className="px-2 py-0.5 bg-[#f0f0e4] hover:bg-[#e2e2d5] active:scale-95 text-[#4a4a35] rounded-md text-xs font-mono font-bold transition-all cursor-pointer border border-[#d5d5c5]"
                 >
                   +{amt}
                 </button>
@@ -1046,7 +1046,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
               <label className="block text-xs sm:text-sm font-black text-[#383827]">
                 {isUrdu ? 'متوقع کرایہ آمدن (اختیاری)' : 'Expected Freight Income (Optional)'}
               </label>
-              <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-bold">
+              <span className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-bold">
                 {isUrdu ? 'نفع فی کلومیٹر تخمینہ' : 'Profit/KM Preview'}
               </span>
             </div>
@@ -1089,7 +1089,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                       <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                       {isUrdu ? 'متوقع منافع / نقصان کا فوری تخمینہ:' : 'Live Profitability Preview:'}
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 ${
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-black flex items-center gap-1 ${
                       isProfit ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
                     }`}>
                       {isProfit ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -1098,17 +1098,17 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                   </div>
                   <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
                     <div className="bg-white/95 p-2 rounded-lg border border-slate-200">
-                      <span className="text-[10px] text-slate-500 block">{isUrdu ? 'کل سفری خرچ' : 'Total Expense'}</span>
+                      <span className="text-xs text-slate-500 block">{isUrdu ? 'کل سفری خرچ' : 'Total Expense'}</span>
                       <span className="font-mono font-bold text-slate-800">PKR {totalExp.toLocaleString()}</span>
                     </div>
                     <div className="bg-white/95 p-2 rounded-lg border border-slate-200">
-                      <span className="text-[10px] text-slate-500 block">{isUrdu ? 'خالص نفع / نقصان' : 'Net Profit/Loss'}</span>
+                      <span className="text-xs text-slate-500 block">{isUrdu ? 'خالص نفع / نقصان' : 'Net Profit/Loss'}</span>
                       <span className={`font-mono font-bold ${isProfit ? 'text-emerald-700' : 'text-rose-600'}`}>
                         {isProfit ? '+' : '-'}PKR {Math.abs(netP).toLocaleString()}
                       </span>
                     </div>
                     <div className="bg-white/95 p-2 rounded-lg border border-slate-200">
-                      <span className="text-[10px] text-slate-500 block">{isUrdu ? 'نفع فی KM' : 'Profit / KM'}</span>
+                      <span className="text-xs text-slate-500 block">{isUrdu ? 'نفع فی KM' : 'Profit / KM'}</span>
                       <span className="font-mono font-bold text-indigo-700">
                         {pPerKm === 'N/A' ? 'N/A' : `PKR ${pPerKm}`}
                       </span>
@@ -1133,7 +1133,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
               </span>
             </div>
             {isReturn && (
-              <span className="text-[10px] font-bold text-[#8b9d77] bg-[#eef4ea] px-2 py-0.5 rounded-md">
+              <span className="text-xs font-bold text-[#8b9d77] bg-[#eef4ea] px-2 py-0.5 rounded-md">
                 2x {isUrdu ? 'فاصلہ' : 'Distance'}
               </span>
             )}
@@ -1197,7 +1197,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
             <h1 className="text-base sm:text-lg font-bold text-[#4a4a35] leading-tight">
               {isUrdu ? 'سفری لاگت اور اخراجات کا نتیجہ' : 'Trip Cost Result Breakdown'}
             </h1>
-            <p className="text-[11px] text-[#8e8e75]">
+            <p className="text-xs text-[#8e8e75]">
               {lastCalc?.origin} ➔ {lastCalc?.dest}
             </p>
           </div>
@@ -1228,7 +1228,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
             <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight">
               PKR {(Number(lastCalc.total) || 0).toLocaleString('en-US')}
             </div>
-            <span className="text-[11px] opacity-80 block">
+            <span className="text-xs opacity-80 block">
               {lastCalc.dist} KM {lastCalc.isReturn ? (isUrdu ? '(راؤنڈ ٹرپ دگنا فاصلہ)' : '(Round Trip 2x Distance)') : ''}
             </span>
           </div>
@@ -1256,7 +1256,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                     {(lastCalc.netProfitVal ?? 0) >= 0 ? (isUrdu ? 'خالص نفع / بچت' : 'Net Profit') : (isUrdu ? 'خسارہ' : 'Net Loss')}
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/80 text-amber-900 border border-amber-300">
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-200/80 text-amber-900 border border-amber-300">
                     {isUrdu ? 'کرایہ آمدن شامل کریں' : 'Add Freight Income'}
                   </span>
                 )}
@@ -1264,7 +1264,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 
               {/* Inline quick edit for expected income if not set */}
               <div className="flex items-center gap-2 pt-1 pb-0.5">
-                <span className="text-[11px] font-bold text-slate-700 shrink-0">
+                <span className="text-xs font-bold text-slate-700 shrink-0">
                   {isUrdu ? 'متوقع کرایہ آمدن:' : 'Expected Freight:'}
                 </span>
                 <div className="flex-1 flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1 focus-within:border-emerald-500 shadow-2xs">
@@ -1292,20 +1292,20 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                     placeholder={isUrdu ? 'کرایہ رقم درج کریں (PKR)' : 'Enter freight (PKR)'}
                     className="w-full bg-transparent font-mono font-bold text-xs text-slate-900 focus:outline-none"
                   />
-                  <span className="text-[10px] font-mono font-bold text-slate-500">PKR</span>
+                  <span className="text-xs font-mono font-bold text-slate-500">PKR</span>
                 </div>
               </div>
 
               {lastCalc.expectedIncomeVal && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-center">
                   <div className="bg-white/80 p-2.5 rounded-2xl border border-emerald-200/60 shadow-2xs">
-                    <span className="text-[10px] text-slate-600 font-bold block">{isUrdu ? 'کل کرایہ آمدن' : 'Expected Income'}</span>
+                    <span className="text-xs text-slate-600 font-bold block">{isUrdu ? 'کل کرایہ آمدن' : 'Expected Income'}</span>
                     <span className="font-mono font-black text-sm sm:text-base text-slate-900">
                       Rs {lastCalc.expectedIncomeVal.toLocaleString()}
                     </span>
                   </div>
                   <div className="bg-white/80 p-2.5 rounded-2xl border border-emerald-200/60 shadow-2xs">
-                    <span className="text-[10px] text-slate-600 font-bold block">{isUrdu ? 'خالص نفع / نقصان' : 'Net Profit / Loss'}</span>
+                    <span className="text-xs text-slate-600 font-bold block">{isUrdu ? 'خالص نفع / نقصان' : 'Net Profit / Loss'}</span>
                     <span className={`font-mono font-black text-sm sm:text-base ${
                       (lastCalc.netProfitVal ?? 0) >= 0 ? 'text-emerald-700' : 'text-red-600'
                     }`}>
@@ -1313,7 +1313,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                     </span>
                   </div>
                   <div className="bg-white/80 p-2.5 rounded-2xl border border-emerald-200/60 shadow-2xs col-span-2 sm:col-span-1">
-                    <span className="text-[10px] text-slate-600 font-bold block">{isUrdu ? 'نفع فی کلومیٹر' : 'Profit Per KM'}</span>
+                    <span className="text-xs text-slate-600 font-bold block">{isUrdu ? 'نفع فی کلومیٹر' : 'Profit Per KM'}</span>
                     <span className="font-mono font-black text-sm sm:text-base text-indigo-700">
                       {lastCalc.profitPerKmVal === 'N/A' || lastCalc.profitPerKmVal === undefined 
                         ? 'N/A' 

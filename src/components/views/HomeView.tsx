@@ -281,7 +281,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <div className="flex items-center gap-2">
                 <Crown className="w-4 h-4 text-amber-600" />
                 <span className="font-bold font-serif">{lang === 'ur' ? 'آنر کنٹرول پینل (مخفی)' : 'Fleet Owner Panel (Minimized)'}</span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold border border-amber-300">
+                <span className="text-xs font-mono px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold border border-amber-300">
                   {totalBiltyCount} {lang === 'ur' ? 'بلٹیاں' : 'Bilties'}
                 </span>
               </div>
@@ -290,7 +290,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <button
                   type="button"
                   onClick={() => toggleOwnerBanner(false)}
-                  className="px-2.5 py-1 bg-amber-200/80 hover:bg-amber-300 rounded-lg font-bold text-[11px] text-amber-900 transition-all flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1 bg-amber-200/80 hover:bg-amber-300 rounded-lg font-bold text-xs text-amber-900 transition-all flex items-center gap-1 cursor-pointer"
                 >
                   <Eye className="w-3 h-3" />
                   <span>{lang === 'ur' ? 'پینل دکھائیں' : 'Show Panel'}</span>
@@ -298,7 +298,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <button
                   type="button"
                   onClick={onOpenBiltyAccess}
-                  className="px-3 py-1 bg-[#b58b28] hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] transition-all cursor-pointer"
+                  className="px-3 py-1 bg-[#b58b28] hover:bg-amber-700 text-white rounded-lg font-bold text-xs transition-all cursor-pointer"
                 >
                   {lang === 'ur' ? 'کھولیں' : 'Open'}
                 </button>
@@ -315,11 +315,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   <div>
                     <div className="font-bold text-amber-950 font-serif text-sm flex items-center gap-2">
                       <span>{lang === 'ur' ? 'وارائچ گڈز آنر کمانڈ سینٹر' : 'Warraich Goods Master Center'}</span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold border border-amber-300">
+                      <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold border border-amber-300">
                         Master Admin
                       </span>
                     </div>
-                    <p className="text-[11px] text-amber-800 font-sans mt-0.5">
+                    <p className="text-xs text-amber-800 font-sans mt-0.5">
                       {lang === 'ur' 
                         ? 'بلٹی انتظام، ایکسل ایکسپورٹ، مکمل کلاؤڈ بیک اپ و مالیاتی کنٹرول' 
                         : 'Bilty management, Excel export, cloud backup & financial control'}
@@ -332,7 +332,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     type="button"
                     onClick={() => toggleOwnerBanner(true)}
                     title={lang === 'ur' ? 'ہوم اسکرین سے پینل چھپائیں' : 'Hide panel from home'}
-                    className="p-1.5 text-amber-800 hover:text-amber-950 hover:bg-amber-200/60 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-[11px]"
+                    className="p-1.5 text-amber-800 hover:text-amber-950 hover:bg-amber-200/60 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs"
                   >
                     <EyeOff className="w-3.5 h-3.5" />
                     <span>{lang === 'ur' ? 'چھپائیں' : 'Hide'}</span>
@@ -351,7 +351,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               {/* Real-time Bilty & Business KPI Summary */}
               <div className="grid grid-cols-3 gap-2 pt-1 border-t border-amber-300/60">
                 <div className="p-2.5 bg-white/90 rounded-2xl border border-amber-200 text-center">
-                  <div className="text-[10px] text-amber-800 font-bold">
+                  <div className="text-xs text-amber-800 font-bold">
                     {lang === 'ur' ? 'کل بلٹیاں' : 'Total Bilties'}
                   </div>
                   <div className="text-base font-bold font-mono text-amber-950 mt-0.5">
@@ -360,7 +360,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </div>
 
                 <div className="p-2.5 bg-white/90 rounded-2xl border border-amber-200 text-center">
-                  <div className="text-[10px] text-emerald-800 font-bold">
+                  <div className="text-xs text-emerald-800 font-bold">
                     {lang === 'ur' ? 'کل فریٹ حجم' : 'Total Freight'}
                   </div>
                   <div className="text-xs sm:text-sm font-bold font-mono text-emerald-950 mt-0.5 truncate">
@@ -369,7 +369,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 </div>
 
                 <div className="p-2.5 bg-white/90 rounded-2xl border border-amber-200 text-center">
-                  <div className="text-[10px] text-rose-800 font-bold">
+                  <div className="text-xs text-rose-800 font-bold">
                     {lang === 'ur' ? 'بقایا وصولی' : 'Pending'}
                   </div>
                   <div className="text-xs sm:text-sm font-bold font-mono text-rose-950 mt-0.5 truncate">
@@ -383,7 +383,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onNavigate('bilty', 'create')}
-                  className="flex-1 py-2 px-3 bg-white hover:bg-amber-50/80 border border-amber-300 rounded-xl font-bold text-[11px] text-amber-950 text-center transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2 px-3 bg-white hover:bg-amber-50/80 border border-amber-300 rounded-xl font-bold text-xs text-amber-950 text-center transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center gap-1.5"
                 >
                   <Plus className="w-3.5 h-3.5 text-emerald-700" />
                   <span>{lang === 'ur' ? 'نئی بلٹی بنائیں' : 'Create Bilty'}</span>
@@ -392,7 +392,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onNavigate('bilty', 'ledger')}
-                  className="flex-1 py-2 px-3 bg-white hover:bg-amber-50/80 border border-amber-300 rounded-xl font-bold text-[11px] text-amber-950 text-center transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2 px-3 bg-white hover:bg-amber-50/80 border border-amber-300 rounded-xl font-bold text-xs text-amber-950 text-center transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center gap-1.5"
                 >
                   <Receipt className="w-3.5 h-3.5 text-amber-700" />
                   <span>{lang === 'ur' ? 'تمام بلٹیاں دیکھیں' : 'View All Bilties'}</span>
@@ -483,7 +483,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                             </span>
                           </div>
                           {item.subIdentifier && (
-                            <p className="text-[11px] text-slate-600 mt-0.5 font-medium">
+                            <p className="text-xs text-slate-600 mt-0.5 font-medium">
                               {item.subIdentifier}
                             </p>
                           )}
@@ -491,7 +491,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                       </div>
 
                       {/* Expiry Emergency Badge */}
-                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 font-sans shadow-2xs ${
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold shrink-0 font-sans shadow-2xs ${
                         isCritical
                           ? 'bg-rose-600 text-white ring-2 ring-rose-200'
                           : isWarningUrgent
@@ -504,7 +504,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                       </span>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-700 pt-2.5 border-t border-slate-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-700 pt-2.5 border-t border-slate-200">
                       <div className="flex items-center gap-1 font-mono">
                         <Clock className="w-3.5 h-3.5 text-slate-500" />
                         <span>{lang === 'ur' ? 'آخری تاریخ:' : 'Due Date:'} <b>{item.expiryDateStr}</b></span>
@@ -668,7 +668,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   <span className="text-xs font-bold text-[#4a4a35] block">
                     {lang === 'ur' ? 'آفیشل بلٹی لیجر (آنر پینل):' : 'Official Bilty & Ledger (Owner):'}
                   </span>
-                  <span className="text-[10px] text-slate-500 font-mono">
+                  <span className="text-xs text-slate-500 font-mono">
                     {lang === 'ur'
                       ? `${bilties.length} بلٹیاں محفوظ ہیں`
                       : `${bilties.length} Bilties in Ledger`}
@@ -702,7 +702,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Modal Header */}
             <header className="flex justify-between items-start border-b border-[#ecece0] pb-6">
               <div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-[#8b9d77]/15 text-[#5a5a40] uppercase tracking-wider mb-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#8b9d77]/15 text-[#5a5a40] uppercase tracking-wider mb-2">
                   <BookOpen className="w-3 h-3 text-[#8b9d77]" />
                   {lang === 'ur' ? 'سفر ڈائری لاگز' : 'Safar Diary Logs'}
                 </span>
@@ -722,21 +722,21 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Stats Bars Section */}
             <div className="grid grid-cols-3 gap-3">
               <div className="p-4 bg-[#f9f9f2] rounded-2xl border border-[#ecece0]/50 text-center transition-all hover:border-[#8b9d77]">
-                <div className="text-[10px] uppercase tracking-tighter text-[#8e8e75] mb-1 font-sans font-semibold">
+                <div className="text-xs uppercase tracking-tighter text-[#8e8e75] mb-1 font-sans font-semibold">
                   {t.stats.trips}
                 </div>
                 <div className="text-2xl font-serif font-bold text-[#5a5a40]">{trips.length}</div>
               </div>
               
               <div className="p-4 bg-[#f9f9f2] rounded-2xl border border-[#ecece0]/50 text-center transition-all hover:border-[#8b9d77]">
-                <div className="text-[10px] uppercase tracking-tighter text-[#8e8e75] mb-1 font-sans font-semibold">
+                <div className="text-xs uppercase tracking-tighter text-[#8e8e75] mb-1 font-sans font-semibold">
                   {t.stats.vehicles}
                 </div>
                 <div className="text-2xl font-serif font-bold text-[#5a5a40]">{vehicles.length}</div>
               </div>
 
               <div className="p-4 bg-[#f9f9f2] rounded-2xl border border-[#ecece0]/50 text-center transition-all hover:border-[#8b9d77]">
-                <div className="text-[10px] uppercase tracking-tighter text-[#8e8e75] mb-1 font-sans font-semibold">
+                <div className="text-xs uppercase tracking-tighter text-[#8e8e75] mb-1 font-sans font-semibold">
                   {t.stats.drivers}
                 </div>
                 <div className="text-2xl font-serif font-bold text-[#5a5a40]">{drivers.length}</div>
@@ -800,7 +800,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                         </div>
                         <div>
                           <h4 className="font-serif font-bold text-sm text-[#4a4a35]">{trip.name}</h4>
-                          <p className="text-[11px] text-[#8e8e75] mt-0.5 font-sans">
+                          <p className="text-xs text-[#8e8e75] mt-0.5 font-sans">
                             {trip.fuelType} · {trip.dist} km · {trip.consumed} L
                           </p>
                         </div>
@@ -843,7 +843,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Modal Header */}
             <header className="flex justify-between items-start border-b border-[#ecece0] pb-6">
               <div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-[#8b9d77]/15 text-[#5a5a40] uppercase tracking-wider mb-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#8b9d77]/15 text-[#5a5a40] uppercase tracking-wider mb-2">
                   <Wrench className="w-3 h-3 text-[#8b9d77]" />
                   {lang === 'ur' ? 'کوئیک پورٹل' : 'Quick Portal'}
                 </span>
