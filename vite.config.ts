@@ -48,7 +48,6 @@ export default defineConfig(() => {
     },
     optimizeDeps: {
       include: ['react', 'react-dom', 'lucide-react'],
-      force: true,
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

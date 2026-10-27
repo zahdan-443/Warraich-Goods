@@ -6,7 +6,20 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+
+// Parse port and host from CLI args (--port, --host) or environment
+let port = Number(process.env.PORT) || 3000;
+const portArgIndex = process.argv.indexOf('--port');
+if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
+  const parsed = Number(process.argv[portArgIndex + 1]);
+  if (!isNaN(parsed) && parsed > 0) port = parsed;
+}
+
+let host = '0.0.0.0';
+const hostArgIndex = process.argv.indexOf('--host');
+if (hostArgIndex !== -1 && process.argv[hostArgIndex + 1]) {
+  host = process.argv[hostArgIndex + 1];
+}
 
 // CORS middleware for cross-origin client requests (PWA, mobile, preview, GitHub Pages)
 app.use((req, res, next) => {
@@ -89,9 +102,27 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Driver Dost Server running on http://0.0.0.0:${PORT}`);
+  const server = app.listen(port, host, () => {
+    console.log(`Driver Dost Server running on http://${host}:${port}`);
   });
+
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`Port ${port} is currently in use, process will exit cleanly.`);
+      process.exit(0);
+    } else {
+      console.error('Server error:', err);
+    }
+  });
+
+  const shutdown = () => {
+    server.close(() => {
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 startServer().catch((err) => {
