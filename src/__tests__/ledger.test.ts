@@ -382,7 +382,33 @@ describe('Digital Khata (کھاتہ) Unit Tests', () => {
     });
   });
 
-  describe('6. CRUD & 5-Second Undo Operation', () => {
+  describe('6. Unified Ledger & Account Retrieval', () => {
+    it('retrieves all parties and brokers together in unified list when no kind specified', () => {
+      saveOrUpdateLedgerAccount({
+        kind: 'party',
+        name: 'Alpha Traders',
+        openingAmount: 10000,
+        openingDirection: 'get'
+      });
+
+      saveOrUpdateLedgerAccount({
+        kind: 'broker',
+        name: 'Beta Commission Agent',
+        openingAmount: 2000,
+        openingDirection: 'give'
+      });
+
+      const allAccounts = getLedgerAccounts();
+      expect(allAccounts.length).toBe(2);
+      expect(allAccounts.some(a => a.name === 'Alpha Traders')).toBe(true);
+      expect(allAccounts.some(a => a.name === 'Beta Commission Agent')).toBe(true);
+
+      const summary = calculateAccountsSummary(allAccounts, []);
+      expect(summary.totalWillGet).toBe(10000);
+      expect(summary.totalWillGive).toBe(2000);
+      expect(summary.netBalance).toBe(8000);
+    });
+
     it('saves and updates accounts and entries in local storage', () => {
       const acc = saveOrUpdateLedgerAccount({
         kind: 'party',
@@ -396,7 +422,7 @@ describe('Digital Khata (کھاتہ) Unit Tests', () => {
       expect(acc.name).toBe('Tariq Textiles');
       expect(acc.phone).toBe('923001234567');
 
-      const accounts = getLedgerAccounts('party');
+      const accounts = getLedgerAccounts();
       expect(accounts.length).toBe(1);
 
       const entry = saveOrUpdateLedgerEntry({
@@ -422,7 +448,7 @@ describe('Digital Khata (کھاتہ) Unit Tests', () => {
     });
   });
 
-  describe('7. Cashbook Day Summary', () => {
+  describe('7. Cashbook Day Summary (Gari Hisab - Roznamcha)', () => {
     it('calculates opening balance, in, out, and closing balance correctly for a date', () => {
       const cashList: CashEntry[] = [
         {
