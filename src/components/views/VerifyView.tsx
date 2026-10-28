@@ -23,12 +23,9 @@ import {
   QrCode,
   Share2,
   Camera,
-  Upload,
-  PackageCheck,
-  WifiOff
+  Upload
 } from 'lucide-react';
 import { BiltyVerificationCard } from './BiltyVerificationCard';
-import { PodConfirmationModal } from './PodConfirmationModal';
 import { PublicImage } from '../PublicImage';
 import { getStoredBilties } from '../../utils/storage';
 import { getBiltyVerificationUrl } from '../../utils/biltyHelpers';
@@ -112,8 +109,6 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
   const [isBiltyLoading, setIsBiltyLoading] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [scanStatus, setScanStatus] = useState<string>('');
-  const [isPodModalOpen, setIsPodModalOpen] = useState(false);
-  const [podNotice, setPodNotice] = useState<{ message: string; isOffline: boolean } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleVerifyBilty = async (q?: string, tokenInput?: string) => {
@@ -146,7 +141,22 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
     });
 
     if (localMatch) {
-      setVerifiedBilty(localMatch);
+      const publicBilty: any = {
+        ...localMatch,
+        senderCnic: '',
+        senderMobile: '',
+        receiverMobile: '',
+        mobileNo: '',
+        total: 0,
+        advance: 0,
+        payable: 0,
+        paymentStatus: (localMatch.payable !== undefined && Number(localMatch.payable) <= 0 && Number(localMatch.total) > 0)
+          ? 'paid'
+          : (Number(localMatch.payable) > 0 ? 'topay' : undefined),
+        isDelivered: undefined,
+        podConfirmation: undefined
+      };
+      setVerifiedBilty(publicBilty);
       setIsBiltyLoading(false);
       return;
     }
@@ -187,7 +197,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
         }
 
         if (remoteDocData) {
-          const publicBilty: BiltyRecord = {
+          const publicBilty: any = {
             id: typeof remoteDocData.id === 'number' ? remoteDocData.id : Date.now(),
             biltyNo: remoteDocData.biltyNo || rawTerm.toUpperCase(),
             vehicleNo: remoteDocData.vehicleNo || '',
@@ -201,18 +211,21 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
             senderMobile: '',
             receiverName: remoteDocData.receiverName || '',
             receiverMobile: '',
+            senderAddress: remoteDocData.senderAddress || '',
+            receiverAddress: remoteDocData.receiverAddress || '',
             senderCnic: '',
             qty: remoteDocData.qty || '',
             itemDescription: remoteDocData.itemDescription || '',
             weight: remoteDocData.weight || '',
-            total: typeof remoteDocData.total === 'number' ? remoteDocData.total : 0,
-            advance: typeof remoteDocData.advance === 'number' ? remoteDocData.advance : 0,
-            payable: typeof remoteDocData.payable === 'number' ? remoteDocData.payable : 0,
-            consignor: remoteDocData.consignor || '',
-            consignee: remoteDocData.consignee || '',
-            receivedBy: remoteDocData.receivedBy || remoteDocData.podConfirmation?.receiverName || '',
-            podConfirmation: remoteDocData.podConfirmation || undefined,
-            isDelivered: remoteDocData.isDelivered || !!remoteDocData.podConfirmation
+            paymentStatus: remoteDocData.paymentStatus || undefined,
+            total: 0,
+            advance: 0,
+            payable: 0,
+            consignor: remoteDocData.senderName || '',
+            consignee: remoteDocData.receiverName || '',
+            receivedBy: '',
+            podConfirmation: undefined,
+            isDelivered: undefined
           };
           setVerifiedBilty(publicBilty);
           setIsBiltyLoading(false);
@@ -1314,116 +1327,6 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     setBiltySearchAttempted(false);
                   }}
                 />
-
-                {/* POD Notification Message Banner */}
-                {podNotice && (
-                  <div className={`max-w-2xl mx-auto p-4 rounded-3xl text-xs sm:text-sm font-bold flex items-center gap-2.5 shadow-sm animate-in fade-in ${
-                    podNotice.isOffline
-                      ? 'bg-amber-50 text-amber-900 border-2 border-amber-300'
-                      : 'bg-emerald-50 text-emerald-900 border-2 border-emerald-400'
-                  }`}>
-                    {podNotice.isOffline ? (
-                      <WifiOff className="w-5 h-5 shrink-0 text-amber-600" />
-                    ) : (
-                      <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
-                    )}
-                    <span>{podNotice.message}</span>
-                  </div>
-                )}
-
-                {/* 1. "Maal Mil Gaya / Confirm Received" Delivery Confirmation Action */}
-                {!verifiedBilty.podConfirmation && !verifiedBilty.isDelivered && (
-                  <div className="max-w-2xl mx-auto p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-white/20 text-white flex items-center justify-center shrink-0 shadow-xs">
-                        <PackageCheck className="w-7 h-7" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-sm sm:text-base font-serif">
-                          {isUrdu ? 'کیا آپ کو مال وصول ہو گیا ہے؟' : 'Have you received this cargo?'}
-                        </h4>
-                        <p className="text-xs text-emerald-100 mt-0.5">
-                          {isUrdu
-                            ? 'ڈیجیٹل وصولی رسید (POD) درج کرنے کے لیے تصدیق بٹن دبائیں۔'
-                            : 'Submit digital Proof of Delivery (POD) confirmation.'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setIsPodModalOpen(true)}
-                      className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-white hover:bg-emerald-50 text-emerald-950 font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 shrink-0"
-                    >
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>{isUrdu ? 'مال مل گیا / Confirm Received' : 'Maal Mil Gaya / Confirm Received'}</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Actions row: Copy Link, Share WhatsApp */}
-                <div className="max-w-2xl mx-auto flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-[#fdfbf7] border border-[#ecece0]">
-                  <div className="text-xs text-[#5a5a40]">
-                    <span className="font-bold">{isUrdu ? 'آفیشل تصدیقی لنک:' : 'Official Verification Link:'}</span>
-                    <div className="font-mono text-[11px] text-[#8b9d77] truncate max-w-xs sm:max-w-md mt-0.5">
-                      {getBiltyVerificationUrl(verifiedBilty.biltyNo)}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const url = getBiltyVerificationUrl(verifiedBilty.biltyNo);
-                        navigator.clipboard.writeText(url);
-                        setCopiedLink(true);
-                        setTimeout(() => setCopiedLink(false), 2000);
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-white border border-[#ecece0] hover:border-[#8b9d77] text-xs font-bold text-[#4a4a35] flex items-center gap-1.5 cursor-pointer transition-all"
-                    >
-                      {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedLink ? (isUrdu ? 'کاپی ہوگیا' : 'Copied!') : (isUrdu ? 'لنک کاپی' : 'Copy Link')}</span>
-                    </button>
-
-                    <a
-                      href={`https://wa.me/?text=${encodeURIComponent(
-                        (isUrdu ? 'ورائچ گڈز ٹرانسپورٹ کمپنی - تصدیق شدہ بلٹی نمبر ' : 'Warraich Goods Transport Co. - Verified Bilty #') +
-                        verifiedBilty.biltyNo + '\n' +
-                        (isUrdu ? 'گاڑی نمبر: ' : 'Vehicle: ') + (verifiedBilty.vehicleNo || 'N/A') + '\n' +
-                        (isUrdu ? 'روٹ: ' : 'Route: ') + verifiedBilty.sendingCity + ' ta ' + verifiedBilty.receivingCity + '\n' +
-                        (isUrdu ? 'تصدیقی پورٹل: ' : 'Verification Link: ') + getBiltyVerificationUrl(verifiedBilty.biltyNo)
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
-                    >
-                      <Share2 className="w-3.5 h-3.5" />
-                      <span>{isUrdu ? 'واٹس ایپ شیئر' : 'WhatsApp'}</span>
-                    </a>
-                  </div>
-                </div>
-
-                {/* Digital Proof of Delivery Modal */}
-                <PodConfirmationModal
-                  lang={lang}
-                  bilty={verifiedBilty}
-                  isOpen={isPodModalOpen}
-                  onClose={() => setIsPodModalOpen(false)}
-                  onConfirmed={(updatedRecord, isOfflineQueued) => {
-                    setVerifiedBilty(updatedRecord);
-                    setPodNotice({
-                      isOffline: isOfflineQueued,
-                      message: isOfflineQueued
-                        ? (isUrdu
-                            ? 'Confirmation saved — will sync when online. (وصولی تصدیق محفوظ ہو گئی — آن لائن ہونے پر خودکار سنک ہو جائے گی)'
-                            : 'Confirmation saved — will sync when online')
-                        : (isUrdu
-                            ? 'مال وصولی کی تصدیق کامیابی سے درج ہو گئی۔'
-                            : 'Proof of Delivery (POD) confirmed successfully!')
-                    });
-                    setTimeout(() => setPodNotice(null), 8000);
-                  }}
-                />
               </div>
             ) : (
               <div className="space-y-6">
@@ -1597,8 +1500,8 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                                 {b.sendingCity} → {b.receivingCity}
                               </span>
                             </div>
-                            <span className="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                              Rs {(b.total || 0).toLocaleString()}
+                            <span className="text-[10px] font-mono text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                              {b.vehicleNo || (isUrdu ? 'تصدیق شدہ' : 'Verified')}
                             </span>
                           </button>
                         ))}

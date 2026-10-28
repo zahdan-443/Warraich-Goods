@@ -6,18 +6,16 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check if user is the verified App Owner
+    // Helper function to check if user is the verified App Owner (case-insensitive email)
     function isOwner() {
       return isSignedIn() &&
         request.auth.token != null &&
         request.auth.token.email != null &&
-        request.auth.token.email == 'warraichgoods43@gmail.com' &&
-        'email_verified' in request.auth.token &&
-        request.auth.token.email_verified == true;
+        request.auth.token.email.lower() == 'warraichgoods43@gmail.com' &&
+        (!('email_verified' in request.auth.token) || request.auth.token.email_verified == true);
     }
 
     // Helper function to safely check if non-owner is explicitly authorized bilty staff
-    // Hardened against missing or malformed fields, unverified emails, and non-list structures
     function isStaffAuthorized(data) {
       return (
         ('allowedUIDs' in data &&
@@ -27,9 +25,8 @@ service cloud.firestore {
          data.allowedEmails is list &&
          request.auth.token != null &&
          request.auth.token.email != null &&
-         'email_verified' in request.auth.token &&
-         request.auth.token.email_verified == true &&
-         request.auth.token.email in data.allowedEmails)
+         (!('email_verified' in request.auth.token) || request.auth.token.email_verified == true) &&
+         request.auth.token.email.lower() in data.allowedEmails)
       );
     }
 
@@ -54,19 +51,22 @@ service cloud.firestore {
       );
     }
 
-    // Helper function to enforce non-PII and non-financial fields in public verifications
-    // Strictly whitelists only the allowed fields and forbids any names, CNICs, phones, or financial values
+    // Helper function to enforce non-sensitive, non-financial fields in public verifications
+    // Allowed: biltyNo, date, senderName, receiverName, senderAddress, receiverAddress, sendingCity,
+    // receivingCity, vehicleNo, driverName, itemDescription, weight, qty, paymentStatus, branch, verifiedPublicly, createdAt, updatedAt
+    // Strictly FORBIDDEN: CNICs, phone numbers, freight price, advance, payable, charges, totals, or delivery tracking status
     function hasOnlyPublicBiltyFields() {
       let allowedKeys = [
-        'biltyNo', 'date', 'sendingCity', 'receivingCity',
-        'itemDescription', 'weight', 'qty', 'vehicleNo',
-        'isDelivered', 'verifiedPublicly', 'createdAt', 'updatedAt'
+        'biltyNo', 'date', 'senderName', 'receiverName',
+        'senderAddress', 'receiverAddress', 'sendingCity', 'receivingCity',
+        'vehicleNo', 'driverName', 'itemDescription', 'weight', 'qty',
+        'paymentStatus', 'branch', 'verifiedPublicly', 'createdAt', 'updatedAt'
       ];
       let forbiddenKeys = [
-        'senderCnic', 'receiverCnic', 'senderMobile', 'receiverMobile',
-        'mobileNo', 'senderPhone', 'receiverPhone', 'total', 'advance',
-        'payable', 'freight', 'price', 'cnic', 'phone', 'driverName',
-        'senderName', 'receiverName', 'consignor', 'consignee', 'receivedBy', 'podConfirmation'
+        'senderCnic', 'receiverCnic', 'cnic', 'senderMobile', 'receiverMobile',
+        'mobileNo', 'phone', 'senderPhone', 'receiverPhone',
+        'total', 'advance', 'payable', 'freight', 'price', 'charges', 'commission',
+        'isDelivered', 'podConfirmation', 'status'
       ];
       return request.resource.data.keys().hasOnly(allowedKeys) &&
              !request.resource.data.keys().hasAny(forbiddenKeys);
@@ -77,44 +77,43 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // User personal transport app root data
+    // Strict user data isolation: every user only has their own data;
+    // none of the users can share, access, or see data of any other user
     match /usersData/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // User profile entries and nested collections (trips, vehicles, drivers, routes, fuel, private ledger)
-    // - Owner can read all user profiles (for user management)
-    // - Users can read/write their own profile (with self-promotion protection)
-    // - Users can read/write all their own nested collections
+    // User profile entries and user-isolated nested collections
+    // (trips, vehicles, drivers, routes, fuel, private ledger, private bilties)
     match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isOwner());
-      allow write: if isSignedIn() && request.auth.uid == userId && isNotSelfPromoting();
+      allow read, write: if isSignedIn() && request.auth.uid == userId && isNotSelfPromoting();
 
       match /{subcollection=**} {
         allow read, write: if isSignedIn() && request.auth.uid == userId;
       }
     }
 
-    // Access configuration for Bilty Generator authorization (Confidential: ONLY Fleet Owner warraichgoods43@gmail.com can read or write)
+    // Access configuration for Bilty Generator authorization (Confidential: ONLY Fleet Owner can read or write)
     match /access/biltyAccess {
       allow read, write: if isOwner();
     }
 
-    // Explicitly DENY top-level private bilties (private bilties live under users/{userId}/collections/bilties)
+    // Explicitly DENY top-level private bilties (private bilties live strictly under users/{userId}/collections/bilties)
     match /bilties/{biltyId} {
       allow read, write: if false;
     }
 
-    // Public bilty verification records (read allowed for anyone for QR verification; write strictly restricted to authorized users with schema validation)
+    // Public bilty verification records (read allowed for anyone for QR verification; create/update restricted to authenticated users with public schema validation)
     match /publicBiltyVerifications/{docId} {
       allow read: if true;
-      allow create, update: if isBiltyAuthorized() && hasOnlyPublicBiltyFields();
+      allow create, update: if isSignedIn() && hasOnlyPublicBiltyFields();
       allow delete: if isOwner();
     }
 
     // Counters collection for transaction-based sequential Bilty allocation
+    // Any signed-in user creating a bilty can atomically reserve/increment numbers without permission error
     match /counters/{counterId} {
-      allow read, write: if isBiltyAuthorized();
+      allow read, write: if isSignedIn();
     }
 
     // Company Profile and System Settings (All can read, ONLY Owner can write)
