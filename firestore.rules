@@ -60,13 +60,13 @@ service cloud.firestore {
       let allowedKeys = [
         'biltyNo', 'date', 'sendingCity', 'receivingCity',
         'itemDescription', 'weight', 'qty', 'vehicleNo',
-        'isDelivered', 'verifiedPublicly', 'createdAt', 'updatedAt'
+        'verifiedPublicly', 'createdAt', 'updatedAt'
       ];
       let forbiddenKeys = [
         'senderCnic', 'receiverCnic', 'senderMobile', 'receiverMobile',
         'mobileNo', 'senderPhone', 'receiverPhone', 'total', 'advance',
         'payable', 'freight', 'price', 'cnic', 'phone', 'driverName',
-        'senderName', 'receiverName', 'consignor', 'consignee', 'receivedBy', 'podConfirmation'
+        'senderName', 'receiverName', 'consignor', 'consignee', 'receivedBy', 'podConfirmation', 'isDelivered'
       ];
       return request.resource.data.keys().hasOnly(allowedKeys) &&
              !request.resource.data.keys().hasAny(forbiddenKeys);

@@ -16,8 +16,8 @@ import {
   SyncStatusState,
   PodConfirmation
 } from '../types';
-import { auth, db } from './firebase';
-import { doc, getDoc, setDoc, collection, getDocs, addDoc, runTransaction, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { auth, db, deleteUser, logoutUser } from './firebase';
+import { doc, getDoc, setDoc, deleteDoc, collection, getDocs, addDoc, runTransaction, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import {
   getStorageScope,
   getScopedStorageKey,
@@ -305,10 +305,10 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
       }
     } catch (err) {
       const retry = (action.retryCount || 0) + 1;
-      errorLogs.push(`Action ${action.id} failed (attempt ${retry}): ${err instanceof Error ? err.message : String(err)}`);
-      if (retry <= 5) {
-        remainingQueue.push({ ...action, retryCount: retry });
-      }
+      const errMsg = err instanceof Error ? err.message : String(err);
+      errorLogs.push(`Action ${action.id} failed (attempt ${retry}): ${errMsg}`);
+      // Retain failed queue items with updated retry count and error context so failed writes are never silently ignored
+      remainingQueue.push({ ...action, retryCount: retry, lastError: errMsg });
     }
   }
 
@@ -433,18 +433,17 @@ export interface PublicBiltyVerification {
   weight?: string;
   qty?: string;
   vehicleNo?: string;
-  isDelivered?: boolean;
   verifiedPublicly: true;
   createdAt: string;
   updatedAt?: string;
 }
 
 /**
- * Extracts only safe, non-PII, non-financial fields from a Bilty record for public verification
+ * Extracts strictly safe, non-PII, non-financial fields from a Bilty record for public verification.
+ * CNICs, phone numbers, sender/receiver names, freight, advance, payable, totals, and delivery status are forbidden.
  */
 export function extractPublicBiltyVerification(bilty: Partial<BiltyRecord>): PublicBiltyVerification {
   const normalizedNo = bilty.biltyNo ? String(bilty.biltyNo).trim().toUpperCase() : '';
-  const isDeliveredVal = bilty.isDelivered || !!bilty.podConfirmation;
 
   const result: PublicBiltyVerification = {
     biltyNo: normalizedNo,
@@ -464,9 +463,6 @@ export function extractPublicBiltyVerification(bilty: Partial<BiltyRecord>): Pub
   }
   if (bilty.vehicleNo) {
     result.vehicleNo = bilty.vehicleNo;
-  }
-  if (typeof isDeliveredVal === 'boolean') {
-    result.isDelivered = isDeliveredVal;
   }
 
   return result;
@@ -1513,4 +1509,57 @@ export async function publishExistingBiltiesToPublicVerifications(): Promise<{ t
   }
 
   return { total: bilties.length, published: publishedCount, errors };
+}
+
+/**
+ * Deletes user's associated cloud data from Firestore, clears user-scoped local storage,
+ * and deletes the Firebase Auth user account.
+ */
+export async function deleteUserAccountAndCloudData(): Promise<{ success: boolean; message: string }> {
+  const user = auth.currentUser;
+  if (!user) {
+    return { success: false, message: 'No authenticated user is currently signed in.' };
+  }
+
+  const uid = user.uid;
+
+  try {
+    // 1. Delete Firestore user subcollections
+    const collectionsToDelete = ['trips', 'vehicles', 'drivers', 'routes', 'fuel', 'bilties', 'ledger'];
+    for (const key of collectionsToDelete) {
+      try {
+        const userDocRef = doc(db, 'users', uid, 'collections', key);
+        await deleteDoc(userDocRef).catch(() => {});
+      } catch {
+        // Continue
+      }
+    }
+
+    // 2. Delete Firestore root user document & usersData document
+    try {
+      await deleteDoc(doc(db, 'users', uid)).catch(() => {});
+      await deleteDoc(doc(db, 'usersData', uid)).catch(() => {});
+    } catch {
+      // Continue
+    }
+
+    // 3. Clear user-scoped local storage
+    const keysToClear = ['trips', 'vehicles', 'drivers', 'routes', 'fuel', 'bilties', 'ledger', 'notifs', 'user-role', 'bilty-counter'];
+    for (const baseKey of keysToClear) {
+      const scopedKey = getScopedStorageKey(baseKey, uid);
+      safeStorage.removeItem(scopedKey);
+    }
+
+    // 4. Delete Firebase Auth user account
+    try {
+      await deleteUser(user);
+    } catch (authErr: any) {
+      console.warn("Firebase Auth deleteUser notice:", authErr);
+      await logoutUser();
+    }
+
+    return { success: true, message: 'Account and associated cloud data deleted successfully.' };
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Error occurred while deleting account.' };
+  }
 }

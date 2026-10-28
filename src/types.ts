@@ -325,6 +325,7 @@ export interface OfflineAction {
   data: any;
   timestamp: string;
   retryCount?: number;
+  lastError?: string;
 }
 
 export interface AppNotification {

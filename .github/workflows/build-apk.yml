@@ -88,7 +88,7 @@ jobs:
             echo "⚠️ Notice: google-services.json not found in repository or secrets."
           fi
 
-      - name: Prepare Release Keystore (Secrets or Auto-Generate)
+      - name: Prepare Release Keystore (Secrets Required)
         if: ${{ inputs.build_type == 'release' }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -105,23 +105,8 @@ jobs:
             echo "ANDROID_KEY_ALIAS=${ANDROID_KEY_ALIAS}" >> $GITHUB_ENV
             echo "ANDROID_KEY_PASSWORD=${ANDROID_KEY_PASSWORD}" >> $GITHUB_ENV
           else
-            echo "::warning::ANDROID_KEYSTORE_BASE64 secret was not provided or empty. Generating temporary release key on the fly..."
-            KEY_PW="${ANDROID_KEYSTORE_PASSWORD:-DriverDostWarraich2026}"
-            KEY_AL="${ANDROID_KEY_ALIAS:-driverdost}"
-            keytool -genkeypair -v \
-              -keystore android/app/release-keystore.jks \
-              -alias "$KEY_AL" \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -storepass "$KEY_PW" \
-              -keypass "$KEY_PW" \
-              -dname "CN=Driver Dost, OU=Warraich Goods Transport Company, O=Warraich Goods, L=Gujranwala, ST=Punjab, C=PK"
-
-            echo "ANDROID_KEYSTORE_PATH=release-keystore.jks" >> $GITHUB_ENV
-            echo "ANDROID_KEYSTORE_PASSWORD=$KEY_PW" >> $GITHUB_ENV
-            echo "ANDROID_KEY_ALIAS=$KEY_AL" >> $GITHUB_ENV
-            echo "ANDROID_KEY_PASSWORD=$KEY_PW" >> $GITHUB_ENV
+            echo "::error::ANDROID_KEYSTORE_BASE64 secret was not provided. Production release builds strictly require official release keystore credentials. Temporary key generation is prohibited."
+            exit 1
           fi
 
       - name: Print Keystore Fingerprints (SHA-1 & SHA-256 for Firebase)

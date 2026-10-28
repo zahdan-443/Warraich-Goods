@@ -8,7 +8,6 @@ import {
   Car,
   CreditCard,
   AlertTriangle,
-  ArrowLeft,
   CheckCircle2,
   Search,
   Copy,
@@ -23,14 +22,11 @@ import {
   QrCode,
   Share2,
   Camera,
-  Upload,
-  PackageCheck,
-  WifiOff
+  Lock
 } from 'lucide-react';
 import { BiltyVerificationCard } from './BiltyVerificationCard';
-import { PodConfirmationModal } from './PodConfirmationModal';
 import { PublicImage } from '../PublicImage';
-import { getStoredBilties } from '../../utils/storage';
+import { getStoredBilties, extractPublicBiltyVerification, PublicBiltyVerification } from '../../utils/storage';
 import { getBiltyVerificationUrl } from '../../utils/biltyHelpers';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
@@ -56,38 +52,7 @@ interface VerificationAuditRecord {
   notes: string;
 }
 
-const INITIAL_AUDIT_RECORDS: VerificationAuditRecord[] = [
-  {
-    id: 'audit-1',
-    type: 'vehicle',
-    title: 'Hino 500 FG 1628 (6-Wheeler)',
-    identifier: 'LES-20-4124',
-    category: 'Punjab MTMIS Commercial',
-    status: 'verified',
-    date: '08 Sep 2026',
-    notes: 'ٹوکن ٹیکس و روٹ پرمٹ تصدیق شدہ - فٹنس میعاد 2027 تک درست'
-  },
-  {
-    id: 'audit-2',
-    type: 'license',
-    title: 'Muhammad Riaz (Senior Driver)',
-    identifier: 'LHR-48291-HTV',
-    category: 'HTV Commercial License',
-    status: 'valid',
-    date: '05 Sep 2026',
-    notes: 'موٹروے پولیس و DLIMS پنجاب سے تصدیق شدہ - کمپیوٹرائزڈ کارڈ فعال'
-  },
-  {
-    id: 'audit-3',
-    type: 'challan',
-    title: 'Master Foton Auman (10-Wheeler)',
-    identifier: 'FSD-19-8832',
-    category: 'PSCA Safe City Lahore',
-    status: 'clear',
-    date: '02 Sep 2026',
-    notes: 'کوئی چالان یا اوور اسپیڈنگ پینڈنگ نہیں - کلین ریکارڈ'
-  }
-];
+const INITIAL_AUDIT_RECORDS: VerificationAuditRecord[] = [];
 
 export const VerifyView: React.FC<VerifyViewProps> = ({
   lang,
@@ -99,7 +64,6 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
   initialBiltyToken = ''
 }) => {
   const isUrdu = lang === 'ur';
-  const t = DICTIONARY[lang].verify;
 
   const [activeSubTab, setActiveSubTab] = useState<'vehicle' | 'license' | 'challan' | 'history' | 'bilty'>(
     initialBiltyNo || initialBiltyToken ? 'bilty' : initialSection
@@ -107,13 +71,11 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
   // Bilty Verification State
   const [biltyQuery, setBiltyQuery] = useState(initialBiltyNo || '');
-  const [verifiedBilty, setVerifiedBilty] = useState<BiltyRecord | null>(null);
+  const [verifiedBilty, setVerifiedBilty] = useState<PublicBiltyVerification | null>(null);
   const [biltySearchAttempted, setBiltySearchAttempted] = useState(false);
   const [isBiltyLoading, setIsBiltyLoading] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [scanStatus, setScanStatus] = useState<string>('');
-  const [isPodModalOpen, setIsPodModalOpen] = useState(false);
-  const [podNotice, setPodNotice] = useState<{ message: string; isOffline: boolean } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleVerifyBilty = async (q?: string, tokenInput?: string) => {
@@ -126,12 +88,10 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
     setIsBiltyLoading(true);
     setVerifiedBilty(null);
 
-
-
     const cleanLower = rawTerm.toLowerCase();
     const normalizedTerm = cleanLower.replace(/[^a-z0-9]/g, '');
 
-    // 2. Check local getStoredBilties (creator's device, offline capable)
+    // 1. Check local getStoredBilties (and extract strictly sanitized public fields)
     const allBilties = getStoredBilties();
     const localMatch = allBilties.find((b) => {
       const bNo = String(b.biltyNo || '').toLowerCase();
@@ -146,32 +106,21 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
     });
 
     if (localMatch) {
-      setVerifiedBilty(localMatch);
+      setVerifiedBilty(extractPublicBiltyVerification(localMatch));
       setIsBiltyLoading(false);
       return;
     }
 
-    // 3. Fallback to top-level public Firestore document: bilties/{biltyNo}
+    // 2. Check top-level Firestore collection publicBiltyVerifications/{biltyNo}
     try {
       if (db) {
         const upper = rawTerm.toUpperCase().trim();
         const cleanAlpha = upper.replace(/[^A-Z0-9]/g, '');
-        const candidateKeys = [
-          upper,
-          cleanAlpha,
-          upper.replace(/\s+/g, ''),
-        ];
+        const candidateKeys = [upper, cleanAlpha, upper.replace(/\s+/g, '')];
 
-        if (!upper.startsWith('WG-')) {
-          candidateKeys.push(`WG-${upper}`);
-          candidateKeys.push(`WG-2026-${upper.padStart(4, '0')}`);
-        }
-        if (!upper.startsWith('WGT-')) {
-          candidateKeys.push(`WGT-${upper}`);
-        }
-        if (!upper.startsWith('AH-')) {
-          candidateKeys.push(`AH-${upper}`);
-        }
+        if (!upper.startsWith('WG-')) candidateKeys.push(`WG-${upper}`);
+        if (!upper.startsWith('WGT-')) candidateKeys.push(`WGT-${upper}`);
+        if (!upper.startsWith('AH-')) candidateKeys.push(`AH-${upper}`);
 
         let remoteDocData: any = null;
         for (const docKey of candidateKeys) {
@@ -182,52 +131,24 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
               break;
             }
           } catch {
-            // Keep trying next candidate key
+            // keep trying candidate keys
           }
         }
 
         if (remoteDocData) {
-          const publicBilty: BiltyRecord = {
-            id: typeof remoteDocData.id === 'number' ? remoteDocData.id : Date.now(),
-            biltyNo: remoteDocData.biltyNo || rawTerm.toUpperCase(),
-            vehicleNo: remoteDocData.vehicleNo || '',
-            date: remoteDocData.date || '',
-            branch: remoteDocData.branch || 'samundri',
-            driverName: remoteDocData.driverName || '',
-            mobileNo: '',
-            sendingCity: remoteDocData.sendingCity || '',
-            receivingCity: remoteDocData.receivingCity || '',
-            senderName: remoteDocData.senderName || '',
-            senderMobile: '',
-            receiverName: remoteDocData.receiverName || '',
-            receiverMobile: '',
-            senderCnic: '',
-            qty: remoteDocData.qty || '',
-            itemDescription: remoteDocData.itemDescription || '',
-            weight: remoteDocData.weight || '',
-            total: typeof remoteDocData.total === 'number' ? remoteDocData.total : 0,
-            advance: typeof remoteDocData.advance === 'number' ? remoteDocData.advance : 0,
-            payable: typeof remoteDocData.payable === 'number' ? remoteDocData.payable : 0,
-            consignor: remoteDocData.consignor || '',
-            consignee: remoteDocData.consignee || '',
-            receivedBy: remoteDocData.receivedBy || remoteDocData.podConfirmation?.receiverName || '',
-            podConfirmation: remoteDocData.podConfirmation || undefined,
-            isDelivered: remoteDocData.isDelivered || !!remoteDocData.podConfirmation
-          };
-          setVerifiedBilty(publicBilty);
+          setVerifiedBilty(extractPublicBiltyVerification(remoteDocData));
           setIsBiltyLoading(false);
           return;
         }
       }
     } catch (err) {
-      console.warn('Public cloud bilty verification lookup error:', err);
+      console.warn('Public cloud bilty verification lookup notice:', err);
     }
 
     setVerifiedBilty(null);
     setIsBiltyLoading(false);
   };
 
-  // Process Scanned QR String (from Camera or Uploaded Image)
   const processScannedQrData = (dataStr: string) => {
     let clean = dataStr.trim();
     let extractedBilty = '';
@@ -278,20 +199,19 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
         });
 
         if (code && code.data) {
-          setScanStatus(isUrdu ? 'کیو آر کوڈ کامیابی سے اسکین ہو گیا!' : 'QR Code verified successfully!');
+          setScanStatus(isUrdu ? 'کیو آر کوڈ کامیابی سے اسکین ہو گیا!' : 'QR Code read successfully!');
           processScannedQrData(code.data);
         } else {
           setScanStatus(
             isUrdu
-              ? 'تصویر میں کیو آر کوڈ نہیں مل سکا۔ براہ کرم بلٹی کے نچلے حصے پر موجود واضح کیو آر کی تصویر لیں۔'
-              : 'No QR code found in the image. Please take a clear, well-lit photo of the QR code on the bilty.'
+              ? 'تصویر میں کیو آر کوڈ نہیں مل سکا۔ براہ کرم واضع تصویر لیں۔'
+              : 'No QR code found in the image. Please upload a clear photo.'
           );
         }
       };
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
-    // Reset file input so user can scan again if needed
     e.target.value = '';
   };
 
@@ -308,17 +228,14 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
   // Vehicle Tab State
   const [vehicleReg, setVehicleReg] = useState('LES-20-4124');
   const [vehicleProvince, setVehicleProvince] = useState<'punjab' | 'sindh' | 'islamabad' | 'kpk'>('punjab');
-  const [vehicleAuditResult, setVehicleAuditResult] = useState<any | null>(null);
 
   // License Tab State
   const [licenseQuery, setLicenseQuery] = useState('LHR-48291-HTV');
   const [licenseType, setLicenseType] = useState('HTV');
-  const [licenseAuditResult, setLicenseAuditResult] = useState<any | null>(null);
 
   // Challan Tab State
   const [challanQuery, setChallanQuery] = useState('LES-20-4124');
   const [challanCity, setChallanCity] = useState<'lahore' | 'islamabad' | 'rawalpindi' | 'faisalabad'>('lahore');
-  const [challanAuditResult, setChallanAuditResult] = useState<any | null>(null);
 
   // Audit History State
   const [auditRecords, setAuditRecords] = useState<VerificationAuditRecord[]>(() => {
@@ -326,157 +243,13 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
       const stored = localStorage.getItem('wg_verification_audits');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {
       // fallback
     }
     return INITIAL_AUDIT_RECORDS;
   });
-
-  const [copiedText, setCopiedText] = useState<string | null>(null);
-
-  const handleCopy = (text: string) => {
-    navigator.clipboard?.writeText(text);
-    setCopiedText(text);
-    setTimeout(() => setCopiedText(null), 2000);
-  };
-
-  // Perform Vehicle Verification
-  const handleVerifyVehicle = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const cleanReg = vehicleReg.trim().toUpperCase();
-    if (!cleanReg) return;
-
-    const matchedFleet = vehicles.find(v => v.reg.toUpperCase() === cleanReg);
-    const modelDesc = matchedFleet ? matchedFleet.model : 'Commercial Heavy Goods Transport Truck';
-
-    const result = {
-      reg: cleanReg,
-      province: vehicleProvince === 'punjab' ? 'پنجاب (Punjab MTMIS)' : vehicleProvince === 'sindh' ? 'سندھ (Sindh Excise)' : vehicleProvince === 'islamabad' ? 'اسلام آباد (ICT Excise)' : 'خیبر پختونخواہ (KPK Excise)',
-      model: modelDesc,
-      tokenStatus: 'ٹوکن ٹیکس ادا شدہ (Paid up to June 2027)',
-      fitness: 'فٹنس سرٹیفکیٹ و موٹروے پرمٹ درست (Valid)',
-      chassisVerification: 'Chassis & Engine Punch Verified',
-      officialUrl: vehicleProvince === 'punjab'
-        ? 'https://mtmis.excise.punjab.gov.pk'
-        : vehicleProvince === 'sindh'
-        ? 'https://excise.gos.pk/vehicle/vehicle_search'
-        : 'https://islamabadexcise.gov.pk',
-      checkedAt: new Date().toLocaleDateString(isUrdu ? 'ur-PK' : 'en-PK', { day: '2-digit', month: 'short', year: 'numeric' })
-    };
-
-    setVehicleAuditResult(result);
-  };
-
-  // Save Vehicle Audit to History
-  const handleSaveVehicleAudit = () => {
-    if (!vehicleAuditResult) return;
-    const newRecord: VerificationAuditRecord = {
-      id: `veh-${Date.now()}`,
-      type: 'vehicle',
-      title: vehicleAuditResult.model,
-      identifier: vehicleAuditResult.reg,
-      category: vehicleAuditResult.province,
-      status: 'verified',
-      date: vehicleAuditResult.checkedAt,
-      notes: `${vehicleAuditResult.tokenStatus} | ${vehicleAuditResult.fitness}`
-    };
-    const updated = [newRecord, ...auditRecords];
-    setAuditRecords(updated);
-    try {
-      localStorage.setItem('wg_verification_audits', JSON.stringify(updated));
-    } catch {
-      // ignore
-    }
-  };
-
-  // Perform Driver License Verification
-  const handleVerifyLicense = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const cleanQuery = licenseQuery.trim().toUpperCase();
-    if (!cleanQuery) return;
-
-    const matchedDriver = drivers.find(d => d.license.toUpperCase().includes(cleanQuery) || d.cnic.includes(cleanQuery));
-    const driverName = matchedDriver ? matchedDriver.name : 'Commercial Transport Driver';
-
-    const result = {
-      identifier: cleanQuery,
-      driverName,
-      lictype: licenseType,
-      status: 'کمپیوٹرائزڈ لائسنس فعال ہے (Active DLIMS Record)',
-      validity: 'میعاد درست (Valid until Nov 2028)',
-      categories: `${licenseType} Commercial / Heavy Transport Freight`,
-      trafficRecord: 'کوئی بڑا بلیک پوائنٹ یا سسپنشن نہیں (Clean Record)',
-      officialUrl: 'https://dlims.punjab.gov.pk/verify',
-      checkedAt: new Date().toLocaleDateString(isUrdu ? 'ur-PK' : 'en-PK', { day: '2-digit', month: 'short', year: 'numeric' })
-    };
-
-    setLicenseAuditResult(result);
-  };
-
-  // Save License Audit to History
-  const handleSaveLicenseAudit = () => {
-    if (!licenseAuditResult) return;
-    const newRecord: VerificationAuditRecord = {
-      id: `lic-${Date.now()}`,
-      type: 'license',
-      title: licenseAuditResult.driverName,
-      identifier: licenseAuditResult.identifier,
-      category: licenseAuditResult.lictype,
-      status: 'valid',
-      date: licenseAuditResult.checkedAt,
-      notes: `${licenseAuditResult.status} | ${licenseAuditResult.validity}`
-    };
-    const updated = [newRecord, ...auditRecords];
-    setAuditRecords(updated);
-    try {
-      localStorage.setItem('wg_verification_audits', JSON.stringify(updated));
-    } catch {
-      // ignore
-    }
-  };
-
-  // Perform Challan Audit
-  const handleVerifyChallan = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const cleanQuery = challanQuery.trim().toUpperCase();
-    if (!cleanQuery) return;
-
-    const result = {
-      identifier: cleanQuery,
-      city: challanCity === 'lahore' ? 'لاہور سیف سٹی (PSCA Lahore)' : challanCity === 'islamabad' ? 'اسلام آباد سیف سٹی (Safe City ICT)' : challanCity === 'rawalpindi' ? 'راولپنڈی ٹریفک ہیڈکوارٹر' : 'فیصل آباد سٹی ٹریفک',
-      challanStatus: 'کوئی اوور اسپیڈنگ یا ٹریفک چالان واجب الادا نہیں (Clean / Zero Pending)',
-      discountPolicy: 'چالان جاری ہونے کے 10 دن کے اندر 50 فیصد رعایت دستیاب ہوتی ہے',
-      paymentOptions: 'JazzCash, Easypaisa, 1Bill Bank Apps, NBP Branches',
-      officialUrl: challanCity === 'lahore' ? 'https://echallan.psca.gop.pk' : 'https://echallan.psca.gop.pk',
-      checkedAt: new Date().toLocaleDateString(isUrdu ? 'ur-PK' : 'en-PK', { day: '2-digit', month: 'short', year: 'numeric' })
-    };
-
-    setChallanAuditResult(result);
-  };
-
-  // Save Challan Audit to History
-  const handleSaveChallanAudit = () => {
-    if (!challanAuditResult) return;
-    const newRecord: VerificationAuditRecord = {
-      id: `cha-${Date.now()}`,
-      type: 'challan',
-      title: `${challanAuditResult.city} Audit`,
-      identifier: challanAuditResult.identifier,
-      category: challanAuditResult.city,
-      status: 'clear',
-      date: challanAuditResult.checkedAt,
-      notes: challanAuditResult.challanStatus
-    };
-    const updated = [newRecord, ...auditRecords];
-    setAuditRecords(updated);
-    try {
-      localStorage.setItem('wg_verification_audits', JSON.stringify(updated));
-    } catch {
-      // ignore
-    }
-  };
 
   const handleDeleteAuditRecord = (id: string) => {
     const updated = auditRecords.filter(r => r.id !== id);
@@ -490,9 +263,8 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
   return (
     <div className="flex-1 p-3 sm:p-5 max-w-5xl mx-auto w-full space-y-4">
-      
       {/* Top Header Card */}
-      <div className="bg-white p-4 sm:p-6 rounded-[28px] sm:rounded-[32px] shadow-sm border border-[#ecece0] space-y-4">
+      <div className="bg-white p-4 sm:p-6 rounded-[28px] sm:rounded-[32px] shadow-xs border border-[#ecece0] space-y-4">
         <header className="border-b border-[#ecece0] pb-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center text-[#8b9d77] shadow-2xs shrink-0 overflow-hidden">
@@ -516,25 +288,26 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
               <div className="flex items-center gap-2">
                 <h1 className="text-base sm:text-lg font-serif font-bold text-[#4a4a35]">
                   {activeSubTab === 'license'
-                    ? (isUrdu ? 'لائسنس کی تصدیق (DLIMS)' : 'Driver License Verification (DLIMS)')
+                    ? (isUrdu ? 'ڈرائیور لائسنس پورٹل گائیڈ (DLIMS)' : 'Driver License Portal Guide (DLIMS)')
                     : activeSubTab === 'challan'
-                    ? (isUrdu ? 'ای چالان چیکنگ (PSCA Safe City)' : 'E-Challan Verification (Safe City)')
-                    : (isUrdu ? 'گاڑیوں کی تصدیق (MTMIS Excise)' : 'Vehicle Verification (MTMIS Excise)')}
+                    ? (isUrdu ? 'ای چالان پورٹل گائیڈ (Safe City)' : 'E-Challan Portal Guide (Safe City)')
+                    : activeSubTab === 'vehicle'
+                    ? (isUrdu ? 'گاڑی رجسٹریشن پورٹل گائیڈ (MTMIS)' : 'Vehicle MTMIS Portal Guide')
+                    : (isUrdu ? 'تصدیقی مرکز' : 'Verification Hub')}
                 </h1>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#8b9d77]/15 text-[#4a5e38] border border-[#8b9d77]/30">
-                  {isUrdu ? 'ان-ایپ سسٹم' : 'In-App Hub'}
+                  {isUrdu ? 'آفیشل لنکس' : 'Official Portals'}
                 </span>
               </div>
               <p className="text-[11px] text-[#8e8e75] font-sans mt-0.5">
                 {activeSubTab === 'license'
-                  ? (isUrdu ? 'ٹریفک پولیس ڈی ایل آئی ایم ایس لائسنس ریکارڈ تصدیق' : 'Traffic police driving license verification & audit')
+                  ? (isUrdu ? 'سرکاری ڈی ایل آئی ایم ایس پورٹل پر لائسنس چیک کریں' : 'Official DLIMS driving license portal redirection')
                   : activeSubTab === 'challan'
-                  ? (isUrdu ? 'پنجاب سیف سٹی اتھارٹی الیکٹرانک چالان ریکارڈ' : 'Punjab Safe City electronic traffic violation records')
-                  : (isUrdu ? 'ایکسائز وہیکل رجسٹریشن اور ٹوکن ٹیکس کی لائیو جانچ' : 'Excise vehicle registration & token tax inspection')}
+                  ? (isUrdu ? 'پنجاب سیف سٹی اتھارٹی کے آفیشل پورٹل پر ای چالان چیک کریں' : 'Official PSCA Safe City electronic challan lookup')
+                  : (isUrdu ? 'سرکاری ایکسائز ایم ٹی ایم آئی ایس پورٹل سے گاڑی کے ریکارڈ کی تصدیق' : 'Official Excise MTMIS vehicle registration lookup')}
               </p>
             </div>
           </div>
-
         </header>
 
         {/* Sub-Tab Navigation Pills */}
@@ -549,7 +322,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
             }`}
           >
             <Car className="w-4 h-4" />
-            <span>{isUrdu ? 'گاڑی رجسٹریشن و ٹوکن ٹیکس' : 'Vehicle & Token Tax'}</span>
+            <span>{isUrdu ? 'گاڑی رجسٹریشن (MTMIS)' : 'Vehicle Excise (MTMIS)'}</span>
           </button>
 
           <button
@@ -562,7 +335,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
             }`}
           >
             <CreditCard className="w-4 h-4" />
-            <span>{isUrdu ? 'ڈرائیور لائسنس و ڈی ایل آئی ایم ایس' : 'Driver License (DLIMS)'}</span>
+            <span>{isUrdu ? 'ڈرائیور لائسنس (DLIMS)' : 'Driver License (DLIMS)'}</span>
           </button>
 
           <button
@@ -575,20 +348,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
             }`}
           >
             <AlertTriangle className="w-4 h-4" />
-            <span>{isUrdu ? 'ای چالان و ٹریفک ریکارڈ' : 'Safe City E-Challan'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('history')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 border ${
-              activeSubTab === 'history'
-                ? 'bg-[#4a5e38] text-white border-[#4a5e38] shadow-xs'
-                : 'bg-[#fdfbf7] text-[#5a5a40] border-[#ecece0] hover:border-[#8b9d77]'
-            }`}
-          >
-            <CalendarCheck className="w-4 h-4" />
-            <span>{isUrdu ? `محفوظ ریکارڈز (${auditRecords.length})` : `Saved Audits (${auditRecords.length})`}</span>
+            <span>{isUrdu ? 'ای چالان (Safe City)' : 'Safe City E-Challan'}</span>
           </button>
 
           <button
@@ -601,254 +361,109 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
             }`}
           >
             <QrCode className="w-4 h-4" />
-            <span>{isUrdu ? 'بلٹی تصدیق (QR و لوڈ ٹریکر)' : 'Bilty Verification (QR & Load)'}</span>
+            <span>{isUrdu ? 'پبلک ریکارڈ تصدیق' : 'Public Transport Verification'}</span>
           </button>
+
+          {auditRecords.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('history')}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 border ${
+                activeSubTab === 'history'
+                  ? 'bg-[#4a5e38] text-white border-[#4a5e38] shadow-xs'
+                  : 'bg-[#fdfbf7] text-[#5a5a40] border-[#ecece0] hover:border-[#8b9d77]'
+              }`}
+            >
+              <CalendarCheck className="w-4 h-4" />
+              <span>{isUrdu ? `لاگز (${auditRecords.length})` : `Saved Logs (${auditRecords.length})`}</span>
+            </button>
+          )}
         </div>
 
-        {/* TAB 1: VEHICLE REGISTRATION CHECK */}
+        {/* TAB 1: VEHICLE REGISTRATION PORTAL */}
         {activeSubTab === 'vehicle' && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Pinned Official Portal Link Banner & Google Play Policy Disclaimer */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 shadow-xs space-y-2.5">
+            <div className="bg-white p-5 rounded-2xl border-2 border-emerald-500/40 shadow-xs space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
                     <Building2 className="w-5 h-5 text-emerald-700" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-serif font-bold text-sm sm:text-base text-slate-800">
-                        {isUrdu ? 'آفیشل ایکسائز و وہیکل رجسٹریشن پورٹل (MTMIS)' : 'Official MTMIS Vehicle Registration Portal'}
-                      </h3>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
-                        {vehicleProvince === 'punjab' ? 'mtmis.excise.punjab.gov.pk' : vehicleProvince === 'sindh' ? 'excise.gos.pk' : 'islamabadexcise.gov.pk'}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      {isUrdu 
-                        ? 'سرکاری ایکسائز ریکارڈ، ٹوکن ٹیکس اور روٹ پرمٹ کی براہ راست تصدیق'
-                        : 'Direct official verification of ownership, token tax and fitness on government database'}
+                    <h3 className="font-serif font-bold text-base text-slate-800">
+                      {isUrdu ? 'آفیشل ایکسائز و وہیکل رجسٹریشن پورٹل (MTMIS)' : 'Official MTMIS Vehicle Registration Portals'}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {isUrdu
+                        ? 'سرکاری ایکسائز ویب سائٹ پر اپنی گاڑی کی ملکیت اور ٹوکن ٹیکس کی براہ راست تصدیق کریں'
+                        : 'Direct link to official provincial excise websites for genuine vehicle ownership & tax checking'}
                     </p>
                   </div>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                 <a
-                  href={
-                    vehicleProvince === 'punjab'
-                      ? 'https://mtmis.excise.punjab.gov.pk'
-                      : vehicleProvince === 'sindh'
-                      ? 'https://excise.gos.pk/vehicle/vehicle_search'
-                      : 'https://islamabadexcise.gov.pk'
-                  }
+                  href="https://mtmis.excise.punjab.gov.pk"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-2xs no-underline shrink-0 active:scale-95"
+                  className="p-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-900 flex items-center justify-between no-underline transition-all active:scale-95"
                 >
-                  <span>{isUrdu ? 'آفیشل پورٹل کھولیں' : 'Open Official Portal'}</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-white/90" />
+                  <span>🇵🇰 MTMIS Punjab Excise</span>
+                  <ExternalLink className="w-4 h-4 text-emerald-700" />
+                </a>
+
+                <a
+                  href="https://excise.gos.pk/vehicle/vehicle_search"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-900 flex items-center justify-between no-underline transition-all active:scale-95"
+                >
+                  <span>🇵🇰 Sindh Excise Portal</span>
+                  <ExternalLink className="w-4 h-4 text-emerald-700" />
+                </a>
+
+                <a
+                  href="https://islamabadexcise.gov.pk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-900 flex items-center justify-between no-underline transition-all active:scale-95"
+                >
+                  <span>🇵🇰 ICT Islamabad Excise</span>
+                  <ExternalLink className="w-4 h-4 text-emerald-700" />
                 </a>
               </div>
 
-              {/* Policy Disclaimer Banner (Play Store / Palm Store Anti-Impersonation Compliance) */}
-              <div className="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-[10.5px] text-slate-600 flex items-start gap-2">
-                <Info className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+              {/* Anti-Impersonation Disclaimer */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 flex items-start gap-2">
+                <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
                 <span>
                   {isUrdu
-                    ? 'قانونی وضاحت: ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ سسٹم ہے اور کسی سرکاری ادارے کی نمائندگی نہیں کرتا۔ سرکاری ریکارڈ کی حتمی تصدیق اوپر دیے گئے آفیشل پورٹل سے حاصل کی جاتی ہے۔'
-                    : 'Notice: Driver Dost is an independent fleet management application and does not represent any government entity. Government records are verified via the official portal above.'}
+                    ? 'نوٹس: ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ ایپ ہے۔ ہم کسی بھی سرکاری ادارے کی نمائندگی نہیں کرتے اور نہ ہی کسی سرکاری ڈیٹا بیس کی میزبانی کرتے ہیں۔ گاڑی کے تمام سرکاری ریکارڈز صرف اوپر دیے گئے آفیشل پورٹلز پر ہی تصدیق کیے جا سکتے ہیں۔'
+                    : 'Notice: Driver Dost is an independent fleet management application. It does not represent any government entity or host government databases. Official vehicle records can only be verified directly on the official portals listed above.'}
                 </span>
               </div>
             </div>
-
-            <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ecece0] space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35]">
-                    {isUrdu ? 'گاڑی کی رجسٹریشن اور ایکسائز ریکارڈ چیک کریں' : 'Verify Vehicle Registration & Token Tax'}
-                  </h2>
-                  <p className="text-xs text-[#8e8e75]">
-                    {isUrdu 
-                      ? 'پنجاب، سندھ، اسلام آباد یا خیبر پختونخواہ کا رجسٹریشن نمبر درج کریں' 
-                      : 'Enter vehicle plate number for Punjab, Sindh, ICT or KPK Excise'}
-                  </p>
-                </div>
-
-                {/* Province Selector */}
-                <div className="flex items-center gap-1.5 p-1 bg-white rounded-xl border border-[#ecece0] self-start sm:self-auto text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setVehicleProvince('punjab')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      vehicleProvince === 'punjab' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
-                    }`}
-                  >
-                    پنجاب
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setVehicleProvince('sindh')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      vehicleProvince === 'sindh' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
-                    }`}
-                  >
-                    سندھ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setVehicleProvince('islamabad')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      vehicleProvince === 'islamabad' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
-                    }`}
-                  >
-                    اسلام آباد
-                  </button>
-                </div>
-              </div>
-
-              {/* Form Input */}
-              <form onSubmit={handleVerifyVehicle} className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="relative flex-1 w-full">
-                  <input
-                    type="text"
-                    value={vehicleReg}
-                    onChange={(e) => setVehicleReg(e.target.value.toUpperCase())}
-                    placeholder={isUrdu ? 'مثال: LES-20-4124 یا FSD-19-8832' : 'e.g. LES-20-4124'}
-                    className="w-full px-4 py-3 bg-white border border-[#ecece0] focus:border-[#8b9d77] rounded-2xl text-sm font-mono font-bold text-[#4a4a35] uppercase outline-none shadow-2xs"
-                  />
-                  <Car className="w-5 h-5 text-[#8e8e75] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full sm:w-auto px-6 py-3 bg-[#4a5e38] hover:bg-[#394a2b] text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
-                >
-                  <Search className="w-4 h-4" />
-                  <span>{isUrdu ? 'تصدیقی آڈٹ کریں' : 'Run In-App Audit'}</span>
-                </button>
-              </form>
-
-              {/* Quick Fleet Vehicle Picker */}
-              {vehicles.length > 0 && (
-                <div className="flex items-center flex-wrap gap-2 pt-2 border-t border-[#ecece0]">
-                  <span className="text-[11px] font-bold text-[#8e8e75] flex items-center gap-1">
-                    <Truck className="w-3.5 h-3.5 text-[#8b9d77]" />
-                    {isUrdu ? 'فلیٹ کی گاڑیاں:' : 'Fleet Trucks:'}
-                  </span>
-                  {vehicles.map(v => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => {
-                        setVehicleReg(v.reg);
-                        setTimeout(() => handleVerifyVehicle(), 50);
-                      }}
-                      className="px-2.5 py-1 rounded-xl bg-white border border-[#ecece0] hover:border-[#8b9d77] text-xs font-mono font-bold text-[#4a4a35] shadow-2xs cursor-pointer transition-all hover:scale-105 active:scale-95"
-                    >
-                      {v.reg}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Interactive Vehicle Audit Result */}
-            {vehicleAuditResult && (
-              <div className="p-6 rounded-3xl bg-white border-2 border-[#8b9d77] shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#ecece0]">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-[#8b9d77]/20 text-[#4a5e38]">
-                      <CheckCircle2 className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-[#8b9d77] uppercase tracking-wider font-mono">
-                        {vehicleAuditResult.province}
-                      </span>
-                      <h3 className="font-serif font-bold text-xl text-[#4a4a35] flex items-center gap-2">
-                        <span>{vehicleAuditResult.reg}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(vehicleAuditResult.reg)}
-                          className="p-1 rounded-md hover:bg-gray-100 text-gray-500 cursor-pointer"
-                          title="کاپی کریں"
-                        >
-                          {copiedText === vehicleAuditResult.reg ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-                        </button>
-                      </h3>
-                      <p className="text-xs text-[#5a5a40] font-medium">{vehicleAuditResult.model}</p>
-                    </div>
-                  </div>
-
-                  <span className="self-start sm:self-auto px-3 py-1 bg-green-100 border border-green-300 text-green-800 text-xs font-bold rounded-full flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                    {isUrdu ? 'فارمیٹ و کلیئرنس درست' : 'Verified Commercial Format'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-sans">
-                  <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-1">
-                    <span className="font-bold text-[#4a4a35] flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-[#8b9d77]" />
-                      {isUrdu ? 'ٹوکن ٹیکس اسٹیٹس:' : 'Token Tax Status:'}
-                    </span>
-                    <p className="text-[#5a5a40]">{vehicleAuditResult.tokenStatus}</p>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-1">
-                    <span className="font-bold text-[#4a4a35] flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-[#8b9d77]" />
-                      {isUrdu ? 'فٹنس و پرمٹ میعاد:' : 'Fitness & Highway Permit:'}
-                    </span>
-                    <p className="text-[#5a5a40]">{vehicleAuditResult.fitness}</p>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={handleSaveVehicleAudit}
-                    className="px-4 py-2 bg-[#8b9d77]/20 hover:bg-[#8b9d77]/30 text-[#4a5e38] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{isUrdu ? 'آڈٹ ریکارڈ محفوظ کریں' : 'Save to Audit Log'}</span>
-                  </button>
-
-                  <a
-                    href={vehicleAuditResult.officialUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-[#5a5a40] hover:bg-[#4a4a35] text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-2xs no-underline"
-                  >
-                    <span>{isUrdu ? 'آفیشل ایکسائز پورٹل کھولیں' : 'Open Official Portal'}</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-white/80" />
-                  </a>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        {/* TAB 2: DRIVER LICENSE CHECK */}
+        {/* TAB 2: DRIVER LICENSE PORTAL */}
         {activeSubTab === 'license' && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Pinned Official Portal Link Banner & Google Play Policy Disclaimer */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 shadow-xs space-y-2.5">
+            <div className="bg-white p-5 rounded-2xl border-2 border-emerald-500/40 shadow-xs space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
                     <CreditCard className="w-5 h-5 text-emerald-700" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-serif font-bold text-sm sm:text-base text-slate-800">
-                        {isUrdu ? 'آفیشل ڈی ایل آئی ایم ایس (DLIMS) ڈرائیونگ لائسنس پورٹل' : 'Official DLIMS Punjab Driving License Portal'}
-                      </h3>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
-                        dlims.punjab.gov.pk/verify
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      {isUrdu 
-                        ? 'پنجاب و موٹروے پولیس کے کمپیوٹرائزڈ کمرشل HTV / LTV لائسنس کی سرکاری تصدیق'
-                        : 'Official verification of computerized commercial HTV/LTV driving license records'}
+                    <h3 className="font-serif font-bold text-base text-slate-800">
+                      {isUrdu ? 'آفیشل ڈی ایل آئی ایم ایس (DLIMS) پورٹل' : 'Official DLIMS Driving License Verification'}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {isUrdu
+                        ? 'پنجاب ٹریفک پولیس کی آفیشل ڈی ایل آئی ایم ایس ویب سائٹ پر ڈرائیونگ لائسنس کی تصدیق کریں'
+                        : 'Check driving license validity directly on the official Traffic Police DLIMS portal'}
                     </p>
                   </div>
                 </div>
@@ -857,192 +472,43 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   href="https://dlims.punjab.gov.pk/verify"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-2xs no-underline shrink-0 active:scale-95"
+                  className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-2xs no-underline active:scale-95 shrink-0"
                 >
-                  <span>{isUrdu ? 'آفیشل پورٹل کھولیں' : 'Open Official Portal'}</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-white/90" />
+                  <span>{isUrdu ? 'آفیشل DLIMS پورٹل کھولیں' : 'Open DLIMS Portal'}</span>
+                  <ExternalLink className="w-4 h-4 text-white" />
                 </a>
               </div>
 
-              {/* Policy Disclaimer Banner */}
-              <div className="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-[10.5px] text-slate-600 flex items-start gap-2">
-                <Info className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+              {/* Anti-Impersonation Disclaimer */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 flex items-start gap-2">
+                <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
                 <span>
                   {isUrdu
-                    ? 'قانونی وضاحت: ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ سسٹم ہے اور کسی پولیس یا لائسنسنگ اتھارٹی کی نمائندگی نہیں کرتا۔ آفیشل جانچ کے لیے اوپر دیے گئے سرکاری پورٹل کا استعمال کریں۔'
-                    : 'Notice: Driver Dost is an independent transport fleet system and does not represent any police or licensing authority. Official license status is verified via the portal above.'}
+                    ? 'نوٹس: یہ ایپ کسی پولیس یا ڈرائیونگ لائسنسنگ اتھارٹی سے وابستہ نہیں ہے۔ لائسنس کی حتمی اور مستند تصدیق اوپر دیے گئے آفیشل ڈی ایل آئی ایم ایس پورٹل پر ہوتی ہے۔'
+                    : 'Notice: This app is not affiliated with any police or driving license authority. Official verification of driving license records is provided strictly on the official DLIMS portal above.'}
                 </span>
               </div>
             </div>
-
-            <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ecece0] space-y-5">
-              <div>
-                <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35]">
-                  {isUrdu ? 'ڈرائیور لائسنس و ڈی ایل آئی ایم ایس تصدیق' : 'DLIMS Driver License & Fitness Check'}
-                </h2>
-                <p className="text-xs text-[#8e8e75]">
-                  {isUrdu 
-                    ? 'ڈرائیور کا شناختی کارڈ نمبر یا لائسنس نمبر درج کریں' 
-                    : 'Enter Driver CNIC (e.g. 35201-XXXXXXXX-X) or License No'}
-                </p>
-              </div>
-
-              {/* Form Input */}
-              <form onSubmit={handleVerifyLicense} className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="relative flex-1 w-full">
-                  <input
-                    type="text"
-                    value={licenseQuery}
-                    onChange={(e) => setLicenseQuery(e.target.value)}
-                    placeholder={isUrdu ? 'مثال: LHR-48291-HTV یا 35201-1849201-3' : 'License / CNIC Number'}
-                    className="w-full px-4 py-3 bg-white border border-[#ecece0] focus:border-[#8b9d77] rounded-2xl text-sm font-mono font-bold text-[#4a4a35] outline-none shadow-2xs"
-                  />
-                  <CreditCard className="w-5 h-5 text-[#8e8e75] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-
-                <select
-                  value={licenseType}
-                  onChange={(e) => setLicenseType(e.target.value)}
-                  className="w-full sm:w-auto px-3 py-3 bg-white border border-[#ecece0] rounded-2xl text-xs font-bold text-[#4a4a35] outline-none cursor-pointer"
-                >
-                  <option value="HTV">HTV ہیوی ٹرانسپورٹ</option>
-                  <option value="Trailer">آرٹیکولیٹڈ ٹرالر (Trailer)</option>
-                  <option value="LTV">LTV کمرشل</option>
-                  <option value="PSV">PSV پیسنجر / بس</option>
-                </select>
-
-                <button
-                  type="submit"
-                  className="w-full sm:w-auto px-6 py-3 bg-[#4a5e38] hover:bg-[#394a2b] text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
-                >
-                  <Search className="w-4 h-4" />
-                  <span>{isUrdu ? 'لائسنس چیک کریں' : 'Verify License'}</span>
-                </button>
-              </form>
-
-              {/* Quick Driver Picker */}
-              {drivers.length > 0 && (
-                <div className="flex items-center flex-wrap gap-2 pt-2 border-t border-[#ecece0]">
-                  <span className="text-[11px] font-bold text-[#8e8e75] flex items-center gap-1">
-                    <Users className="w-3.5 h-3.5 text-[#8b9d77]" />
-                    {isUrdu ? 'رجسٹرڈ ڈرائیورز:' : 'Registered Drivers:'}
-                  </span>
-                  {drivers.map(d => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      onClick={() => {
-                        setLicenseQuery(d.license || d.cnic);
-                        setTimeout(() => handleVerifyLicense(), 50);
-                      }}
-                      className="px-2.5 py-1 rounded-xl bg-white border border-[#ecece0] hover:border-[#8b9d77] text-xs font-mono font-bold text-[#4a4a35] shadow-2xs cursor-pointer transition-all hover:scale-105 active:scale-95"
-                    >
-                      {d.name} ({d.lictype || 'HTV'})
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Interactive License Result */}
-            {licenseAuditResult && (
-              <div className="p-6 rounded-3xl bg-white border-2 border-[#8b9d77] shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#ecece0]">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-emerald-100 text-emerald-800">
-                      <CheckCircle2 className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider font-mono">
-                        {licenseAuditResult.categories}
-                      </span>
-                      <h3 className="font-serif font-bold text-xl text-[#4a4a35] flex items-center gap-2">
-                        <span>{licenseAuditResult.driverName}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(licenseAuditResult.identifier)}
-                          className="p-1 rounded-md hover:bg-gray-100 text-gray-500 cursor-pointer"
-                          title="کاپی کریں"
-                        >
-                          {copiedText === licenseAuditResult.identifier ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-                        </button>
-                      </h3>
-                      <p className="text-xs text-[#8e8e75] font-mono">{licenseAuditResult.identifier}</p>
-                    </div>
-                  </div>
-
-                  <span className="self-start sm:self-auto px-3 py-1 bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold rounded-full flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    {isUrdu ? 'ڈی ایل آئی ایم ایس ایکٹو' : 'Active & Certified'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-sans">
-                  <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-1">
-                    <span className="font-bold text-[#4a4a35] flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-[#8b9d77]" />
-                      {isUrdu ? 'میعاد کی تاریخ:' : 'Validity Expiry:'}
-                    </span>
-                    <p className="text-[#5a5a40]">{licenseAuditResult.validity}</p>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-1">
-                    <span className="font-bold text-[#4a4a35] flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-[#8b9d77]" />
-                      {isUrdu ? 'موٹروے پولیس ریکارڈ:' : 'NHMP Status:'}
-                    </span>
-                    <p className="text-[#5a5a40]">{licenseAuditResult.trafficRecord}</p>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={handleSaveLicenseAudit}
-                    className="px-4 py-2 bg-[#8b9d77]/20 hover:bg-[#8b9d77]/30 text-[#4a5e38] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{isUrdu ? 'ڈرائیور آڈٹ ریکارڈ محفوظ کریں' : 'Save Driver Audit'}</span>
-                  </button>
-
-                  <a
-                    href={licenseAuditResult.officialUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-[#5a5a40] hover:bg-[#4a4a35] text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-2xs no-underline"
-                  >
-                    <span>{isUrdu ? 'آفیشل DLIMS پورٹل' : 'Open DLIMS Portal'}</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-white/80" />
-                  </a>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        {/* TAB 3: E-CHALLAN CHECK */}
+        {/* TAB 3: E-CHALLAN PORTAL */}
         {activeSubTab === 'challan' && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Pinned Official Portal Link Banner & Google Play Policy Disclaimer */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 shadow-xs space-y-2.5">
+            <div className="bg-white p-5 rounded-2xl border-2 border-emerald-500/40 shadow-xs space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
                     <AlertTriangle className="w-5 h-5 text-emerald-700" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-serif font-bold text-sm sm:text-base text-slate-800">
-                        {isUrdu ? 'آفیشل سیف سٹی ای چالان پورٹل (PSCA پنجاب)' : 'Official PSCA Safe City E-Challan Portal'}
-                      </h3>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
-                        echallan.psca.gop.pk
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      {isUrdu 
-                        ? 'پنجاب سیف سٹی اتھارٹی (PSCA) کے کیمرہ چالان و جرمانہ کی آفیشل تصدیق'
-                        : 'Official camera speed, signal & violation penalty verification on PSCA portal'}
+                    <h3 className="font-serif font-bold text-base text-slate-800">
+                      {isUrdu ? 'آفیشل سیف سٹی ای چالان پورٹل (PSCA)' : 'Official PSCA Safe City E-Challan Portal'}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {isUrdu
+                        ? 'پنجاب سیف سٹی اتھارٹی کے آفیشل پورٹل پر الیکٹرانک چالان کی جانچ کریں'
+                        : 'Verify electronic camera challans and speed penalties directly on the official PSCA portal'}
                     </p>
                   </div>
                 </div>
@@ -1051,259 +517,64 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   href="https://echallan.psca.gop.pk"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-2xs no-underline shrink-0 active:scale-95"
+                  className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-2xs no-underline active:scale-95 shrink-0"
                 >
-                  <span>{isUrdu ? 'آفیشل پورٹل کھولیں' : 'Open Official Portal'}</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-white/90" />
+                  <span>{isUrdu ? 'آفیشل سیف سٹی پورٹل کھولیں' : 'Open PSCA Portal'}</span>
+                  <ExternalLink className="w-4 h-4 text-white" />
                 </a>
               </div>
 
-              {/* Policy Disclaimer Banner */}
-              <div className="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-[10.5px] text-slate-600 flex items-start gap-2">
-                <Info className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+              {/* Anti-Impersonation Disclaimer */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 flex items-start gap-2">
+                <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
                 <span>
                   {isUrdu
-                    ? 'قانونی وضاحت: ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ سسٹم ہے اور پنجاب سیف سٹی اتھارٹی یا ٹریفک پولیس کی نمائندگی نہیں کرتا۔ سرکاری چالان چیکنگ کے لیے اوپر دیے گئے آفیشل پورٹل کا استعمال کریں۔'
-                    : 'Notice: Driver Dost is an independent fleet management application and does not represent PSCA or traffic police. E-challan status is verified via the official portal above.'}
+                    ? 'نوٹس: ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ ایپ ہے۔ چالان اور جرمانے کی تمام معلومات کا باضابطہ ذریعہ پنجاب سیف سٹی اتھارٹی (PSCA) کا ویب پورٹل ہے۔'
+                    : 'Notice: Driver Dost is an independent fleet management application. Official e-challan status and penalties are provided strictly via the official PSCA web portal.'}
                 </span>
               </div>
             </div>
-
-            <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ecece0] space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35]">
-                    {isUrdu ? 'سیف سٹی ای چالان و ٹریفک خلاف ورزی آڈٹ' : 'Safe City E-Challan & Penalty Audit'}
-                  </h2>
-                  <p className="text-xs text-[#8e8e75]">
-                    {isUrdu 
-                      ? 'گاڑی کا رجسٹریشن نمبر یا چالان آئی ڈی درج کریں' 
-                      : 'Enter vehicle number or challan ID for Safe City checking'}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-1.5 p-1 bg-white rounded-xl border border-[#ecece0] text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setChallanCity('lahore')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      challanCity === 'lahore' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
-                    }`}
-                  >
-                    لاہور PSCA
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setChallanCity('islamabad')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      challanCity === 'islamabad' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
-                    }`}
-                  >
-                    اسلام آباد
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setChallanCity('rawalpindi')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      challanCity === 'rawalpindi' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
-                    }`}
-                  >
-                    راولپنڈی
-                  </button>
-                </div>
-              </div>
-
-              {/* Form Input */}
-              <form onSubmit={handleVerifyChallan} className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="relative flex-1 w-full">
-                  <input
-                    type="text"
-                    value={challanQuery}
-                    onChange={(e) => setChallanQuery(e.target.value.toUpperCase())}
-                    placeholder={isUrdu ? 'مثال: LES-20-4124 یا چالان نمبر' : 'e.g. LES-20-4124'}
-                    className="w-full px-4 py-3 bg-white border border-[#ecece0] focus:border-[#8b9d77] rounded-2xl text-sm font-mono font-bold text-[#4a4a35] uppercase outline-none shadow-2xs"
-                  />
-                  <AlertTriangle className="w-5 h-5 text-[#8e8e75] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full sm:w-auto px-6 py-3 bg-[#4a5e38] hover:bg-[#394a2b] text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
-                >
-                  <Search className="w-4 h-4" />
-                  <span>{isUrdu ? 'چالان اسٹیٹس دیکھیں' : 'Check Challan'}</span>
-                </button>
-              </form>
-
-              {/* Highway Penalty Tariffs Info Banner */}
-              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1 font-sans">
-                <div className="font-bold flex items-center gap-1.5">
-                  <Info className="w-4 h-4 text-amber-700" />
-                  <span>{isUrdu ? 'کمرشل گاڑیوں کے اہم چالان ریٹس (موٹروے و ہائی وے):' : 'Commercial Highway Challan Tariffs:'}</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-[11px]">
-                  <div className="bg-white p-2 rounded-xl border border-amber-200">
-                    <span className="block text-gray-500 font-sans">{isUrdu ? 'اوور اسپیڈنگ:' : 'Over-speeding:'}</span>
-                    <span className="font-bold text-[#4a4a35]">Rs. 2,500</span>
-                  </div>
-                  <div className="bg-white p-2 rounded-xl border border-amber-200">
-                    <span className="block text-gray-500 font-sans">{isUrdu ? 'اوور لوڈنگ ایکسل:' : 'Axle Overload:'}</span>
-                    <span className="font-bold text-[#4a4a35]">Rs. 5,000</span>
-                  </div>
-                  <div className="bg-white p-2 rounded-xl border border-amber-200">
-                    <span className="block text-gray-500 font-sans">{isUrdu ? 'لین کی خلاف ورزی:' : 'Lane Violation:'}</span>
-                    <span className="font-bold text-[#4a4a35]">Rs. 1,000</span>
-                  </div>
-                  <div className="bg-white p-2 rounded-xl border border-amber-200">
-                    <span className="block text-gray-500 font-sans">{isUrdu ? 'بغیر M-Tag انٹری:' : 'No M-Tag Pass:'}</span>
-                    <span className="font-bold text-[#4a4a35]">Rs. 1,500</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Interactive Challan Result */}
-            {challanAuditResult && (
-              <div className="p-6 rounded-3xl bg-white border-2 border-[#8b9d77] shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#ecece0]">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-blue-100 text-blue-800">
-                      <CheckCircle2 className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-blue-800 uppercase tracking-wider font-mono">
-                        {challanAuditResult.city}
-                      </span>
-                      <h3 className="font-serif font-bold text-xl text-[#4a4a35] flex items-center gap-2">
-                        <span>{challanAuditResult.identifier}</span>
-                      </h3>
-                      <p className="text-xs text-[#5a5a40] font-medium">{challanAuditResult.challanStatus}</p>
-                    </div>
-                  </div>
-
-                  <span className="self-start sm:self-auto px-3 py-1 bg-green-100 border border-green-300 text-green-800 text-xs font-bold rounded-full flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                    {isUrdu ? 'کوئی پینڈنگ چالان نہیں' : 'Zero Pending Challans'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-sans">
-                  <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-1">
-                    <span className="font-bold text-[#4a4a35]">
-                      {isUrdu ? 'رعایت و ادائیگی اصول:' : 'Payment & Discounts:'}
-                    </span>
-                    <p className="text-[#5a5a40]">{challanAuditResult.discountPolicy}</p>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-1">
-                    <span className="font-bold text-[#4a4a35]">
-                      {isUrdu ? 'ادائیگی کے ذرائع:' : 'Supported Channels:'}
-                    </span>
-                    <p className="text-[#5a5a40]">{challanAuditResult.paymentOptions}</p>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={handleSaveChallanAudit}
-                    className="px-4 py-2 bg-[#8b9d77]/20 hover:bg-[#8b9d77]/30 text-[#4a5e38] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{isUrdu ? 'چالان کلین ریکارڈ محفوظ کریں' : 'Save Clean Record'}</span>
-                  </button>
-
-                  <a
-                    href={challanAuditResult.officialUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-[#5a5a40] hover:bg-[#4a4a35] text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-2xs no-underline"
-                  >
-                    <span>{isUrdu ? 'آفیشل سیف سٹی پورٹل' : 'PSCA Safe City Portal'}</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-white/80" />
-                  </a>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
         {/* TAB 4: SAVED AUDIT RECORDS */}
-        {activeSubTab === 'history' && (
+        {activeSubTab === 'history' && auditRecords.length > 0 && (
           <div className="space-y-4 animate-in fade-in duration-200">
             <div className="flex items-center justify-between pb-2 border-b border-[#ecece0]">
               <span className="text-xs font-bold text-[#4a4a35]">
-                {isUrdu ? 'محفوظ شدہ تصدیقی لاگز اور آڈٹ تاریخ:' : 'Saved Compliance & Verification Audits:'}
+                {isUrdu ? 'محفوظ شدہ لاگز:' : 'Saved Audit Logs:'}
               </span>
               <span className="text-xs text-[#8e8e75] font-mono">
                 {auditRecords.length} {isUrdu ? 'ریکارڈز' : 'records'}
               </span>
             </div>
 
-            {auditRecords.length === 0 ? (
-              <div className="p-12 text-center bg-[#fdfbf7] rounded-3xl border border-[#ecece0] space-y-2">
-                <ShieldCheck className="w-10 h-10 mx-auto text-[#8b9d77] opacity-40" />
-                <p className="text-sm font-serif text-[#5a5a40]">{isUrdu ? 'کوئی محفوظ شدہ ریکارڈ موجود نہیں' : 'No audit records saved yet'}</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {auditRecords.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-white transition-all space-y-3 shadow-2xs group flex flex-col justify-between"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className={`p-2 rounded-xl text-xs font-bold ${
-                            item.type === 'vehicle' ? 'bg-blue-100 text-blue-800' : item.type === 'license' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                          }`}>
-                            {item.type === 'vehicle' ? <Car className="w-4 h-4" /> : item.type === 'license' ? <CreditCard className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-                          </span>
-                          <div>
-                            <h4 className="font-serif font-bold text-sm text-[#4a4a35] leading-tight">
-                              {item.title}
-                            </h4>
-                            <span className="text-[11px] font-mono text-[#8b9d77] font-bold">
-                              {item.identifier}
-                            </span>
-                          </div>
-                        </div>
-
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-100 text-green-800 border border-green-200">
-                          {item.status.toUpperCase()}
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-[#5a5a40] font-sans leading-relaxed bg-white/80 p-2.5 rounded-xl border border-[#ecece0]">
-                        {item.notes}
-                      </p>
-                    </div>
-
-                    <div className="pt-2 border-t border-[#ecece0] flex items-center justify-between text-[11px] text-[#8e8e75]">
-                      <span className="flex items-center gap-1 font-mono">
-                        <Clock className="w-3 h-3 text-[#8b9d77]" />
-                        {item.date}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteAuditRecord(item.id)}
-                        className="p-1 rounded-lg text-red-500 hover:bg-red-50 cursor-pointer transition-all"
-                        title={isUrdu ? 'حذف کریں' : 'Delete'}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {auditRecords.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-4 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] flex items-center justify-between gap-2"
+                >
+                  <div>
+                    <h4 className="font-bold text-xs text-[#4a4a35]">{item.title}</h4>
+                    <span className="text-[11px] font-mono text-[#8b9d77]">{item.identifier}</span>
                   </div>
-                ))}
-              </div>
-            )}
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteAuditRecord(item.id)}
+                    className="p-1 rounded-lg text-red-500 hover:bg-red-50 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* TAB 5: BILTY VERIFICATION & LOAD TRACKER */}
+        {/* TAB 5: PUBLIC VERIFICATION & LOAD LOOKUP */}
         {activeSubTab === 'bilty' && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* If a Bilty is verified, display the official BiltyVerificationCard */}
             {verifiedBilty ? (
               <div className="space-y-4">
                 <BiltyVerificationCard
@@ -1315,53 +586,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   }}
                 />
 
-                {/* POD Notification Message Banner */}
-                {podNotice && (
-                  <div className={`max-w-2xl mx-auto p-4 rounded-3xl text-xs sm:text-sm font-bold flex items-center gap-2.5 shadow-sm animate-in fade-in ${
-                    podNotice.isOffline
-                      ? 'bg-amber-50 text-amber-900 border-2 border-amber-300'
-                      : 'bg-emerald-50 text-emerald-900 border-2 border-emerald-400'
-                  }`}>
-                    {podNotice.isOffline ? (
-                      <WifiOff className="w-5 h-5 shrink-0 text-amber-600" />
-                    ) : (
-                      <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
-                    )}
-                    <span>{podNotice.message}</span>
-                  </div>
-                )}
-
-                {/* 1. "Maal Mil Gaya / Confirm Received" Delivery Confirmation Action */}
-                {!verifiedBilty.podConfirmation && !verifiedBilty.isDelivered && (
-                  <div className="max-w-2xl mx-auto p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-white/20 text-white flex items-center justify-center shrink-0 shadow-xs">
-                        <PackageCheck className="w-7 h-7" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-sm sm:text-base font-serif">
-                          {isUrdu ? 'کیا آپ کو مال وصول ہو گیا ہے؟' : 'Have you received this cargo?'}
-                        </h4>
-                        <p className="text-xs text-emerald-100 mt-0.5">
-                          {isUrdu
-                            ? 'ڈیجیٹل وصولی رسید (POD) درج کرنے کے لیے تصدیق بٹن دبائیں۔'
-                            : 'Submit digital Proof of Delivery (POD) confirmation.'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setIsPodModalOpen(true)}
-                      className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-white hover:bg-emerald-50 text-emerald-950 font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 shrink-0"
-                    >
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>{isUrdu ? 'مال مل گیا / Confirm Received' : 'Maal Mil Gaya / Confirm Received'}</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Actions row: Copy Link, Share WhatsApp */}
+                {/* Verification Link Actions */}
                 <div className="max-w-2xl mx-auto flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-[#fdfbf7] border border-[#ecece0]">
                   <div className="text-xs text-[#5a5a40]">
                     <span className="font-bold">{isUrdu ? 'آفیشل تصدیقی لنک:' : 'Official Verification Link:'}</span>
@@ -1387,43 +612,20 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
                     <a
                       href={`https://wa.me/?text=${encodeURIComponent(
-                        (isUrdu ? 'ورائچ گڈز ٹرانسپورٹ کمپنی - تصدیق شدہ بلٹی نمبر ' : 'Warraich Goods Transport Co. - Verified Bilty #') +
+                        (isUrdu ? 'ورائچ گڈز ٹرانسپورٹ کمپنی - تصدیق شدہ ریکارڈ نمبر ' : 'Warraich Goods Transport Co. - Verified Record #') +
                         verifiedBilty.biltyNo + '\n' +
-                        (isUrdu ? 'گاڑی نمبر: ' : 'Vehicle: ') + (verifiedBilty.vehicleNo || 'N/A') + '\n' +
                         (isUrdu ? 'روٹ: ' : 'Route: ') + verifiedBilty.sendingCity + ' ta ' + verifiedBilty.receivingCity + '\n' +
                         (isUrdu ? 'تصدیقی پورٹل: ' : 'Verification Link: ') + getBiltyVerificationUrl(verifiedBilty.biltyNo)
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all no-underline"
                     >
                       <Share2 className="w-3.5 h-3.5" />
                       <span>{isUrdu ? 'واٹس ایپ شیئر' : 'WhatsApp'}</span>
                     </a>
                   </div>
                 </div>
-
-                {/* Digital Proof of Delivery Modal */}
-                <PodConfirmationModal
-                  lang={lang}
-                  bilty={verifiedBilty}
-                  isOpen={isPodModalOpen}
-                  onClose={() => setIsPodModalOpen(false)}
-                  onConfirmed={(updatedRecord, isOfflineQueued) => {
-                    setVerifiedBilty(updatedRecord);
-                    setPodNotice({
-                      isOffline: isOfflineQueued,
-                      message: isOfflineQueued
-                        ? (isUrdu
-                            ? 'Confirmation saved — will sync when online. (وصولی تصدیق محفوظ ہو گئی — آن لائن ہونے پر خودکار سنک ہو جائے گی)'
-                            : 'Confirmation saved — will sync when online')
-                        : (isUrdu
-                            ? 'مال وصولی کی تصدیق کامیابی سے درج ہو گئی۔'
-                            : 'Proof of Delivery (POD) confirmed successfully!')
-                    });
-                    setTimeout(() => setPodNotice(null), 8000);
-                  }}
-                />
               </div>
             ) : (
               <div className="space-y-6">
@@ -1433,17 +635,17 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     <div>
                       <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35] flex items-center gap-2">
                         <QrCode className="w-5 h-5 text-[#8b9d77]" />
-                        <span>{isUrdu ? 'آفیشل بلٹی تصدیق و لوڈ ٹریکر' : 'Official Bilty & Consignment Verification'}</span>
+                        <span>{isUrdu ? 'آفیشل کیریئر پورٹل و سرٹیفکیٹ تصدیق' : 'Public Transport Verification Registry'}</span>
                       </h2>
                       <p className="text-xs text-[#8e8e75] mt-1">
                         {isUrdu
-                          ? 'بلٹی پر موجود کیو آر کوڈ اسکین کریں یا بلٹی نمبر درج کر کے سامان، کرایہ و روٹ کی فوری آفیشل تصدیق حاصل کریں۔'
-                          : 'Verify genuine consignments, freight balance, consignor/consignee, and vehicle dispatch details in real-time.'}
+                          ? 'پرنٹ شدہ QR کوڈ اسکین کریں یا ریکارڈ نمبر درج کر کے روانگی اور گاڑی کی تصدیق حاصل کریں۔'
+                          : 'Scan printed QR code or enter document number to verify dispatch route & cargo details.'}
                       </p>
                     </div>
 
                     <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 self-start sm:self-auto font-mono">
-                      {isUrdu ? 'مستند تصدیق' : 'VERIFIED PORTAL'}
+                      {isUrdu ? 'مستند پورٹل' : 'VERIFIED REGISTRY'}
                     </span>
                   </div>
 
@@ -1457,10 +659,10 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   >
                     <div className="flex items-center justify-between">
                       <label className="block text-xs font-bold text-[#4a4a35]">
-                        {isUrdu ? 'بلٹی نمبر یا گاڑی نمبر درج کریں:' : 'Enter Bilty Number or Vehicle Registration:'}
+                        {isUrdu ? 'ریکارڈ نمبر درج کریں:' : 'Enter Document / Bilty Number:'}
                       </label>
                       <span className="text-[11px] text-[#8e8e75]">
-                        {isUrdu ? 'مثال: WG-2026-0001 یا 0001' : 'e.g. WG-2026-0001'}
+                        {isUrdu ? 'مثال: AH-0001' : 'e.g. AH-0001'}
                       </span>
                     </div>
 
@@ -1470,7 +672,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                           type="text"
                           value={biltyQuery}
                           onChange={(e) => setBiltyQuery(e.target.value)}
-                          placeholder={isUrdu ? 'مثال: WG-2026-0001 یا LES-20-4124' : 'e.g. WG-2026-0001 or LES-20-4124'}
+                          placeholder={isUrdu ? 'مثال: AH-0001 یا LES-20-4124' : 'e.g. AH-0001 or LES-20-4124'}
                           className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-[#ecece0] focus:border-[#8b9d77] focus:ring-1 focus:ring-[#8b9d77] outline-hidden text-sm font-mono font-bold text-[#4a4a35] transition-all"
                         />
                         <Search className="w-4 h-4 text-[#8e8e75] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1481,11 +683,11 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                         className="px-6 py-3 rounded-2xl bg-[#4a5e38] text-white hover:bg-[#3d4e2e] text-xs sm:text-sm font-bold shadow-xs cursor-pointer transition-all flex items-center justify-center gap-2 shrink-0"
                       >
                         <ShieldCheck className="w-4 h-4" />
-                        <span>{isUrdu ? 'فوری تصدیق کریں' : 'Verify Consignment'}</span>
+                        <span>{isUrdu ? 'تصدیق کریں' : 'Verify Consignment'}</span>
                       </button>
                     </div>
 
-                    {/* QR Code Scanner (Camera or Photo) Button */}
+                    {/* QR Code Scanner */}
                     <div className="pt-2 border-t border-[#ecece0]/80 flex flex-col sm:flex-row items-center justify-between gap-2.5">
                       <input
                         type="file"
@@ -1507,8 +709,8 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
                       <p className="text-[11px] text-[#8e8e75] text-center sm:text-right">
                         {isUrdu 
-                          ? 'بلٹی کے کاغذ پر موجود QR کوڈ کی تصویر کھینچیں، بلٹی خودکار ویریفائی ہو جائے گی' 
-                          : 'Point camera at Bilty printed QR code for instant zero-failure verification'}
+                          ? 'پرنٹ شدہ کاغذ پر موجود کیو آر کوڈ کی تصویر اپلوڈ کریں'
+                          : 'Point camera or upload image of printed document QR code'}
                       </p>
                     </div>
 
@@ -1520,17 +722,17 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   </form>
                 </div>
 
-                {/* Cloud Search Loading indicator */}
+                {/* Cloud Search Loading */}
                 {isBiltyLoading && (
                   <div className="p-6 rounded-3xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 flex items-center justify-center gap-3 animate-in fade-in">
                     <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
                     <span className="text-xs sm:text-sm font-bold text-emerald-900">
-                      {isUrdu ? 'کلاؤڈ ریکارڈ سے بلٹی کی تصدیق جاری ہے...' : 'Checking verified cloud dispatch records...'}
+                      {isUrdu ? 'کلاؤڈ ریکارڈ سے تصدیق جاری ہے...' : 'Checking verified public records...'}
                     </span>
                   </div>
                 )}
 
-                {/* Search not found message */}
+                {/* Search Not Found */}
                 {!isBiltyLoading && biltySearchAttempted && !verifiedBilty && (
                   <div className="p-5 sm:p-6 rounded-3xl bg-amber-50/80 border border-amber-200 text-amber-950 space-y-3 animate-in fade-in">
                     <div className="flex items-start gap-3">
@@ -1539,95 +741,22 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                       </div>
                       <div className="space-y-1">
                         <h4 className="font-serif font-bold text-sm text-amber-900">
-                          {isUrdu ? 'بلٹی نمبر رجسٹرڈ نہیں ملا' : 'Bilty Record Not Found'}
+                          {isUrdu ? 'ریکارڈ نہیں ملا' : 'Record Not Found'}
                         </h4>
                         <p className="text-xs text-amber-800 leading-relaxed">
                           {isUrdu
-                            ? `نمبر "${biltyQuery}" کے تحت کوئی بلٹی ریکارڈ نہیں ملا۔ براہ کرم بلٹی نمبر کی درستگی چیک کریں یا لوڈ ٹریکر شیٹ سے تصدیق کریں۔`
-                            : `No local dispatch record matched "${biltyQuery}". Please double check the Bilty number or verify directly via Warraich Goods Google Sheets Load Tracker.`}
+                            ? `نمبر "${biltyQuery}" کے تحت کوئی عمومی ریکارڈ نہیں مل سکا۔ براہ کرم نمبر کی درستگی چیک کریں۔`
+                            : `No public transport record matched "${biltyQuery}". Please double check the input.`}
                         </p>
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-white/80 rounded-2xl border border-amber-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                      <span className="text-[#5a5a40]">
-                        {isUrdu ? 'ورائچ گڈز 24/7 ہیلپ لائن رابطہ:' : 'Warraich Goods 24/7 Helpline:'}
-                      </span>
-                      <div className="font-mono font-bold text-[#4a5e38] flex items-center gap-3">
-                        <a href="tel:03005370443" className="hover:underline">0300-5370443</a>
-                        <span>•</span>
-                        <a href="tel:03395370443" className="hover:underline">0339-5370443</a>
                       </div>
                     </div>
                   </div>
                 )}
-
-                {/* Quick Selection of Registered Bilties */}
-                {(() => {
-                  const stored = getStoredBilties();
-                  if (stored.length === 0) return null;
-                  return (
-                    <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ecece0] space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-[#4a4a35] flex items-center gap-1.5">
-                          <Truck className="w-3.5 h-3.5 text-[#8b9d77]" />
-                          {isUrdu ? 'حالیہ رجسٹرڈ بلٹیاں (فوری تصدیق کیلئے کلک کریں):' : 'Recent Registered Bilties (Click to verify):'}
-                        </span>
-                        <span className="text-[11px] font-mono text-[#8e8e75]">
-                          {stored.length} {isUrdu ? 'کل بلٹیاں' : 'total'}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                        {stored.slice(0, 6).map((b) => (
-                          <button
-                            key={b.id || b.biltyNo}
-                            type="button"
-                            onClick={() => {
-                              setBiltyQuery(b.biltyNo);
-                              handleVerifyBilty(b.biltyNo);
-                            }}
-                            className="p-3 rounded-2xl bg-white border border-[#ecece0] hover:border-[#8b9d77] hover:shadow-2xs text-left cursor-pointer transition-all flex items-center justify-between gap-2 group"
-                          >
-                            <div className="overflow-hidden">
-                              <span className="font-mono font-bold text-xs text-[#4a5e38] block group-hover:text-[#3d4e2e]">
-                                {b.biltyNo}
-                              </span>
-                              <span className="text-[11px] text-[#8e8e75] truncate block">
-                                {b.sendingCity} → {b.receivingCity}
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                              Rs {(b.total || 0).toLocaleString()}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Google Sheets Load Tracker & Apps Script Banner */}
-                <div className="p-4 sm:p-5 rounded-3xl bg-white border border-[#ecece0] space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-[#8b9d77]" />
-                    <h4 className="font-serif font-bold text-xs sm:text-sm text-[#4a4a35]">
-                      {isUrdu ? 'گوگل شیٹس لوڈ ٹریکر سسٹم انٹیگریشن' : 'Google Sheets Load Tracker Integration'}
-                    </h4>
-                  </div>
-                  <p className="text-xs text-[#5a5a40] leading-relaxed">
-                    {isUrdu
-                      ? 'تمام تیار کردہ بلٹیوں پر متحرک کیو آر کوڈ پرنٹ ہوتا ہے جو براہ راست ورائچ گڈز کے لوڈ ٹریکر سسٹم اور آن لائن تصدیق سے منسلک ہے۔ کسی بھی کیمرہ یا اسکینر سے فوری طور پر مالکانہ تفصیلات کی تصدیق کی جا سکتی ہے۔'
-                      : 'Every generated Bilty carries an official dynamic QR code linked to Warraich Goods online verification portal and Load Tracker. Consignors, drivers, and consignees can verify cargo authenticity from any smartphone.'}
-                  </p>
-                </div>
               </div>
             )}
           </div>
         )}
-
       </div>
-
     </div>
   );
 };

@@ -10,7 +10,8 @@ import {
   onAuthStateChanged,
   User,
   setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  deleteUser
 } from 'firebase/auth';
 import { initializeFirestore, memoryLocalCache, getFirestore, setLogLevel } from 'firebase/firestore';
 import { Capacitor } from '@capacitor/core';
@@ -189,6 +190,6 @@ export const logoutUser = async (): Promise<void> => {
   }
 };
 
-export { onAuthStateChanged };
+export { onAuthStateChanged, deleteUser };
 export type { User };
 

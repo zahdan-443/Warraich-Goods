@@ -203,14 +203,42 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
                 ? 'مقامی ڈیٹا: ایپ سیٹنگز سے حذف کریں یا ایپ ڈیٹا صاف کریں / ان انسٹال کریں۔ کلاؤڈ ڈیٹا: اپنے اکاؤنٹ کی ای میل سے warraichgoods43@gmail.com پر سبجیکٹ "Driver Dost - Request" کے ساتھ ای میل کریں؛ درخواست کی تصدیق کے بعد 30 دن کے اندر آپ کا کلاؤڈ ریکارڈ حذف کر دیا جاتا ہے۔ ڈیش کیم کلپس صرف آپ کی ڈیوائس پر ہوتی ہیں۔'
                 : 'Local data: delete in app settings, or clear app data / uninstall. Cloud data: email warraichgoods43@gmail.com from your account email with subject "Driver Dost - Request"; we delete your cloud records within 30 days of verifying the request. Dashcam clips exist only on your device.'}
             </p>
-            <div className="pt-2">
-              <a
-                href={deletionMailtoUrl}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 rounded-xl text-xs font-bold transition-all shadow-2xs"
-              >
-                <Trash2 className="w-4 h-4 text-red-600" />
-                <span>{isUrdu ? 'کلاؤڈ ڈیٹا ڈیلیشن کی درخواست کریں (Request Cloud Data Deletion)' : 'Request Cloud Data Deletion'}</span>
-              </a>
+            <div className="pt-2 space-y-2">
+              {auth.currentUser ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const confirmMsg = isUrdu
+                      ? 'کیا آپ واقعی اپنا اکاؤنٹ اور تمام کلاؤڈ ڈیٹا مستقل طور پر حذف کرنا چاہتے ہیں؟ اس عمل کو واپس نہیں لایا جا سکتا۔'
+                      : 'Are you sure you want to permanently delete your account and all associated cloud data? This action cannot be undone.';
+                    if (window.confirm(confirmMsg)) {
+                      const { deleteUserAccountAndCloudData } = await import('../utils/storage');
+                      const result = await deleteUserAccountAndCloudData();
+                      if (result.success) {
+                        alert(isUrdu ? 'آپ کا اکاؤنٹ اور ڈیٹا کامیابی سے حذف کر دیا گیا ہے۔' : 'Your account and data have been successfully deleted.');
+                        onClose();
+                        window.location.reload();
+                      } else {
+                        alert(result.message);
+                      }
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white border border-red-700 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                >
+                  <Trash2 className="w-4 h-4 text-white" />
+                  <span>{isUrdu ? 'اکاؤنٹ اور تمام کلاؤڈ ڈیٹا حذف کریں (In-App Account Deletion)' : 'Delete Account & Cloud Data'}</span>
+                </button>
+              ) : (
+                <a
+                  href="./delete-account.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 rounded-xl text-xs font-bold transition-all shadow-2xs no-underline"
+                >
+                  <Trash2 className="w-4 h-4 text-red-600" />
+                  <span>{isUrdu ? 'آن لائن اکاؤنٹ ڈیلیشن پورٹل (External Deletion Page)' : 'Account Deletion Request Page'}</span>
+                </a>
+              )}
               {currentUserEmail && (
                 <p className="text-[11px] text-gray-500 mt-1.5">
                   {isUrdu ? `آپ کا موجودہ اکاؤنٹ: ${currentUserEmail}` : `Active account: ${currentUserEmail}`}
