@@ -76,8 +76,8 @@ if (fs.existsSync(distDir)) {
             androidSplashResourceName: "splash",
             androidScaleType: "CENTER_CROP",
             showSpinner: false,
-            splashFullScreen: true,
-            splashImmersive: true
+            splashFullScreen: false,
+            splashImmersive: false
           },
           LocalNotifications: {
             sound: "default"

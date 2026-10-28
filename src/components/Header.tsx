@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send, Download, Maximize2 } from 'lucide-react';
+import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send, Download } from 'lucide-react';
 import { DICTIONARY, Language, AppNotification, UserRole } from '../types';
 import { CompanyLogo } from './CompanyLogo';
 import { logoIconData } from '../assets/dashboardIcons';
@@ -76,44 +76,6 @@ export const Header: React.FC<HeaderProps> = ({
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>('default');
   const [testSent, setTestSent] = useState(false);
   const [copyToast, setCopyToast] = useState(false);
-  const [isFullScreen, setIsFullScreen] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      if ((window as any).AndroidBridge?.isFullScreen) {
-        return (window as any).AndroidBridge.isFullScreen();
-      }
-      return localStorage.getItem('dd-fullscreen') === 'true';
-    }
-    return false;
-  });
-
-  const handleToggleFullScreen = () => {
-    const next = !isFullScreen;
-    setIsFullScreen(next);
-    try {
-      localStorage.setItem('dd-fullscreen', String(next));
-    } catch {}
-
-    if (typeof (window as any).AndroidBridge?.setFullScreen === 'function') {
-      (window as any).AndroidBridge.setFullScreen(next);
-    } else if (typeof document !== 'undefined') {
-      if (next) {
-        if (document.documentElement.requestFullscreen) {
-          // Play Store standard: navigationUI 'show' ensures back/home buttons remain visible
-          try {
-            document.documentElement.requestFullscreen({ navigationUI: 'show' } as FullscreenOptions).catch(() => {
-              document.documentElement.requestFullscreen().catch(() => {});
-            });
-          } catch {
-            document.documentElement.requestFullscreen().catch(() => {});
-          }
-        }
-      } else {
-        if (document.exitFullscreen && document.fullscreenElement) {
-          document.exitFullscreen().catch(() => {});
-        }
-      }
-    }
-  };
 
   useEffect(() => {
     if (isNotificationSupported()) {
@@ -508,35 +470,6 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
 
-                {/* Full Screen / Status Bar Display (Phone Navigation Buttons Always Visible) */}
-                <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-white border border-[#ecece0] shadow-2xs">
-                      <Maximize2 className="w-5 h-5 text-[#8b9d77]" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-serif font-bold text-sm text-[#4a4a35]">
-                        {lang === 'ur' ? 'اسکرین ویو اور اسٹیٹس بار' : 'Screen View & Status Bar'}
-                      </div>
-                      <div className="text-xs text-[#8e8e75]">
-                        {lang === 'ur' ? 'فون نیویگیشن اور بیک بٹن ہمیشہ نظر آئیں گے' : 'Phone navigation & back button remain visible'}
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleToggleFullScreen}
-                    className={`px-3 py-1.5 rounded-xl font-bold text-xs shadow-xs cursor-pointer transition-all active:scale-95 border ${
-                      isFullScreen
-                        ? 'bg-[#1e3a68] text-white border-[#1e3a68]'
-                        : 'bg-white border-[#ecece0] text-[#5a5a40] hover:bg-[#f0f0e4]'
-                    }`}
-                  >
-                    {isFullScreen
-                      ? (lang === 'ur' ? 'فعال (On)' : 'Active (On)')
-                      : (lang === 'ur' ? 'غیر فعال (Off)' : 'Off')}
-                  </button>
-                </div>
 
                 {/* Notifications Control */}
                 <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] flex items-center justify-between">
