@@ -9,9 +9,7 @@
 /* 1. Jameel Noori Nastaleeq - The quintessential Pakistani Urdu calligraphy font */
 @font-face {
   font-family: 'Jameel Noori Nastaleeq';
-  src: url('/Warraich-Goods/fonts/JameelNooriNastaleeq.woff') format('woff'),
-       url('./fonts/JameelNooriNastaleeq.woff') format('woff'),
-       url('/fonts/JameelNooriNastaleeq.woff') format('woff'),
+  src: url('/fonts/JameelNooriNastaleeq.woff') format('woff'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/JameelNooriNastaleeq.woff') format('woff');
   font-weight: 400 700;
   font-style: normal;
@@ -20,9 +18,7 @@
 
 @font-face {
   font-family: 'jameel-noori-nastaleeq';
-  src: url('/Warraich-Goods/fonts/JameelNooriNastaleeq.woff') format('woff'),
-       url('./fonts/JameelNooriNastaleeq.woff') format('woff'),
-       url('/fonts/JameelNooriNastaleeq.woff') format('woff'),
+  src: url('/fonts/JameelNooriNastaleeq.woff') format('woff'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/JameelNooriNastaleeq.woff') format('woff');
   font-weight: 400 700;
   font-style: normal;
@@ -32,9 +28,7 @@
 /* 2. Alvi Lahori Nastaleeq - Elegant Lahori Nastaleeq Script */
 @font-face {
   font-family: 'Alvi Lahori Nastaleeq';
-  src: url('/Warraich-Goods/fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
-       url('./fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
-       url('/fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
+  src: url('/fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/AlviLahoriNastaleeq.woff2') format('woff2');
   font-weight: 400 700;
   font-style: normal;
@@ -43,9 +37,7 @@
 
 @font-face {
   font-family: 'lahori-nastaleeq';
-  src: url('/Warraich-Goods/fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
-       url('./fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
-       url('/fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
+  src: url('/fonts/AlviLahoriNastaleeq.woff2') format('woff2'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/AlviLahoriNastaleeq.woff2') format('woff2');
   font-weight: 400 700;
   font-style: normal;
@@ -55,9 +47,7 @@
 /* 3. PDMS Nastaleeq Nafees - Fast loading & character-complete Nastaleeq */
 @font-face {
   font-family: 'PDMS Nastaleeq Nafees';
-  src: url('/Warraich-Goods/fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
-       url('./fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
-       url('/fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
+  src: url('/fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/PDMS_NastaliqNafees.ttf') format('truetype');
   font-weight: 400 700;
   font-style: normal;
@@ -66,9 +56,7 @@
 
 @font-face {
   font-family: 'nastaleeq-nafees';
-  src: url('/Warraich-Goods/fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
-       url('./fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
-       url('/fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
+  src: url('/fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/PDMS_NastaliqNafees.ttf') format('truetype');
   font-weight: 400 700;
   font-style: normal;
@@ -77,9 +65,7 @@
 
 @font-face {
   font-family: 'nastaleeq';
-  src: url('/Warraich-Goods/fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
-       url('./fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
-       url('/fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
+  src: url('/fonts/PDMS_NastaliqNafees.ttf') format('truetype'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/PDMS_NastaliqNafees.ttf') format('truetype');
   font-weight: 400 700;
   font-style: normal;
@@ -89,9 +75,7 @@
 /* 4. Akbar Font - Bold, striking calligraphy for headings & transport signage */
 @font-face {
   font-family: 'Akbar';
-  src: url('/Warraich-Goods/fonts/Akbar.woff') format('woff'),
-       url('./fonts/Akbar.woff') format('woff'),
-       url('/fonts/Akbar.woff') format('woff'),
+  src: url('/fonts/Akbar.woff') format('woff'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/Akbar.woff') format('woff');
   font-weight: 400 900;
   font-style: normal;
@@ -100,9 +84,7 @@
 
 @font-face {
   font-family: 'akbar';
-  src: url('/Warraich-Goods/fonts/Akbar.woff') format('woff'),
-       url('./fonts/Akbar.woff') format('woff'),
-       url('/fonts/Akbar.woff') format('woff'),
+  src: url('/fonts/Akbar.woff') format('woff'),
        url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/Akbar.woff') format('woff');
   font-weight: 400 900;
   font-style: normal;
