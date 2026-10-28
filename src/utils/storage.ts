@@ -1550,3 +1550,76 @@ export async function publishExistingBiltiesToPublicVerifications(): Promise<{ t
 
   return { total: bilties.length, published: publishedCount, errors };
 }
+
+/**
+ * Account Deletion Model (Google Play Store 30-Day Grace Period Compliance)
+ */
+export interface AccountDeletionRequest {
+  userId: string;
+  userEmail: string;
+  requestedAt: string;
+  scheduledFor: string;
+  status: 'pending_deletion';
+  reason?: string;
+}
+
+export async function requestAccountDeletion(
+  userId: string,
+  userEmail: string,
+  reason?: string
+): Promise<{ success: boolean; scheduledFor: string; message: string }> {
+  const requestedAt = new Date().toISOString();
+  const scheduledFor = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const deletionData: AccountDeletionRequest = {
+    userId,
+    userEmail,
+    requestedAt,
+    scheduledFor,
+    status: 'pending_deletion',
+    reason: reason || 'User requested via Driver Dost app'
+  };
+
+  const currentUser = auth.currentUser;
+  if (db && userId && currentUser && currentUser.uid === userId) {
+    try {
+      const userDocRef = doc(db, 'usersData', userId);
+      await withTimeout(setDoc(userDocRef, { accountDeletion: deletionData }, { merge: true }), 4000);
+    } catch (err) {
+      console.warn('Could not write account deletion to Firestore:', err);
+    }
+  }
+
+  safeStorage.setItem(`ah-deletion-${userId}`, JSON.stringify(deletionData));
+  logActivity('Account Deletion Requested', `Scheduled for purge on ${scheduledFor.slice(0, 10)} (30-day grace period)`, 'settings');
+
+  return {
+    success: true,
+    scheduledFor,
+    message: 'Account deletion scheduled with a 30-day grace period.'
+  };
+}
+
+export async function cancelAccountDeletion(userId: string): Promise<{ success: boolean }> {
+  const currentUser = auth.currentUser;
+  if (db && userId && currentUser && currentUser.uid === userId) {
+    try {
+      const userDocRef = doc(db, 'usersData', userId);
+      await withTimeout(setDoc(userDocRef, { accountDeletion: null }, { merge: true }), 4000);
+    } catch (err) {
+      console.warn('Could not cancel account deletion in Firestore:', err);
+    }
+  }
+  safeStorage.removeItem(`ah-deletion-${userId}`);
+  logActivity('Account Deletion Cancelled', `Account restored by user ${userId}`, 'settings');
+  return { success: true };
+}
+
+export function getAccountDeletionStatus(userId: string): AccountDeletionRequest | null {
+  try {
+    const raw = safeStorage.getItem(`ah-deletion-${userId}`);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return null;
+}

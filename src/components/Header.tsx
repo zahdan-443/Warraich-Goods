@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send, Download } from 'lucide-react';
+import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send, Download, Trash2 } from 'lucide-react';
 import { DICTIONARY, Language, AppNotification, UserRole } from '../types';
 import { CompanyLogo } from './CompanyLogo';
 import { logoIconData } from '../assets/dashboardIcons';
@@ -7,6 +7,7 @@ import { AboutUsModal } from './AboutUsModal';
 import { SyncStatusBadge } from './SyncStatusBadge';
 import { ExportPrivacyModal } from './ExportPrivacyModal';
 import { PrivacyPolicyModal } from './PrivacyPolicyModal';
+import { AccountDeletionModal } from './AccountDeletionModal';
 import { isNativeApp } from '../utils/platform';
 import { 
   getNotificationPermission, 
@@ -71,6 +72,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showExportPrivacyModal, setShowExportPrivacyModal] = useState(false);
   const [showPrivacyPolicyModal, setShowPrivacyPolicyModal] = useState(false);
+  const [showAccountDeletionModal, setShowAccountDeletionModal] = useState(false);
   const [internalShowTopMenu, setInternalShowTopMenu] = useState(false);
   const [themePref, setThemePref] = useState<'light' | 'dark' | 'system' | 'emerald' | 'desert' | 'navy' | 'highway'>('light');
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>('default');
@@ -336,6 +338,17 @@ export const Header: React.FC<HeaderProps> = ({
                       >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>{lang === 'ur' ? 'لاگ آؤٹ کریں' : 'Sign Out Account'}</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleCloseMenu();
+                          setShowAccountDeletionModal(true);
+                        }}
+                        className="w-full py-2 px-3 rounded-xl bg-gray-50 hover:bg-red-50 text-gray-500 hover:text-red-700 font-bold text-[11px] flex items-center justify-center gap-1.5 cursor-pointer border border-gray-200 hover:border-red-200 transition-all"
+                      >
+                        <Trash2 className="w-3 h-3 text-red-500" />
+                        <span>{lang === 'ur' ? 'اکاؤنٹ ڈیلیٹ کی درخواست (30 دن کی مہلت)' : 'Request Account Deletion'}</span>
                       </button>
                     </div>
                   </div>
@@ -691,6 +704,17 @@ export const Header: React.FC<HeaderProps> = ({
       <ExportPrivacyModal
         isOpen={showExportPrivacyModal}
         onClose={() => setShowExportPrivacyModal(false)}
+        lang={lang}
+      />
+
+      {/* Account Deletion Modal (30-day Grace Period) */}
+      <AccountDeletionModal
+        isOpen={showAccountDeletionModal}
+        onClose={() => setShowAccountDeletionModal(false)}
+        userEmail={userEmail || ''}
+        onDeleted={() => {
+          onSignOut();
+        }}
         lang={lang}
       />
 

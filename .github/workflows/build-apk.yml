@@ -88,7 +88,7 @@ jobs:
             echo "⚠️ Notice: google-services.json not found in repository or secrets."
           fi
 
-      - name: Prepare Release Keystore (Secrets or Auto-Generate)
+      - name: Prepare Release Keystore (Strict Production Secrets)
         if: ${{ inputs.build_type == 'release' }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -105,23 +105,8 @@ jobs:
             echo "ANDROID_KEY_ALIAS=${ANDROID_KEY_ALIAS}" >> $GITHUB_ENV
             echo "ANDROID_KEY_PASSWORD=${ANDROID_KEY_PASSWORD}" >> $GITHUB_ENV
           else
-            echo "::warning::ANDROID_KEYSTORE_BASE64 secret was not provided or empty. Generating temporary release key on the fly..."
-            KEY_PW="${ANDROID_KEYSTORE_PASSWORD:-DriverDostWarraich2026}"
-            KEY_AL="${ANDROID_KEY_ALIAS:-driverdost}"
-            keytool -genkeypair -v \
-              -keystore android/app/release-keystore.jks \
-              -alias "$KEY_AL" \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -storepass "$KEY_PW" \
-              -keypass "$KEY_PW" \
-              -dname "CN=Driver Dost, OU=Warraich Goods Transport Company, O=Warraich Goods, L=Gujranwala, ST=Punjab, C=PK"
-
-            echo "ANDROID_KEYSTORE_PATH=release-keystore.jks" >> $GITHUB_ENV
-            echo "ANDROID_KEYSTORE_PASSWORD=$KEY_PW" >> $GITHUB_ENV
-            echo "ANDROID_KEY_ALIAS=$KEY_AL" >> $GITHUB_ENV
-            echo "ANDROID_KEY_PASSWORD=$KEY_PW" >> $GITHUB_ENV
+            echo "::error::ANDROID_KEYSTORE_BASE64 secret is not configured in GitHub Secrets. A persistent, authoritative release keystore is required for production builds. Never use a temporary or auto-generated key for production releases."
+            exit 1
           fi
 
       - name: Print Keystore Fingerprints (SHA-1 & SHA-256 for Firebase)
@@ -133,7 +118,7 @@ jobs:
           ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
           ANDROID_KEYSTORE_PASSWORD: ${{ env.ANDROID_KEYSTORE_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
 
-      - name: Build Android APK via Gradle
+      - name: Build Android APK & AAB Bundle via Gradle
         env:
           ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
           ANDROID_KEYSTORE_PASSWORD: ${{ env.ANDROID_KEYSTORE_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -142,8 +127,8 @@ jobs:
         run: |
           cd android
           if [ "${{ inputs.build_type }}" = "release" ]; then
-            echo "Building officially signed Release APK..."
-            gradle assembleRelease --no-daemon
+            echo "Building officially signed Release APK and AAB Bundle..."
+            gradle assembleRelease bundleRelease --no-daemon
           else
             echo "Building Debug APK..."
             gradle assembleDebug --no-daemon
@@ -164,11 +149,12 @@ jobs:
           ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
           ANDROID_KEYSTORE_PASSWORD: ${{ env.ANDROID_KEYSTORE_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
 
-      - name: Upload APK Artifact
+      - name: Upload APK and AAB Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: warraich-goods-driver-dost-apk-${{ inputs.build_type }}
+          name: warraich-goods-driver-dost-binaries-${{ inputs.build_type }}
           path: |
             android/app/build/outputs/apk/release/*.apk
             android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/bundle/release/*.aab
           retention-days: 14

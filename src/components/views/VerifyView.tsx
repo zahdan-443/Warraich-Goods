@@ -53,38 +53,7 @@ interface VerificationAuditRecord {
   notes: string;
 }
 
-const INITIAL_AUDIT_RECORDS: VerificationAuditRecord[] = [
-  {
-    id: 'audit-1',
-    type: 'vehicle',
-    title: 'Hino 500 FG 1628 (6-Wheeler)',
-    identifier: 'LES-20-4124',
-    category: 'Punjab MTMIS Commercial',
-    status: 'verified',
-    date: '08 Sep 2026',
-    notes: 'ٹوکن ٹیکس و روٹ پرمٹ تصدیق شدہ - فٹنس میعاد 2027 تک درست'
-  },
-  {
-    id: 'audit-2',
-    type: 'license',
-    title: 'Muhammad Riaz (Senior Driver)',
-    identifier: 'LHR-48291-HTV',
-    category: 'HTV Commercial License',
-    status: 'valid',
-    date: '05 Sep 2026',
-    notes: 'موٹروے پولیس و DLIMS پنجاب سے تصدیق شدہ - کمپیوٹرائزڈ کارڈ فعال'
-  },
-  {
-    id: 'audit-3',
-    type: 'challan',
-    title: 'Master Foton Auman (10-Wheeler)',
-    identifier: 'FSD-19-8832',
-    category: 'PSCA Safe City Lahore',
-    status: 'clear',
-    date: '02 Sep 2026',
-    notes: 'کوئی چالان یا اوور اسپیڈنگ پینڈنگ نہیں - کلین ریکارڈ'
-  }
-];
+const INITIAL_AUDIT_RECORDS: VerificationAuditRecord[] = [];
 
 export const VerifyView: React.FC<VerifyViewProps> = ({
   lang,
@@ -355,27 +324,28 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
     setTimeout(() => setCopiedText(null), 2000);
   };
 
-  // Perform Vehicle Verification
+  // Perform Vehicle Verification (Direct Official Portal Launcher)
   const handleVerifyVehicle = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const cleanReg = vehicleReg.trim().toUpperCase();
     if (!cleanReg) return;
 
+    handleCopy(cleanReg);
+
     const matchedFleet = vehicles.find(v => v.reg.toUpperCase() === cleanReg);
     const modelDesc = matchedFleet ? matchedFleet.model : 'Commercial Heavy Goods Transport Truck';
+
+    const officialUrl = vehicleProvince === 'punjab'
+      ? 'https://mtmis.excise.punjab.gov.pk'
+      : vehicleProvince === 'sindh'
+      ? 'https://excise.gos.pk/vehicle/vehicle_search'
+      : 'https://islamabadexcise.gov.pk';
 
     const result = {
       reg: cleanReg,
       province: vehicleProvince === 'punjab' ? 'پنجاب (Punjab MTMIS)' : vehicleProvince === 'sindh' ? 'سندھ (Sindh Excise)' : vehicleProvince === 'islamabad' ? 'اسلام آباد (ICT Excise)' : 'خیبر پختونخواہ (KPK Excise)',
       model: modelDesc,
-      tokenStatus: 'ٹوکن ٹیکس ادا شدہ (Paid up to June 2027)',
-      fitness: 'فٹنس سرٹیفکیٹ و موٹروے پرمٹ درست (Valid)',
-      chassisVerification: 'Chassis & Engine Punch Verified',
-      officialUrl: vehicleProvince === 'punjab'
-        ? 'https://mtmis.excise.punjab.gov.pk'
-        : vehicleProvince === 'sindh'
-        ? 'https://excise.gos.pk/vehicle/vehicle_search'
-        : 'https://islamabadexcise.gov.pk',
+      officialUrl,
       checkedAt: new Date().toLocaleDateString(isUrdu ? 'ur-PK' : 'en-PK', { day: '2-digit', month: 'short', year: 'numeric' })
     };
 
@@ -393,7 +363,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
       category: vehicleAuditResult.province,
       status: 'verified',
       date: vehicleAuditResult.checkedAt,
-      notes: `${vehicleAuditResult.tokenStatus} | ${vehicleAuditResult.fitness}`
+      notes: `${vehicleAuditResult.province} پورٹل کی براہ راست جانچ کی گئی`
     };
     const updated = [newRecord, ...auditRecords];
     setAuditRecords(updated);
@@ -404,11 +374,13 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
     }
   };
 
-  // Perform Driver License Verification
+  // Perform Driver License Verification (Direct Official Portal Launcher)
   const handleVerifyLicense = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const cleanQuery = licenseQuery.trim().toUpperCase();
     if (!cleanQuery) return;
+
+    handleCopy(cleanQuery);
 
     const matchedDriver = drivers.find(d => d.license.toUpperCase().includes(cleanQuery) || d.cnic.includes(cleanQuery));
     const driverName = matchedDriver ? matchedDriver.name : 'Commercial Transport Driver';
@@ -417,10 +389,6 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
       identifier: cleanQuery,
       driverName,
       lictype: licenseType,
-      status: 'کمپیوٹرائزڈ لائسنس فعال ہے (Active DLIMS Record)',
-      validity: 'میعاد درست (Valid until Nov 2028)',
-      categories: `${licenseType} Commercial / Heavy Transport Freight`,
-      trafficRecord: 'کوئی بڑا بلیک پوائنٹ یا سسپنشن نہیں (Clean Record)',
       officialUrl: 'https://dlims.punjab.gov.pk/verify',
       checkedAt: new Date().toLocaleDateString(isUrdu ? 'ur-PK' : 'en-PK', { day: '2-digit', month: 'short', year: 'numeric' })
     };
@@ -439,7 +407,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
       category: licenseAuditResult.lictype,
       status: 'valid',
       date: licenseAuditResult.checkedAt,
-      notes: `${licenseAuditResult.status} | ${licenseAuditResult.validity}`
+      notes: `DLIMS پنجاب پورٹل سے لائسنس چیک کیا گیا`
     };
     const updated = [newRecord, ...auditRecords];
     setAuditRecords(updated);
@@ -450,19 +418,18 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
     }
   };
 
-  // Perform Challan Audit
+  // Perform Challan Audit (Direct Official Portal Launcher)
   const handleVerifyChallan = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const cleanQuery = challanQuery.trim().toUpperCase();
     if (!cleanQuery) return;
 
+    handleCopy(cleanQuery);
+
     const result = {
       identifier: cleanQuery,
       city: challanCity === 'lahore' ? 'لاہور سیف سٹی (PSCA Lahore)' : challanCity === 'islamabad' ? 'اسلام آباد سیف سٹی (Safe City ICT)' : challanCity === 'rawalpindi' ? 'راولپنڈی ٹریفک ہیڈکوارٹر' : 'فیصل آباد سٹی ٹریفک',
-      challanStatus: 'کوئی اوور اسپیڈنگ یا ٹریفک چالان واجب الادا نہیں (Clean / Zero Pending)',
-      discountPolicy: 'چالان جاری ہونے کے 10 دن کے اندر 50 فیصد رعایت دستیاب ہوتی ہے',
-      paymentOptions: 'JazzCash, Easypaisa, 1Bill Bank Apps, NBP Branches',
-      officialUrl: challanCity === 'lahore' ? 'https://echallan.psca.gop.pk' : 'https://echallan.psca.gop.pk',
+      officialUrl: 'https://echallan.psca.gop.pk',
       checkedAt: new Date().toLocaleDateString(isUrdu ? 'ur-PK' : 'en-PK', { day: '2-digit', month: 'short', year: 'numeric' })
     };
 
@@ -480,7 +447,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
       category: challanAuditResult.city,
       status: 'clear',
       date: challanAuditResult.checkedAt,
-      notes: challanAuditResult.challanStatus
+      notes: `${challanAuditResult.city} ای چالان پورٹل چیکنگ مکمل`
     };
     const updated = [newRecord, ...auditRecords];
     setAuditRecords(updated);
@@ -763,13 +730,13 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
               )}
             </div>
 
-            {/* Interactive Vehicle Audit Result */}
+            {/* Direct Official Vehicle Portal Launcher Card */}
             {vehicleAuditResult && (
               <div className="p-6 rounded-3xl bg-white border-2 border-[#8b9d77] shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#ecece0]">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 rounded-2xl bg-[#8b9d77]/20 text-[#4a5e38]">
-                      <CheckCircle2 className="w-6 h-6" />
+                      <ExternalLink className="w-6 h-6" />
                     </div>
                     <div>
                       <span className="text-xs font-bold text-[#8b9d77] uppercase tracking-wider font-mono">
@@ -790,27 +757,22 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     </div>
                   </div>
 
-                  <span className="self-start sm:self-auto px-3 py-1 bg-green-100 border border-green-300 text-green-800 text-xs font-bold rounded-full flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                    {isUrdu ? 'فارمیٹ و کلیئرنس درست' : 'Verified Commercial Format'}
+                  <span className="self-start sm:self-auto px-3 py-1 bg-blue-100 border border-blue-300 text-blue-800 text-xs font-bold rounded-full flex items-center gap-1.5">
+                    <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                    {isUrdu ? 'براہ راست پورٹل ری ڈائریکٹ' : 'Direct Portal Redirect'}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-sans">
-                  <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-1">
-                    <span className="font-bold text-[#4a4a35] flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-[#8b9d77]" />
-                      {isUrdu ? 'ٹوکن ٹیکس اسٹیٹس:' : 'Token Tax Status:'}
-                    </span>
-                    <p className="text-[#5a5a40]">{vehicleAuditResult.tokenStatus}</p>
+                <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs text-emerald-900 space-y-2">
+                  <div className="flex items-center gap-2 font-bold">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{isUrdu ? 'گاڑی نمبر کاپی ہو چکا ہے!' : 'Plate Number Copied to Clipboard!'}</span>
                   </div>
-                  <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-1">
-                    <span className="font-bold text-[#4a4a35] flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-[#8b9d77]" />
-                      {isUrdu ? 'فٹنس و پرمٹ میعاد:' : 'Fitness & Highway Permit:'}
-                    </span>
-                    <p className="text-[#5a5a40]">{vehicleAuditResult.fitness}</p>
-                  </div>
+                  <p className="text-[11px] leading-relaxed text-emerald-800">
+                    {isUrdu
+                      ? 'سرکاری ایکسائز پورٹل پر گاڑی کی رجسٹریشن، ٹوکن ٹیکس اور فٹنس کی تفصیلات لائیو دیکھنے کے لیے نیچے دیا گیا بٹن دبائیں۔'
+                      : 'To view live vehicle registration, token tax and fitness records, click the button below to launch the official excise portal.'}
+                  </p>
                 </div>
 
                 {/* Actions */}
@@ -821,17 +783,17 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     className="px-4 py-2 bg-[#8b9d77]/20 hover:bg-[#8b9d77]/30 text-[#4a5e38] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>{isUrdu ? 'آڈٹ ریکارڈ محفوظ کریں' : 'Save to Audit Log'}</span>
+                    <span>{isUrdu ? 'آڈٹ لاگ میں نوٹ محفوظ کریں' : 'Save Note to Audit Log'}</span>
                   </button>
 
                   <a
                     href={vehicleAuditResult.officialUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 bg-[#5a5a40] hover:bg-[#4a4a35] text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-2xs no-underline"
+                    className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-sm no-underline active:scale-95"
                   >
-                    <span>{isUrdu ? 'آفیشل ایکسائز پورٹل کھولیں' : 'Open Official Portal'}</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-white/80" />
+                    <span>{isUrdu ? 'آفیشل ایکسائز پورٹل پر چیک کریں' : 'Verify on Official Excise Portal'}</span>
+                    <ExternalLink className="w-4 h-4 text-white" />
                   </a>
                 </div>
               </div>
@@ -957,17 +919,17 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
               )}
             </div>
 
-            {/* Interactive License Result */}
+            {/* Direct Official DLIMS Portal Launcher Card */}
             {licenseAuditResult && (
               <div className="p-6 rounded-3xl bg-white border-2 border-[#8b9d77] shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#ecece0]">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 rounded-2xl bg-emerald-100 text-emerald-800">
-                      <CheckCircle2 className="w-6 h-6" />
+                      <ExternalLink className="w-6 h-6" />
                     </div>
                     <div>
                       <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider font-mono">
-                        {licenseAuditResult.categories}
+                        {licenseAuditResult.lictype} Commercial
                       </span>
                       <h3 className="font-serif font-bold text-xl text-[#4a4a35] flex items-center gap-2">
                         <span>{licenseAuditResult.driverName}</span>
@@ -985,26 +947,21 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   </div>
 
                   <span className="self-start sm:self-auto px-3 py-1 bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold rounded-full flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    {isUrdu ? 'ڈی ایل آئی ایم ایس ایکٹو' : 'Active & Certified'}
+                    <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
+                    {isUrdu ? 'براہ راست پورٹل ری ڈائریکٹ' : 'Direct Portal Redirect'}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-sans">
-                  <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-1">
-                    <span className="font-bold text-[#4a4a35] flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-[#8b9d77]" />
-                      {isUrdu ? 'میعاد کی تاریخ:' : 'Validity Expiry:'}
-                    </span>
-                    <p className="text-[#5a5a40]">{licenseAuditResult.validity}</p>
+                <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs text-emerald-900 space-y-2">
+                  <div className="flex items-center gap-2 font-bold">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{isUrdu ? 'لائسنس / شناختی کارڈ نمبر کاپی ہو چکا ہے!' : 'Identifier Copied to Clipboard!'}</span>
                   </div>
-                  <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-1">
-                    <span className="font-bold text-[#4a4a35] flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-[#8b9d77]" />
-                      {isUrdu ? 'موٹروے پولیس ریکارڈ:' : 'NHMP Status:'}
-                    </span>
-                    <p className="text-[#5a5a40]">{licenseAuditResult.trafficRecord}</p>
-                  </div>
+                  <p className="text-[11px] leading-relaxed text-emerald-800">
+                    {isUrdu
+                      ? 'پنجاب ٹریفک پولیس کے آفیشل ڈی ایل آئی ایم ایس (DLIMS) پورٹل پر لائسنس کی لائیو میعاد اور کیٹیگری چیک کرنے کے لیے نیچے بٹن دبائیں۔'
+                      : 'To verify computerized driving license validity and traffic records directly on DLIMS, click the button below.'}
+                  </p>
                 </div>
 
                 {/* Actions */}
@@ -1015,17 +972,17 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     className="px-4 py-2 bg-[#8b9d77]/20 hover:bg-[#8b9d77]/30 text-[#4a5e38] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>{isUrdu ? 'ڈرائیور آڈٹ ریکارڈ محفوظ کریں' : 'Save Driver Audit'}</span>
+                    <span>{isUrdu ? 'آڈٹ لاگ میں نوٹ محفوظ کریں' : 'Save Note to Audit Log'}</span>
                   </button>
 
                   <a
                     href={licenseAuditResult.officialUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 bg-[#5a5a40] hover:bg-[#4a4a35] text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-2xs no-underline"
+                    className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-sm no-underline active:scale-95"
                   >
-                    <span>{isUrdu ? 'آفیشل DLIMS پورٹل' : 'Open DLIMS Portal'}</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-white/80" />
+                    <span>{isUrdu ? 'آفیشل DLIMS پورٹل پر چیک کریں' : 'Verify on DLIMS Portal'}</span>
+                    <ExternalLink className="w-4 h-4 text-white" />
                   </a>
                 </div>
               </div>
@@ -1174,13 +1131,13 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
               </div>
             </div>
 
-            {/* Interactive Challan Result */}
+            {/* Direct Official Safe City E-Challan Portal Launcher Card */}
             {challanAuditResult && (
               <div className="p-6 rounded-3xl bg-white border-2 border-[#8b9d77] shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#ecece0]">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 rounded-2xl bg-blue-100 text-blue-800">
-                      <CheckCircle2 className="w-6 h-6" />
+                      <ExternalLink className="w-6 h-6" />
                     </div>
                     <div>
                       <span className="text-xs font-bold text-blue-800 uppercase tracking-wider font-mono">
@@ -1188,30 +1145,35 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                       </span>
                       <h3 className="font-serif font-bold text-xl text-[#4a4a35] flex items-center gap-2">
                         <span>{challanAuditResult.identifier}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(challanAuditResult.identifier)}
+                          className="p-1 rounded-md hover:bg-gray-100 text-gray-500 cursor-pointer"
+                          title="کاپی کریں"
+                        >
+                          {copiedText === challanAuditResult.identifier ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                        </button>
                       </h3>
-                      <p className="text-xs text-[#5a5a40] font-medium">{challanAuditResult.challanStatus}</p>
+                      <p className="text-xs text-[#5a5a40] font-medium">{challanAuditResult.city}</p>
                     </div>
                   </div>
 
-                  <span className="self-start sm:self-auto px-3 py-1 bg-green-100 border border-green-300 text-green-800 text-xs font-bold rounded-full flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                    {isUrdu ? 'کوئی پینڈنگ چالان نہیں' : 'Zero Pending Challans'}
+                  <span className="self-start sm:self-auto px-3 py-1 bg-blue-100 border border-blue-300 text-blue-800 text-xs font-bold rounded-full flex items-center gap-1.5">
+                    <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                    {isUrdu ? 'براہ راست پورٹل ری ڈائریکٹ' : 'Direct Portal Redirect'}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-sans">
-                  <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-1">
-                    <span className="font-bold text-[#4a4a35]">
-                      {isUrdu ? 'رعایت و ادائیگی اصول:' : 'Payment & Discounts:'}
-                    </span>
-                    <p className="text-[#5a5a40]">{challanAuditResult.discountPolicy}</p>
+                <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200 text-xs text-blue-900 space-y-2">
+                  <div className="flex items-center gap-2 font-bold">
+                    <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>{isUrdu ? 'گاڑی نمبر کاپی ہو چکا ہے!' : 'Vehicle Identifier Copied!'}</span>
                   </div>
-                  <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-1">
-                    <span className="font-bold text-[#4a4a35]">
-                      {isUrdu ? 'ادائیگی کے ذرائع:' : 'Supported Channels:'}
-                    </span>
-                    <p className="text-[#5a5a40]">{challanAuditResult.paymentOptions}</p>
-                  </div>
+                  <p className="text-[11px] leading-relaxed text-blue-800">
+                    {isUrdu
+                      ? 'پنجاب سیف سٹی اتھارٹی (PSCA) کے پورٹل پر لائیو ای چالان، جرمانے اور ویڈیو کیمرہ ریکارڈز چیک کرنے کے لیے نیچے بٹن دبائیں۔'
+                      : 'To inspect live e-challans, traffic violations and speed camera penalties on the official PSCA portal, click the button below.'}
+                  </p>
                 </div>
 
                 {/* Actions */}
@@ -1222,17 +1184,17 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     className="px-4 py-2 bg-[#8b9d77]/20 hover:bg-[#8b9d77]/30 text-[#4a5e38] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>{isUrdu ? 'چالان کلین ریکارڈ محفوظ کریں' : 'Save Clean Record'}</span>
+                    <span>{isUrdu ? 'آڈٹ لاگ میں نوٹ محفوظ کریں' : 'Save Note to Audit Log'}</span>
                   </button>
 
                   <a
                     href={challanAuditResult.officialUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 bg-[#5a5a40] hover:bg-[#4a4a35] text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-2xs no-underline"
+                    className="px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-sm no-underline active:scale-95"
                   >
-                    <span>{isUrdu ? 'آفیشل سیف سٹی پورٹل' : 'PSCA Safe City Portal'}</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-white/80" />
+                    <span>{isUrdu ? 'آفیشل سیف سٹی پورٹل پر چیک کریں' : 'Verify on Official PSCA Portal'}</span>
+                    <ExternalLink className="w-4 h-4 text-white" />
                   </a>
                 </div>
               </div>
