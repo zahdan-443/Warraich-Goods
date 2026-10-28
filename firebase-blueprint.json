@@ -139,18 +139,17 @@
     },
     "PublicBiltyVerification": {
       "title": "PublicBiltyVerification",
-      "description": "Public bilty verification document stripped of all PII and financial values for public verification",
+      "description": "Public bilty verification document containing non-sensitive, non-financial fields for public verification",
       "type": "object",
       "properties": {
         "biltyNo": { "type": "string" },
         "date": { "type": "string" },
         "sendingCity": { "type": "string" },
         "receivingCity": { "type": "string" },
+        "vehicleNo": { "type": "string" },
         "itemDescription": { "type": "string" },
         "weight": { "type": "string" },
         "qty": { "type": "string" },
-        "vehicleNo": { "type": "string" },
-        "isDelivered": { "type": "boolean" },
         "verifiedPublicly": { "type": "boolean" },
         "createdAt": { "type": "string" },
         "updatedAt": { "type": "string" }

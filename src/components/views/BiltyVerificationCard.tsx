@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BiltyRecord, Language } from '../../types';
 import {
   ShieldCheck,
@@ -8,8 +8,13 @@ import {
   MapPin,
   Package,
   CheckCircle2,
-  Lock
+  Lock,
+  Copy,
+  Check,
+  Share2,
+  Phone
 } from 'lucide-react';
+import { getBiltyVerificationUrl, BILTY_BRANCHES } from '../../utils/biltyHelpers';
 
 interface BiltyVerificationCardProps {
   bilty: Partial<BiltyRecord>;
@@ -23,6 +28,26 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
   onBack
 }) => {
   const isUrdu = lang === 'ur';
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  // Branch info
+  const branchKey = bilty.branch === 'kamalia' ? 'kamalia' : 'samundri';
+  const branchInfo = BILTY_BRANCHES[branchKey];
+
+  const verificationUrl = getBiltyVerificationUrl(bilty.biltyNo || '');
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(verificationUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleWhatsAppShare = () => {
+    const text = isUrdu
+      ? `ورائچ گڈز ٹرانسپورٹ کمپنی - تصدیق شدہ بلٹی نمبر ${bilty.biltyNo || ''}\nتاریخ: ${bilty.date || '-'}\nگاڑی نمبر: ${bilty.vehicleNo || '-'}\nروٹ: ${bilty.sendingCity || '-'} تا ${bilty.receivingCity || '-'}\nمال: ${bilty.itemDescription || '-'}\nتصدیقی لنک:\n${verificationUrl}`
+      : `Warraich Goods Transport Co. - Verified Bilty #${bilty.biltyNo || ''}\nDate: ${bilty.date || '-'}\nVehicle: ${bilty.vehicleNo || '-'}\nRoute: ${bilty.sendingCity || '-'} to ${bilty.receivingCity || '-'}\nCargo: ${bilty.itemDescription || '-'}\nVerification Link:\n${verificationUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 animate-in fade-in slide-in-from-top-3">
@@ -41,7 +66,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
                 {bilty.biltyNo}
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-emerald-900 font-medium mt-0.5">
+            <p className="text-xs sm:text-sm text-emerald-950 font-medium mt-0.5">
               {isUrdu
                 ? 'ورائچ گڈز ٹرانسپورٹ کمپنی کا تصدیق شدہ آرڈر کیریئر لاگ'
                 : 'Verified via Warraich Goods Transport Co. Official Public System'}
@@ -74,9 +99,14 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
             <p className="text-xs text-[#8e8e75]">
               {isUrdu ? 'پبلک کیریئر و باربرداری ریکارڈ' : 'Public Transport Verification Registry'}
             </p>
+            {branchInfo && (
+              <p className="text-[11px] text-[#5a5a40]">
+                {isUrdu ? branchInfo.addressUr : branchInfo.addressEn}
+              </p>
+            )}
           </div>
 
-          <div className="text-right">
+          <div className="text-right shrink-0">
             <span className="text-[10px] uppercase font-bold text-[#8e8e75] block">
               {isUrdu ? 'نمبر' : 'Bilty No'}
             </span>
@@ -111,7 +141,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
           <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0]">
             <span className="text-[11px] font-bold text-[#8e8e75] flex items-center gap-1 mb-1">
               <MapPin className="w-3.5 h-3.5 text-[#8b9d77]" />
-              {isUrdu ? 'روٹ (شہر)' : 'Route'}
+              {isUrdu ? 'روٹ (شہر تا شہر)' : 'Route'}
             </span>
             <p className="text-xs sm:text-sm font-bold text-[#4a4a35]">
               {bilty.sendingCity || '-'} {isUrdu ? 'تا' : 'to'} {bilty.receivingCity || '-'}
@@ -128,13 +158,13 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
             <div className="p-2.5 rounded-xl bg-white border border-[#ecece0]">
               <span className="text-[10px] text-[#8e8e75] block mb-0.5">
-                {isUrdu ? 'تفصیل مال' : 'Description'}
+                {isUrdu ? 'تفصیل مال' : 'Cargo Description'}
               </span>
               <span className="text-xs font-bold text-[#4a4a35]">
-                {bilty.itemDescription || 'جنرل کارگو'}
+                {bilty.itemDescription || (isUrdu ? 'جنرل کارگو' : 'General Cargo')}
               </span>
             </div>
 
@@ -166,6 +196,59 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
               ? 'سیکیورٹی و تحفظ پرائیویسی: عوامی تصدیق میں نام، فون نمبر، شناختی کارڈ اور مالیاتی رقوم ظاہر نہیں کی جاتیں۔'
               : 'Privacy Protection: Public verifications strictly sanitize personal identity details and financial amounts.'}
           </span>
+        </div>
+
+        {/* Official 24/7 Helpline */}
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <Phone className="w-4 h-4 text-emerald-700 shrink-0" />
+            <div>
+              <span className="font-bold text-slate-800">
+                {isUrdu ? 'ورائچ گڈز 24/7 آفیشل ہیلپ لائن:' : 'Warraich Goods 24/7 Helpline:'}
+              </span>
+              <p className="text-[11px] text-slate-500">
+                {isUrdu ? 'کسی بھی معلومات یا تصدیق کے لیے رابطہ کریں' : 'Contact for consignment verification and support'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href="tel:03005370443"
+              className="px-3 py-1.5 rounded-xl bg-white border border-emerald-300 hover:bg-emerald-50 text-emerald-800 font-mono font-bold text-xs flex items-center gap-1 transition-colors"
+            >
+              <Phone className="w-3 h-3 text-emerald-600" />
+              <span>0300-5370443</span>
+            </a>
+            <a
+              href="tel:03395370443"
+              className="px-3 py-1.5 rounded-xl bg-white border border-emerald-300 hover:bg-emerald-50 text-emerald-800 font-mono font-bold text-xs flex items-center gap-1 transition-colors"
+            >
+              <Phone className="w-3 h-3 text-emerald-600" />
+              <span>0339-5370443</span>
+            </a>
+          </div>
+        </div>
+
+        {/* Action Buttons: WhatsApp Share & Copy Link */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="w-full py-3 bg-white hover:bg-slate-50 border border-[#ecece0] text-[#4a4a35] rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-2xs active:scale-98"
+          >
+            {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-[#8e8e75]" />}
+            <span>{copiedLink ? (isUrdu ? 'لنک کاپی ہو گیا' : 'Link Copied!') : (isUrdu ? 'تصدیقی لنک کاپی کریں' : 'Copy Verification Link')}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleWhatsAppShare}
+            className="w-full py-3 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-98"
+          >
+            <Share2 className="w-4 h-4 text-white" />
+            <span>{isUrdu ? 'واٹس ایپ پر شیئر کریں' : 'Share on WhatsApp'}</span>
+          </button>
         </div>
       </div>
     </div>

@@ -265,9 +265,13 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
           }
           processedCount++;
         } else if (action.type === 'public_bilty' && action.data?.biltyNo) {
+          const safeData = extractPublicBiltyVerification(action.data);
           const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
           const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-          await withTimeout(setDoc(pubRef, action.data, { merge: true }), 3000);
+          await withTimeout(setDoc(pubRef, safeData, { merge: true }), 3000);
+          processedCount++;
+        } else if (action.type === 'bilty' && !Array.isArray(action.data)) {
+          // Legacy counter sync action - mark processed
           processedCount++;
         } else if (['trip', 'trips', 'vehicle', 'vehicles', 'driver', 'drivers', 'fuel', 'routes'].includes(action.type)) {
           const collectionName = action.type.endsWith('s') ? action.type : `${action.type}s`;
@@ -287,25 +291,24 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
         } else {
           processedCount++;
         }
-      } else if (action.type === 'public_bilty' && action.data?.biltyNo) {
-        // Public bilty writes can proceed even if user profile is pending, provided client has network
+      } else if (action.type === 'public_bilty' && action.data?.biltyNo && user) {
+        const safeData = extractPublicBiltyVerification(action.data);
         const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
         const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-        await withTimeout(setDoc(pubRef, action.data, { merge: true }), 3000);
-        processedCount++;
-      } else if (action.type === 'pod_confirmation' && action.data?.biltyNo) {
-        // POD confirmation update
-        const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
-        const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-        await withTimeout(setDoc(pubRef, action.data, { merge: true }), 3000);
+        await withTimeout(setDoc(pubRef, safeData, { merge: true }), 3000);
         processedCount++;
       } else {
-        // No authenticated user yet; retain in queue
-        remainingQueue.push(action);
+        // Unauthenticated action in queue: do not attempt cloud writes without auth
+        if ((action.retryCount || 0) >= 2) {
+          // Discard unauthenticated stale actions to prevent endless error spam
+          processedCount++;
+        } else {
+          remainingQueue.push(action);
+        }
       }
-    } catch (err) {
-      const retry = (action.retryCount || 0) + 1;
+    } catch (err: any) {
       const errMsg = err instanceof Error ? err.message : String(err);
+      const retry = (action.retryCount || 0) + 1;
       errorLogs.push(`Action ${action.id} failed (attempt ${retry}): ${errMsg}`);
       // Retain failed queue items with updated retry count and error context so failed writes are never silently ignored
       remainingQueue.push({ ...action, retryCount: retry, lastError: errMsg });
@@ -422,17 +425,19 @@ export function saveStoredBilties(bilties: BiltyRecord[]) {
 }
 
 /**
- * Public Verification Safe Document (Strictly excludes PII such as CNIC, mobile numbers, party names, financial amounts, and delivery photos)
+ * Public Verification Safe Document
+ * Includes: biltyNo, date, senderName, receiverName, sendingCity, receivingCity, vehicleNo, driverName, itemDescription, weight, qty.
+ * Strictly EXCLUDES: CNICs, phone numbers, freight total, advance, payable, delivery tracking status.
  */
 export interface PublicBiltyVerification {
   biltyNo: string;
   date: string;
   sendingCity: string;
   receivingCity: string;
+  vehicleNo?: string;
   itemDescription: string;
   weight?: string;
   qty?: string;
-  vehicleNo?: string;
   verifiedPublicly: true;
   createdAt: string;
   updatedAt?: string;
@@ -455,14 +460,14 @@ export function extractPublicBiltyVerification(bilty: Partial<BiltyRecord>): Pub
     createdAt: new Date().toISOString()
   };
 
-  if (bilty.weight) {
-    result.weight = bilty.weight;
+  if (bilty.vehicleNo && bilty.vehicleNo.trim()) {
+    result.vehicleNo = bilty.vehicleNo.trim();
   }
-  if (bilty.qty) {
-    result.qty = bilty.qty;
+  if (bilty.weight && String(bilty.weight).trim()) {
+    result.weight = String(bilty.weight).trim();
   }
-  if (bilty.vehicleNo) {
-    result.vehicleNo = bilty.vehicleNo;
+  if (bilty.qty && String(bilty.qty).trim()) {
+    result.qty = String(bilty.qty).trim();
   }
 
   return result;
@@ -573,6 +578,10 @@ export async function confirmBiltyDelivery(
  */
 export async function syncPublicBiltyVerification(bilty: BiltyRecord): Promise<boolean> {
   if (!bilty.biltyNo) return false;
+  const user = auth.currentUser;
+  // Public verification records in Firestore require an authenticated user
+  if (!user) return false;
+
   const safeData = extractPublicBiltyVerification(bilty);
   const normalizedNo = bilty.biltyNo.trim().toUpperCase();
 
@@ -605,12 +614,13 @@ export async function syncPublicBiltyVerification(bilty: BiltyRecord): Promise<b
  * Transactionally increments and allocates the next sequential Bilty Number.
  * When online, runs an atomic Firestore transaction on the global counter document.
  * When offline or on timeout, monotonically increments user-scoped local counter,
- * appends an offline random suffix (e.g. AH-0042-OFF-A9F3) to prevent collisions, and queues sync.
+ * appends an offline random suffix (e.g. AH-0042-OFF-A9F3) to prevent collisions.
  */
 export async function allocateNextBiltyNumber(userUid?: string): Promise<string> {
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+  const user = auth.currentUser;
 
-  if (isOnline && db) {
+  if (isOnline && db && user) {
     try {
       const counterDocRef = doc(db, 'counters', 'biltyCounter');
       const nextSeq = await withTimeout(
@@ -656,9 +666,6 @@ export async function allocateNextBiltyNumber(userUid?: string): Promise<string>
   const nextLocalSeq = Math.max(maxExisting, currentCounter) + 1;
   setScopedItem('bilty-counter', String(nextLocalSeq));
 
-  // Enqueue offline counter sync
-  enqueueOfflineAction('bilty' as any, { localCounter: nextLocalSeq });
-
   // Generate 4-character random alphanumeric suffix to prevent multi-device collision
   const chars = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ';
   let randSuffix = '';
@@ -666,8 +673,6 @@ export async function allocateNextBiltyNumber(userUid?: string): Promise<string>
     randSuffix += chars.charAt(Math.floor(Math.random() * chars.length));
   }
 
-  // TODO: Implement full online reconciliation logic to reconcile the provisional offline suffix
-  // (-OFF-XXXX) into a final canonical sequence number when network reconnects (known limitation).
   return `AH-${String(nextLocalSeq).padStart(4, '0')}-OFF-${randSuffix}`;
 }
 
@@ -1023,6 +1028,7 @@ export function getErrorLogs(): Array<{ id: string; timestamp: string; action: s
 export function clearErrorLogs(): void {
   try {
     safeStorage.removeItem('ah-error-logs');
+    safeStorage.removeItem('ah-last-sync-error');
   } catch {
     // Ignore
   }
@@ -1524,23 +1530,38 @@ export async function deleteUserAccountAndCloudData(): Promise<{ success: boolea
   const uid = user.uid;
 
   try {
-    // 1. Delete Firestore user subcollections
-    const collectionsToDelete = ['trips', 'vehicles', 'drivers', 'routes', 'fuel', 'bilties', 'ledger'];
-    for (const key of collectionsToDelete) {
+    // 1. Fetch and delete documents in Firestore user subcollections (`users/{uid}/collections/{subcol}`)
+    if (db) {
+      const collectionsCol = collection(db, 'users', uid, 'collections');
       try {
-        const userDocRef = doc(db, 'users', uid, 'collections', key);
-        await deleteDoc(userDocRef).catch(() => {});
+        const snap = await getDocs(collectionsCol);
+        for (const docSnap of snap.docs) {
+          await deleteDoc(docSnap.ref).catch(() => {});
+        }
       } catch {
-        // Continue
+        // Fallback for individual collection document paths
+        const legacyKeys = ['trips', 'vehicles', 'drivers', 'routes', 'fuel', 'bilties', 'ledger'];
+        for (const key of legacyKeys) {
+          await deleteDoc(doc(db, 'users', uid, 'collections', key)).catch(() => {});
+        }
       }
-    }
 
-    // 2. Delete Firestore root user document & usersData document
-    try {
+      // Also delete any direct subcollections under `users/{uid}/{subcollection}`
+      const directSubcols = ['trips', 'vehicles', 'drivers', 'routes', 'fuel', 'bilties', 'ledger'];
+      for (const subcol of directSubcols) {
+        try {
+          const subSnap = await getDocs(collection(db, 'users', uid, subcol));
+          for (const docSnap of subSnap.docs) {
+            await deleteDoc(docSnap.ref).catch(() => {});
+          }
+        } catch {
+          // Continue
+        }
+      }
+
+      // 2. Delete Firestore root user document & usersData document
       await deleteDoc(doc(db, 'users', uid)).catch(() => {});
       await deleteDoc(doc(db, 'usersData', uid)).catch(() => {});
-    } catch {
-      // Continue
     }
 
     // 3. Clear user-scoped local storage

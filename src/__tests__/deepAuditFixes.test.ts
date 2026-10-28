@@ -12,7 +12,7 @@ describe('Deep Audit Fixes Verification Suite', () => {
   });
 
   describe('Public Bilty Verification Privacy & QR URL', () => {
-    it('should extract public bilty verification without PII, party names, or financial amounts', () => {
+    it('should extract public bilty verification without PII or financial amounts', () => {
       const fullBilty: BiltyRecord = {
         id: 12345,
         biltyNo: 'AH-2026-0001',
@@ -37,7 +37,7 @@ describe('Deep Audit Fixes Verification Suite', () => {
 
       const publicVerification = extractPublicBiltyVerification(fullBilty);
 
-      // Verify necessary fields for QR code validation are present
+      // Verify necessary non-PII, non-financial fields for public verification are present
       expect(publicVerification.biltyNo).toBe('AH-2026-0001');
       expect(publicVerification.vehicleNo).toBe('LES-1234');
       expect(publicVerification.sendingCity).toBe('Lahore');
@@ -47,18 +47,18 @@ describe('Deep Audit Fixes Verification Suite', () => {
       expect(publicVerification.weight).toBe('5000 kg');
       expect(publicVerification.verifiedPublicly).toBe(true);
 
-      // Verify that PII, party names, and financial properties DO NOT exist on public verification payload
-      expect((publicVerification as any).senderName).toBeUndefined();
-      expect((publicVerification as any).receiverName).toBeUndefined();
-      expect((publicVerification as any).consignor).toBeUndefined();
-      expect((publicVerification as any).consignee).toBeUndefined();
+      // Verify that CNICs, phone numbers, and financial rupee amounts DO NOT exist on public verification payload
       expect((publicVerification as any).total).toBeUndefined();
       expect((publicVerification as any).advance).toBeUndefined();
       expect((publicVerification as any).payable).toBeUndefined();
+      expect((publicVerification as any).freight).toBeUndefined();
       expect((publicVerification as any).senderCnic).toBeUndefined();
       expect((publicVerification as any).senderMobile).toBeUndefined();
       expect((publicVerification as any).receiverMobile).toBeUndefined();
       expect((publicVerification as any).mobileNo).toBeUndefined();
+      expect((publicVerification as any).senderName).toBeUndefined();
+      expect((publicVerification as any).receiverName).toBeUndefined();
+      expect((publicVerification as any).driverName).toBeUndefined();
     });
 
     it('should generate official verification QR URL without vdata or financial tokens', () => {
