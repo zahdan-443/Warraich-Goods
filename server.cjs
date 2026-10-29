@@ -85,6 +85,38 @@ app.get("/api/health", (_req, res) => {
     service: "Driver Dost API Server"
   });
 });
+var weatherCache = /* @__PURE__ */ new Map();
+var WEATHER_CACHE_TTL = 10 * 60 * 1e3;
+app.get("/api/weather", async (req, res) => {
+  const { latitude, longitude } = req.query;
+  if (!latitude || !longitude) {
+    return res.status(400).json({ error: "Latitude and Longitude required" });
+  }
+  const cacheKey = `${latitude}_${longitude}`;
+  const cached = weatherCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < WEATHER_CACHE_TTL) {
+    return res.json(cached.data);
+  }
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&hourly=precipitation_probability&forecast_days=1&timezone=Asia%2FKarachi`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8e3);
+    const apiRes = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!apiRes.ok) {
+      throw new Error(`Open-Meteo returned status ${apiRes.status}`);
+    }
+    const data = await apiRes.json();
+    weatherCache.set(cacheKey, { timestamp: Date.now(), data });
+    return res.json(data);
+  } catch (err) {
+    console.warn("Weather proxy fetch error:", err.message);
+    if (cached) {
+      return res.json(cached.data);
+    }
+    return res.status(502).json({ error: "Weather upstream unavailable" });
+  }
+});
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await (0, import_vite.createServer)({
