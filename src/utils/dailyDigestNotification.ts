@@ -20,8 +20,8 @@ const SETTINGS_KEY = 'ah-daily-digest-settings';
 
 const DEFAULT_SETTINGS: DailyDigestSettings = {
   enabled: true,
-  preferredCityUr: 'لاہور',
-  preferredCityEn: 'Lahore',
+  preferredCityUr: 'سمندری',
+  preferredCityEn: 'Samundri',
   lastDigestDate: null
 };
 
@@ -35,8 +35,8 @@ export function getDailyDigestSettings(): DailyDigestSettings {
     const parsed = JSON.parse(raw);
     return {
       enabled: parsed.enabled ?? true,
-      preferredCityUr: parsed.preferredCityUr || 'لاہور',
-      preferredCityEn: parsed.preferredCityEn || 'Lahore',
+      preferredCityUr: parsed.preferredCityUr || 'سمندری',
+      preferredCityEn: parsed.preferredCityEn || 'Samundri',
       lastDigestDate: parsed.lastDigestDate || null
     };
   } catch {
@@ -69,8 +69,8 @@ export async function buildDailyDigestContent(
   const isUrdu = lang === 'ur';
   const fuel = getStoredFuelPrices();
   
-  // Format city name
-  const city = cityName || { ur: 'لاہور', en: 'Lahore' };
+  // Format city name - Default to Samundri
+  const city = cityName || { ur: 'سمندری', en: 'Samundri' };
   const targetCity = isUrdu ? city.ur : city.en;
 
   // Active hazard road reports
@@ -89,8 +89,21 @@ export async function buildDailyDigestContent(
     // offline or database unreachable
   }
 
-  const tempStr = currentTemp ? `${currentTemp}°C` : 'معتدل';
-  const tempStrEn = currentTemp ? `${currentTemp}°C` : 'Clear';
+  let resolvedTemp = currentTemp;
+  if (!resolvedTemp) {
+    try {
+      const cachedWeatherStr = localStorage.getItem('wg_cached_highway_weather');
+      if (cachedWeatherStr) {
+        const cached = JSON.parse(cachedWeatherStr);
+        if (cached?.data?.['samundri']?.temp) {
+          resolvedTemp = cached.data['samundri'].temp;
+        }
+      }
+    } catch {}
+  }
+
+  const tempStr = resolvedTemp ? `${resolvedTemp}°C` : 'معتدل';
+  const tempStrEn = resolvedTemp ? `${resolvedTemp}°C` : 'Clear';
 
   const title = isUrdu
     ? '🚛 ڈرائیور دوست: روزانہ فیول، موسم اور روڈ الرٹ'
@@ -105,6 +118,53 @@ export async function buildDailyDigestContent(
     : `Diesel Rs. ${fuel.diesel} • Petrol Rs. ${fuel.petrol} • ${targetCity}`;
 
   return { title, body, summaryShort };
+}
+
+/**
+ * Resolves current phone location city or falls back to Samundri.
+ */
+async function resolvePhoneOrFallbackCity(defaultUr = 'سمندری', defaultEn = 'Samundri'): Promise<{ ur: string; en: string }> {
+  if (typeof window === 'undefined' || !navigator.geolocation) {
+    return { ur: defaultUr, en: defaultEn };
+  }
+
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      resolve({ ur: defaultUr, en: defaultEn });
+    }, 2500);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        clearTimeout(timer);
+        try {
+          const { latitude, longitude } = pos.coords;
+          // Approximate check for Samundri / Lahore / nearest Pakistani hub
+          const dSmd = Math.hypot(latitude - 31.0632, longitude - 72.9602);
+          const dLhr = Math.hypot(latitude - 31.5204, longitude - 74.3587);
+          const dFsd = Math.hypot(latitude - 31.4504, longitude - 73.1350);
+          const dIsb = Math.hypot(latitude - 33.6844, longitude - 73.0479);
+          const dKhi = Math.hypot(latitude - 24.8607, longitude - 67.0011);
+          const dMul = Math.hypot(latitude - 30.1575, longitude - 71.5249);
+
+          const minD = Math.min(dSmd, dLhr, dFsd, dIsb, dKhi, dMul);
+          if (minD === dSmd) resolve({ ur: 'سمندری', en: 'Samundri' });
+          else if (minD === dFsd) resolve({ ur: 'فیصل آباد', en: 'Faisalabad' });
+          else if (minD === dLhr) resolve({ ur: 'لاہور', en: 'Lahore' });
+          else if (minD === dIsb) resolve({ ur: 'اسلام آباد', en: 'Islamabad' });
+          else if (minD === dKhi) resolve({ ur: 'کراچی', en: 'Karachi' });
+          else if (minD === dMul) resolve({ ur: 'ملتان', en: 'Multan' });
+          else resolve({ ur: defaultUr, en: defaultEn });
+        } catch {
+          resolve({ ur: defaultUr, en: defaultEn });
+        }
+      },
+      () => {
+        clearTimeout(timer);
+        resolve({ ur: defaultUr, en: defaultEn });
+      },
+      { timeout: 2500, maximumAge: 600000 }
+    );
+  });
 }
 
 /**
@@ -151,9 +211,15 @@ export async function dispatchDailyDigestNotification(
     }
   }
 
+  // Resolve City: Context > Phone Geolocation > Default Samundri
+  const targetCity = cityContext || await resolvePhoneOrFallbackCity(
+    settings.preferredCityUr || 'سمندری',
+    settings.preferredCityEn || 'Samundri'
+  );
+
   const { title, body, summaryShort } = await buildDailyDigestContent(
     lang,
-    cityContext || { ur: settings.preferredCityUr, en: settings.preferredCityEn },
+    targetCity,
     currentTemp
   );
 

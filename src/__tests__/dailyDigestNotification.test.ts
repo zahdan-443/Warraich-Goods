@@ -16,7 +16,8 @@ describe('dailyDigestNotification', () => {
   it('should return default settings when nothing is stored', () => {
     const settings = getDailyDigestSettings();
     expect(settings.enabled).toBe(true);
-    expect(settings.preferredCityUr).toBe('لاہور');
+    expect(settings.preferredCityUr).toBe('سمندری');
+    expect(settings.preferredCityEn).toBe('Samundri');
     expect(settings.lastDigestDate).toBeNull();
   });
 

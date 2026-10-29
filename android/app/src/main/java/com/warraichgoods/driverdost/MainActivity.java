@@ -44,13 +44,13 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(DashcamPlugin.class);
         super.onCreate(savedInstanceState);
 
-        // Allow app to seamlessly draw behind the camera cutout / notch on Android 9+ (API 28+)
+        // Guarantee Android system status bar and navigation bar remain visible throughout the app
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             getWindow().getAttributes().layoutInDisplayCutoutMode =
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
         }
 
-        // Guarantee Android system status bar and navigation bar remain visible throughout the app
         ensureSystemBarsVisible();
 
         setupNativeBridge();
@@ -67,11 +67,16 @@ public class MainActivity extends BridgeActivity {
     private void ensureSystemBarsVisible() {
         runOnUiThread(() -> {
             try {
+                WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+                getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
                 WindowInsetsControllerCompat insetsController =
                     WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
                 if (insetsController != null) {
                     insetsController.show(WindowInsetsCompat.Type.statusBars());
                     insetsController.show(WindowInsetsCompat.Type.navigationBars());
+                    insetsController.setSystemBarsBehavior(
+                        WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+                    );
                 }
             } catch (Exception e) {
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);

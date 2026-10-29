@@ -517,73 +517,36 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
         </header>
 
-        {/* Sub-Tab Navigation Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('vehicle')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 border ${
-              activeSubTab === 'vehicle'
-                ? 'bg-[#4a5e38] text-white border-[#4a5e38] shadow-xs'
-                : 'bg-[#fdfbf7] text-[#5a5a40] border-[#ecece0] hover:border-[#8b9d77]'
-            }`}
-          >
-            <Car className="w-4 h-4" />
-            <span>{isUrdu ? 'گاڑی رجسٹریشن و ٹوکن ٹیکس' : 'Vehicle & Token Tax'}</span>
-          </button>
+        {/* Sub-Tab Navigation Pills - Removed from the 3 Government Verification Pages per user instruction */}
+        {(activeSubTab === 'history' || activeSubTab === 'bilty') && (
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('history')}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 border ${
+                activeSubTab === 'history'
+                  ? 'bg-[#4a5e38] text-white border-[#4a5e38] shadow-xs'
+                  : 'bg-[#fdfbf7] text-[#5a5a40] border-[#ecece0] hover:border-[#8b9d77]'
+              }`}
+            >
+              <CalendarCheck className="w-4 h-4" />
+              <span>{isUrdu ? `محفوظ ریکارڈز (${auditRecords.length})` : `Saved Audits (${auditRecords.length})`}</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('license')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 border ${
-              activeSubTab === 'license'
-                ? 'bg-[#4a5e38] text-white border-[#4a5e38] shadow-xs'
-                : 'bg-[#fdfbf7] text-[#5a5a40] border-[#ecece0] hover:border-[#8b9d77]'
-            }`}
-          >
-            <CreditCard className="w-4 h-4" />
-            <span>{isUrdu ? 'ڈرائیور لائسنس و ڈی ایل آئی ایم ایس' : 'Driver License (DLIMS)'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('challan')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 border ${
-              activeSubTab === 'challan'
-                ? 'bg-[#4a5e38] text-white border-[#4a5e38] shadow-xs'
-                : 'bg-[#fdfbf7] text-[#5a5a40] border-[#ecece0] hover:border-[#8b9d77]'
-            }`}
-          >
-            <AlertTriangle className="w-4 h-4" />
-            <span>{isUrdu ? 'ای چالان و ٹریفک ریکارڈ' : 'Safe City E-Challan'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('history')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 border ${
-              activeSubTab === 'history'
-                ? 'bg-[#4a5e38] text-white border-[#4a5e38] shadow-xs'
-                : 'bg-[#fdfbf7] text-[#5a5a40] border-[#ecece0] hover:border-[#8b9d77]'
-            }`}
-          >
-            <CalendarCheck className="w-4 h-4" />
-            <span>{isUrdu ? `محفوظ ریکارڈز (${auditRecords.length})` : `Saved Audits (${auditRecords.length})`}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('bilty')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 border ${
-              activeSubTab === 'bilty'
-                ? 'bg-[#4a5e38] text-white border-[#4a5e38] shadow-xs'
-                : 'bg-[#fdfbf7] text-[#5a5a40] border-[#ecece0] hover:border-[#8b9d77]'
-            }`}
-          >
-            <QrCode className="w-4 h-4" />
-            <span>{isUrdu ? 'بلٹی تصدیق (QR و لوڈ ٹریکر)' : 'Bilty Verification (QR & Load)'}</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('bilty')}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 border ${
+                activeSubTab === 'bilty'
+                  ? 'bg-[#4a5e38] text-white border-[#4a5e38] shadow-xs'
+                  : 'bg-[#fdfbf7] text-[#5a5a40] border-[#ecece0] hover:border-[#8b9d77]'
+              }`}
+            >
+              <QrCode className="w-4 h-4" />
+              <span>{isUrdu ? 'بلٹی تصدیق (QR و لوڈ ٹریکر)' : 'Bilty Verification (QR & Load)'}</span>
+            </button>
+          </div>
+        )}
 
         {/* TAB 1: VEHICLE REGISTRATION CHECK */}
         {activeSubTab === 'vehicle' && (

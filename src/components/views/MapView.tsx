@@ -330,15 +330,41 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
       return originCity.id === 'quetta' ? [...resolved].reverse() : resolved;
     }
 
-    // Default 2 points
-    return [originCity, destCity];
+    // Dynamic corridor waypoint detection for any custom city pair
+    const p1 = { x: originCity.lng, y: originCity.lat };
+    const p2 = { x: destCity.lng, y: destCity.lat };
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const lenSq = dx * dx + dy * dy;
+
+    if (lenSq === 0) return [originCity];
+
+    const corridorWaypoints: { city: TransitCity; projection: number }[] = [];
+
+    PAKISTAN_CITIES.forEach(c => {
+      if (c.id === originCity.id || c.id === destCity.id) return;
+      const px = c.lng - p1.x;
+      const py = c.lat - p1.y;
+      const t = (px * dx + py * dy) / lenSq;
+      // Must be strictly between origin and destination
+      if (t > 0.05 && t < 0.95) {
+        // Distance perpendicular to line (in degrees, ~0.65 deg ≈ 65km)
+        const projX = p1.x + t * dx;
+        const projY = p1.y + t * dy;
+        const distDeg = Math.hypot(c.lng - projX, c.lat - projY);
+        if (distDeg < 0.65) {
+          corridorWaypoints.push({ city: c, projection: t });
+        }
+      }
+    });
+
+    corridorWaypoints.sort((a, b) => a.projection - b.projection);
+    return [originCity, ...corridorWaypoints.map(w => w.city), destCity];
   }, [originCity, destCity]);
 
-  // All cities for permanent responsive display (route stops first, then all major Pakistani cities)
+  // Strictly display only cities that lie along the selected route corridor between From & To
   const allDisplayCities = useMemo(() => {
-    const routeIds = new Set(routeCities.map(c => c.id));
-    const otherCities = PAKISTAN_CITIES.filter(c => !routeIds.has(c.id));
-    return [...routeCities, ...otherCities];
+    return routeCities;
   }, [routeCities]);
 
   // Active road hazard alerts along the route corridor (Requirement 5)
@@ -779,8 +805,8 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
       polylineCoords.forEach(pt => bounds.extend(pt));
     }
 
-    // 2. Add City & Weather Markers
-    PAKISTAN_CITIES.forEach(city => {
+    // 2. Add City & Weather Markers (Corridor route cities only)
+    routeCities.forEach(city => {
       const isRoutePoint = routeCityIds.has(city.id);
       const isOrigin = routeCities[0]?.id === city.id;
       const isDest = routeCities[routeCities.length - 1]?.id === city.id && routeCities.length > 1;
@@ -1646,10 +1672,10 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
               </div>
               <div className={isUrdu ? 'text-right' : 'text-left'}>
                 <h3 className="text-xs sm:text-sm font-serif font-bold text-[#4a4a35] leading-tight">
-                  {isUrdu ? 'اہم اسٹیشنز، چیک پوائنٹس اور موسمی صورتحال' : 'Route Stations & Live Weather Status'}
+                  {isUrdu ? 'روٹ کوریڈور کے اسٹیشنز اور موسمی صورتحال' : 'Route Corridor Stations & Live Weather'}
                 </h3>
                 <span className="text-[10px] text-[#8e8e75]">
-                  {allDisplayCities.length} {isUrdu ? 'اہم شہر و اسٹیشنز' : 'Major Pakistani cities & transit stops'}
+                  {allDisplayCities.length} {isUrdu ? 'اسٹیشنز و چیک پوائنٹس' : 'Route stations & transit stops'}
                 </span>
               </div>
             </div>
@@ -1661,13 +1687,13 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
             </div>
           </div>
 
-          {/* ALL RELEVANT CITY BOXES (Permanently displayed responsive scrollable grid) */}
+          {/* ALL RELEVANT CITY BOXES (Route Corridor Cities Only) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between px-1">
               <span className="text-xs text-[#8e8e75] font-serif">
                 {isUrdu 
-                  ? `روٹ اور پاکستان کے تمام اہم شہروں کا تازہ ترین موسمی احوال:` 
-                  : `Live weather for route stations and major Pakistani cities:`}
+                  ? `منتخب کردہ روٹ کے تمام درمیانی اسٹیشنز کا تازہ ترین موسمی احوال:` 
+                  : `Live weather for transit stations along selected route:`}
               </span>
               <span className="text-[10px] text-[#8e8e75]">
                 {isUrdu ? 'تفصیل کے لیے شہر پر کلک کریں' : 'Click card to focus on map'}

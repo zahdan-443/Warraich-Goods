@@ -74,7 +74,13 @@ export const Header: React.FC<HeaderProps> = ({
   const [showPrivacyPolicyModal, setShowPrivacyPolicyModal] = useState(false);
   const [showAccountDeletionModal, setShowAccountDeletionModal] = useState(false);
   const [internalShowTopMenu, setInternalShowTopMenu] = useState(false);
-  const [themePref, setThemePref] = useState<'light' | 'dark' | 'system' | 'emerald' | 'desert' | 'navy' | 'highway'>('light');
+  const [themePref, setThemePref] = useState<'system' | 'light' | 'dark'>(() => {
+    try {
+      return (localStorage.getItem('wg_theme_pref') as 'system' | 'light' | 'dark') || 'system';
+    } catch {
+      return 'system';
+    }
+  });
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>('default');
   const [testSent, setTestSent] = useState(false);
   const [copyToast, setCopyToast] = useState(false);
@@ -124,22 +130,33 @@ export const Header: React.FC<HeaderProps> = ({
 
   React.useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove('dark', 'theme-emerald', 'theme-desert', 'theme-navy', 'theme-highway');
-    if (themePref === 'dark') {
-      root.classList.add('dark');
-    } else if (themePref === 'emerald') {
-      root.classList.add('theme-emerald');
-    } else if (themePref === 'desert') {
-      root.classList.add('theme-desert');
-    } else if (themePref === 'navy') {
-      root.classList.add('theme-navy');
-    } else if (themePref === 'highway') {
-      root.classList.add('theme-highway');
-    } else if (themePref === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
+    root.classList.remove('theme-emerald', 'theme-desert', 'theme-navy', 'theme-highway');
+    try {
+      localStorage.setItem('wg_theme_pref', themePref);
+    } catch {}
+
+    const applyTheme = () => {
+      if (themePref === 'dark') {
         root.classList.add('dark');
+      } else if (themePref === 'light') {
+        root.classList.remove('dark');
+      } else if (themePref === 'system') {
+        const prefersDark = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (prefersDark) {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
       }
+    };
+
+    applyTheme();
+
+    if (themePref === 'system' && typeof window !== 'undefined' && window.matchMedia) {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const listener = () => applyTheme();
+      mediaQuery.addEventListener('change', listener);
+      return () => mediaQuery.removeEventListener('change', listener);
     }
   }, [themePref]);
 
@@ -426,59 +443,33 @@ export const Header: React.FC<HeaderProps> = ({
                       <div className="text-xs text-[#8e8e75]">{lang === 'ur' ? 'روشنی / ڈارک موڈ' : 'Select UI display theme'}</div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-1.5 pt-1">
+                  <div className="grid grid-cols-3 gap-2 pt-1">
                     <button
-                      onClick={() => setThemePref('light')}
-                      className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${themePref === 'light' ? 'bg-[#8b9d77] text-white shadow-xs' : 'bg-white border border-[#ecece0] text-[#5a5a40] hover:bg-[#f0f0e4]'}`}
-                    >
-                      <Sun className="w-3.5 h-3.5" />
-                      <span>{lang === 'ur' ? 'روشن' : 'Light'}</span>
-                    </button>
-                    <button
-                      onClick={() => setThemePref('dark')}
-                      className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${themePref === 'dark' ? 'bg-[#1e3a68] text-white shadow-xs' : 'bg-white border border-[#ecece0] text-[#5a5a40] hover:bg-[#f0f0e4]'}`}
-                    >
-                      <Moon className="w-3.5 h-3.5" />
-                      <span>{lang === 'ur' ? 'ڈارک' : 'Dark'}</span>
-                    </button>
-                    <button
+                      type="button"
                       onClick={() => setThemePref('system')}
-                      className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${themePref === 'system' ? 'bg-[#4a4a35] text-white shadow-xs' : 'bg-white border border-[#ecece0] text-[#5a5a40] hover:bg-[#f0f0e4]'}`}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${themePref === 'system' ? 'bg-[#8b9d77] text-white shadow-xs' : 'bg-white border border-[#ecece0] text-[#5a5a40] hover:bg-[#f0f0e4]'}`}
+                      title={lang === 'ur' ? 'فون ڈیفالٹ (آٹو لائٹ/ڈارک)' : 'Phone Default (Auto)'}
                     >
-                      <Monitor className="w-3.5 h-3.5" />
-                      <span>{lang === 'ur' ? 'آٹو' : 'Auto'}</span>
+                      <Monitor className="w-4 h-4" />
+                      <span className="text-[11px] whitespace-nowrap">{lang === 'ur' ? 'فون ڈیفالٹ' : 'Phone Default'}</span>
                     </button>
                     <button
-                      onClick={() => setThemePref('emerald')}
-                      className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${themePref === 'emerald' ? 'bg-[#10B981] text-white shadow-xs' : 'bg-white border border-[#ecece0] text-[#5a5a40] hover:bg-[#f0f0e4]'}`}
+                      type="button"
+                      onClick={() => setThemePref('light')}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${themePref === 'light' ? 'bg-[#8b9d77] text-white shadow-xs' : 'bg-white border border-[#ecece0] text-[#5a5a40] hover:bg-[#f0f0e4]'}`}
+                      title={lang === 'ur' ? 'لائٹ تھیم (روشن)' : 'Light Theme'}
                     >
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></span>
-                      <span>{lang === 'ur' ? 'سبز' : 'Emerald'}</span>
+                      <Sun className="w-4 h-4" />
+                      <span className="text-[11px] whitespace-nowrap">{lang === 'ur' ? 'لائٹ تھیم' : 'Light Theme'}</span>
                     </button>
                     <button
-                      onClick={() => setThemePref('desert')}
-                      className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${themePref === 'desert' ? 'bg-[#D97706] text-white shadow-xs' : 'bg-white border border-[#ecece0] text-[#5a5a40] hover:bg-[#f0f0e4]'}`}
+                      type="button"
+                      onClick={() => setThemePref('dark')}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${themePref === 'dark' ? 'bg-[#1e3a68] text-white shadow-xs' : 'bg-white border border-[#ecece0] text-[#5a5a40] hover:bg-[#f0f0e4]'}`}
+                      title={lang === 'ur' ? 'ڈارک تھیم' : 'Dark Theme'}
                     >
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#D97706]"></span>
-                      <span>{lang === 'ur' ? 'صحرائی' : 'Desert'}</span>
-                    </button>
-                    <button
-                      onClick={() => setThemePref('navy')}
-                      className={`py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${themePref === 'navy' ? 'bg-[#3B82F6] text-white shadow-xs' : 'bg-white border border-[#ecece0] text-[#5a5a40] hover:bg-[#f0f0e4]'}`}
-                    >
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#3B82F6]"></span>
-                      <span>{lang === 'ur' ? 'نیلا' : 'Navy'}</span>
-                    </button>
-                    <button
-                      onClick={() => setThemePref('highway')}
-                      className={`col-span-3 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer border-2 ${
-                        themePref === 'highway'
-                          ? 'bg-amber-400 text-black border-black shadow-sm font-black'
-                          : 'bg-amber-50 border-amber-300 text-amber-950 hover:bg-amber-100'
-                      }`}
-                    >
-                      <Sun className="w-4 h-4 text-amber-700" />
-                      <span>{lang === 'ur' ? 'ہائی وے موڈ ☀️ (تیز دھوپ و ہائی کنٹراسٹ)' : 'Highway Mode ☀️ (High-Contrast Sunlight)'}</span>
+                      <Moon className="w-4 h-4" />
+                      <span className="text-[11px] whitespace-nowrap">{lang === 'ur' ? 'ڈارک تھیم' : 'Dark Theme'}</span>
                     </button>
                   </div>
                 </div>

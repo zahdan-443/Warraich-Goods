@@ -26,6 +26,7 @@ import {
   saveUserProfileInFirestore,
   processOfflineQueue
 } from './utils/storage';
+import { fetchLiveFuelPrices } from './utils/fuelPrice';
 import { auth, onAuthStateChanged, logoutUser, checkRedirectAuthResult, loginWithGoogle } from './utils/firebase';
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
@@ -603,6 +604,83 @@ export default function App() {
   useEffect(() => {
     dispatchDailyDigestNotification(lang, false).catch(() => {});
   }, [lang]);
+
+  // ── APP-OPEN UNIFIED API PRE-FETCH (Live Fuel Rates, Weather & Cloud Offline Queue) ──
+  useEffect(() => {
+    // 1. Live Fuel Prices API
+    fetchLiveFuelPrices(true).catch(err => console.warn('App-open fuel prefetch notice:', err));
+
+    // 2. Cloud Sync / Offline Queue Processing
+    if (navigator.onLine) {
+      processOfflineQueue().then(res => {
+        if (res.processed > 0) {
+          const remaining = getStoredOfflineQueue();
+          setOfflineQueue(remaining);
+        }
+      }).catch(err => console.warn('App-open queue sync notice:', err));
+    }
+
+    // 3. Highway & Corridor Weather API pre-fetch (Samundri, Karachi, Lahore, Islamabad, Multan, Faisalabad)
+    const prefetchWeather = async () => {
+      try {
+        const CACHE_KEY_WEATHER = 'wg_cached_highway_weather';
+        const keyCities = [
+          { id: 'samundri', lat: 31.0632, lng: 72.9602, nameUr: 'سمندری', nameEn: 'Samundri' },
+          { id: 'lahore', lat: 31.5204, lng: 74.3587, nameUr: 'لاہور', nameEn: 'Lahore' },
+          { id: 'karachi', lat: 24.8607, lng: 67.0011, nameUr: 'کراچی', nameEn: 'Karachi' },
+          { id: 'islamabad', lat: 33.6844, lng: 73.0479, nameUr: 'اسلام آباد', nameEn: 'Islamabad' },
+          { id: 'multan', lat: 30.1575, lng: 71.5249, nameUr: 'ملتان', nameEn: 'Multan' },
+          { id: 'faisalabad', lat: 31.4504, lng: 73.1350, nameUr: 'فیصل آباد', nameEn: 'Faisalabad' }
+        ];
+
+        const lats = keyCities.map(c => c.lat).join(',');
+        const lngs = keyCities.map(c => c.lng).join(',');
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&timezone=Asia%2FKarachi`);
+        if (res.ok) {
+          const json = await res.json();
+          const items = Array.isArray(json) ? json : [json];
+          const newMap: Record<string, any> = {};
+          items.forEach((item: any, idx: number) => {
+            const city = keyCities[idx];
+            if (!city || !item.current) return;
+            const c = item.current;
+            const temp = Math.round(c.temperature_2m);
+            newMap[city.id] = {
+              temp,
+              apparentTemp: Math.round(c.apparent_temperature ?? temp),
+              humidity: Math.round(c.relative_humidity_2m ?? 50),
+              windSpeed: Math.round(c.wind_speed_10m ?? 12),
+              visibilityKm: Math.round((c.visibility ?? 10000) / 1000),
+              precipitationMm: Math.round(c.precipitation ?? 0),
+              weatherCode: c.weather_code ?? 0,
+              conditionUr: 'معتدل / صاف',
+              conditionEn: 'Clear / Moderate',
+              iconType: 'sun',
+              safetyLevel: 'safe',
+              roadStatusUr: 'ہائی وے ٹریفک معمول کے مطابق',
+              roadStatusEn: 'Highway Clear',
+              fogWarning: false,
+              rainWarning: false,
+              updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+          });
+
+          let existingData = {};
+          try {
+            const old = localStorage.getItem(CACHE_KEY_WEATHER);
+            if (old) existingData = JSON.parse(old)?.data || {};
+          } catch {}
+          localStorage.setItem(CACHE_KEY_WEATHER, JSON.stringify({
+            timestamp: Date.now(),
+            data: { ...existingData, ...newMap }
+          }));
+        }
+      } catch (weatherErr) {
+        console.warn('App-open weather pre-fetch skipped:', weatherErr);
+      }
+    };
+    prefetchWeather();
+  }, []);
 
   // Daily Khata Due-Date Notification Scheduler (09:00 AM check)
   useEffect(() => {
