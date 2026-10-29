@@ -635,8 +635,22 @@ export default function App() {
 
         const lats = keyCities.map(c => c.lat).join(',');
         const lngs = keyCities.map(c => c.lng).join(',');
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&timezone=Asia%2FKarachi`);
-        if (res.ok) {
+        
+        let res: Response | null = null;
+        try {
+          res = await fetch(`/api/weather?latitude=${lats}&longitude=${lngs}`);
+        } catch {
+          // proxy fallback
+        }
+        if (!res || !res.ok) {
+          try {
+            res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&timezone=Asia%2FKarachi`);
+          } catch {
+            // direct fetch failed
+          }
+        }
+
+        if (res && res.ok) {
           const json = await res.json();
           const items = Array.isArray(json) ? json : [json];
           const newMap: Record<string, any> = {};
