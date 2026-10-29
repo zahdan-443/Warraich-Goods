@@ -18,7 +18,6 @@ import {
   Radio, 
   Mic, 
   Info,
-  Maximize2,
   X,
   RefreshCw,
   Film,

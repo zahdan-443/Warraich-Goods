@@ -23,7 +23,6 @@ import {
   Calculator, 
   Clock, 
   ShieldAlert, 
-  Maximize2, 
   Crosshair,
   ChevronDown,
   Info,

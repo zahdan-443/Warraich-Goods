@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import { 
   ledgerIconData, 
   quickOpsIconData, 
@@ -92,6 +94,42 @@ describe('Navigation Architecture & Store Quality Compliance Test Suite', () => 
       expect(isAuth(authorizedUser)).toBe(true);
       expect(isAuth(guestUser)).toBe(false);
       expect(isAuth(otherUser)).toBe(false);
+    });
+  });
+
+  // =========================================================================
+  // 4. Android System Bars & Full-Screen Immersive Mode Disablement Verification
+  // =========================================================================
+  describe('4. Full-Screen Immersive Mode Disablement Configuration', () => {
+    it('should ensure styles.xml enforces non-fullscreen window and layoutInDisplayCutoutMode never', () => {
+      const stylesPath = path.resolve(process.cwd(), 'android/app/src/main/res/values/styles.xml');
+      expect(fs.existsSync(stylesPath)).toBe(true);
+      const stylesContent = fs.readFileSync(stylesPath, 'utf8');
+      expect(stylesContent).toContain('<item name="android:windowFullscreen">false</item>');
+      expect(stylesContent).toContain('<item name="android:windowLayoutInDisplayCutoutMode">never</item>');
+    });
+
+    it('should ensure MainActivity.java enforces decorFitsSystemWindows and explicitly shows status and navigation bars', () => {
+      const mainActivityPath = path.resolve(
+        process.cwd(),
+        'android/app/src/main/java/com/warraichgoods/driverdost/MainActivity.java'
+      );
+      expect(fs.existsSync(mainActivityPath)).toBe(true);
+      const mainActivityContent = fs.readFileSync(mainActivityPath, 'utf8');
+      expect(mainActivityContent).toContain('WindowCompat.setDecorFitsSystemWindows(getWindow(), true);');
+      expect(mainActivityContent).toContain('insetsController.show(WindowInsetsCompat.Type.statusBars());');
+      expect(mainActivityContent).toContain('insetsController.show(WindowInsetsCompat.Type.navigationBars());');
+      expect(mainActivityContent).toContain('LAYOUT_IN_DISPLAY_CUTOUT_MODE_NEVER');
+    });
+
+    it('should ensure capacitor.config.ts disables splash fullscreen and immersive modes', () => {
+      const configPath = path.resolve(process.cwd(), 'capacitor.config.ts');
+      expect(fs.existsSync(configPath)).toBe(true);
+      const syncScriptPath = path.resolve(process.cwd(), 'scripts/sync-android-assets.js');
+      expect(fs.existsSync(syncScriptPath)).toBe(true);
+      const syncContent = fs.readFileSync(syncScriptPath, 'utf8');
+      expect(syncContent).toContain('splashFullScreen: false');
+      expect(syncContent).toContain('splashImmersive: false');
     });
   });
 });

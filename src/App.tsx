@@ -1064,7 +1064,7 @@ export default function App() {
             />
           )}
 
-          <main className="flex-1 flex flex-col w-full min-h-0 pb-10 md:pb-12">
+          <main className="flex-1 flex flex-col w-full min-h-0 pb-[max(env(safe-area-inset-bottom,0px),2.5rem)] md:pb-12">
             <React.Suspense
               fallback={
                 <div className="flex-1 flex items-center justify-center p-12 text-[#8e8e75] text-sm">
