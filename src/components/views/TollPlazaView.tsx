@@ -178,75 +178,42 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
       className="min-h-full max-w-4xl mx-auto w-full font-sans flex flex-col p-3 sm:p-5 md:p-6 space-y-4 animate-in fade-in"
       dir={isUrdu ? 'rtl' : 'ltr'}
     >
-      {/* Top Header Card */}
-      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-[#ecece0] shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-white border border-[#ecece0] p-1 flex items-center justify-center text-[#8b9d77] shadow-2xs shrink-0 overflow-hidden">
-            <PublicImage
-              fileName="toll-icon.png"
-              alt="Motorway Toll"
-              width={48}
-              height={48}
-              fitMode="contain"
-              className="w-full h-full"
-              fallbackIcon={<Milestone className="w-6 h-6 text-[#4a5e38]" />}
-            />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-serif font-bold text-[#4a4a35]">
-                {isUrdu ? 'روٹ و کوریڈور ٹول ٹیکس کیلکولیٹر' : 'Route & Motorway Toll Calculator'}
-              </h1>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                2026 NHA
-              </span>
-            </div>
-            <p className="text-xs text-[#8e8e75] font-sans mt-0.5">
-              {isUrdu 
-                ? 'پاکستان کی تمام موٹرویز (M-1 تا M-16) اور نیشنل ہائی ویز کا مکمل تصدیق شدہ حساب' 
-                : 'Official toll calculation across all Pakistani motorways & national highways'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          {syncStatusMsg && (
-            <span className="text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl font-bold animate-in fade-in">
-              {syncStatusMsg}
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={handleManualSync}
-            disabled={isSyncing}
-            className="px-3 py-2 bg-[#fdfbf7] hover:bg-[#8b9d77] hover:text-white border border-[#ecece0] rounded-xl text-xs font-bold text-[#4a4a35] transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 disabled:opacity-50"
-            title={isUrdu ? 'این ایچ اے کے تازہ ترین ریٹس سنک کریں' : 'Sync latest NHA rates'}
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>{isUrdu ? 'ریٹس ریفریش' : 'Sync Rates'}</span>
-          </button>
-        </div>
-      </div>
-
       {/* Primary Calculator Form - Enlarged View */}
-      <div className="bg-white p-4 sm:p-6 rounded-3xl border border-[#ecece0] shadow-sm space-y-4">
+      <div className="bg-white dark:bg-[#1a1b15] p-4 sm:p-6 rounded-3xl border border-[#ecece0] dark:border-[#3d3e33] shadow-sm space-y-4">
         
         {/* Origin & Destination Selectors */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-serif font-bold text-[#4a4a35] flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-emerald-600" />
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <label className="text-sm font-serif font-bold text-[#4a4a35] dark:text-[#f8fafc] flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>{isUrdu ? 'روٹ کا انتخاب (کہاں سے کہاں تک):' : 'Select Origin & Destination:'}</span>
             </label>
-            <button
-              type="button"
-              onClick={handleSwapCities}
-              className="text-xs text-[#8b9d77] hover:text-[#4a5e38] font-bold flex items-center gap-1 cursor-pointer transition-colors active:scale-95 px-2 py-1 rounded-lg hover:bg-[#f0f0e4]"
-              title={isUrdu ? 'روانگی اور منزل تبدیل کریں' : 'Swap origin and destination'}
-            >
-              <ArrowRightLeft className="w-3.5 h-3.5" />
-              <span>{isUrdu ? 'روٹ الٹیں' : 'Swap'}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {syncStatusMsg && (
+                <span className="text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 px-2 py-0.5 rounded-lg font-bold animate-in fade-in">
+                  {syncStatusMsg}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={handleManualSync}
+                disabled={isSyncing}
+                className="text-xs text-[#8b9d77] hover:text-[#4a5e38] dark:hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer transition-colors active:scale-95 px-2 py-1 rounded-lg hover:bg-[#f0f0e4] dark:hover:bg-[#25261f]"
+                title={isUrdu ? 'این ایچ اے کے تازہ ترین ریٹس سنک کریں' : 'Sync latest NHA rates'}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>{isUrdu ? 'ریٹس ریفریش' : 'Sync'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleSwapCities}
+                className="text-xs text-[#8b9d77] hover:text-[#4a5e38] dark:hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer transition-colors active:scale-95 px-2 py-1 rounded-lg hover:bg-[#f0f0e4] dark:hover:bg-[#25261f]"
+                title={isUrdu ? 'روانگی اور منزل تبدیل کریں' : 'Swap origin and destination'}
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+                <span>{isUrdu ? 'روٹ الٹیں' : 'Swap'}</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

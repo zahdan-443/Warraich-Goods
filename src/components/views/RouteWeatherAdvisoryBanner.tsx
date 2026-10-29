@@ -317,8 +317,8 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
     <div 
       className={`rounded-xl border px-3 py-2 shadow-2xs transition-all relative ${
         hasRisk
-          ? 'bg-amber-50/95 border-amber-300 text-amber-950'
-          : 'bg-emerald-50/95 border-emerald-300 text-emerald-950'
+          ? 'bg-amber-50/95 dark:bg-[#2a1d08] border-amber-300 dark:border-amber-600/60 text-amber-950 dark:text-amber-100'
+          : 'bg-emerald-50/95 dark:bg-[#0d281a] border-emerald-300 dark:border-emerald-700/70 text-emerald-950 dark:text-emerald-100'
       }`}
       dir={isUrdu ? 'rtl' : 'ltr'}
     >
@@ -328,25 +328,25 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border ${
               hasRisk 
-                ? 'bg-amber-200/90 border-amber-400 text-amber-950' 
-                : 'bg-emerald-200/90 border-emerald-400 text-emerald-950'
+                ? 'bg-amber-200/90 dark:bg-amber-900/80 border-amber-400 dark:border-amber-600 text-amber-950 dark:text-amber-200' 
+                : 'bg-emerald-200/90 dark:bg-emerald-900/80 border-emerald-400 dark:border-emerald-600 text-emerald-950 dark:text-emerald-200'
             }`}>
               {isUrdu ? (hasRisk ? '⚠️ کارگو رسک ایڈوائزری' : '✅ کلیئر روٹ') : (hasRisk ? '⚠️ Cargo Weather Advisory' : '✅ Clear Route')}
             </span>
 
-            <span className="font-serif font-bold text-xs sm:text-sm text-slate-900">
+            <span className="font-serif font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
               {isUrdu ? advisory.titleUr : advisory.titleEn}
             </span>
 
             {weatherFetchError && staleTimeLabel && (
-              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                <Clock className="w-2.5 h-2.5 text-amber-700" />
+              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-900/70 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-600">
+                <Clock className="w-2.5 h-2.5 text-amber-700 dark:text-amber-300" />
                 <span>{staleTimeLabel}</span>
               </span>
             )}
           </div>
 
-          <p className="text-[11px] sm:text-xs leading-snug text-slate-800 font-medium pt-0.5">
+          <p className="text-[11px] sm:text-xs leading-snug text-slate-800 dark:text-emerald-100 font-medium pt-0.5">
             {isUrdu ? advisory.descUr : advisory.descEn}
           </p>
         </div>
@@ -357,7 +357,7 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
             onClick={onRefreshWeather}
             disabled={loadingWeather}
             title={isUrdu ? 'موسمی ڈیٹا ریفریش کریں' : 'Refresh live weather'}
-            className="p-1 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-black/5 transition-colors cursor-pointer"
+            className="p-1 rounded-lg text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
           >
             <RefreshCw className={`w-3 h-3 ${loadingWeather ? 'animate-spin' : ''}`} />
           </button>
@@ -365,7 +365,7 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
           <button
             onClick={handleDismiss}
             title={isUrdu ? 'عارضی بند کریں' : 'Dismiss'}
-            className="p-1 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-black/5 transition-colors cursor-pointer"
+            className="p-1 rounded-lg text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
             aria-label="Dismiss advisory banner"
           >
             <X className="w-3.5 h-3.5" />
@@ -375,34 +375,34 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
 
       {/* At-risk city chips (Only shown if hasRisk) */}
       {hasRisk && (
-        <div className="mt-1.5 pt-1.5 border-t border-amber-200/80 flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] font-bold text-amber-900">
+        <div className="mt-1.5 pt-1.5 border-t border-amber-200/80 dark:border-amber-700/60 flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-bold text-amber-900 dark:text-amber-200">
             {isUrdu ? 'متاثرہ اسٹیشنز:' : 'At-Risk Stops:'}
           </span>
 
           {atRiskCities.map((item, idx) => (
             <div 
               key={item.city.id}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/90 border border-amber-300 text-[10px] font-medium text-amber-950 shadow-2xs"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/90 dark:bg-[#1f1606] border border-amber-300 dark:border-amber-600 text-[10px] font-medium text-amber-950 dark:text-amber-100 shadow-2xs"
             >
               <span className="font-bold">
                 {idx + 1}. {isUrdu ? item.city.nameUr : item.city.nameEn}
               </span>
               
               {item.isThunderstorm && (
-                <span className="text-rose-700 font-bold text-[9px] bg-rose-50 px-1 rounded">
+                <span className="text-rose-700 dark:text-rose-300 font-bold text-[9px] bg-rose-50 dark:bg-rose-950/80 px-1 rounded">
                   {isUrdu ? 'طوفان' : 'Storm'}
                 </span>
               )}
 
               {item.isRain && !item.isThunderstorm && (
-                <span className="text-blue-700 font-bold text-[9px] bg-blue-50 px-1 rounded">
+                <span className="text-blue-700 dark:text-blue-300 font-bold text-[9px] bg-blue-50 dark:bg-blue-950/80 px-1 rounded">
                   {item.precipitationProbability}% {isUrdu ? 'بارش' : 'Rain'}
                 </span>
               )}
 
               {item.isHighWind && (
-                <span className="text-amber-800 font-bold text-[9px] bg-amber-50 px-1 rounded">
+                <span className="text-amber-800 dark:text-amber-300 font-bold text-[9px] bg-amber-50 dark:bg-amber-950/80 px-1 rounded">
                   {item.windSpeed}k/h
                 </span>
               )}
@@ -412,14 +412,14 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
       )}
 
       {/* Driver Disclaimer Note */}
-      <div className={`mt-1.5 pt-1 border-t border-dashed ${hasRisk ? 'border-amber-200 text-amber-800/90' : 'border-emerald-200 text-emerald-800/90'} flex items-center justify-between text-[10px]`}>
+      <div className={`mt-1.5 pt-1 border-t border-dashed ${hasRisk ? 'border-amber-200 dark:border-amber-700/50 text-amber-800/90 dark:text-amber-200' : 'border-emerald-200 dark:border-emerald-700/50 text-emerald-800/90 dark:text-emerald-200'} flex items-center justify-between text-[10px]`}>
         <span className="leading-tight">
           {isUrdu
             ? 'ℹ️ یہ مشورہ صرف سامان و کارگو کی حفاظت کے لیے ہے۔ روٹ کا حتمی فیصلہ مکمل طور پر ڈرائیور کا ہے۔'
             : 'ℹ️ Advisory is for cargo safety only. Final route decision rests with the driver.'}
         </span>
         <span className="hidden sm:inline-block font-mono text-[9px] opacity-75 shrink-0">
-          {isUrdu ? `${routeCities.length} اسٹیشنز چیک شدہ` : `${routeCities.length} checked`}
+          {routeCities.length} {isUrdu ? 'اسٹیشنز چیک شدہ' : 'checked'}
         </span>
       </div>
     </div>

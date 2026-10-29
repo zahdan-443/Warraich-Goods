@@ -302,20 +302,20 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           ) : (
             /* High-Utility Executive Command Center */
-            <div className="p-4 sm:p-5 rounded-[28px] bg-gradient-to-br from-amber-500/15 via-[#fdfbf7] to-amber-500/10 border-2 border-amber-400/80 shadow-xs space-y-3.5 text-xs animate-in fade-in">
+            <div className="p-4 sm:p-5 rounded-[28px] bg-gradient-to-br from-amber-500/15 via-[#fdfbf7] to-amber-500/10 dark:from-[#2a220d] dark:via-[#1c190f] dark:to-[#12130e] border-2 border-amber-400/80 dark:border-amber-600/50 shadow-xs space-y-3.5 text-xs animate-in fade-in">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-gradient-to-br from-amber-500 to-[#b58b28] rounded-2xl text-white shrink-0 shadow-xs">
                     <Crown className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="font-bold text-amber-950 font-serif text-sm flex items-center gap-2">
+                    <div className="font-bold text-amber-950 dark:text-amber-100 font-serif text-sm flex items-center gap-2">
                       <span>{lang === 'ur' ? 'وارائچ گڈز آنر کمانڈ سینٹر' : 'Warraich Goods Master Center'}</span>
-                      <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold border border-amber-300">
+                      <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200 font-bold border border-amber-300 dark:border-amber-600">
                         Master Admin
                       </span>
                     </div>
-                    <p className="text-xs text-amber-800 font-sans mt-0.5">
+                    <p className="text-xs text-amber-800 dark:text-amber-300 font-sans mt-0.5">
                       {lang === 'ur' 
                         ? 'بلٹی انتظام، ایکسل ایکسپورٹ، مکمل کلاؤڈ بیک اپ و مالیاتی کنٹرول' 
                         : 'Bilty management, Excel export, cloud backup & financial control'}
@@ -328,7 +328,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     type="button"
                     onClick={() => toggleOwnerBanner(true)}
                     title={lang === 'ur' ? 'ہوم اسکرین سے پینل چھپائیں' : 'Hide panel from home'}
-                    className="p-1.5 text-amber-800 hover:text-amber-950 hover:bg-amber-200/60 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs"
+                    className="p-1.5 text-amber-800 dark:text-amber-300 hover:text-amber-950 dark:hover:text-amber-100 hover:bg-amber-200/60 dark:hover:bg-amber-900/40 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs"
                   >
                     <EyeOff className="w-3.5 h-3.5" />
                     <span>{lang === 'ur' ? 'چھپائیں' : 'Hide'}</span>
@@ -345,30 +345,30 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </div>
 
               {/* Real-time Bilty & Business KPI Summary */}
-              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-amber-300/60">
-                <div className="p-2.5 bg-white/90 rounded-2xl border border-amber-200 text-center">
-                  <div className="text-xs text-amber-800 font-bold">
+              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-amber-300/60 dark:border-amber-700/60">
+                <div className="p-2.5 bg-white/90 dark:bg-[#252216] rounded-2xl border border-amber-200 dark:border-amber-700/60 text-center">
+                  <div className="text-xs text-amber-800 dark:text-amber-300 font-bold">
                     {lang === 'ur' ? 'کل بلٹیاں' : 'Total Bilties'}
                   </div>
-                  <div className="text-base font-bold font-mono text-amber-950 mt-0.5">
+                  <div className="text-base font-bold font-mono text-amber-950 dark:text-amber-100 mt-0.5">
                     {totalBiltyCount}
                   </div>
                 </div>
 
-                <div className="p-2.5 bg-white/90 rounded-2xl border border-amber-200 text-center">
-                  <div className="text-xs text-emerald-800 font-bold">
+                <div className="p-2.5 bg-white/90 dark:bg-[#252216] rounded-2xl border border-amber-200 dark:border-amber-700/60 text-center">
+                  <div className="text-xs text-emerald-800 dark:text-emerald-300 font-bold">
                     {lang === 'ur' ? 'کل فریٹ حجم' : 'Total Freight'}
                   </div>
-                  <div className="text-xs sm:text-sm font-bold font-mono text-emerald-950 mt-0.5 truncate">
+                  <div className="text-xs sm:text-sm font-bold font-mono text-emerald-950 dark:text-emerald-100 mt-0.5 truncate">
                     Rs. {totalBiltyFreight.toLocaleString()}
                   </div>
                 </div>
 
-                <div className="p-2.5 bg-white/90 rounded-2xl border border-amber-200 text-center">
-                  <div className="text-xs text-rose-800 font-bold">
+                <div className="p-2.5 bg-white/90 dark:bg-[#252216] rounded-2xl border border-amber-200 dark:border-amber-700/60 text-center">
+                  <div className="text-xs text-rose-800 dark:text-rose-300 font-bold">
                     {lang === 'ur' ? 'بقایا وصولی' : 'Pending'}
                   </div>
-                  <div className="text-xs sm:text-sm font-bold font-mono text-rose-950 mt-0.5 truncate">
+                  <div className="text-xs sm:text-sm font-bold font-mono text-rose-950 dark:text-rose-100 mt-0.5 truncate">
                     Rs. {totalBiltyPayable.toLocaleString()}
                   </div>
                 </div>
@@ -379,18 +379,18 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onNavigate('bilty', 'create')}
-                  className="flex-1 py-2 px-3 bg-white hover:bg-amber-50/80 border border-amber-300 rounded-xl font-bold text-xs text-amber-950 text-center transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2 px-3 bg-white dark:bg-[#252216] hover:bg-amber-50/80 dark:hover:bg-[#332e1d] border border-amber-300 dark:border-amber-700/70 rounded-xl font-bold text-xs text-amber-950 dark:text-amber-100 text-center transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center gap-1.5"
                 >
-                  <Plus className="w-3.5 h-3.5 text-emerald-700" />
+                  <Plus className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                   <span>{lang === 'ur' ? 'نئی بلٹی بنائیں' : 'Create Bilty'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => onNavigate('bilty', 'ledger')}
-                  className="flex-1 py-2 px-3 bg-white hover:bg-amber-50/80 border border-amber-300 rounded-xl font-bold text-xs text-amber-950 text-center transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2 px-3 bg-white dark:bg-[#252216] hover:bg-amber-50/80 dark:hover:bg-[#332e1d] border border-amber-300 dark:border-amber-700/70 rounded-xl font-bold text-xs text-amber-950 dark:text-amber-100 text-center transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center gap-1.5"
                 >
-                  <Receipt className="w-3.5 h-3.5 text-amber-700" />
+                  <Receipt className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
                   <span>{lang === 'ur' ? 'تمام بلٹیاں دیکھیں' : 'View All Bilties'}</span>
                 </button>
               </div>

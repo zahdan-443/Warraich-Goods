@@ -1261,12 +1261,12 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
           
           {/* FROM CITY (کہاں سے روانگی) */}
           <div className="relative">
-            <label className="text-[11px] font-bold text-[#4a4a35] flex items-center justify-between mb-1">
+            <label className="text-[11px] font-bold text-[#4a4a35] dark:text-[#f8fafc] flex items-center justify-between mb-1">
               <span className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
                 <span>{isUrdu ? 'کہاں سے روانگی (From City):' : 'From City (Origin):'}</span>
               </span>
-              <span className="text-[9px] text-emerald-700 font-normal bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+              <span className="text-[9px] text-emerald-700 dark:text-emerald-300 font-normal bg-emerald-50 dark:bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-700/60">
                 {isUrdu ? originCity.provinceUr : originCity.provinceEn}
               </span>
             </label>
@@ -1277,15 +1277,15 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
                 setIsOriginOpen(!isOriginOpen);
                 setIsDestOpen(false);
               }}
-              className="w-full px-3 py-2 bg-[#fdfbf7] border-2 border-emerald-300 hover:border-emerald-500 rounded-xl flex items-center justify-between cursor-pointer transition-all shadow-2xs text-xs"
+              className="w-full px-3 py-2 bg-[#fdfbf7] dark:bg-[#181913] border-2 border-emerald-300 dark:border-emerald-700/80 hover:border-emerald-500 rounded-xl flex items-center justify-between cursor-pointer transition-all shadow-2xs text-xs"
             >
               <div className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span className="font-bold text-xs text-[#1f2937]">
+                <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="font-bold text-xs text-[#1f2937] dark:text-[#f8fafc]">
                   {isUrdu ? `${originCity.nameUr} (${originCity.nameEn})` : `${originCity.nameEn} (${originCity.provinceEn})`}
                 </span>
               </div>
-              <ChevronDown className={`w-3.5 h-3.5 text-[#8e8e75] transition-transform ${isOriginOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3.5 h-3.5 text-[#8e8e75] dark:text-[#a0a192] transition-transform ${isOriginOpen ? 'rotate-180' : ''}`} />
             </div>
 
             {/* Search Dropdown Popup */}
@@ -1344,12 +1344,12 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
 
           {/* TO CITY (کہاں تک منزل) */}
           <div className="relative">
-            <label className="text-[11px] font-bold text-[#4a4a35] flex items-center justify-between mb-1">
+            <label className="text-[11px] font-bold text-[#4a4a35] dark:text-[#f8fafc] flex items-center justify-between mb-1">
               <span className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
                 <span>{isUrdu ? 'کہاں تک منزل (To City):' : 'To City (Destination):'}</span>
               </span>
-              <span className="text-[9px] text-rose-700 font-normal bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+              <span className="text-[9px] text-rose-700 dark:text-rose-300 font-normal bg-rose-50 dark:bg-rose-950/80 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-700/60">
                 {isUrdu ? destCity.provinceUr : destCity.provinceEn}
               </span>
             </label>
@@ -1360,15 +1360,15 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
                 setIsDestOpen(!isDestOpen);
                 setIsOriginOpen(false);
               }}
-              className="w-full px-3 py-2 bg-[#fdfbf7] border-2 border-rose-300 hover:border-rose-500 rounded-xl flex items-center justify-between cursor-pointer transition-all shadow-2xs text-xs"
+              className="w-full px-3 py-2 bg-[#fdfbf7] dark:bg-[#181913] border-2 border-rose-300 dark:border-rose-700/80 hover:border-rose-500 rounded-xl flex items-center justify-between cursor-pointer transition-all shadow-2xs text-xs"
             >
               <div className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                <span className="font-bold text-xs text-[#1f2937]">
+                <MapPin className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                <span className="font-bold text-xs text-[#1f2937] dark:text-[#f8fafc]">
                   {isUrdu ? `${destCity.nameUr} (${destCity.nameEn})` : `${destCity.nameEn} (${destCity.provinceEn})`}
                 </span>
               </div>
-              <ChevronDown className={`w-3.5 h-3.5 text-[#8e8e75] transition-transform ${isDestOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3.5 h-3.5 text-[#8e8e75] dark:text-[#a0a192] transition-transform ${isDestOpen ? 'rotate-180' : ''}`} />
             </div>
 
             {/* Search Dropdown Popup */}
@@ -1779,20 +1779,20 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] pt-1.5 border-t border-[#ecece0]/80">
-                      <div className="bg-white/80 p-1 rounded-xl">
-                        <span className="text-[#8e8e75] block text-[9px]">{isUrdu ? 'دید' : 'Vis'}</span>
-                        <strong className={weather && weather.visibilityKm < 1 ? 'text-red-600' : 'text-[#4a4a35]'}>
+                    <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] pt-1.5 border-t border-[#ecece0]/80 dark:border-[#3d3e33]">
+                      <div className="bg-white/80 dark:bg-[#25261f] p-1 rounded-xl border border-transparent dark:border-[#3d3e33]">
+                        <span className="text-[#8e8e75] dark:text-[#b4b5a6] block text-[9px]">{isUrdu ? 'دید' : 'Vis'}</span>
+                        <strong className={weather && weather.visibilityKm < 1 ? 'text-red-600 dark:text-red-400' : 'text-[#4a4a35] dark:text-[#fafaf7]'}>
                           {weather ? `${weather.visibilityKm}km` : '--'}
                         </strong>
                       </div>
-                      <div className="bg-white/80 p-1 rounded-xl">
-                        <span className="text-[#8e8e75] block text-[9px]">{isUrdu ? 'ہوا' : 'Wind'}</span>
-                        <strong>{weather ? `${weather.windSpeed}k/h` : '--'}</strong>
+                      <div className="bg-white/80 dark:bg-[#25261f] p-1 rounded-xl border border-transparent dark:border-[#3d3e33]">
+                        <span className="text-[#8e8e75] dark:text-[#b4b5a6] block text-[9px]">{isUrdu ? 'ہوا' : 'Wind'}</span>
+                        <strong className="text-[#4a4a35] dark:text-[#fafaf7]">{weather ? `${weather.windSpeed}k/h` : '--'}</strong>
                       </div>
-                      <div className="bg-white/80 p-1 rounded-xl">
-                        <span className="text-[#8e8e75] block text-[9px]">{isUrdu ? 'نمی' : 'Hum'}</span>
-                        <strong>{weather ? `${weather.humidity}%` : '--'}</strong>
+                      <div className="bg-white/80 dark:bg-[#25261f] p-1 rounded-xl border border-transparent dark:border-[#3d3e33]">
+                        <span className="text-[#8e8e75] dark:text-[#b4b5a6] block text-[9px]">{isUrdu ? 'نمی' : 'Hum'}</span>
+                        <strong className="text-[#4a4a35] dark:text-[#fafaf7]">{weather ? `${weather.humidity}%` : '--'}</strong>
                       </div>
                     </div>
 

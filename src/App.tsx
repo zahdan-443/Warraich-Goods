@@ -24,7 +24,8 @@ import {
   subscribeToBiltyAccess,
   updateBiltyAccessInFirestore,
   saveUserProfileInFirestore,
-  processOfflineQueue
+  processOfflineQueue,
+  autoReconcileAllLocalToCloud
 } from './utils/storage';
 import { fetchLiveFuelPrices } from './utils/fuelPrice';
 import { auth, onAuthStateChanged, logoutUser, checkRedirectAuthResult, loginWithGoogle } from './utils/firebase';
@@ -537,6 +538,15 @@ export default function App() {
       } catch (profileError: any) {
         console.warn("Firestore user profile save warning (fallback to local cache):", profileError);
       }
+
+      // Auto-reconcile all local/offline data to this user's cloud Firestore
+      autoReconcileAllLocalToCloud(uid).then(() => {
+        setBilties(getStoredBilties());
+        setTrips(getStoredTrips());
+        setVehicles(getStoredVehicles());
+        setDrivers(getStoredDrivers());
+        setFuelLogs(getStoredFuelLog());
+      }).catch(err => console.warn('Auth auto-sync notice:', err));
     } catch (generalAuthError: any) {
       console.error("Auth success handler error:", generalAuthError);
     }
@@ -563,13 +573,18 @@ export default function App() {
   useEffect(() => {
     const handleOnline = async () => {
       setIsOffline(false);
-      const result = await processOfflineQueue();
+      const res = await autoReconcileAllLocalToCloud(currentUid || undefined);
       const remaining = getStoredOfflineQueue();
       setOfflineQueue(remaining);
-      if (result.processed > 0) {
+      setBilties(getStoredBilties());
+      setTrips(getStoredTrips());
+      setVehicles(getStoredVehicles());
+      setDrivers(getStoredDrivers());
+      setFuelLogs(getStoredFuelLog());
+      if (res.synced && res.count > 0) {
         pushAppNotification(
-          lang === 'ur' ? 'آف لائن ڈیٹا کلاؤڈ پر منتقل' : 'Offline Records Synced',
-          lang === 'ur' ? `${result.processed} ریکارڈز کلاؤڈ ڈیٹا بیس میں کامیابی سے سنک ہو گئے۔` : `${result.processed} offline records automatically synced to cloud storage.`,
+          lang === 'ur' ? 'کلاؤڈ سنک مکمل' : 'Cloud Sync Complete',
+          lang === 'ur' ? `${res.count} ریکارڈز کلاؤڈ ڈیٹا بیس میں کامیابی سے سنک ہو گئے۔` : `${res.count} offline records automatically synced to cloud storage.`,
           'system'
         );
       }
@@ -590,7 +605,7 @@ export default function App() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [lang]);
+  }, [lang, currentUid]);
 
   // Check vehicle & driver document expiries on app load and dispatch 30/15/7 day reminders (Feature A)
   useEffect(() => {
@@ -610,14 +625,19 @@ export default function App() {
     // 1. Live Fuel Prices API
     fetchLiveFuelPrices(true).catch(err => console.warn('App-open fuel prefetch notice:', err));
 
-    // 2. Cloud Sync / Offline Queue Processing
+    // 2. Cloud Sync & Bidirectional Offline Reconciliation
     if (navigator.onLine) {
-      processOfflineQueue().then(res => {
-        if (res.processed > 0) {
+      autoReconcileAllLocalToCloud(currentUid || undefined).then(res => {
+        if (res.synced && res.count > 0) {
           const remaining = getStoredOfflineQueue();
           setOfflineQueue(remaining);
+          setBilties(getStoredBilties());
+          setTrips(getStoredTrips());
+          setVehicles(getStoredVehicles());
+          setDrivers(getStoredDrivers());
+          setFuelLogs(getStoredFuelLog());
         }
-      }).catch(err => console.warn('App-open queue sync notice:', err));
+      }).catch(err => console.warn('App-open cloud auto-sync notice:', err));
     }
 
     // 3. Highway & Corridor Weather API pre-fetch (Samundri, Karachi, Lahore, Islamabad, Multan, Faisalabad)

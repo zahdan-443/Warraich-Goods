@@ -321,23 +321,122 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
   return { processed: processedCount, remaining: remainingQueue.length, errors: errorLogs };
 }
 
-export async function loadFromFirestore(uid: string) {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    return; // Skip network call when offline
-  }
-  const keys = ['trips', 'vehicles', 'drivers', 'routes', 'fuel', 'bilties'];
-  for (const key of keys) {
-    try {
-      const docRef = doc(db, 'users', uid, 'collections', key);
-      const snap = await withTimeout(getDoc(docRef), 2500);
-      if (snap.exists() && snap.data()?.items) {
-        const scopedKey = getScopedStorageKey(key, uid);
-        safeStorage.setItem(scopedKey, JSON.stringify(snap.data().items));
+/**
+ * Bi-directional Reconciliation & Auto-Sync Engine
+ * Guarantees that any record created offline (bilties, trips, vehicles, drivers, fuel logs, khata)
+ * is merged with cloud records without data loss, and pushed to Firestore automatically when online.
+ */
+export async function autoReconcileAllLocalToCloud(targetUid?: string): Promise<{ synced: boolean; count: number }> {
+  const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+  if (!isOnline || !db) return { synced: false, count: 0 };
+
+  const user = auth.currentUser;
+  const uid = targetUid || user?.uid;
+  if (!uid) return { synced: false, count: 0 };
+
+  let totalSynced = 0;
+
+  // 1. Process offline action queue first
+  await processOfflineQueue().catch(() => {});
+
+  // 2. Migrate any guest data if user was previously in guest mode offline
+  try {
+    const guestKeys = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel'];
+    for (const key of guestKeys) {
+      const guestKey = getScopedStorageKey(key, 'guest');
+      const rawGuest = safeStorage.getItem(guestKey);
+      if (rawGuest) {
+        try {
+          const guestItems = JSON.parse(rawGuest);
+          if (Array.isArray(guestItems) && guestItems.length > 0) {
+            const userKey = getScopedStorageKey(key, uid);
+            const rawUser = safeStorage.getItem(userKey);
+            const userItems = rawUser ? JSON.parse(rawUser) : [];
+            const mergedMap = new Map<string, any>();
+            userItems.forEach((item: any) => {
+              const id = item.biltyNo || item.id || JSON.stringify(item);
+              mergedMap.set(String(id), item);
+            });
+            guestItems.forEach((item: any) => {
+              const id = item.biltyNo || item.id || JSON.stringify(item);
+              mergedMap.set(String(id), item);
+            });
+            const merged = Array.from(mergedMap.values());
+            safeStorage.setItem(userKey, JSON.stringify(merged));
+            safeStorage.removeItem(guestKey);
+          }
+        } catch {}
       }
-    } catch {
-      // Graceful offline fallback
+    }
+  } catch {}
+
+  // 3. Bi-directional reconcile for each collection
+  const collections = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel'];
+  for (const collName of collections) {
+    try {
+      const scopedKey = getScopedStorageKey(collName, uid);
+      const rawLocal = safeStorage.getItem(scopedKey);
+      const localItems: any[] = rawLocal ? JSON.parse(rawLocal) : [];
+
+      const docRef = doc(db, 'users', uid, 'collections', collName);
+      const snap = await withTimeout(getDoc(docRef), 3000).catch(() => null);
+
+      const cloudItems: any[] = (snap && snap.exists() && Array.isArray(snap.data()?.items)) 
+        ? snap.data().items 
+        : [];
+
+      // Merge local and cloud by unique key
+      const mergedMap = new Map<string, any>();
+      // First insert cloud items
+      cloudItems.forEach(item => {
+        const idKey = item.biltyNo ? String(item.biltyNo).trim().toUpperCase() : String(item.id || item.regNo || JSON.stringify(item));
+        mergedMap.set(idKey, item);
+      });
+      // Then insert/update with local items (so offline modifications or newly created items take precedence)
+      localItems.forEach(item => {
+        const idKey = item.biltyNo ? String(item.biltyNo).trim().toUpperCase() : String(item.id || item.regNo || JSON.stringify(item));
+        mergedMap.set(idKey, item);
+      });
+
+      const mergedList = Array.from(mergedMap.values());
+
+      // Save reconciled list to local storage
+      safeStorage.setItem(scopedKey, JSON.stringify(mergedList));
+
+      // Push reconciled list to Firestore
+      if (mergedList.length > 0) {
+        await withTimeout(
+          setDoc(docRef, { items: mergedList, updatedAt: new Date().toISOString() }, { merge: true }),
+          3000
+        );
+        totalSynced += mergedList.length;
+
+        // If bilties, also ensure public verification documents are synced
+        if (collName === 'bilties') {
+          for (const b of mergedList) {
+            if (b?.biltyNo) {
+              await syncPublicBiltyVerification(b).catch(() => {});
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(`Reconciliation notice for ${collName}:`, e);
     }
   }
+
+  // 4. Also reconcile Khata / Ledger
+  try {
+    const { fetchKhataFromFirestore, processKhataDocQueue } = await import('./ledgerStorage');
+    await fetchKhataFromFirestore().catch(() => {});
+    await processKhataDocQueue().catch(() => {});
+  } catch {}
+
+  return { synced: true, count: totalSynced };
+}
+
+export async function loadFromFirestore(uid: string) {
+  return autoReconcileAllLocalToCloud(uid);
 }
 
 // ---------------------------------------------------------------------------

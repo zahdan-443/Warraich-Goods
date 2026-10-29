@@ -715,19 +715,19 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
           )}
 
           {/* Single Trip Financial Account Form Container Card */}
-          <div className="bg-white p-4 sm:p-6 rounded-[28px] shadow-sm border border-[#ecece0] space-y-5">
+          <div className="bg-white dark:bg-[#1a1b15] p-4 sm:p-6 rounded-[28px] shadow-sm border border-[#ecece0] dark:border-[#3d3e33] space-y-5">
             {/* Vehicle Selector bar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-[#ecece0] pb-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-[#ecece0] dark:border-[#3d3e33] pb-3">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#8b9d77]"></span>
-                <span className="text-xs font-bold text-[#4a4a35]">
+                <span className="text-xs font-bold text-[#4a4a35] dark:text-[#f8fafc]">
                   {isUrdu ? 'گاڑی کا انتخاب اور کرایہ / خرچہ کھاتہ' : 'Select Vehicle and Ledger Entries'}
                 </span>
               </div>
 
               {/* Vehicle Selector */}
               <div className="w-full sm:w-auto flex items-center gap-2">
-                <label className="text-xs font-bold text-[#4a4a35] shrink-0">
+                <label className="text-xs font-bold text-[#4a4a35] dark:text-[#f8fafc] shrink-0">
                   {isUrdu ? 'گاڑی نمبر (Reg No):' : 'Vehicle Reg No:'}
                 </label>
                 <input
@@ -737,23 +737,23 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                   onFocus={(e) => e.target.select()}
                   onClick={(e) => (e.target as HTMLInputElement).select()}
                   placeholder={isUrdu ? 'مثلاً: LHR-7860' : 'e.g. LHR-7860'}
-                  className="bg-[#fdfbf7] border-2 border-[#ecece0] rounded-xl px-3 py-1.5 text-sm font-bold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none w-full sm:w-44 font-mono dir-ltr text-left"
+                  className="bg-[#fdfbf7] dark:bg-[#181913] border-2 border-[#ecece0] dark:border-[#48493b] rounded-xl px-3 py-1.5 text-sm font-bold text-[#4a4a35] dark:text-[#f8fafc] focus:border-[#8b9d77] focus:outline-none w-full sm:w-44 font-mono dir-ltr text-left"
                 />
               </div>
             </div>
 
             {/* SECTION 1: آمدن و کرایہ جات (FREIGHT INCOMES) */}
-            <div className="bg-[#f4f9f1] p-4 sm:p-6 rounded-[24px] border-2 border-emerald-600/30 space-y-4">
+            <div className="bg-[#f4f9f1] dark:bg-[#122319] p-4 sm:p-6 rounded-[24px] border-2 border-emerald-600/30 dark:border-emerald-700/60 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2.5 bg-emerald-600/15 text-emerald-800 rounded-xl">
-                    <Wallet className="w-5 h-5 text-emerald-700" />
+                  <div className="p-2.5 bg-emerald-600/15 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 rounded-xl">
+                    <Wallet className="w-5 h-5 text-emerald-700 dark:text-emerald-300" />
                   </div>
                   <div>
-                    <h2 className="text-base sm:text-lg font-bold text-emerald-900">
+                    <h2 className="text-base sm:text-lg font-bold text-emerald-900 dark:text-emerald-100">
                       {isUrdu ? '1. حاصل شدہ آمدن و کرایہ جات' : '1. Freight Earnings & Incomes'}
                     </h2>
-                    <p className="text-xs text-emerald-700 font-medium">
+                    <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">
                       {isUrdu ? 'ہر پارٹی، مال یا چکر کا کرایہ اور نام الگ الگ درج کریں' : 'Record separate freight contracts and trip legs'}
                     </p>
                   </div>
@@ -773,13 +773,13 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 {incomes.map((item, idx) => (
                   <div
                     key={item.id}
-                    className="bg-white p-3.5 sm:p-4 rounded-2xl border-2 border-emerald-500/30 shadow-xs space-y-3"
+                    className="bg-white dark:bg-[#1a1b15] p-3.5 sm:p-4 rounded-2xl border-2 border-emerald-500/30 dark:border-emerald-700/60 shadow-xs space-y-3"
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
                       <div className="sm:col-span-7 space-y-1">
                         <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
-                            <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                          <label className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                            <Edit3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                             <span>{isUrdu ? 'کرایہ / مال / پارٹی کا نام:' : 'Freight / Cargo / Party Name:'}</span>
                           </label>
                         </div>
@@ -787,16 +787,16 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                           type="text"
                           value={item.label}
                           onChange={(e) => handleUpdateIncomeLabel(item.id, e.target.value)}
-                          className="w-full bg-[#fdfbf7] border-2 border-emerald-600/30 hover:border-emerald-600 focus:border-emerald-600 focus:bg-white rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold text-[#2d3748] focus:outline-none transition-all shadow-2xs"
+                          className="w-full bg-[#fdfbf7] dark:bg-[#181913] border-2 border-emerald-600/30 dark:border-emerald-700/60 hover:border-emerald-600 focus:border-emerald-600 focus:bg-white dark:focus:bg-[#181913] rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold text-[#2d3748] dark:text-[#f8fafc] focus:outline-none transition-all shadow-2xs"
                           placeholder={isUrdu ? `مثلاً: کرایہ ${idx + 1} (لاہور تا کراچی سیمنٹ)` : `e.g. Freight ${idx + 1} (Cement Load)`}
                         />
                       </div>
 
                       <div className="sm:col-span-4 space-y-1">
-                        <label className="text-xs font-bold text-emerald-900 block">
+                        <label className="text-xs font-bold text-emerald-900 dark:text-emerald-200 block">
                           {isUrdu ? 'کرایہ رقم (PKR):' : 'Freight Amount (PKR):'}
                         </label>
-                        <div className="flex items-center bg-[#fdfbf7] border-2 border-emerald-600/30 hover:border-emerald-600 focus-within:border-emerald-600 focus-within:bg-white rounded-xl px-3 py-2 transition-all shadow-2xs">
+                        <div className="flex items-center bg-[#fdfbf7] dark:bg-[#181913] border-2 border-emerald-600/30 dark:border-emerald-700/60 hover:border-emerald-600 focus-within:border-emerald-600 focus-within:bg-white dark:focus-within:bg-[#181913] rounded-xl px-3 py-2 transition-all shadow-2xs">
                           <input
                             type="number"
                             inputMode="decimal"
@@ -804,9 +804,9 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                             onChange={(e) => handleUpdateIncomeAmount(item.id, e.target.value)}
                             onFocus={(e) => e.target.select()}
                             placeholder="0"
-                            className="w-full bg-transparent text-left font-mono font-bold text-sm sm:text-base text-emerald-900 focus:outline-none dir-ltr"
+                            className="w-full bg-transparent text-left font-mono font-bold text-sm sm:text-base text-emerald-900 dark:text-emerald-100 focus:outline-none dir-ltr"
                           />
-                          <span className="text-xs font-mono font-bold text-emerald-700 mr-1 select-none">
+                          <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 mr-1 select-none">
                             PKR
                           </span>
                         </div>
@@ -817,7 +817,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                           <button
                             type="button"
                             onClick={() => handleRemoveIncome(item.id)}
-                            className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                            className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-xl transition-all cursor-pointer"
                             title={isUrdu ? 'حذف کریں' : 'Remove'}
                           >
                             <Trash2 className="w-4 h-4" />
