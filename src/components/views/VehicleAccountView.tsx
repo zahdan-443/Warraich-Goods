@@ -743,17 +743,17 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             </div>
 
             {/* SECTION 1: آمدن و کرایہ جات (FREIGHT INCOMES) */}
-            <div className="bg-[#f4f9f1] dark:bg-[#122319] p-4 sm:p-6 rounded-[24px] border-2 border-emerald-600/30 dark:border-emerald-700/60 space-y-4">
+            <div className="bg-[#f4f9f1] dark:bg-[#142219] p-4 sm:p-6 rounded-[24px] border-2 border-emerald-600/30 dark:border-emerald-700/60 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2.5 bg-emerald-600/15 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 rounded-xl">
                     <Wallet className="w-5 h-5 text-emerald-700 dark:text-emerald-300" />
                   </div>
                   <div>
-                    <h2 className="text-base sm:text-lg font-bold text-emerald-900 dark:text-emerald-100">
+                    <h2 className="text-base sm:text-lg font-bold text-emerald-950 dark:text-[#f8fafc]">
                       {isUrdu ? '1. حاصل شدہ آمدن و کرایہ جات' : '1. Freight Earnings & Incomes'}
                     </h2>
-                    <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">
+                    <p className="text-xs text-emerald-800 dark:text-emerald-300 font-bold">
                       {isUrdu ? 'ہر پارٹی، مال یا چکر کا کرایہ اور نام الگ الگ درج کریں' : 'Record separate freight contracts and trip legs'}
                     </p>
                   </div>

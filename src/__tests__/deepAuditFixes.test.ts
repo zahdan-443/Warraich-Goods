@@ -106,4 +106,15 @@ describe('Deep Audit Fixes Verification Suite', () => {
       expect(formatPKR(NaN)).toBe('Rs 0');
     });
   });
+
+  describe('Bilty Sequential WG-1001 Allocation', () => {
+    it('should allocate next Bilty number strictly starting from WG-1001', async () => {
+      const { allocateNextBiltyNumber, getNextBiltyNo } = await import('../utils/storage');
+      const num1 = getNextBiltyNo();
+      expect(num1).toBe('WG-1001');
+
+      const num2 = await allocateNextBiltyNumber();
+      expect(num2).toBe('WG-1002');
+    });
+  });
 });

@@ -49,11 +49,9 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
   // Single-page Route & Corridor Calculator
   const [fromCity, setFromCity] = useState<TollCity>('Samundri');
   const [toCity, setToCity] = useState<TollCity>('Lahore');
-  const [vehicleClass, setVehicleClass] = useState<TollVehicleClass>('truck');
+  const [vehicleClass, setVehicleClass] = useState<TollVehicleClass>('bus'); // Category 4 by default
   const [hasMtag, setHasMtag] = useState<boolean>(true);
   const [rates, setRates] = useState<TollRatesConfig>(getCachedTollRates());
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [result, setResult] = useState<TollCalculationResult | null>(null);
 
@@ -63,6 +61,10 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
 
   useEffect(() => {
     loadRates();
+    // Transparently auto-sync official 2026 NHA rates in background
+    syncTollRatesWithNHA().then(res => {
+      if (res?.rates) setRates(res.rates);
+    }).catch(() => {});
   }, []);
 
   // Compute live result whenever cities, class or M-tag changes
@@ -90,32 +92,10 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
     }
   };
 
-  const handleManualSync = async () => {
-    setIsSyncing(true);
-    setSyncStatusMsg(null);
-    try {
-      const res = await syncTollRatesWithNHA();
-      setRates(res.rates);
-      setSyncStatusMsg(isUrdu ? '2026 این ایچ اے ریٹس اپڈیٹ ہو گئے' : '2026 NHA Rates Synced');
-      setTimeout(() => setSyncStatusMsg(null), 3000);
-    } catch {
-      setSyncStatusMsg(isUrdu ? 'آف لائن کیش استعمال ہو رہا ہے' : 'Using offline cache');
-      setTimeout(() => setSyncStatusMsg(null), 3000);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleSwapCities = () => {
-    const temp = fromCity;
-    setFromCity(toCity);
-    setToCity(temp);
-  };
-
   const handleReset = () => {
     setFromCity('Samundri');
     setToCity('Lahore');
-    setVehicleClass('truck');
+    setVehicleClass('bus');
     setHasMtag(true);
   };
 
@@ -188,32 +168,9 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
               <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>{isUrdu ? 'روٹ کا انتخاب (کہاں سے کہاں تک):' : 'Select Origin & Destination:'}</span>
             </label>
-            <div className="flex items-center gap-2">
-              {syncStatusMsg && (
-                <span className="text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 px-2 py-0.5 rounded-lg font-bold animate-in fade-in">
-                  {syncStatusMsg}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={handleManualSync}
-                disabled={isSyncing}
-                className="text-xs text-[#8b9d77] hover:text-[#4a5e38] dark:hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer transition-colors active:scale-95 px-2 py-1 rounded-lg hover:bg-[#f0f0e4] dark:hover:bg-[#25261f]"
-                title={isUrdu ? 'این ایچ اے کے تازہ ترین ریٹس سنک کریں' : 'Sync latest NHA rates'}
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span>{isUrdu ? 'ریٹس ریفریش' : 'Sync'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleSwapCities}
-                className="text-xs text-[#8b9d77] hover:text-[#4a5e38] dark:hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer transition-colors active:scale-95 px-2 py-1 rounded-lg hover:bg-[#f0f0e4] dark:hover:bg-[#25261f]"
-                title={isUrdu ? 'روانگی اور منزل تبدیل کریں' : 'Swap origin and destination'}
-              >
-                <ArrowRightLeft className="w-3.5 h-3.5" />
-                <span>{isUrdu ? 'روٹ الٹیں' : 'Swap'}</span>
-              </button>
-            </div>
+            <span className="text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 px-2.5 py-0.5 rounded-lg font-bold border border-emerald-200 dark:border-emerald-800">
+              {isUrdu ? '2026 این ایچ اے ریٹس فعال' : '2026 NHA Rates Active'}
+            </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

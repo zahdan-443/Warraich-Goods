@@ -198,8 +198,8 @@ export function enqueueOfflineAction(type: OfflineAction['type'], data: any) {
   }
 }
 
-// Helper to wrap Firestore promises with a short timeout so offline/slow connections fail fast to localStorage
-export function withTimeout<T>(promise: Promise<T>, timeoutMs = 3000): Promise<T> {
+// Helper to wrap Firestore promises with a generous timeout so offline/slow connections fail gracefully to localStorage
+export function withTimeout<T>(promise: Promise<T>, timeoutMs = 8000): Promise<T> {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) =>
@@ -218,7 +218,7 @@ export async function syncToFirestore<T>(key: string, data: T): Promise<boolean>
     const user = auth.currentUser;
     if (user) {
       const userDocRef = doc(db, 'users', user.uid, 'collections', key);
-      await withTimeout(setDoc(userDocRef, { items: data, updatedAt: new Date().toISOString() }, { merge: true }), 3000);
+      await withTimeout(setDoc(userDocRef, { items: data, updatedAt: new Date().toISOString() }, { merge: true }), 8000);
       return true;
     }
     return false;
@@ -253,14 +253,14 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
       if (user && action.type) {
         if (action.type === 'bilty' && Array.isArray(action.data)) {
           const userDocRef = doc(db, 'users', user.uid, 'collections', 'bilties');
-          await withTimeout(setDoc(userDocRef, { items: action.data, updatedAt: new Date().toISOString() }, { merge: true }), 3000);
+          await withTimeout(setDoc(userDocRef, { items: action.data, updatedAt: new Date().toISOString() }, { merge: true }), 8000);
           // Also process public verification copies for each bilty in publicBiltyVerifications
           for (const b of action.data) {
             if (b?.biltyNo) {
               const safeData = extractPublicBiltyVerification(b);
               const normalizedNo = String(b.biltyNo).trim().toUpperCase();
               const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-              await withTimeout(setDoc(pubRef, safeData, { merge: true }), 3000).catch(() => {});
+              await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000).catch(() => {});
             }
           }
           processedCount++;
@@ -268,7 +268,7 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
           const safeData = extractPublicBiltyVerification(action.data);
           const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
           const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-          await withTimeout(setDoc(pubRef, safeData, { merge: true }), 3000);
+          await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000);
           processedCount++;
         } else if (action.type === 'bilty' && !Array.isArray(action.data)) {
           // Legacy counter sync action - mark processed
@@ -277,16 +277,23 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
           const collectionName = action.type.endsWith('s') ? action.type : `${action.type}s`;
           const actualKey = collectionName === 'fuels' ? 'fuel' : collectionName;
           const userDocRef = doc(db, 'users', user.uid, 'collections', actualKey);
-          await withTimeout(setDoc(userDocRef, { items: action.data, updatedAt: new Date().toISOString() }, { merge: true }), 3000);
+          await withTimeout(setDoc(userDocRef, { items: action.data, updatedAt: new Date().toISOString() }, { merge: true }), 8000);
           processedCount++;
         } else if (action.type === 'settings') {
-          const docRef = doc(db, 'settings', 'companyProfile');
-          await withTimeout(setDoc(docRef, action.data, { merge: true }), 3000);
+          // Company settings write requires authenticated owner
+          if (user.email?.toLowerCase().trim() === 'warraichgoods43@gmail.com') {
+            const docRef = doc(db, 'settings', 'companyProfile');
+            await withTimeout(setDoc(docRef, action.data, { merge: true }), 8000);
+          }
           processedCount++;
         } else if (action.type === 'pod_confirmation' && action.data?.biltyNo) {
           const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
           const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-          await withTimeout(setDoc(pubRef, action.data, { merge: true }), 3000);
+          const safeData = extractPublicBiltyVerification(action.data);
+          if (action.data.isDelivered) {
+            (safeData as any).isDelivered = true;
+          }
+          await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000);
           processedCount++;
         } else {
           processedCount++;
@@ -295,7 +302,7 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
         const safeData = extractPublicBiltyVerification(action.data);
         const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
         const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-        await withTimeout(setDoc(pubRef, safeData, { merge: true }), 3000);
+        await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000);
         processedCount++;
       } else {
         // Unauthenticated action in queue: do not attempt cloud writes without auth
@@ -311,7 +318,7 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
       const isPermissionErr = errMsg.includes('Missing or insufficient permissions') || errMsg.includes('permission-denied');
       const retry = (action.retryCount || 0) + 1;
       errorLogs.push(`Action ${action.id} failed (attempt ${retry}): ${errMsg}`);
-      if (retry < 2 && !isPermissionErr) {
+      if (retry < 3 && !isPermissionErr) {
         remainingQueue.push({ ...action, retryCount: retry });
       }
     }
@@ -379,7 +386,7 @@ export async function autoReconcileAllLocalToCloud(targetUid?: string): Promise<
       const localItems: any[] = rawLocal ? JSON.parse(rawLocal) : [];
 
       const docRef = doc(db, 'users', uid, 'collections', collName);
-      const snap = await withTimeout(getDoc(docRef), 3000).catch(() => null);
+      const snap = await withTimeout(getDoc(docRef), 8000).catch(() => null);
 
       const cloudItems: any[] = (snap && snap.exists() && Array.isArray(snap.data()?.items)) 
         ? snap.data().items 
@@ -407,17 +414,31 @@ export async function autoReconcileAllLocalToCloud(targetUid?: string): Promise<
       if (mergedList.length > 0) {
         await withTimeout(
           setDoc(docRef, { items: mergedList, updatedAt: new Date().toISOString() }, { merge: true }),
-          3000
+          8000
         );
         totalSynced += mergedList.length;
 
-        // If bilties, also ensure public verification documents are synced
+        // If bilties, also ensure public verification documents are synced and sync global counter
         if (collName === 'bilties') {
+          let highestBiltySeq = 1000;
           for (const b of mergedList) {
             if (b?.biltyNo) {
               await syncPublicBiltyVerification(b).catch(() => {});
+              const numPart = parseInt(String(b.biltyNo).replace(/\D/g, ''), 10);
+              if (!isNaN(numPart) && numPart > highestBiltySeq) {
+                highestBiltySeq = numPart;
+              }
             }
           }
+          // Coordinate global counter with Firestore atomically
+          try {
+            const counterRef = doc(db, 'counters', 'biltyCounter');
+            const counterSnap = await withTimeout(getDoc(counterRef), 5000).catch(() => null);
+            const currentCloudVal = counterSnap && counterSnap.exists() ? (counterSnap.data()?.currentValue || 1000) : 1000;
+            if (highestBiltySeq > currentCloudVal) {
+              await setDoc(counterRef, { currentValue: highestBiltySeq, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+            }
+          } catch {}
         }
       }
     } catch (e) {
@@ -746,8 +767,8 @@ export async function syncPublicBiltyVerification(bilty: BiltyRecord): Promise<b
 /**
  * Transactionally increments and allocates the next sequential Bilty Number.
  * When online, runs an atomic Firestore transaction on the global counter document.
- * When offline or on timeout, monotonically increments user-scoped local counter,
- * appends an offline random suffix (e.g. AH-0042-OFF-A9F3) to prevent collisions.
+ * Monotonically sequence begins strictly at WG-1001.
+ * When offline or on timeout, increments local counter from max existing / base 1000.
  */
 export async function allocateNextBiltyNumber(userUid?: string): Promise<string> {
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
@@ -759,10 +780,10 @@ export async function allocateNextBiltyNumber(userUid?: string): Promise<string>
       const nextSeq = await withTimeout(
         runTransaction(db, async (transaction) => {
           const snap = await transaction.get(counterDocRef);
-          let current = 0;
+          let current = 1000;
           if (snap.exists()) {
             const d = snap.data();
-            current = typeof d?.currentValue === 'number' ? d.currentValue : 0;
+            current = typeof d?.currentValue === 'number' && d.currentValue >= 1000 ? d.currentValue : 1000;
           }
           const next = current + 1;
           transaction.set(counterDocRef, {
@@ -771,20 +792,20 @@ export async function allocateNextBiltyNumber(userUid?: string): Promise<string>
           }, { merge: true });
           return next;
         }),
-        3000
+        8000
       );
 
       // Keep local counter updated to the highest sequence
       setScopedItem('bilty-counter', String(nextSeq));
-      return 'AH-' + String(nextSeq).padStart(4, '0');
+      return `WG-${nextSeq}`;
     } catch {
       // Fall through to atomic local increment on transaction timeout or offline
     }
   }
 
-  // Offline / Local Monotonic Fallback
+  // Offline / Local Monotonic Fallback starting at 1001
   const bilties = getStoredBilties();
-  let maxExisting = 0;
+  let maxExisting = 1000;
   bilties.forEach(b => {
     const numPart = parseInt((b.biltyNo || '').replace(/\D/g, ''), 10);
     if (!isNaN(numPart) && numPart > maxExisting) {
@@ -793,25 +814,18 @@ export async function allocateNextBiltyNumber(userUid?: string): Promise<string>
   });
 
   const storedCounterStr = getScopedItem('bilty-counter');
-  let currentCounter = storedCounterStr ? parseInt(storedCounterStr, 10) : 0;
-  if (isNaN(currentCounter)) currentCounter = 0;
+  let currentCounter = storedCounterStr ? parseInt(storedCounterStr, 10) : 1000;
+  if (isNaN(currentCounter) || currentCounter < 1000) currentCounter = 1000;
 
   const nextLocalSeq = Math.max(maxExisting, currentCounter) + 1;
   setScopedItem('bilty-counter', String(nextLocalSeq));
 
-  // Generate 4-character random alphanumeric suffix to prevent multi-device collision
-  const chars = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-  let randSuffix = '';
-  for (let i = 0; i < 4; i++) {
-    randSuffix += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-
-  return `AH-${String(nextLocalSeq).padStart(4, '0')}-OFF-${randSuffix}`;
+  return `WG-${nextLocalSeq}`;
 }
 
 export function getNextBiltyNo(): string {
   const bilties = getStoredBilties();
-  let maxExisting = 0;
+  let maxExisting = 1000;
   bilties.forEach(b => {
     const numPart = parseInt((b.biltyNo || '').replace(/\D/g, ''), 10);
     if (!isNaN(numPart) && numPart > maxExisting) {
@@ -819,10 +833,10 @@ export function getNextBiltyNo(): string {
     }
   });
 
-  let no = parseInt(getScopedItem('bilty-counter') || '0', 10);
-  no = Math.max(maxExisting, isNaN(no) ? 0 : no) + 1;
+  let no = parseInt(getScopedItem('bilty-counter') || '1000', 10);
+  no = Math.max(maxExisting, isNaN(no) || no < 1000 ? 1000 : no) + 1;
   setScopedItem('bilty-counter', String(no));
-  return 'AH-' + String(no).padStart(4, '0');
+  return `WG-${no}`;
 }
 
 export function getStoredRole(): UserRole {

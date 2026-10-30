@@ -346,29 +346,29 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
               {/* Real-time Bilty & Business KPI Summary */}
               <div className="grid grid-cols-3 gap-2 pt-1 border-t border-amber-300/60 dark:border-amber-700/60">
-                <div className="p-2.5 bg-white/90 dark:bg-[#252216] rounded-2xl border border-amber-200 dark:border-amber-700/60 text-center">
-                  <div className="text-xs text-amber-800 dark:text-amber-300 font-bold">
+                <div className="p-2.5 bg-white/95 dark:bg-[#1a1c22] rounded-2xl border border-amber-200 dark:border-amber-600/60 text-center shadow-2xs">
+                  <div className="text-xs text-amber-900 dark:text-amber-300 font-bold">
                     {lang === 'ur' ? 'کل بلٹیاں' : 'Total Bilties'}
                   </div>
-                  <div className="text-base font-bold font-mono text-amber-950 dark:text-amber-100 mt-0.5">
+                  <div className="text-base font-bold font-mono text-amber-950 dark:text-[#f8fafc] mt-0.5">
                     {totalBiltyCount}
                   </div>
                 </div>
 
-                <div className="p-2.5 bg-white/90 dark:bg-[#252216] rounded-2xl border border-amber-200 dark:border-amber-700/60 text-center">
-                  <div className="text-xs text-emerald-800 dark:text-emerald-300 font-bold">
+                <div className="p-2.5 bg-white/95 dark:bg-[#1a1c22] rounded-2xl border border-emerald-200 dark:border-emerald-600/60 text-center shadow-2xs">
+                  <div className="text-xs text-emerald-900 dark:text-emerald-300 font-bold">
                     {lang === 'ur' ? 'کل فریٹ حجم' : 'Total Freight'}
                   </div>
-                  <div className="text-xs sm:text-sm font-bold font-mono text-emerald-950 dark:text-emerald-100 mt-0.5 truncate">
+                  <div className="text-xs sm:text-sm font-bold font-mono text-emerald-950 dark:text-[#f8fafc] mt-0.5 truncate">
                     Rs. {totalBiltyFreight.toLocaleString()}
                   </div>
                 </div>
 
-                <div className="p-2.5 bg-white/90 dark:bg-[#252216] rounded-2xl border border-amber-200 dark:border-amber-700/60 text-center">
-                  <div className="text-xs text-rose-800 dark:text-rose-300 font-bold">
+                <div className="p-2.5 bg-white/95 dark:bg-[#1a1c22] rounded-2xl border border-rose-200 dark:border-rose-600/60 text-center shadow-2xs">
+                  <div className="text-xs text-rose-900 dark:text-rose-300 font-bold">
                     {lang === 'ur' ? 'بقایا وصولی' : 'Pending'}
                   </div>
-                  <div className="text-xs sm:text-sm font-bold font-mono text-rose-950 dark:text-rose-100 mt-0.5 truncate">
+                  <div className="text-xs sm:text-sm font-bold font-mono text-rose-950 dark:text-[#f8fafc] mt-0.5 truncate">
                     Rs. {totalBiltyPayable.toLocaleString()}
                   </div>
                 </div>

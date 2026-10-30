@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 @import "leaflet/dist/leaflet.css";
 
 /* ==========================================================================
@@ -276,22 +277,22 @@ body {
   color: #555644 !important; /* darkened for WCAG AAA 5.5:1 contrast against #fdfbf7 */
 }
 
-/* Comprehensive High-Contrast Dark Mode */
+/* Comprehensive High-Contrast Dark Mode: Charcoal and Emerald Slate */
 html.dark {
   color-scheme: dark;
-  --color-nat-bg: #11120e;
-  --color-nat-text: #f5f5ee;
-  --color-nat-surface: #1a1b15;
-  --color-nat-surface-subtle: #24251e;
-  --color-nat-surface-soft: #1f2019;
-  --color-nat-border: #3d3e33;
-  --color-nat-border-dark: #4d4e41;
-  --color-nat-muted: #d0d1c3;
+  --color-nat-bg: #121316;
+  --color-nat-text: #f8fafc;
+  --color-nat-surface: #1a1c22;
+  --color-nat-surface-subtle: #22252c;
+  --color-nat-surface-soft: #18191e;
+  --color-nat-border: #2d313b;
+  --color-nat-border-dark: #373c48;
+  --color-nat-muted: #94a3b8;
 }
 
 html.dark body {
-  background-color: #11120e !important;
-  color: #f5f5ee !important;
+  background-color: #121316 !important;
+  color: #f8fafc !important;
 }
 
 /* Surface backgrounds in Dark Mode */
@@ -300,30 +301,30 @@ html.dark .bg-white\/95,
 html.dark .bg-white\/90,
 html.dark .bg-white\/80,
 html.dark .bg-white\/70 {
-  background-color: #1a1b15 !important;
-  color: #f5f5ee !important;
+  background-color: #1a1c22 !important;
+  color: #f8fafc !important;
 }
 
 html.dark .bg-\[\#fdfbf7\] {
-  background-color: #11120e !important;
-  color: #f5f5ee !important;
+  background-color: #121316 !important;
+  color: #f8fafc !important;
 }
 
 html.dark .bg-\[\#f9f9f2\] {
-  background-color: #1c1d17 !important;
-  color: #f5f5ee !important;
+  background-color: #18191e !important;
+  color: #f8fafc !important;
 }
 
 html.dark .bg-\[\#f0f0e4\],
 html.dark .bg-\[\#ebebe0\] {
-  background-color: #25261f !important;
-  color: #f5f5ee !important;
+  background-color: #22252c !important;
+  color: #f8fafc !important;
 }
 
 html.dark .bg-\[\#f4f9f1\] {
-  background-color: #122419 !important;
-  border-color: #1e5237 !important;
-  color: #f5f5ee !important;
+  background-color: #142219 !important;
+  border-color: #225638 !important;
+  color: #f8fafc !important;
 }
 
 /* Card borders in Dark Mode */
@@ -332,7 +333,7 @@ html.dark .border-\[\#e2e2d5\],
 html.dark .border-\[\#e0e0d2\],
 html.dark .border-gray-200,
 html.dark .border-slate-200 {
-  border-color: #3d3e33 !important;
+  border-color: #2d313b !important;
 }
 
 /* High contrast text hierarchy in Dark Mode */
@@ -346,34 +347,34 @@ html.dark .text-slate-900,
 html.dark .text-slate-800,
 html.dark .text-gray-900,
 html.dark .text-gray-800 {
-  color: #fafaf7 !important;
+  color: #f8fafc !important;
 }
 
 html.dark .text-\[\#5a5a40\],
 html.dark .text-slate-700,
 html.dark .text-gray-700 {
-  color: #e4e5da !important;
+  color: #cbd5e1 !important;
 }
 
 html.dark .text-\[\#8e8e75\],
 html.dark .text-slate-500,
 html.dark .text-gray-500,
 html.dark .text-gray-400 {
-  color: #c4c5b6 !important;
+  color: #94a3b8 !important;
 }
 
 /* Inputs, textareas, and selects */
 html.dark input:not([type="checkbox"]):not([type="radio"]),
 html.dark select,
 html.dark textarea {
-  background-color: #181913 !important;
-  color: #fafaf7 !important;
-  border-color: #48493b !important;
+  background-color: #16181e !important;
+  color: #f8fafc !important;
+  border-color: #333844 !important;
 }
 
 html.dark input::placeholder,
 html.dark textarea::placeholder {
-  color: #98998a !important;
+  color: #64748b !important;
 }
 
 /* Accent cards in Dark Mode */

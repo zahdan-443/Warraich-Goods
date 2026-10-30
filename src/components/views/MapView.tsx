@@ -1257,177 +1257,172 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
           </div>
 
           {/* Dual Searchable City Selectors - Single Line Side-by-Side */}
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 relative">
-          
-          {/* FROM CITY (کہاں سے روانگی) */}
-          <div className="relative">
-            <label className="text-[11px] font-bold text-[#4a4a35] dark:text-[#f8fafc] flex items-center justify-between mb-1">
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                <span>{isUrdu ? 'کہاں سے روانگی (From City):' : 'From City (Origin):'}</span>
-              </span>
-              <span className="text-[9px] text-emerald-700 dark:text-emerald-300 font-normal bg-emerald-50 dark:bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-700/60">
-                {isUrdu ? originCity.provinceUr : originCity.provinceEn}
-              </span>
-            </label>
-
-            {/* Input / Display */}
-            <div 
-              onClick={() => {
-                setIsOriginOpen(!isOriginOpen);
-                setIsDestOpen(false);
-              }}
-              className="w-full px-3 py-2 bg-[#fdfbf7] dark:bg-[#181913] border-2 border-emerald-300 dark:border-emerald-700/80 hover:border-emerald-500 rounded-xl flex items-center justify-between cursor-pointer transition-all shadow-2xs text-xs"
-            >
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span className="font-bold text-xs text-[#1f2937] dark:text-[#f8fafc]">
-                  {isUrdu ? `${originCity.nameUr} (${originCity.nameEn})` : `${originCity.nameEn} (${originCity.provinceEn})`}
-                </span>
+          {/* Dual Searchable City Selectors - Strictly Single Horizontal Row */}
+          <div className="flex items-center gap-1.5 sm:gap-2 relative">
+            
+            {/* FROM CITY (کہاں سے روانگی) */}
+            <div className="relative flex-1 min-w-0">
+              {/* Input / Display */}
+              <div 
+                onClick={() => {
+                  setIsOriginOpen(!isOriginOpen);
+                  setIsDestOpen(false);
+                }}
+                className="w-full px-2.5 py-2 bg-[#fdfbf7] dark:bg-[#18191d] border-2 border-emerald-400 dark:border-emerald-600/80 hover:border-emerald-500 rounded-xl flex items-center justify-between cursor-pointer transition-all shadow-2xs text-xs"
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <div className="min-w-0 text-right">
+                    <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-400 block leading-none mb-0.5">
+                      {isUrdu ? 'روانگی (From)' : 'From (Origin)'}
+                    </span>
+                    <span className="font-bold text-xs text-[#1f2937] dark:text-[#f8fafc] truncate block">
+                      {isUrdu ? `${originCity.nameUr} (${originCity.nameEn})` : originCity.nameEn}
+                    </span>
+                  </div>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-[#8e8e75] dark:text-[#cbd5e1] shrink-0 transition-transform ${isOriginOpen ? 'rotate-180' : ''}`} />
               </div>
-              <ChevronDown className={`w-3.5 h-3.5 text-[#8e8e75] dark:text-[#a0a192] transition-transform ${isOriginOpen ? 'rotate-180' : ''}`} />
+
+              {/* Search Dropdown Popup */}
+              {isOriginOpen && (
+                <div className="absolute top-full right-0 left-0 sm:left-auto sm:w-80 mt-2 z-[600] bg-white dark:bg-[#1a1c22] rounded-2xl shadow-2xl border border-[#ecece0] dark:border-[#2d313b] p-3 space-y-2 max-h-72 flex flex-col animate-in fade-in">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={originSearch}
+                      onChange={(e) => setOriginSearch(e.target.value)}
+                      placeholder={isUrdu ? 'شہر کا نام تلاش کریں...' : 'Search city...'}
+                      autoFocus
+                      className="w-full px-3 py-2 pr-9 bg-[#fdfbf7] dark:bg-[#121316] border border-[#ecece0] dark:border-[#2d313b] rounded-xl text-xs font-bold text-[#1f2937] dark:text-[#f8fafc] focus:outline-none focus:border-emerald-500"
+                    />
+                    <Search className="w-4 h-4 text-[#8e8e75] dark:text-[#94a3b8] absolute right-3 top-2.5" />
+                  </div>
+
+                  <div className="overflow-y-auto no-scrollbar space-y-1 flex-1">
+                    {filteredOriginCities.length === 0 ? (
+                      <div className="text-center py-4 text-xs text-[#8e8e75] dark:text-[#94a3b8]">
+                        {isUrdu ? 'کوئی شہر نہیں ملا' : 'No city found'}
+                      </div>
+                    ) : (
+                      filteredOriginCities.map(c => {
+                        const isSel = c.id === originCityId;
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              setOriginCityId(c.id);
+                              setIsOriginOpen(false);
+                              setOriginSearch('');
+                            }}
+                            className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
+                              isUrdu ? 'text-right' : 'text-left'
+                            } ${
+                              isSel ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-400 dark:border-emerald-600' : 'hover:bg-[#f0f0e4] dark:hover:bg-[#252830] text-[#4a4a35] dark:text-[#e2e8f0]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                              <span>{isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.provinceEn})`}</span>
+                            </div>
+                            <span className="text-[10px] text-[#8e8e75] dark:text-[#94a3b8] bg-[#f0f0e4] dark:bg-[#121316] px-2 py-0.5 rounded-md">
+                              {isUrdu ? c.provinceUr : c.provinceEn}
+                            </span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Search Dropdown Popup */}
-            {isOriginOpen && (
-              <div className="absolute top-full right-0 left-0 mt-2 z-[600] bg-white rounded-2xl shadow-xl border border-[#ecece0] p-3 space-y-2 max-h-72 flex flex-col animate-in fade-in">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={originSearch}
-                    onChange={(e) => setOriginSearch(e.target.value)}
-                    placeholder={isUrdu ? 'شہر کا نام اردو یا English میں لکھیں...' : 'Search city by name or highway...'}
-                    autoFocus
-                    className="w-full px-3 py-2 pr-9 bg-[#fdfbf7] border border-[#ecece0] rounded-xl text-xs font-bold text-[#1f2937] focus:outline-none focus:border-emerald-500"
-                  />
-                  <Search className="w-4 h-4 text-[#8e8e75] absolute right-3 top-2.5" />
-                </div>
-
-                <div className="overflow-y-auto no-scrollbar space-y-1 flex-1">
-                  {filteredOriginCities.length === 0 ? (
-                    <div className="text-center py-4 text-xs text-[#8e8e75]">
-                      {isUrdu ? 'کوئی شہر نہیں ملا' : 'No city found'}
-                    </div>
-                  ) : (
-                    filteredOriginCities.map(c => {
-                      const isSel = c.id === originCityId;
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => {
-                            setOriginCityId(c.id);
-                            setIsOriginOpen(false);
-                            setOriginSearch('');
-                          }}
-                          className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
-                            isUrdu ? 'text-right' : 'text-left'
-                          } ${
-                            isSel ? 'bg-emerald-50 text-emerald-800 border border-emerald-300' : 'hover:bg-[#fdfbf7] text-[#4a4a35]'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            <span>{isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.provinceEn})`}</span>
-                          </div>
-                          <span className="text-[10px] text-[#8e8e75] bg-[#f0f0e4] px-2 py-0.5 rounded-md">
-                            {isUrdu ? c.provinceUr : c.provinceEn}
-                          </span>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* TO CITY (کہاں تک منزل) */}
-          <div className="relative">
-            <label className="text-[11px] font-bold text-[#4a4a35] dark:text-[#f8fafc] flex items-center justify-between mb-1">
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
-                <span>{isUrdu ? 'کہاں تک منزل (To City):' : 'To City (Destination):'}</span>
-              </span>
-              <span className="text-[9px] text-rose-700 dark:text-rose-300 font-normal bg-rose-50 dark:bg-rose-950/80 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-700/60">
-                {isUrdu ? destCity.provinceUr : destCity.provinceEn}
-              </span>
-            </label>
-
-            {/* Input / Display */}
-            <div 
-              onClick={() => {
-                setIsDestOpen(!isDestOpen);
-                setIsOriginOpen(false);
-              }}
-              className="w-full px-3 py-2 bg-[#fdfbf7] dark:bg-[#181913] border-2 border-rose-300 dark:border-rose-700/80 hover:border-rose-500 rounded-xl flex items-center justify-between cursor-pointer transition-all shadow-2xs text-xs"
-            >
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
-                <span className="font-bold text-xs text-[#1f2937] dark:text-[#f8fafc]">
-                  {isUrdu ? `${destCity.nameUr} (${destCity.nameEn})` : `${destCity.nameEn} (${destCity.provinceEn})`}
-                </span>
-              </div>
-              <ChevronDown className={`w-3.5 h-3.5 text-[#8e8e75] dark:text-[#a0a192] transition-transform ${isDestOpen ? 'rotate-180' : ''}`} />
+            {/* Direction Arrow */}
+            <div className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-emerald-500/10 dark:bg-emerald-950/60 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+              <span className={`text-xs font-bold ${isUrdu ? 'rotate-180' : ''}`}>➔</span>
             </div>
 
-            {/* Search Dropdown Popup */}
-            {isDestOpen && (
-              <div className="absolute top-full right-0 left-0 mt-2 z-[600] bg-white rounded-2xl shadow-xl border border-[#ecece0] p-3 space-y-2 max-h-72 flex flex-col animate-in fade-in">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={destSearch}
-                    onChange={(e) => setDestSearch(e.target.value)}
-                    placeholder={isUrdu ? 'شہر کا نام اردو یا English میں لکھیں...' : 'Search destination city...'}
-                    autoFocus
-                    className="w-full px-3 py-2 pr-9 bg-[#fdfbf7] border border-[#ecece0] rounded-xl text-xs font-bold text-[#1f2937] focus:outline-none focus:border-rose-500"
-                  />
-                  <Search className="w-4 h-4 text-[#8e8e75] absolute right-3 top-2.5" />
+            {/* TO CITY (کہاں تک منزل) */}
+            <div className="relative flex-1 min-w-0">
+              {/* Input / Display */}
+              <div 
+                onClick={() => {
+                  setIsDestOpen(!isDestOpen);
+                  setIsOriginOpen(false);
+                }}
+                className="w-full px-2.5 py-2 bg-[#fdfbf7] dark:bg-[#18191d] border-2 border-rose-400 dark:border-rose-600/80 hover:border-rose-500 rounded-xl flex items-center justify-between cursor-pointer transition-all shadow-2xs text-xs"
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <MapPin className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                  <div className="min-w-0 text-right">
+                    <span className="text-[9px] font-bold text-rose-700 dark:text-rose-400 block leading-none mb-0.5">
+                      {isUrdu ? 'منزل (To)' : 'To (Destination)'}
+                    </span>
+                    <span className="font-bold text-xs text-[#1f2937] dark:text-[#f8fafc] truncate block">
+                      {isUrdu ? `${destCity.nameUr} (${destCity.nameEn})` : destCity.nameEn}
+                    </span>
+                  </div>
                 </div>
-
-                <div className="overflow-y-auto no-scrollbar space-y-1 flex-1">
-                  {filteredDestCities.length === 0 ? (
-                    <div className="text-center py-4 text-xs text-[#8e8e75]">
-                      {isUrdu ? 'کوئی شہر نہیں ملا' : 'No city found'}
-                    </div>
-                  ) : (
-                    filteredDestCities.map(c => {
-                      const isSel = c.id === destCityId;
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => {
-                            setDestCityId(c.id);
-                            setIsDestOpen(false);
-                            setDestSearch('');
-                          }}
-                          className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
-                            isUrdu ? 'text-right' : 'text-left'
-                          } ${
-                            isSel ? 'bg-rose-50 text-rose-800 border border-rose-300' : 'hover:bg-[#fdfbf7] text-[#4a4a35]'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                            <span>{isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.provinceEn})`}</span>
-                          </div>
-                          <span className="text-[10px] text-[#8e8e75] bg-[#f0f0e4] px-2 py-0.5 rounded-md">
-                            {isUrdu ? c.provinceUr : c.provinceEn}
-                          </span>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-[#8e8e75] dark:text-[#cbd5e1] shrink-0 transition-transform ${isDestOpen ? 'rotate-180' : ''}`} />
               </div>
-            )}
+
+              {/* Search Dropdown Popup */}
+              {isDestOpen && (
+                <div className="absolute top-full left-0 right-0 sm:right-auto sm:w-80 mt-2 z-[600] bg-white dark:bg-[#1a1c22] rounded-2xl shadow-2xl border border-[#ecece0] dark:border-[#2d313b] p-3 space-y-2 max-h-72 flex flex-col animate-in fade-in">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={destSearch}
+                      onChange={(e) => setDestSearch(e.target.value)}
+                      placeholder={isUrdu ? 'منزل کا شہر تلاش کریں...' : 'Search destination...'}
+                      autoFocus
+                      className="w-full px-3 py-2 pr-9 bg-[#fdfbf7] dark:bg-[#121316] border border-[#ecece0] dark:border-[#2d313b] rounded-xl text-xs font-bold text-[#1f2937] dark:text-[#f8fafc] focus:outline-none focus:border-rose-500"
+                    />
+                    <Search className="w-4 h-4 text-[#8e8e75] dark:text-[#94a3b8] absolute right-3 top-2.5" />
+                  </div>
+
+                  <div className="overflow-y-auto no-scrollbar space-y-1 flex-1">
+                    {filteredDestCities.length === 0 ? (
+                      <div className="text-center py-4 text-xs text-[#8e8e75] dark:text-[#94a3b8]">
+                        {isUrdu ? 'کوئی شہر نہیں ملا' : 'No city found'}
+                      </div>
+                    ) : (
+                      filteredDestCities.map(c => {
+                        const isSel = c.id === destCityId;
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              setDestCityId(c.id);
+                              setIsDestOpen(false);
+                              setDestSearch('');
+                            }}
+                            className={`w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
+                              isUrdu ? 'text-right' : 'text-left'
+                            } ${
+                              isSel ? 'bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-400 dark:border-rose-600' : 'hover:bg-[#f0f0e4] dark:hover:bg-[#252830] text-[#4a4a35] dark:text-[#e2e8f0]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                              <span>{isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.provinceEn})`}</span>
+                            </div>
+                            <span className="text-[10px] text-[#8e8e75] dark:text-[#94a3b8] bg-[#f0f0e4] dark:bg-[#121316] px-2 py-0.5 rounded-md">
+                              {isUrdu ? c.provinceUr : c.provinceEn}
+                            </span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-        </div>
-
-      </section>
+        </section>
 
       {/* LIVE NAVIGATION HUD PANEL (When Navigation is Active) */}
       {isNavigating && (
