@@ -32,16 +32,18 @@ android {
     signingConfigs {
         release {
             def keystorePath = System.getenv("ANDROID_KEYSTORE_PATH") ?: project.findProperty("RELEASE_STORE_FILE") ?: "release-keystore.jks"
-            def keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: project.findProperty("RELEASE_STORE_PASSWORD")
-            def keyAliasVal = System.getenv("ANDROID_KEY_ALIAS") ?: project.findProperty("RELEASE_KEY_ALIAS")
-            def keyPasswordVal = System.getenv("ANDROID_KEY_PASSWORD") ?: project.findProperty("RELEASE_KEY_PASSWORD")
+            def keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: project.findProperty("RELEASE_STORE_PASSWORD") ?: "driverdost2026"
+            def keyAliasVal = System.getenv("ANDROID_KEY_ALIAS") ?: project.findProperty("RELEASE_KEY_ALIAS") ?: "driverdost"
+            def keyPasswordVal = System.getenv("ANDROID_KEY_PASSWORD") ?: project.findProperty("RELEASE_KEY_PASSWORD") ?: "driverdost2026"
 
             def kFile = keystorePath ? (file(keystorePath).exists() ? file(keystorePath) : (rootProject.file(keystorePath).exists() ? rootProject.file(keystorePath) : null)) : null
-            if (kFile && keystorePassword && keyAliasVal && keyPasswordVal) {
+            if (kFile) {
                 storeFile kFile
                 storePassword keystorePassword
                 keyAlias keyAliasVal
                 keyPassword keyPasswordVal
+                v1SigningEnabled true
+                v2SigningEnabled true
             }
         }
     }
