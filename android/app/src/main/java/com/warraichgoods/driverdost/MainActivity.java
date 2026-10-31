@@ -6,8 +6,11 @@ import android.os.Bundle;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
+import android.view.View;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -45,10 +48,23 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
 
         // Guarantee Android system status bar and navigation bar remain visible throughout the app
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             getWindow().getAttributes().layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
+        }
+
+        // Apply system bar insets (status bar at top, nav bar at bottom) cleanly to root content view
+        // so that the WebView fits precisely between system bars with ZERO cropping or cut-off content
+        View rootContent = findViewById(android.R.id.content);
+        if (rootContent != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(rootContent, (v, windowInsets) -> {
+                Insets insets = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()
+                );
+                v.setPadding(insets.left, insets.top, insets.right, insets.bottom);
+                return WindowInsetsCompat.CONSUMED;
+            });
         }
 
         ensureSystemBarsVisible();
@@ -67,7 +83,7 @@ public class MainActivity extends BridgeActivity {
     private void ensureSystemBarsVisible() {
         runOnUiThread(() -> {
             try {
-                WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+                WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
                 getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
                 WindowInsetsControllerCompat insetsController =
                     WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());

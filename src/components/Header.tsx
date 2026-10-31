@@ -209,7 +209,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* CLEAN SINGLE LINE TOP HEADER: Logo, Brand Name & Notification Bell Icon ONLY */}
       <header className="sticky top-0 z-50 bg-[#fdfbf7] border-b border-[#e2e2d5] shadow-2xs transition-all pt-[env(safe-area-inset-top,0px)]">
-        <div className="py-2.5 px-3 sm:px-6 md:px-10 flex items-center justify-between">
+        <div className="py-2 sm:py-2.5 px-3 sm:px-6 md:px-10 flex items-center justify-between">
           {/* Left: Side Menu Trigger & Brand Title */}
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <button

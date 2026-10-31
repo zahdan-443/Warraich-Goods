@@ -1125,7 +1125,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fdfbf7] text-[#4a4a35] flex flex-col font-sans relative">
+    <div className="min-h-screen min-h-[100dvh] bg-[#fdfbf7] text-[#4a4a35] flex flex-col font-sans relative">
       {showSplash ? (
         <SplashScreen
           onDismiss={handleDismissSplash}
@@ -1176,7 +1176,7 @@ export default function App() {
             />
           )}
 
-          <main className="flex-1 flex flex-col w-full min-h-0 pb-10 md:pb-12">
+          <main className="flex-1 flex flex-col w-full min-h-0 pb-16 sm:pb-20">
             <React.Suspense
               fallback={
                 <div className="flex-1 flex items-center justify-center p-12 text-[#8e8e75] text-sm">

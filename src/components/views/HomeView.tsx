@@ -95,7 +95,7 @@ const QuickActionButton: React.FC<{
   external, 
   fallbackIcon 
 }) => {
-  const commonClasses = `w-full aspect-square bg-white border-2 ${
+  const commonClasses = `w-full aspect-[1.08/1] sm:aspect-square bg-white border-2 ${
     highlight ? 'border-[#8b9d77]/70 shadow-sm' : 'border-[#e4e1cf] shadow-2xs'
   } hover:border-[#8b9d77] hover:shadow-md hover:scale-[1.015] active:scale-[0.96] transition-all duration-200 cursor-pointer rounded-2xl sm:rounded-3xl p-1 sm:p-1.5 overflow-hidden flex items-center justify-center group no-underline select-none relative`;
 
@@ -542,7 +542,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         )}
 
         {/* FULL DISPLAY APP LAUNCHER: 10 Core Transport Icon Image Buttons (2 Columns x 5 Rows, Single-Tap, Full Screen Grid) */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-5 w-full">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:gap-5 w-full">
           {/* 1. Trip Expense Calculator */}
           <QuickActionButton
             href="#calculator"
