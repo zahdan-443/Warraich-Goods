@@ -549,15 +549,29 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
 
     // 2. Direct Open-Meteo call using simple CORS without any custom headers
     if (!data) {
-      try {
+      const fetchDirect = async (attempt: number): Promise<any> => {
         const directUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&hourly=precipitation_probability&forecast_days=1&timezone=Asia%2FKarachi`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
-        const resp = await fetch(directUrl, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (resp.ok) {
-          data = await resp.json();
+        try {
+          const resp = await fetch(directUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (resp.ok) {
+            return await resp.json();
+          }
+          throw new Error(`Weather fetch HTTP ${resp.status}`);
+        } catch (err) {
+          clearTimeout(timeoutId);
+          if (attempt === 1) {
+            await new Promise(r => setTimeout(r, 600));
+            return fetchDirect(2);
+          }
+          throw err;
         }
+      };
+
+      try {
+        data = await fetchDirect(1);
       } catch (directErr) {
         console.warn('Weather direct fetch notice (using cache/fallback):', directErr);
       }

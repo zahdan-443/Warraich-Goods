@@ -1,169 +1,112 @@
-# Driver Dost: System Optimization, PWA Installation & Theme Refresh
+# Driver Dost Pre-Publish Deep Audit & Production Hardening
 
-Deliver a comprehensive update to Driver Dost focusing on high-contrast Charcoal & Emerald Slate visual design, streamlined single-line route controls in MapView, automated NHA 2026 toll calculation defaulting to Category 4, restoration of Chrome PWA menu installation, unified `WG-1001` Bilty numbering, and resolving side-menu cloud sync permissions and timeout failures.
-
----
+Comprehensive pre-release production audit and quality hardening for Driver Dost ahead of its release on Transsion Palm Store and Google Chrome PWA.
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The following technical and UX choices were confirmed by the user during Phase 1:
-> - **Color Scheme**: Charcoal and Emerald Slate with high-contrast text (`#121316` background, `#10b981` emerald accents, `#f8fafc` crisp text).
-> - **Toll Plaza Rates**: Fully automated background sync with latest NHA 2026 schedule without manual refresh or swap buttons.
-> - **Bilty Number Sequence**: Monotonic sequential numbering starting at **`WG-1001`** across online and offline modes, backed by atomic Firestore counter synchronization.
-> - **Vehicle Selection**: Default vehicle category in Toll Plaza changed to **Category 4** (`Cat-4`).
+> The following two architectural decisions have been confirmed by user selection:
+
+- **Confirmed Decision 1 (Code & Data Pruning)**: Safely prune unused dead code, redundant mock fallbacks, and orphaned assets while strictly preserving all active user records, vehicle profiles, fuel logs, driver entries, and ledger items in local and cloud persistence.
+- **Confirmed Decision 2 (API Resilience & Network Strategy)**: Set API network timeouts to a resilient **8-second duration with retry** before falling back to cached rates, accommodating unpredictable 2G/3G mobile connectivity experienced by Pakistani truck drivers along intercity motorways and national highways.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       DRIVER DOST PRODUCTION AUDIT PIPELINE                 │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+     ┌─────────────────────────────────┼─────────────────────────────────┐
+     ▼                                 ▼                                 ▼
+[ 1. DATA & CODE PRUNING ]    [ 2. API RESILIENCE & RETRY ]    [ 3. SYNC & AUTH AUDIT ]
+• Remove dead code stubs      • 8-second highway timeout       • Fix timeout error cascades
+• Strip mock fallback files   • NHA toll cached fallback       • Idempotent cloud sync
+• Zero loss of user data      • Weather retry logic            • Background retry queue
+     │                                 │                                 │
+     └─────────────────────────────────┼─────────────────────────────────┘
+                                       │
+     ┌─────────────────────────────────┼─────────────────────────────────┐
+     ▼                                 ▼                                 ▼
+[ 4. UI/UX CONTRAST & ERGONOMICS] [ 5. ASSET & IMAGE RESILIENCE ] [ 6. INSTANT STARTUP ]
+• WCAG AA contrast audit       • Zero broken image frames       • 0ms splash & instant load
+• Charcoal/Emerald dark mode   • Offline base64 and webp        • Service Worker offline cache
+• No clipped cards on mobile   • Smooth visual fallbacks        • Native Capacitor sync
+```
 
 ---
 
 ## 1. Overview & Core Concept
 
-- **What It Does**: Enhances the transport workflow for Pakistani fleet owners and commercial drivers with immediate, touch-first route planning, accurate toll computations, seamless PWA installation from Chrome, robust offline-to-cloud synchronization without permission errors, and an ergonomic Charcoal & Emerald Slate UI.
-- **Target Audience**: Pakistani commercial transport drivers, dispatchers, and fleet owners operating across national motorways (M-1 to M-16) and highways.
-- **Key Value**: Eradicates offline sync flakiness, eliminates confusing rate-refresh steps, guarantees strict non-colliding `WG-1001` document numbering, and provides daylight and night-driving legibility.
+- **What It Does**: Conducts an end-to-end audit and hardening pass across all core modules: Trip Calculator, Ledger (Khata), Gari Hisaab, Motorway Toll Rates, Live Weather, Dashcam HUD, Government Verifications (MTMIS/DLIMS/PSCA), and Cloud Backup.
+- **Target Audience / Persona**: Pakistani truck owners, fleet managers, and long-haul commercial drivers operating across major national highways (N-5, N-55) and motorways (M-1 through M-16).
+- **Key Value**: Guarantees zero store rejection, rock-solid offline-first reliability, instant cold-start performance, and uncompromised data integrity.
 
 ---
 
 ## 2. User Experience & Visual Design
 
-### Key User Flows
+- **Key User Flows**:
+  1. *App Launch*: Opens immediately in less than 300ms without blocking login modals or auth gates. Core tools (Calculator, Khata, Tolls) are available instantly in offline Guest Mode.
+  2. *API Fetching (Highway Network)*: On app launch or manual refresh, live fuel rates and weather trigger background requests with an 8-second window. If connectivity drops mid-route, cached data displays instantly with a subtle "offline cached" timestamp indicator.
+  3. *Cloud Sync*: Any vehicle log or bilty created offline queues locally and auto-syncs without error toasts as soon as internet connectivity is detected.
+  4. *Responsive Mobile Layout*: Top status bar (clock, battery) and bottom system navigation bar are fully visible. Cards maintain an ergonomic aspect ratio (`aspect-[1.08/1] sm:aspect-square`) with `pb-16 sm:pb-20` clearance to prevent clipping.
 
-1. **Map & Corridor Weather Navigation**:
-   - User opens the Map view and sees origin and destination selectors unified cleanly on **one single horizontal row** (`From [City] ➔ To [City]`), saving screen height and eliminating multi-line form clutter.
-   - Live weather corridor updates automatically for relevant cities along the route.
-
-2. **Toll Plaza Calculator**:
-   - User views the toll calculator with **Category 4 (Cat-4)** selected by default.
-   - Manual "ریٹ ریفرش" (Rate Refresh) and "روٹ الٹیں" (Swap Route) buttons are removed.
-   - NHA 2026 rates sync transparently in the background, rendering toll estimates immediately without extra clicks.
-
-3. **Bilty Creation & Number Allocation**:
-   - When generating a document (online or offline), the app allocates the next number starting from **`WG-1001`** (`WG-1001`, `WG-1002`, `WG-1003`).
-   - When switching from offline to online, numbers maintain their sequence, and the cloud counter advances atomically.
-
-4. **PWA Installation**:
-   - Chrome browser users can tap the browser menu (3 dots) and immediately see the native **"Install app" / "Install Driver Dost"** option.
-
-5. **Cloud Sync & Side Menu Diagnostics**:
-   - In the side menu, triggering sync or background auto-sync completes without permission errors or premature 3-second timeouts.
-
-### Visual Identity & Theme (Charcoal & Emerald Slate)
-
-```
-[ PALETTE SPECIFICATION: CHARCOAL & EMERALD SLATE ]
-
-Dark Canvas:      #121316  (Deep Slate Charcoal)
-Card / Surface:   #1a1c22  (Elevated Charcoal Card)
-Card Inset:       #22252c  (Secondary Input Container)
-Emerald Accent:   #10b981  (Primary Interactive Accent)
-Emerald Highlight:#34d399  (High-Visibility Urgency & Badges)
-Emerald Glow:     #064e3b  (Rich Badge Background)
-Text Primary:     #f8fafc  (Slate Pure White - High Contrast)
-Text Secondary:   #cbd5e1  (Light Slate - Subtitles & Labels)
-Border Subtle:    #2d313b  (High-Contrast Container Outlines)
-```
-
-- **Legibility Overhaul**: Eliminates light text on light backgrounds (as seen in `VehicleAccountView` Section 1) and dark-on-dark unreadable inputs, strictly adhering to WCAG AAA contrast for outdoor cab environments.
+- **Visual Identity & Theme**:
+  - *Color Palette*: High-contrast Charcoal (`#121316`) and Emerald Slate (`#142219` / `#0d281a`) in dark mode; Warm Cream (`#fdfbf7`) and Olive Sage (`#8b9d77`) in light mode.
+  - *Typography*: Jameel Noori Nastaleeq and PDMS Nastaleeq Nafees for authentic Urdu calligraphy, paired with Plus Jakarta Sans and JetBrains Mono (`tabular-nums`) for currency and metrics.
+  - *Contrast & Anti-Slop*: WCAG AA compliance across all inputs, badges, and ledger tables. Zero pill-badge clutter, no code-comment headings, and no unstyled placeholder boxes.
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-- **Decision 1: Single-Line Map Route Inputs**:
-  - *Chosen Approach*: Place origin and destination in a compact flex/grid container side-by-side with a central directional arrow.
-  - *Why*: Reduces vertical thumb footprint by ~60px, bringing the interactive weather advisory and route checkpoints directly into the viewport without scrolling.
-  
-- **Decision 2: Automated Background Toll Sync & Category 4 Default**:
-  - *Chosen Approach*: Automatically check and update NHA 2026 rates on view mount; set default class to `Cat-4`. Remove manual buttons.
-  - *Why*: Commercial drivers rarely need to manually trigger rate syncs; automated background loading ensures the latest data is always active with zero friction.
-
-- **Decision 3: PWA Manifest Display Mode**:
-  - *Chosen Approach*: Change `"display": "standalone"` in `public/manifest.json`.
-  - *Why*: Setting display to `"browser"` in an earlier turn caused Chrome to suppress PWA installability. `"standalone"` preserves phone status bar visibility (via `fitsSystemWindows` / theme-color) while re-enabling Chrome's browser menu install button.
-
-- **Decision 4: Atomic Sequential Bilty Numbering (`WG-1001`)**:
-  - *Chosen Approach*: Single unified sequence format `WG-XXXX` (starting at 1001). Online transactions increment Firestore `counters/biltyCounter`. Offline generation reads local max sequence + 1. Upon cloud synchronization, the cloud counter is advanced to `Math.max(cloudCounter, localMax)` to prevent collisions.
-  - *Why*: Satisfies user requirement for clean sequential numbers without erratic offline random hashes, while remaining collision-safe across devices.
-
-- **Decision 5: Fix Cloud Sync Permissions & Timeout Flakes**:
-  - *Chosen Approach*:
-    1. Update `firestore.rules` and `extractPublicBiltyVerification` so public verification documents allow POD status fields without triggering `permission-denied`.
-    2. Guard offline queue settings actions to only run if authenticated user is the verified owner.
-    3. Increase Firestore network timeout from 3000ms to 8000ms with jittered retry to accommodate cellular mobile latency in Pakistan.
+- **Decision 1: 8-Second Highway Network Timeout with Retry**:
+  - *Chosen Approach*: Configure `AbortController` timeout for 8,000ms with 1 automatic retry on fetch failure before falling back gracefully to local cached state.
+  - *Why*: Accommodates patchy cellular coverage in rural transit areas without freezing UI threads.
+- **Decision 2: Silent Background Cloud Sync with Retry Backoff**:
+  - *Chosen Approach*: Replace abrasive permission/timeout toasts (`Missing or insufficient permissions` or `Firestore operation timed out`) with exponential backoff and silent state reconciliation.
+  - *Why*: Eliminates false alarm error popups when temporary network drops occur during drive time.
+- **Decision 3: Retaining Embedded Base64 Image Architecture**:
+  - *Chosen Approach*: Maintain base64 embedded asset fallbacks for dashboard action cards.
+  - *Why*: Eliminates 404 network failures inside Android WebView and offline PWA environments.
 
 ---
 
 ## 4. Technical Architecture & Data Strategy
 
-### System Component Architecture
-
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                          DRIVER DOST APP                                │
-├───────────────────────────────────┬────────────────────────────────────┤
-│           UI Views                │           Core Engines             │
-│                                   │                                    │
-│  ┌─────────────────────────────┐  │  ┌──────────────────────────────┐  │
-│  │ MapView                     │  │  │ PWA Engine (manifest.json)   │  │
-│  │ • 1-Line Origin ➔ Dest      │  │  │ • display: standalone        │  │
-│  │ • Weather Corridor Filter   │  │  │ • Chrome Menu Installable    │  │
-│  └─────────────────────────────┘  │  └──────────────────────────────┘  │
-│                                   │                                    │
-│  ┌─────────────────────────────┐  │  ┌──────────────────────────────┐  │
-│  │ TollPlazaView               │  │  │ Bilty Sequence Engine        │  │
-│  │ • Default Category 4        │  │  │ • Start WG-1001              │  │
-│  │ • Auto NHA 2026 sync        │  │  │ • Atomic Firestore Counter   │  │
-│  │ • Removed Refresh/Swap btns │  │  │ • Local Monotonic Fallback   │  │
-│  └─────────────────────────────┘  │  └──────────────────────────────┘  │
-│                                   │                                    │
-│  ┌─────────────────────────────┐  │  ┌──────────────────────────────┐  │
-│  │ Charcoal & Emerald Slate    │  │  │ Cloud Sync & Offline Queue   │  │
-│  │ • High-Contrast Tokens      │  │  │ • 8s network timeout         │  │
-│  │ • Fixed Invisible Sections  │  │  │ • Public Bilty Schema Fix    │  │
-│  └─────────────────────────────┘  │  │ • Protected Owner Settings   │  │
-│                                   │  └──────────────────────────────┘  │
-└───────────────────────────────────┴────────────────────────────────────┘
-                                     │
-                                     ▼
-        ┌────────────────────────────────────────────────────────┐
-        │            FIRESTORE & BACKEND PERSISTENCE             │
-        │ • /counters/biltyCounter (atomic sequence)            │
-        │ • /users/{uid}/collections/* (private isolated data)  │
-        │ • /publicBiltyVerifications/* (public QR tracking)    │
-        │ • /settings/companyProfile (owner-only settings)      │
-        └────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                       SYSTEM DATA FLOW & SYNC ARCHITECTURE                    │
+└──────────────────────────────────────┬────────────────────────────────────────┘
+                                       │
+                         [ Local Device Storage ]
+                     (IndexedDB / LocalStorage Engine)
+                         │                  │
+        ┌────────────────┘                  └────────────────┐
+        ▼                                                    ▼
+[ Online Mode Active ]                              [ Offline / Highway Mode ]
+        │                                                    │
+        ├─► Reconcile Queue (processOfflineQueue)            ├─► Read Local Cache (Fuel/Weather/Tolls)
+        ├─► Firestore Real-Time Listener                     ├─► Append to offlineQueue with UUID
+        └─► Atomic Bilty Sequence Coordinator                └─► Display In-App Offline Badge
 ```
 
-### Data Model & State Changes
+### Planned Audit & Action Steps
 
-1. **Bilty Number Allocation (`src/utils/storage.ts`)**:
-   - Format: `WG-${seq}` (starting at 1001).
-   - Baseline sequence: 1001.
-   - Firestore doc: `counters/biltyCounter` storing `{ currentValue: number, updatedAt: string }`.
-
-2. **Offline Queue Sync Resilience (`src/utils/storage.ts`)**:
-   - `withTimeout` default increased from 3000ms to 8000ms.
-   - `processOfflineQueue`:
-     - Checks user auth before firing subcollection updates.
-     - Ignores or safely logs permission conflicts without leaving permanent hanging queue counters.
-     - Accurately strips disallowed fields before saving to `publicBiltyVerifications`.
-
-3. **PWA Configuration (`public/manifest.json`)**:
-   - `"display": "standalone"`
-   - `"display_override": ["standalone", "minimal-ui"]`
-   - Keeps all user-uploaded icons and assets intact.
-
----
-
-## 5. Verification Plan
-
-1. **Automated Unit Tests**:
-   - Run `npm test` across all Vitest suites (ensuring `storage.test.ts`, `biltySecurity.test.ts`, `tollMatrix.test.ts` pass).
-2. **PWA Validation**:
-   - Verify `manifest.json` schema and inspect service worker registration.
-3. **TypeScript & Build Verification**:
-   - Run `npm run lint` and `npm run build` (`compile_applet`) to ensure clean compilation.
-4. **Manual Flow Checks**:
-   - Test MapView single-line selector layout.
-   - Verify TollPlazaView Category 4 default and absence of refresh/swap buttons.
-   - Verify Bilty sequence generator produces `WG-1001` upwards.
-   - Test sync queue resilience and high-contrast dark theme readability.
+1. **Dead Code & Unused Data Pruning**:
+   - Audit all imports, helper utilities, and orphaned mock variables.
+   - Remove unused test mock datasets while strictly preserving user storage schemas and templates.
+2. **API Resilience (Fuel & Weather)**:
+   - Audit `src/utils/fuelPrice.ts` and `src/components/views/MapView.tsx`:
+   - Upgrade timeout to 8 seconds with retry logic.
+   - Ensure cached rates are loaded synchronously on initial render so zero latency is experienced by the user.
+3. **Cloud Sync & Auth Hardening**:
+   - Audit `src/utils/storage.ts` and `src/utils/firebase.ts`.
+   - Prevent noisy offline timeout alerts during background sync attempts.
+   - Enforce atomic Bilty sequence reconciliation starting at `WG-1001`.
+4. **UI/UX & Image Verification**:
+   - Audit all 10 dashboard cards, icons, modals, and tables across Light and Dark themes.
+   - Verify that all images, SVGs, and font files load without 404s or layout shifts.
+5. **App Starting & Build Verification**:
+   - Run `lint_applet` and `compile_applet`.
+   - Verify all unit tests pass with zero regressions.
+   - Run `npx cap sync android` to ensure complete native synchronization.

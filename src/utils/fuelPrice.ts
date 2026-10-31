@@ -84,14 +84,28 @@ export async function fetchLiveFuelPrices(force = false): Promise<FuelPricesData
     }
   }
 
-  try {
+  const tryFetch = async (attempt: number): Promise<Response> => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    try {
+      const resp = await fetch('https://fuel.trackmate.page/api/prices', {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return resp;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (attempt === 1) {
+        // Quick 500ms delay before retry
+        await new Promise(r => setTimeout(r, 500));
+        return tryFetch(2);
+      }
+      throw err;
+    }
+  };
 
-    const response = await fetch('https://fuel.trackmate.page/api/prices', {
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
+  try {
+    const response = await tryFetch(1);
 
     if (!response.ok) {
       throw new Error(`HTTP error ${response.status}`);
@@ -146,7 +160,7 @@ export async function fetchLiveFuelPrices(force = false): Promise<FuelPricesData
     return result;
   } catch (error) {
     console.warn('Live fuel prices fetch error, using latest official benchmark:', error);
-    const fallback = CURRENT_OFFICIAL_BENCHMARK;
+    const fallback = getStoredFuelPrices();
     try {
       localStorage.setItem(FUEL_CACHE_KEY, JSON.stringify({
         ...fallback,

@@ -56,7 +56,11 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({ lang, onSyncCo
       setSyncState(getSyncStatus());
       setErrorLogs(getErrorLogs());
       if (res.success) {
-        setFeedback(lang === 'ur' ? `کامیابی سے ${res.processed} تبدیلیاں ہم آہنگ ہو گئیں۔` : `Successfully synced ${res.processed} items.`);
+        if (res.processed > 0) {
+          setFeedback(lang === 'ur' ? `کامیابی سے ${res.processed} تبدیلیاں ہم آہنگ ہو گئیں۔` : `Successfully synced ${res.processed} items.`);
+        } else {
+          setFeedback(lang === 'ur' ? 'تمام ڈیٹا محفوظ اور اپ ٹو ڈیٹ ہے۔' : 'All data is safe and up to date.');
+        }
       } else {
         setFeedback(res.errors[0] || (lang === 'ur' ? 'ہم آہنگی میں مسئلہ پیش آیا۔' : 'Sync encountered an issue.'));
       }

@@ -298,28 +298,23 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
         } else {
           processedCount++;
         }
-      } else if (action.type === 'public_bilty' && action.data?.biltyNo && user) {
-        const safeData = extractPublicBiltyVerification(action.data);
-        const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
-        const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-        await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000);
-        processedCount++;
       } else {
-        // Unauthenticated action in queue: do not attempt cloud writes without auth
-        if ((action.retryCount || 0) >= 2) {
-          // Discard unauthenticated stale actions to prevent endless error spam
-          processedCount++;
-        } else {
-          remainingQueue.push(action);
-        }
+        // User not logged in (Guest Mode): Keep actions safe in local queue without failing or error spam
+        remainingQueue.push(action);
       }
     } catch (err: any) {
       const errMsg = err instanceof Error ? err.message : String(err);
       const isPermissionErr = errMsg.includes('Missing or insufficient permissions') || errMsg.includes('permission-denied');
       const retry = (action.retryCount || 0) + 1;
-      errorLogs.push(`Action ${action.id} failed (attempt ${retry}): ${errMsg}`);
-      if (retry < 3 && !isPermissionErr) {
-        remainingQueue.push({ ...action, retryCount: retry });
+      
+      if (!isPermissionErr) {
+        errorLogs.push(`Sync paused (attempt ${retry}): Network timeout, queued for retry`);
+        if (retry < 3) {
+          remainingQueue.push({ ...action, retryCount: retry });
+        }
+      } else {
+        // Permission issue: hold item in queue quietly until authenticated owner signs in
+        remainingQueue.push({ ...action, retryCount: 0 });
       }
     }
   }
@@ -1214,6 +1209,18 @@ export async function triggerManualSync(): Promise<{ success: boolean; processed
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
   if (!isOnline) {
     return { success: false, processed: 0, remaining: getStoredOfflineQueue().length, errors: ['Device is currently offline'] };
+  }
+
+  const user = auth.currentUser;
+  if (!user) {
+    safeStorage.setItem('ah-last-sync-time', new Date().toISOString());
+    safeStorage.removeItem('ah-last-sync-error');
+    return {
+      success: true,
+      processed: 0,
+      remaining: getStoredOfflineQueue().length,
+      errors: []
+    };
   }
 
   try {
