@@ -778,9 +778,12 @@ export async function allocateNextBiltyNumber(userUid?: string): Promise<string>
           let current = 1000;
           if (snap.exists()) {
             const d = snap.data();
-            current = typeof d?.currentValue === 'number' && d.currentValue >= 1000 ? d.currentValue : 1000;
+            current = typeof d?.currentValue === 'number' && d.currentValue >= 1000 && d.currentValue < 9999 ? d.currentValue : 1000;
           }
-          const next = current + 1;
+          let next = current + 1;
+          if (next > 9999) {
+            next = 1001; // Wrap around safely to keep strictly 4 digits
+          }
           transaction.set(counterDocRef, {
             currentValue: next,
             updatedAt: new Date().toISOString()
@@ -791,47 +794,55 @@ export async function allocateNextBiltyNumber(userUid?: string): Promise<string>
       );
 
       // Keep local counter updated to the highest sequence
+      const formatted = `WG-${String(nextSeq).padStart(4, '0')}`;
       setScopedItem('bilty-counter', String(nextSeq));
-      return `WG-${nextSeq}`;
+      return formatted;
     } catch {
       // Fall through to atomic local increment on transaction timeout or offline
     }
   }
 
-  // Offline / Local Monotonic Fallback starting at 1001
+  // Offline / Local Monotonic Fallback starting at 1001 (strictly 4 digits: 1001 - 9999)
   const bilties = getStoredBilties();
   let maxExisting = 1000;
   bilties.forEach(b => {
-    const numPart = parseInt((b.biltyNo || '').replace(/\D/g, ''), 10);
-    if (!isNaN(numPart) && numPart > maxExisting) {
+    const rawDigits = (b.biltyNo || '').replace(/\D/g, '');
+    const numPart = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10);
+    if (!isNaN(numPart) && numPart >= 1000 && numPart <= 9999 && numPart > maxExisting) {
       maxExisting = numPart;
     }
   });
 
   const storedCounterStr = getScopedItem('bilty-counter');
   let currentCounter = storedCounterStr ? parseInt(storedCounterStr, 10) : 1000;
-  if (isNaN(currentCounter) || currentCounter < 1000) currentCounter = 1000;
+  if (isNaN(currentCounter) || currentCounter < 1000 || currentCounter >= 9999) currentCounter = 1000;
 
-  const nextLocalSeq = Math.max(maxExisting, currentCounter) + 1;
+  let nextLocalSeq = Math.max(maxExisting, currentCounter) + 1;
+  if (nextLocalSeq > 9999) {
+    nextLocalSeq = 1001; // Strictly maintain 4-digit ceiling
+  }
   setScopedItem('bilty-counter', String(nextLocalSeq));
 
-  return `WG-${nextLocalSeq}`;
+  return `WG-${String(nextLocalSeq).padStart(4, '0')}`;
 }
 
 export function getNextBiltyNo(): string {
   const bilties = getStoredBilties();
   let maxExisting = 1000;
   bilties.forEach(b => {
-    const numPart = parseInt((b.biltyNo || '').replace(/\D/g, ''), 10);
-    if (!isNaN(numPart) && numPart > maxExisting) {
+    const rawDigits = (b.biltyNo || '').replace(/\D/g, '');
+    const numPart = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10);
+    if (!isNaN(numPart) && numPart >= 1000 && numPart <= 9999 && numPart > maxExisting) {
       maxExisting = numPart;
     }
   });
 
   let no = parseInt(getScopedItem('bilty-counter') || '1000', 10);
-  no = Math.max(maxExisting, isNaN(no) || no < 1000 ? 1000 : no) + 1;
-  setScopedItem('bilty-counter', String(no));
-  return `WG-${no}`;
+  if (isNaN(no) || no < 1000 || no >= 9999) no = 1000;
+  let nextNo = Math.max(maxExisting, no) + 1;
+  if (nextNo > 9999) nextNo = 1001;
+  setScopedItem('bilty-counter', String(nextNo));
+  return `WG-${String(nextNo).padStart(4, '0')}`;
 }
 
 export function getStoredRole(): UserRole {

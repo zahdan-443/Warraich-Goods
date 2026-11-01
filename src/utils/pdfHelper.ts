@@ -7,6 +7,9 @@
 import { toJpeg } from 'html-to-image';
 import jsPDF from 'jspdf';
 import DOMPurify from 'dompurify';
+import { Capacitor } from '@capacitor/core';
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { BiltyRecord } from '../types';
 import { getCachedCompanyProfile } from './storage';
 import { getBiltyVerificationUrl } from './biltyHelpers';
@@ -157,6 +160,17 @@ export async function generatePdfFromElement(
   const quality = options?.quality ?? 0.98;
   const scale = options?.scale ?? 2;
 
+  // Ensure all fonts are fully loaded and layout has stabilized before capturing
+  if (typeof document !== 'undefined' && (document as any).fonts?.ready) {
+    try {
+      await (document as any).fonts.ready;
+    } catch {
+      // ignore font ready error
+    }
+  }
+  // Brief stabilization pause to ensure no offline font metric reflows occur
+  await new Promise((r) => setTimeout(r, 120));
+
   let imgDataUrl = '';
 
   // 1. Primary Engine: html-to-image (Uses native SVG foreignObject rasterization - completely immune to oklch / CSS parsing bugs)
@@ -237,9 +251,10 @@ export function formatBiltyWhatsAppSummary(record: BiltyRecord): string {
 }
 
 /**
- * Universal WhatsApp Sharing & PDF Dispatch
- * 1. Checks if mobile Web Share API can share the PDF File directly into WhatsApp.
- * 2. If not supported or on desktop, downloads the PDF file automatically and opens WhatsApp with the formatted summary.
+ * Universal WhatsApp Sharing & Direct PDF Dispatch
+ * 1. Native Capacitor Android: writes PDF to cache directory and dispatches directly to WhatsApp via Capacitor Share.
+ * 2. Mobile Web Share API: dispatches PDF File directly without overriding text payload so WhatsApp receives the document.
+ * 3. Fallback: downloads PDF to device and prompts user with prefilled WhatsApp message.
  */
 export async function shareBiltyPdfOrWhatsApp(options: {
   record: BiltyRecord;
@@ -248,17 +263,52 @@ export async function shareBiltyPdfOrWhatsApp(options: {
   onSuccess?: () => void;
 }): Promise<void> {
   const { record, pdfBlob, pdfDoc, onSuccess } = options;
-  const fileName = `Bilty_${record.biltyNo}.pdf`;
-  const textSummary = formatBiltyWhatsAppSummary(record);
+  const fileName = `Bilty_${record.biltyNo || 'WG-0000'}.pdf`;
 
-  // If a PDF blob is available, attempt native file sharing
-  if (pdfBlob) {
+  // 1. Native Android Capacitor Sharing (ensures direct PDF file attachment in WhatsApp)
+  if (pdfBlob && Capacitor.isNativePlatform()) {
+    try {
+      const reader = new FileReader();
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          const res = reader.result as string;
+          resolve(res.split(',')[1] || '');
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(pdfBlob);
+      });
+
+      const writeResult = await Filesystem.writeFile({
+        path: fileName,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+
+      await Share.share({
+        title: `Bilty_${record.biltyNo}.pdf`,
+        url: writeResult.uri,
+        dialogTitle: 'Share Bilty PDF in WhatsApp',
+      });
+
+      if (onSuccess) onSuccess();
+      return;
+    } catch (capErr: any) {
+      if (capErr?.name === 'AbortError' || capErr?.message?.includes('canceled')) {
+        return;
+      }
+      console.warn('Capacitor native share failed, falling back to Web Share API:', capErr);
+    }
+  }
+
+  // 2. Mobile Web Share API with Direct PDF File
+  if (pdfBlob && typeof navigator !== 'undefined') {
     try {
       const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-      if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        // NOTE: Providing ONLY the file (and title) ensures WhatsApp opens with the PDF document attached,
+        // rather than dropping the file and only sending text!
         await navigator.share({
-          title: `بلٹی رسید #${record.biltyNo} - ورائچ گڈز`,
-          text: textSummary,
+          title: `Bilty_${record.biltyNo}.pdf`,
           files: [pdfFile],
         });
         if (onSuccess) onSuccess();
@@ -266,13 +316,15 @@ export async function shareBiltyPdfOrWhatsApp(options: {
       }
     } catch (err: any) {
       if (err?.name === 'AbortError') {
-        // User deliberately cancelled the share dialog
-        return;
+        return; // User cancelled share sheet
       }
-      console.warn('Native share with PDF file failed, executing direct WhatsApp fallback:', err);
+      console.warn('Web Share API with file failed, falling back to download + WhatsApp link:', err);
     }
+  }
 
-    // Auto-save the PDF document if available
+  // 3. Fallback for Desktop / Web without file share support:
+  // Auto-download the PDF so user has it immediately, then open WhatsApp
+  if (pdfBlob) {
     try {
       if (pdfDoc) {
         pdfDoc.save(fileName);
@@ -284,18 +336,17 @@ export async function shareBiltyPdfOrWhatsApp(options: {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
       }
     } catch (saveErr) {
       console.warn('Could not auto-download PDF:', saveErr);
     }
   }
 
-  // Open WhatsApp via URL scheme
+  const textSummary = formatBiltyWhatsAppSummary(record);
   const encodedText = encodeURIComponent(textSummary);
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
 
-  // Try direct window location or popup
   const win = window.open(whatsappUrl, '_blank');
   if (!win || win.closed || typeof win.closed === 'undefined') {
     window.location.href = whatsappUrl;

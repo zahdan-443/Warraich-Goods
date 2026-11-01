@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { BiltyRecord, ContactItem, DICTIONARY, Language, BiltyBranch, BiltyLanguage } from '../../types';
+import { BiltyRecord, ContactItem, DICTIONARY, Language, BiltyBranch, BiltyLanguage, LegalRecordingItem } from '../../types';
 import {
   Receipt,
   Search,
@@ -32,22 +32,41 @@ import {
   Calendar,
   RefreshCw,
   PackageCheck,
-  Clock
+  Clock,
+  ShieldCheck,
+  FileArchive,
+  ChevronDown,
+  ChevronUp,
+  Camera,
+  Upload,
+  PhoneCall
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 import { VoiceInputButton } from '../VoiceInputButton';
 import { CameraOcrInput } from '../CameraOcrInput';
 import { PrintableBilty } from '../PrintableBilty';
-import { exportContactsCSV, getContactList, allocateNextBiltyNumber, exportAllBiltiesCSV } from '../../utils/storage';
+import { BiltyLegalVaultModal } from '../BiltyLegalVaultModal';
+import {
+  exportContactsCSV,
+  getContactList,
+  allocateNextBiltyNumber,
+  exportAllBiltiesCSV,
+  setScopedItem,
+  syncToFirestore,
+  getStoredBilties
+} from '../../utils/storage';
 import { validateBiltyFreight } from '../../utils/calculator';
 import { generatePdfFromElement, shareBiltyPdfOrWhatsApp } from '../../utils/pdfHelper';
+import { downloadBiltyLegalZip } from '../../utils/zipHelper';
 import { PublicImage } from '../PublicImage';
 import {
   generateBiltyVerificationQrDataUrl,
   getBiltyVerificationUrl,
-  BILTY_BRANCHES
+  BILTY_BRANCHES,
+  formatBiltyMobile
 } from '../../utils/biltyHelpers';
+import { BiltyLegalVault } from '../../types';
 
 const getQrDataUrl = async (record: BiltyRecord): Promise<string> => {
   if (!record?.biltyNo) return '';
@@ -144,9 +163,38 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
   const [pdfError, setPdfError] = useState<string | null>(null);
 
   const [lastBilty, setLastBilty] = useState<BiltyRecord | null>(null);
-  const [contactsList, setContactsList] = useState<ContactItem[]>([]);
   const [activePrintRecord, setActivePrintRecord] = useState<BiltyRecord | null>(null);
   const [activePrintQrUrl, setActivePrintQrUrl] = useState<string>('');
+
+  // Legal Vault state for newly created bilty
+  const [creationLegalVault, setCreationLegalVault] = useState<BiltyLegalVault>({});
+  const [isLegalVaultExpanded, setIsLegalVaultExpanded] = useState(false);
+
+  // Legal Vault modal for existing bilties
+  const [vaultModalBilty, setVaultModalBilty] = useState<BiltyRecord | null>(null);
+  const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
+  const [isDownloadingZip, setIsDownloadingZip] = useState(false);
+  const [contactsList, setContactsList] = useState<ContactItem[]>(() => getContactList());
+
+  const handleSaveVault = (biltyId: number, updatedVault: BiltyLegalVault) => {
+    const updated = bilties.map((b) => {
+      if (b.id === biltyId) {
+        return { ...b, legalVault: updatedVault };
+      }
+      return b;
+    });
+    setScopedItem('bilties', JSON.stringify(updated));
+    syncToFirestore('bilties', updated).catch(() => {});
+    if (selectedModalBilty && selectedModalBilty.id === biltyId) {
+      setSelectedModalBilty({ ...selectedModalBilty, legalVault: updatedVault });
+    }
+    if (lastBilty && lastBilty.id === biltyId) {
+      setLastBilty({ ...lastBilty, legalVault: updatedVault });
+    }
+    if (vaultModalBilty && vaultModalBilty.id === biltyId) {
+      setVaultModalBilty({ ...vaultModalBilty, legalVault: updatedVault });
+    }
+  };
 
   useEffect(() => {
     setContactsList(getContactList());
@@ -307,6 +355,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
       total: validation.total,
       advance: validation.advance,
       payable: validation.payable,
+      legalVault: Object.keys(creationLegalVault).length > 0 ? creationLegalVault : undefined,
     };
 
     onAddBilty(record);
@@ -329,6 +378,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
     setWeight('');
     setTotal('');
     setAdvance('');
+    setCreationLegalVault({});
+    setIsLegalVaultExpanded(false);
   };
 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -411,6 +462,27 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
       });
     } finally {
       setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleDownloadZip = async (record: BiltyRecord) => {
+    if (isDownloadingZip) return;
+    setIsDownloadingZip(true);
+    try {
+      let pdfBlob: Blob | undefined;
+      try {
+        const result = await generateBiltyPdf(record);
+        if (result?.pdfBlob) {
+          pdfBlob = result.pdfBlob;
+        }
+      } catch (e) {
+        console.warn('PDF generation for ZIP notice:', e);
+      }
+      await downloadBiltyLegalZip(record, pdfBlob);
+    } catch (err) {
+      console.error('ZIP generation failed:', err);
+    } finally {
+      setIsDownloadingZip(false);
     }
   };
 
@@ -497,7 +569,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
           <button
             type="button"
             onClick={() => handlePrintBuilty(record)}
@@ -523,9 +595,49 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
             onClick={() => handleWhatsAppShare(record)}
             disabled={isGeneratingPdf}
             className="w-full py-3 bg-[#25D366] hover:bg-[#20bd5a] disabled:opacity-50 text-white rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs active:scale-98"
+            title="براہ راست بلٹی پی ڈی ایف فائل واٹس ایپ میں شیئر کریں"
           >
             {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Share2 className="w-4 h-4" />}
-            <span>{previewLang === 'en' ? 'WhatsApp Share' : 'واٹس ایپ شیئر'}</span>
+            <span>{previewLang === 'en' ? 'WhatsApp PDF Share' : 'واٹس ایپ PDF شیئر'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleDownloadZip(record)}
+            disabled={isDownloadingZip || isGeneratingPdf}
+            className="w-full py-3 bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs active:scale-98"
+            title="بلٹی پی ڈی ایف، تصاویر اور کال ریکارڈنگز کی مکمل ZIP فائل ڈاؤن لوڈ کریں"
+          >
+            {isDownloadingZip ? <Loader2 className="w-4 h-4 animate-spin text-slate-950" /> : <FileArchive className="w-4 h-4" />}
+            <span>{isDownloadingZip ? (previewLang === 'en' ? 'Packaging ZIP...' : 'ZIP پیک ہو رہی ہے...') : (previewLang === 'en' ? 'Download ZIP Vault' : 'ڈاؤن لوڈ ZIP والٹ')}</span>
+          </button>
+        </div>
+
+        {/* Legal Vault Button Banner */}
+        <div className="pt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200">
+          <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>
+              {previewLang === 'en'
+                ? 'Legal Evidence Vault (Driver/Vehicle/Party IDs & Call Recordings)'
+                : 'قانونی دستاویزات و کال ریکارڈنگز والٹ (محفوظ کلاؤڈ اسٹوریج)'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setVaultModalBilty(record);
+              setIsVaultModalOpen(true);
+            }}
+            className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors border border-slate-300 shadow-2xs"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+            <span>{previewLang === 'en' ? 'Manage Legal Vault' : 'دستاویزات والٹ کھولیں'}</span>
+            {record.legalVault && (
+              <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-bold">
+                {Object.keys(record.legalVault).filter((k) => k !== 'updatedAt' && k !== 'recordings' && Boolean((record.legalVault as any)[k])).length + (record.legalVault.recordings?.length || 0)}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -1404,9 +1516,33 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
                                   type="button"
                                   onClick={() => handleWhatsAppShare(b)}
                                   className="p-1.5 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white transition-colors cursor-pointer"
-                                  title={isUrdu ? 'واٹس ایپ شیئر' : 'WhatsApp'}
+                                  title={isUrdu ? 'واٹس ایپ PDF شیئر' : 'WhatsApp'}
                                 >
                                   <Share2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setVaultModalBilty(b);
+                                    setIsVaultModalOpen(true);
+                                  }}
+                                  className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors cursor-pointer relative"
+                                  title={isUrdu ? 'قانونی والٹ (دستاویزات و کالز)' : 'Legal Vault'}
+                                >
+                                  <ShieldCheck className="w-3.5 h-3.5" />
+                                  {b.legalVault && (
+                                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-blue-600 text-white text-[8px] rounded-full flex items-center justify-center font-bold">
+                                      {Object.keys(b.legalVault).filter((k) => k !== 'updatedAt' && k !== 'recordings' && Boolean((b.legalVault as any)[k])).length + (b.legalVault.recordings?.length || 0)}
+                                    </span>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDownloadZip(b)}
+                                  className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 transition-colors cursor-pointer"
+                                  title={isUrdu ? 'ZIP والٹ ڈاؤن لوڈ کریں' : 'Download ZIP Vault'}
+                                >
+                                  <FileArchive className="w-3.5 h-3.5" />
                                 </button>
                                 {onDeleteBilty && (
                                   <button
@@ -1523,58 +1659,87 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
                         </div>
 
                         {/* Mobile Action Buttons */}
-                        <div className="grid grid-cols-5 gap-1.5 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedModalBilty(b)}
-                            className="py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>دیکھیں</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handlePrintBuilty(b)}
-                            className="py-2 bg-slate-900 text-amber-400 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
-                          >
-                            <Printer className="w-3.5 h-3.5" />
-                            <span>پرنٹ</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDownloadPDF(b)}
-                            className="py-2 bg-emerald-50 text-emerald-800 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>پی ڈی ایف</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleWhatsAppShare(b)}
-                            className="py-2 bg-[#25D366] text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
-                          >
-                            <Share2 className="w-3.5 h-3.5" />
-                            <span>واٹس ایپ</span>
-                          </button>
-                          {onDeleteBilty ? (
-                            <button
-                              type="button"
-                              onClick={() => setBiltyToDelete(b)}
-                              className="py-2 bg-rose-50 text-rose-700 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>ڈیلیٹ</span>
-                            </button>
-                          ) : (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="grid grid-cols-4 gap-1.5">
                             <button
                               type="button"
                               onClick={() => setSelectedModalBilty(b)}
-                              className="py-2 bg-slate-100 text-slate-500 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1"
+                              className="py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>تصدیق</span>
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>دیکھیں</span>
                             </button>
-                          )}
+                            <button
+                              type="button"
+                              onClick={() => handlePrintBuilty(b)}
+                              className="py-2 bg-slate-900 text-amber-400 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                              <span>پرنٹ</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadPDF(b)}
+                              className="py-2 bg-emerald-50 text-emerald-800 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>پی ڈی ایف</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleWhatsAppShare(b)}
+                              className="py-2 bg-[#25D366] text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shadow-xs"
+                            >
+                              <Share2 className="w-3.5 h-3.5" />
+                              <span>واٹس ایپ PDF</span>
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVaultModalBilty(b);
+                                setIsVaultModalOpen(true);
+                              }}
+                              className="py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1.5 cursor-pointer transition-colors relative border border-blue-200"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                              <span>قانونی والٹ</span>
+                              {b.legalVault && (
+                                <span className="bg-blue-600 text-white text-[9px] px-1 rounded-full font-bold">
+                                  {Object.keys(b.legalVault).filter((k) => k !== 'updatedAt' && k !== 'recordings' && Boolean((b.legalVault as any)[k])).length + (b.legalVault.recordings?.length || 0)}
+                                </span>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadZip(b)}
+                              className="py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1.5 cursor-pointer transition-colors border border-amber-200"
+                            >
+                              <FileArchive className="w-3.5 h-3.5 text-amber-600" />
+                              <span>ZIP والٹ</span>
+                            </button>
+                            {onDeleteBilty ? (
+                              <button
+                                type="button"
+                                onClick={() => setBiltyToDelete(b)}
+                                className="py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors border border-rose-200"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                                <span>حذف</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedModalBilty(b)}
+                                className="py-2 bg-slate-100 text-slate-500 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>تصدیق</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -1631,7 +1796,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
                   <input
                     type="text"
                     value={mobileNo}
-                    onChange={(e) => setMobileNo(e.target.value)}
+                    onChange={(e) => setMobileNo(formatBiltyMobile(e.target.value))}
                     placeholder="0300-1234567"
                     className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono transition-all"
                   />
@@ -1714,8 +1879,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
                   <input
                     type="text"
                     value={senderMobile}
-                    onChange={(e) => setSenderMobile(e.target.value)}
-                    placeholder="0300-XXXXXXX"
+                    onChange={(e) => setSenderMobile(formatBiltyMobile(e.target.value))}
+                    placeholder="0300-1234567"
                     className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono transition-all"
                   />
                 </div>
@@ -1746,8 +1911,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
                   <input
                     type="text"
                     value={receiverMobile}
-                    onChange={(e) => setReceiverMobile(e.target.value)}
-                    placeholder="0300-XXXXXXX"
+                    onChange={(e) => setReceiverMobile(formatBiltyMobile(e.target.value))}
+                    placeholder="0300-1234567"
                     className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono transition-all"
                   />
                 </div>
@@ -1833,6 +1998,154 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
                     className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono transition-all"
                   />
                 </div>
+              </div>
+
+              {/* Optional Legal Vault Attachments (Driver, Vehicle, Sender, Receiver Photos/CNIC & Audio) */}
+              <div className="border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setIsLegalVaultExpanded(!isLegalVaultExpanded)}
+                  className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100 flex items-center justify-between transition-colors text-right cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div>
+                      <div className="text-xs font-black text-slate-900">
+                        {isEnForm ? 'Legal Documents & Call Recordings (Optional)' : 'قانونی دستاویزات و کال ریکارڈنگز والٹ (اختیاری)'}
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        {isEnForm
+                          ? 'Driver, vehicle, party photos, CNIC & audio records for legal archive'
+                          : 'ڈرائیور، گاڑی، کسٹمر تصاویر، شناختی کارڈ اور آڈیو ریکارڈنگز'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {Object.keys(creationLegalVault).filter(k => k !== 'recordings' && Boolean((creationLegalVault as any)[k])).length + (creationLegalVault.recordings?.length || 0) > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                        {Object.keys(creationLegalVault).filter(k => k !== 'recordings' && Boolean((creationLegalVault as any)[k])).length + (creationLegalVault.recordings?.length || 0)} فائلز
+                      </span>
+                    )}
+                    {isLegalVaultExpanded ? (
+                      <ChevronUp className="w-4 h-4 text-slate-500" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-slate-500" />
+                    )}
+                  </div>
+                </button>
+
+                {isLegalVaultExpanded && (
+                  <div className="p-4 bg-slate-50/50 space-y-4 border-t border-slate-200 text-right animate-in fade-in duration-150">
+                    <p className="text-[11px] text-slate-600">
+                      {isEnForm
+                        ? 'Files uploaded here are stored securely in cloud for legal reasons and will not appear on the printed bilty receipt.'
+                        : 'یہ دستاویزات قانونی حفاظت کے لیے کلاؤڈ میں محفوظ ہوں گی لیکن بلٹی رسید پر ظاہر نہیں ہوں گی۔ آپ بعد میں بھی والٹ میں جا کر ترمیم کر سکتے ہیں۔'}
+                    </p>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      {[
+                        { key: 'driverPhoto', label: isEnForm ? 'Driver Photo' : 'ڈرائیور تصویر' },
+                        { key: 'driverLicense', label: isEnForm ? 'Driver License' : 'ڈرائیور لائسنس' },
+                        { key: 'driverCnic', label: isEnForm ? 'Driver CNIC' : 'ڈرائیور CNIC' },
+                        { key: 'vehiclePhoto', label: isEnForm ? 'Vehicle Photo' : 'گاڑی تصویر' },
+                        { key: 'senderPhoto', label: isEnForm ? 'Sender Photo' : 'بھیجنے والا تصویر' },
+                        { key: 'senderCnic', label: isEnForm ? 'Sender CNIC' : 'بھیجنے والا CNIC' },
+                        { key: 'receiverPhoto', label: isEnForm ? 'Receiver Photo' : 'وصول کنندہ تصویر' },
+                        { key: 'receiverCnic', label: isEnForm ? 'Receiver CNIC' : 'وصول کنندہ CNIC' },
+                      ].map((item) => {
+                        const val = (creationLegalVault as any)[item.key];
+                        return (
+                          <div key={item.key} className="border border-slate-200 rounded-xl p-2 bg-white text-center flex flex-col justify-between">
+                            <span className="text-[10px] font-bold text-slate-700 block mb-1 truncate">{item.label}</span>
+                            {val ? (
+                              <div className="relative w-full h-16 rounded-lg overflow-hidden bg-slate-100 mb-1">
+                                <img src={val} alt={item.label} className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => setCreationLegalVault(prev => {
+                                    const next = { ...prev };
+                                    delete (next as any)[item.key];
+                                    return next;
+                                  })}
+                                  className="absolute top-1 right-1 w-5 h-5 rounded bg-rose-600 text-white flex items-center justify-center text-[10px]"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <label className="w-full h-16 rounded-lg border border-dashed border-slate-300 hover:border-slate-400 flex flex-col items-center justify-center cursor-pointer text-slate-400 hover:text-slate-600 transition-colors mb-1">
+                                <Camera className="w-4 h-4 mb-0.5" />
+                                <span className="text-[9px] font-semibold">اپلوڈ</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) {
+                                      const r = new FileReader();
+                                      r.onload = (ev) => {
+                                        const res = ev.target?.result as string;
+                                        if (res) {
+                                          setCreationLegalVault(prev => ({ ...prev, [item.key]: res }));
+                                        }
+                                      };
+                                      r.readAsDataURL(f);
+                                    }
+                                  }}
+                                />
+                              </label>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Call recording input */}
+                    <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <PhoneCall className="w-3.5 h-3.5 text-blue-600" />
+                        <span>{isEnForm ? 'Call Recording File' : 'کال ریکارڈنگ فائل (Audio)'}</span>
+                      </span>
+                      <label className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-xs font-bold text-slate-700 cursor-pointer flex items-center gap-1.5">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{isEnForm ? 'Select Audio' : 'آڈیو منتخب کریں'}</span>
+                        <input
+                          type="file"
+                          accept="audio/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) {
+                              const r = new FileReader();
+                              r.onload = (ev) => {
+                                const res = ev.target?.result as string;
+                                if (res) {
+                                  const newRec: LegalRecordingItem = {
+                                    id: `rec_${Date.now()}`,
+                                    name: f.name || 'Call_Recording',
+                                    dataUrl: res,
+                                    createdAt: new Date().toISOString()
+                                  };
+                                  setCreationLegalVault(prev => ({
+                                    ...prev,
+                                    recordings: [...(prev.recordings || []), newRec]
+                                  }));
+                                }
+                              };
+                              r.readAsDataURL(f);
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {creationLegalVault.recordings && creationLegalVault.recordings.length > 0 && (
+                      <div className="text-[11px] text-emerald-700 font-bold">
+                        ✓ {creationLegalVault.recordings.length} ریکارڈنگ منسلک ہے
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <button
@@ -1985,6 +2298,20 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
             </div>
           </div>
         </div>
+      )}
+
+      {/* Legal Vault Modal for viewing, editing, and uploading attachments */}
+      {vaultModalBilty && (
+        <BiltyLegalVaultModal
+          isOpen={isVaultModalOpen}
+          onClose={() => {
+            setIsVaultModalOpen(false);
+            setVaultModalBilty(null);
+          }}
+          bilty={vaultModalBilty}
+          onSaveVault={handleSaveVault}
+          onGeneratePdf={generateBiltyPdf}
+        />
       )}
 
       {/* Hidden container for print and PDF generation */}

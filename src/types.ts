@@ -233,6 +233,27 @@ export interface PodConfirmation {
   status?: 'delivered';
 }
 
+export interface LegalRecordingItem {
+  id: string;
+  name: string;
+  dataUrl: string;
+  duration?: number;
+  createdAt: string;
+}
+
+export interface BiltyLegalVault {
+  driverPhoto?: string;
+  driverLicense?: string;
+  driverCnic?: string;
+  vehiclePhoto?: string;
+  senderPhoto?: string;
+  senderCnic?: string;
+  receiverPhoto?: string;
+  receiverCnic?: string;
+  recordings?: LegalRecordingItem[];
+  updatedAt?: string;
+}
+
 export interface BiltyRecord {
   id: number;
   biltyNo: string;
@@ -261,6 +282,7 @@ export interface BiltyRecord {
   language?: BiltyLanguage;
   podConfirmation?: PodConfirmation;
   isDelivered?: boolean;
+  legalVault?: BiltyLegalVault;
 }
 
 export type UserRole = 'owner' | 'driver' | 'accountant';

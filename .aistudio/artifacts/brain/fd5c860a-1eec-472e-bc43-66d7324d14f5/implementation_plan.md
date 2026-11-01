@@ -1,112 +1,127 @@
-# Driver Dost Pre-Publish Deep Audit & Production Hardening
+# Bilty System Comprehensive Legal Vault & Production Refinements
 
-Comprehensive pre-release production audit and quality hardening for Driver Dost ahead of its release on Transsion Palm Store and Google Chrome PWA.
+Enterprise-grade enhancements for the Bilty (Consignment Note) system: secure legal attachments vault (driver, vehicle, sender, receiver photos, CNICs, and call recordings), full ZIP package download, direct PDF file dispatch for WhatsApp sharing, Urdu RTL phone number separator auto-formatting, offline PDF layout overwrite protection, and strict 4-digit Bilty numbering (WG-XXXX).
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The following two architectural decisions have been confirmed by user selection:
+> The following architectural decisions have been confirmed by the user:
 
-- **Confirmed Decision 1 (Code & Data Pruning)**: Safely prune unused dead code, redundant mock fallbacks, and orphaned assets while strictly preserving all active user records, vehicle profiles, fuel logs, driver entries, and ledger items in local and cloud persistence.
-- **Confirmed Decision 2 (API Resilience & Network Strategy)**: Set API network timeouts to a resilient **8-second duration with retry** before falling back to cached rates, accommodating unpredictable 2G/3G mobile connectivity experienced by Pakistani truck drivers along intercity motorways and national highways.
+- **Confirmed Decision 1 (Legal Vault ZIP Contents)**: When generating the Bilty archive ZIP, the package will bundle the official high-resolution Bilty PDF together with all uploaded legal documents: Driver Photo, Driver License, Driver CNIC, Vehicle Photo, Sender CNIC, Sender Photo, Receiver CNIC, Receiver Photo, and audio Call Recordings.
+- **Confirmed Decision 2 (WhatsApp PDF File Sharing)**: On the Bilty generation and preview pages, clicking "Share in WhatsApp" will dispatch the generated PDF directly as an attached document file using the native device Web Share API and Capacitor Share engine, completely eliminating raw text-only links.
+- **Confirmed Decision 3 (Offline Legal Attachments)**: All legal photos and call recordings can be captured or uploaded offline, cached securely in device local storage, and automatically synced to Cloud Firestore when network connectivity is established.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                       DRIVER DOST PRODUCTION AUDIT PIPELINE                 │
+│                       BILTY ENHANCEMENT ARCHITECTURE                        │
 └──────────────────────────────────────┬──────────────────────────────────────┘
                                        │
      ┌─────────────────────────────────┼─────────────────────────────────┐
      ▼                                 ▼                                 ▼
-[ 1. DATA & CODE PRUNING ]    [ 2. API RESILIENCE & RETRY ]    [ 3. SYNC & AUTH AUDIT ]
-• Remove dead code stubs      • 8-second highway timeout       • Fix timeout error cascades
-• Strip mock fallback files   • NHA toll cached fallback       • Idempotent cloud sync
-• Zero loss of user data      • Weather retry logic            • Background retry queue
+[ 1. LEGAL ATTACHMENTS VAULT ]   [ 2. WHATSAPP PDF DISPATCH ]    [ 3. NUMBER & LAYOUT FIXES ]
+• Driver Photo, License, CNIC    • Direct PDF file share         • Auto slash after 4 digits
+• Vehicle (Gari) Photo           • Web Share / Capacitor Share   • RTL BiDi unicode-bidi isolate
+• Sender / Receiver Photo & CNIC • Zero text-only regression     • Fix offline text collision
+• Call Audio Recordings (Voice)  • A4 print-ready output         • WG-XXXX (strict 4 digits)
+• Kept hidden from Bilty receipt • Instant one-click share       • Website verification sync
      │                                 │                                 │
      └─────────────────────────────────┼─────────────────────────────────┘
                                        │
-     ┌─────────────────────────────────┼─────────────────────────────────┐
-     ▼                                 ▼                                 ▼
-[ 4. UI/UX CONTRAST & ERGONOMICS] [ 5. ASSET & IMAGE RESILIENCE ] [ 6. INSTANT STARTUP ]
-• WCAG AA contrast audit       • Zero broken image frames       • 0ms splash & instant load
-• Charcoal/Emerald dark mode   • Offline base64 and webp        • Service Worker offline cache
-• No clipped cards on mobile   • Smooth visual fallbacks        • Native Capacitor sync
+     ┌─────────────────────────────────┴─────────────────────────────────┐
+     ▼                                                                   ▼
+[ 4. ZIP ARCHIVE GENERATOR (JSZip) ]              [ 5. CLOUD & OFFLINE PERSISTENCE ]
+• Bilty PDF + All Attached Files                  • Local device IndexedDB/localStorage
+• Organized folder structure inside ZIP           • Background cloud synchronization
+• Download per Bilty on demand                    • Accessible only to authorized owner
 ```
 
 ---
 
 ## 1. Overview & Core Concept
 
-- **What It Does**: Conducts an end-to-end audit and hardening pass across all core modules: Trip Calculator, Ledger (Khata), Gari Hisaab, Motorway Toll Rates, Live Weather, Dashcam HUD, Government Verifications (MTMIS/DLIMS/PSCA), and Cloud Backup.
-- **Target Audience / Persona**: Pakistani truck owners, fleet managers, and long-haul commercial drivers operating across major national highways (N-5, N-55) and motorways (M-1 through M-16).
-- **Key Value**: Guarantees zero store rejection, rock-solid offline-first reliability, instant cold-start performance, and uncompromised data integrity.
+- **What It Does**:
+  1. **Legal Attachments Vault**: Enables optional upload during Bilty creation and post-creation editing of critical compliance assets: Driver Photo, Driver License, Driver CNIC, Vehicle Photo, Sender Photo, Sender CNIC, Receiver Photo, Receiver CNIC, and audio Call Recordings.
+  2. **Zero Receipt Bleed**: Keeps all legal and audio attachments strictly in the backend vault for dispute resolution, ensuring the printable/shareable Bilty document remains clean and uncluttered.
+  3. **ZIP Download**: Allows the authorized owner to download a complete `.zip` archive per Bilty containing the generated PDF along with all attached photos and audio recordings.
+  4. **Direct WhatsApp PDF Sharing**: Fixes WhatsApp sharing so it sends the actual `.pdf` document file directly into WhatsApp rather than converting to plain text.
+  5. **Auto Phone Separator & RTL Fix**: Automatically places a separator (`-`) after the 4-digit mobile network operator code (e.g., `0300-1234567`) and enforces bidirectional isolation (`unicode-bidi: isolate; direction: ltr;`) so the slash/dash never jumps or renders backwards in Urdu RTL prints.
+  6. **Offline PDF Overwrite Fix**: Fixes the offline layout rendering where party names and numbers overlapped existing text by standardizing container flex sizing, explicit line-heights, and offline font metrics.
+  7. **Strict 4-Digit Bilty Ceiling**: Restricts Bilty numbers strictly to `WG-` followed by exactly 4 digits (e.g., `WG-1001` to `WG-9999`) across both online transactions and offline counters for consistent website verification.
+
+- **Target Audience**: Warraich Goods Transport Company fleet managers, booking clerks, and authorized company owners managing intercity logistics.
+
+- **Key Value**: Comprehensive legal protection against cargo disputes, seamless WhatsApp document sharing for customers, and error-free Urdu typography.
 
 ---
 
 ## 2. User Experience & Visual Design
 
 - **Key User Flows**:
-  1. *App Launch*: Opens immediately in less than 300ms without blocking login modals or auth gates. Core tools (Calculator, Khata, Tolls) are available instantly in offline Guest Mode.
-  2. *API Fetching (Highway Network)*: On app launch or manual refresh, live fuel rates and weather trigger background requests with an 8-second window. If connectivity drops mid-route, cached data displays instantly with a subtle "offline cached" timestamp indicator.
-  3. *Cloud Sync*: Any vehicle log or bilty created offline queues locally and auto-syncs without error toasts as soon as internet connectivity is detected.
-  4. *Responsive Mobile Layout*: Top status bar (clock, battery) and bottom system navigation bar are fully visible. Cards maintain an ergonomic aspect ratio (`aspect-[1.08/1] sm:aspect-square`) with `pb-16 sm:pb-20` clearance to prevent clipping.
+  1. *Bilty Creation Flow*:
+     - The user enters vehicle, driver, route, sender, receiver, and cargo details.
+     - Mobile numbers auto-format smoothly as the user types (4 operator digits + separator + 7 subscriber digits).
+     - An optional "Legal Evidence & Attachments" collapsible card allows quick attachment of photos (Driver, License, CNIC, Vehicle, Sender, Receiver) and call recordings (or in-app audio recorder/file upload).
+     - Upon creation, a 4-digit number (e.g. `WG-1045`) is allocated.
+  2. *Post-Creation Vault Management*:
+     - In "All Bilties" or Bilty Details view, an "Attachments & Legal Vault" button lets the owner add, view, or replace documents at any time.
+  3. *ZIP Archive Export*:
+     - In the Bilty preview/card, clicking "Download Vault (ZIP)" triggers client-side ZIP packaging containing `Bilty_WG-1045.pdf` and all related media with descriptive filenames (`Driver_Photo.jpg`, `Driver_CNIC.jpg`, `Call_Recording_1.mp3`, etc.).
+  4. *Direct WhatsApp PDF Share*:
+     - Clicking "Share in WhatsApp" renders the high-fidelity PDF and immediately opens the native device share sheet targeting WhatsApp with the PDF file attached.
 
 - **Visual Identity & Theme**:
-  - *Color Palette*: High-contrast Charcoal (`#121316`) and Emerald Slate (`#142219` / `#0d281a`) in dark mode; Warm Cream (`#fdfbf7`) and Olive Sage (`#8b9d77`) in light mode.
-  - *Typography*: Jameel Noori Nastaleeq and PDMS Nastaleeq Nafees for authentic Urdu calligraphy, paired with Plus Jakarta Sans and JetBrains Mono (`tabular-nums`) for currency and metrics.
-  - *Contrast & Anti-Slop*: WCAG AA compliance across all inputs, badges, and ledger tables. Zero pill-badge clutter, no code-comment headings, and no unstyled placeholder boxes.
+  - Consistent with Driver Dost's industrial palette: Deep Navy Slate (`#0f2942`), Gold Ochre (`#f59e0b`), Warm Cream canvas (`#fdfbf7`), and Emerald accents.
+  - Urdu typography uses Nastaleeq fonts with strict `dir="rtl"` layout, while phone numbers and numbers use JetBrains Mono with explicit LTR overrides.
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-- **Decision 1: 8-Second Highway Network Timeout with Retry**:
-  - *Chosen Approach*: Configure `AbortController` timeout for 8,000ms with 1 automatic retry on fetch failure before falling back gracefully to local cached state.
-  - *Why*: Accommodates patchy cellular coverage in rural transit areas without freezing UI threads.
-- **Decision 2: Silent Background Cloud Sync with Retry Backoff**:
-  - *Chosen Approach*: Replace abrasive permission/timeout toasts (`Missing or insufficient permissions` or `Firestore operation timed out`) with exponential backoff and silent state reconciliation.
-  - *Why*: Eliminates false alarm error popups when temporary network drops occur during drive time.
-- **Decision 3: Retaining Embedded Base64 Image Architecture**:
-  - *Chosen Approach*: Maintain base64 embedded asset fallbacks for dashboard action cards.
-  - *Why*: Eliminates 404 network failures inside Android WebView and offline PWA environments.
+- **Decision 1: Client-Side JSZip Packaging**:
+  - *Chosen Approach*: Use `jszip` for in-browser and on-device compression of the Bilty PDF, images, and audio files.
+  - *Why*: Instant generation with zero server processing latency, works 100% offline, and does not consume Cloud Function quotas.
+- **Decision 2: Phone Number BiDi Isolation**:
+  - *Chosen Approach*: Auto-format phone input on change to `03XX-XXXXXXX` and render in prints inside `<span dir="ltr" style="direction: ltr; unicode-bidi: isolate; display: inline-block;">`.
+  - *Why*: Resolves the Arabic/Urdu Bidirectional text engine glitch where hyphens or slashes get flipped to the end of the string.
+- **Decision 3: Strict 4-Digit Number Space (WG-1001 to WG-9999)**:
+  - *Chosen Approach*: Constrain online Firestore atomic transactions and offline monotonic fallback sequence strictly between 1001 and 9999.
+  - *Why*: Aligns with physical receipt books and guarantees seamless lookup on the company verification website (`zahdan-443.github.io`).
 
 ---
 
 ## 4. Technical Architecture & Data Strategy
 
 ```
-┌───────────────────────────────────────────────────────────────────────────────┐
-│                       SYSTEM DATA FLOW & SYNC ARCHITECTURE                    │
-└──────────────────────────────────────┬────────────────────────────────────────┘
-                                       │
-                         [ Local Device Storage ]
-                     (IndexedDB / LocalStorage Engine)
-                         │                  │
-        ┌────────────────┘                  └────────────────┐
-        ▼                                                    ▼
-[ Online Mode Active ]                              [ Offline / Highway Mode ]
-        │                                                    │
-        ├─► Reconcile Queue (processOfflineQueue)            ├─► Read Local Cache (Fuel/Weather/Tolls)
-        ├─► Firestore Real-Time Listener                     ├─► Append to offlineQueue with UUID
-        └─► Atomic Bilty Sequence Coordinator                └─► Display In-App Offline Badge
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DATA MODEL & PIPELINE                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+ [ BiltyRecord ]
+ ├── id, biltyNo (WG-XXXX strictly 4 digits)
+ ├── vehicleNo, driverName, mobileNo
+ ├── senderName, senderMobile (03XX-XXXXXXX), senderCnic
+ ├── receiverName, receiverMobile (03XX-XXXXXXX)
+ ├── freight financials (total, advance, payable)
+ └── legalVault?: {
+       driverPhoto?: string (base64 / storage URL)
+       driverLicense?: string
+       driverCnic?: string
+       vehiclePhoto?: string
+       senderCnic?: string
+       senderPhoto?: string
+       receiverCnic?: string
+       receiverPhoto?: string
+       callRecordings?: Array<{ id: string; name: string; url: string; date: string }>
+     }
+          │
+          ├──> PrintableBilty.tsx (Excludes legalVault; renders only official receipt)
+          ├──> WhatsApp Dispatch (Shares generated PDF file directly via Web Share API)
+          ├──> Legal Vault Modal (Allows view/edit/upload anytime)
+          └──> JSZip Bundler (Exports Bilty_WG-XXXX.pdf + all vault media into a .zip)
 ```
 
-### Planned Audit & Action Steps
-
-1. **Dead Code & Unused Data Pruning**:
-   - Audit all imports, helper utilities, and orphaned mock variables.
-   - Remove unused test mock datasets while strictly preserving user storage schemas and templates.
-2. **API Resilience (Fuel & Weather)**:
-   - Audit `src/utils/fuelPrice.ts` and `src/components/views/MapView.tsx`:
-   - Upgrade timeout to 8 seconds with retry logic.
-   - Ensure cached rates are loaded synchronously on initial render so zero latency is experienced by the user.
-3. **Cloud Sync & Auth Hardening**:
-   - Audit `src/utils/storage.ts` and `src/utils/firebase.ts`.
-   - Prevent noisy offline timeout alerts during background sync attempts.
-   - Enforce atomic Bilty sequence reconciliation starting at `WG-1001`.
-4. **UI/UX & Image Verification**:
-   - Audit all 10 dashboard cards, icons, modals, and tables across Light and Dark themes.
-   - Verify that all images, SVGs, and font files load without 404s or layout shifts.
-5. **App Starting & Build Verification**:
-   - Run `lint_applet` and `compile_applet`.
-   - Verify all unit tests pass with zero regressions.
-   - Run `npx cap sync android` to ensure complete native synchronization.
+### State & Handler Mapping
+1. `formatPakistaniMobile(val: string)`: Sanitizes input to digits only, auto-inserts separator after first 4 digits, caps at 11 digits (`03XX-XXXXXXX`).
+2. `allocateNextBiltyNumber()`: Formats counter strictly as `WG-${String(nextVal).padStart(4, '0')}` clamped to 4 digits.
+3. `handleWhatsAppShare(record)`: Generates PDF blob, constructs `new File([pdfBlob], 'Bilty_WG-XXXX.pdf', { type: 'application/pdf' })`, and calls `navigator.share({ files: [pdfFile], title: ... })` or Capacitor Share.
+4. `downloadBiltyLegalZip(record)`: Instantiates JSZip, adds `Bilty_${record.biltyNo}.pdf`, iterates `record.legalVault`, converts images/audio to blobs, adds them with clear names, and triggers `saveAs` / download.

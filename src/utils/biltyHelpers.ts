@@ -25,6 +25,46 @@ export function sanitizeContactOrCnic(val?: string | null): string {
 }
 
 /**
+ * Automatically formats Pakistani mobile numbers with a separator after 4 operator code digits:
+ * e.g. "03001234567" -> "0300-1234567"
+ * Also gracefully normalizes if user typed a slash or hyphen: "0300/1234567" -> "0300-1234567"
+ * Caps at 11 digits (4 operator digits + 7 subscriber digits).
+ */
+export function formatBiltyMobile(val: string): string {
+  if (!val) return '';
+  // Convert Eastern Arabic / Urdu numerals to Western digits if pasted
+  const westernVal = val.replace(/[٠-٩۰-۹]/g, (d) => String(d.charCodeAt(0) & 0xf));
+  // Keep only digits
+  let digits = westernVal.replace(/\D/g, '');
+  if (digits.startsWith('92')) {
+    digits = '0' + digits.slice(2);
+  }
+  // Max 11 digits in Pakistan mobile format (03XX-XXXXXXX)
+  digits = digits.slice(0, 11);
+
+  if (digits.length <= 4) {
+    return digits;
+  }
+  return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+}
+
+/**
+ * Ensures Bilty number is strictly formatted as "WG-" followed by exactly 4 digits:
+ * e.g. "WG-1001" to "WG-9999".
+ * Never exceeds 4 digits after WG-, ensuring consistency for online website lookup.
+ */
+export function formatStrictBiltyNumber(val: string | number): string {
+  if (!val) return 'WG-1001';
+  const str = String(val).trim().toUpperCase();
+  // Extract only digits
+  const digits = str.replace(/\D/g, '');
+  if (!digits) return 'WG-1001';
+  
+  const fourDigits = digits.length > 4 ? digits.slice(-4) : digits.padStart(4, '0');
+  return `WG-${fourDigits}`;
+}
+
+/**
  * Official canonical base URL for public bilty verification on company website
  */
 export const OFFICIAL_APP_BASE_URL = 'https://zahdan-443.github.io/Warraichgoodstransportcompany/';

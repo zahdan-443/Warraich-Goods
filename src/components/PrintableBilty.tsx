@@ -435,9 +435,11 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     <span>
                       📞 <strong>ہیلپ لائن:</strong>{' '}
                       <span
+                        dir="ltr"
                         style={{
                           fontFamily: "'JetBrains Mono', monospace",
                           direction: 'ltr',
+                          unicodeBidi: 'bidi-override',
                           display: 'inline-block',
                           fontWeight: 700
                         }}
@@ -695,18 +697,21 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               color: '#1e293b'
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span style={{ color: '#64748b', fontWeight: 500 }}>{isEn ? 'Name:' : 'نام:'}</span>
-              <span style={{ fontWeight: 900, color: '#0f172a', textAlign: isEn ? 'left' : 'right' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+              <span style={{ color: '#64748b', fontWeight: 500, flexShrink: 0 }}>{isEn ? 'Name:' : 'نام:'}</span>
+              <span style={{ fontWeight: 900, color: '#0f172a', textAlign: isEn ? 'left' : 'right', maxWidth: '240px', wordBreak: 'break-word', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', lineHeight: '1.25' }}>
                 {record.senderName || record.consignor || 'N/A'}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#64748b', fontWeight: 500 }}>{isEn ? 'Phone No:' : 'فون نمبر:'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+              <span style={{ color: '#64748b', fontWeight: 500, flexShrink: 0 }}>{isEn ? 'Phone No:' : 'فون نمبر:'}</span>
               <span
+                dir="ltr"
                 style={{
                   fontFamily: "'JetBrains Mono', monospace",
                   direction: 'ltr',
+                  unicodeBidi: 'bidi-override',
+                  display: 'inline-block',
                   fontWeight: 900,
                   color: '#0f172a'
                 }}
@@ -714,12 +719,15 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 {sanitizeContactOrCnic(record.senderMobile)}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#64748b', fontWeight: 500 }}>{isEn ? 'CNIC:' : 'شناختی کارڈ:'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+              <span style={{ color: '#64748b', fontWeight: 500, flexShrink: 0 }}>{isEn ? 'CNIC:' : 'شناختی کارڈ:'}</span>
               <span
+                dir="ltr"
                 style={{
                   fontFamily: "'JetBrains Mono', monospace",
                   direction: 'ltr',
+                  unicodeBidi: 'bidi-override',
+                  display: 'inline-block',
                   color: '#334155'
                 }}
               >
@@ -802,18 +810,21 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               color: '#1e293b'
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span style={{ color: '#64748b', fontWeight: 500 }}>{isEn ? 'Name:' : 'نام:'}</span>
-              <span style={{ fontWeight: 900, color: '#0f172a', textAlign: isEn ? 'left' : 'right' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+              <span style={{ color: '#64748b', fontWeight: 500, flexShrink: 0 }}>{isEn ? 'Name:' : 'نام:'}</span>
+              <span style={{ fontWeight: 900, color: '#0f172a', textAlign: isEn ? 'left' : 'right', maxWidth: '240px', wordBreak: 'break-word', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', lineHeight: '1.25' }}>
                 {record.receiverName || record.consignee || 'N/A'}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#64748b', fontWeight: 500 }}>{isEn ? 'Phone No:' : 'فون نمبر:'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+              <span style={{ color: '#64748b', fontWeight: 500, flexShrink: 0 }}>{isEn ? 'Phone No:' : 'فون نمبر:'}</span>
               <span
+                dir="ltr"
                 style={{
                   fontFamily: "'JetBrains Mono', monospace",
                   direction: 'ltr',
+                  unicodeBidi: 'bidi-override',
+                  display: 'inline-block',
                   fontWeight: 900,
                   color: '#0f172a'
                 }}
@@ -821,12 +832,15 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 {sanitizeContactOrCnic(record.receiverMobile)}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#64748b', fontWeight: 500 }}>{isEn ? 'CNIC / NTN:' : 'شناختی کارڈ / این ٹی این:'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+              <span style={{ color: '#64748b', fontWeight: 500, flexShrink: 0 }}>{isEn ? 'CNIC / NTN:' : 'شناختی کارڈ / این ٹی این:'}</span>
               <span
+                dir="ltr"
                 style={{
                   fontFamily: "'JetBrains Mono', monospace",
                   direction: 'ltr',
+                  unicodeBidi: 'bidi-override',
+                  display: 'inline-block',
                   color: '#334155'
                 }}
               >
@@ -1198,7 +1212,17 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
           <span style={{ color: '#64748b', fontWeight: 500 }}>
             {isEn ? 'Cell No:' : 'موبائل نمبر:'}
           </span>{' '}
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", direction: 'ltr', fontWeight: 900, color: '#0f172a' }}>
+          <span
+            dir="ltr"
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              direction: 'ltr',
+              unicodeBidi: 'bidi-override',
+              display: 'inline-block',
+              fontWeight: 900,
+              color: '#0f172a'
+            }}
+          >
             {sanitizeContactOrCnic(record.mobileNo)}
           </span>
         </div>
