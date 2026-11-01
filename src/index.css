@@ -333,9 +333,37 @@ html.dark .bg-\[\#f4f9f1\] {
 html.dark .border-\[\#ecece0\],
 html.dark .border-\[\#e2e2d5\],
 html.dark .border-\[\#e0e0d2\],
+html.dark .border-gray-100,
 html.dark .border-gray-200,
+html.dark .border-slate-100,
 html.dark .border-slate-200 {
   border-color: #2d313b !important;
+}
+
+/* Neutral subtle cards & inner pills in Dark Mode (No silver glare) */
+html.dark .bg-gray-50,
+html.dark .bg-gray-50\/70,
+html.dark .bg-gray-50\/80,
+html.dark .bg-gray-50\/90,
+html.dark .bg-gray-100,
+html.dark .bg-slate-50,
+html.dark .bg-slate-100 {
+  background-color: #16181e !important;
+  color: #f8fafc !important;
+}
+
+html.dark .bg-slate-200,
+html.dark .bg-gray-200 {
+  background-color: #22252c !important;
+  color: #f8fafc !important;
+}
+
+/* Gradients that become silver glare in Dark Mode */
+html.dark .bg-gradient-to-r.from-\[\#fbfbfa\],
+html.dark .bg-gradient-to-br.from-emerald-50\/80,
+html.dark .bg-gradient-to-br.from-amber-500\/15 {
+  background-image: none !important;
+  background-color: #16181e !important;
 }
 
 /* High contrast text hierarchy in Dark Mode */

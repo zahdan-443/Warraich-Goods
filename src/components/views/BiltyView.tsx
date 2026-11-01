@@ -1572,12 +1572,12 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
                     return (
                       <div
                         key={b.id || b.biltyNo}
-                        className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs"
+                        className="bg-white dark:bg-[#1a1c22] rounded-2xl border border-slate-200 dark:border-[#2d313b] p-4 space-y-3 shadow-xs"
                       >
                         {/* Header */}
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#2d313b] pb-2.5">
                           <div className="flex items-center gap-2">
-                            <span className="bg-slate-900 text-white font-mono text-xs font-black px-2.5 py-1 rounded">
+                            <span className="bg-slate-900 dark:bg-slate-950 text-white font-mono text-xs font-black px-2.5 py-1 rounded border border-slate-700">
                               {b.biltyNo}
                             </span>
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0f2942] text-white">
@@ -1586,27 +1586,27 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
                           </div>
                           <div className="flex items-center gap-1.5 flex-wrap justify-end">
                             {isPaid ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                                 ✓ مکمل ادا
                               </span>
                             ) : isPartial ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
                                 جزوی پیشگی
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
                                 ٹو پے (بقایا)
                               </span>
                             )}
 
                             {b.isDelivered || b.podConfirmation ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300 flex items-center gap-1">
-                                <PackageCheck className="w-3 h-3 text-blue-600" />
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950/70 text-blue-900 dark:text-blue-300 border border-blue-300 dark:border-blue-800 flex items-center gap-1">
+                                <PackageCheck className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                                 <span>{isUrdu ? 'پہنچ گیا' : 'Delivered'}</span>
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
-                                <Clock className="w-3 h-3 text-slate-500" />
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-[#22252c] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#2d313b] flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-slate-500 dark:text-slate-400" />
                                 <span>{isUrdu ? 'راستے میں' : 'In Transit'}</span>
                               </span>
                             )}
@@ -1616,44 +1616,44 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
                         {/* Vehicle, Driver & Route */}
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div>
-                            <div className="text-[10px] text-slate-500 font-bold uppercase">{isUrdu ? 'گاڑی و ڈرائیور' : 'Vehicle & Driver'}</div>
-                            <div className="font-mono font-bold text-slate-900 uppercase">{b.vehicleNo}</div>
-                            {b.driverName && <div className="text-slate-600 text-[11px] truncate">{b.driverName}</div>}
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">{isUrdu ? 'گاڑی و ڈرائیور' : 'Vehicle & Driver'}</div>
+                            <div className="font-mono font-bold text-slate-900 dark:text-slate-100 uppercase">{b.vehicleNo}</div>
+                            {b.driverName && <div className="text-slate-600 dark:text-slate-300 text-[11px] truncate">{b.driverName}</div>}
                           </div>
                           <div>
-                            <div className="text-[10px] text-slate-500 font-bold uppercase">{isUrdu ? 'روٹ' : 'Route'}</div>
-                            <div className="font-semibold text-slate-800">
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">{isUrdu ? 'روٹ' : 'Route'}</div>
+                            <div className="font-semibold text-slate-800 dark:text-slate-200">
                               {b.sendingCity || 'سمندری'} ➔ {b.receivingCity || 'منزل'}
                             </div>
-                            <div className="text-[10px] text-slate-500">{b.date || '—'}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400">{b.date || '—'}</div>
                           </div>
                         </div>
 
                         {/* Parties & Cargo */}
-                        <div className="bg-slate-50 rounded-xl p-2.5 text-[11px] space-y-1">
+                        <div className="bg-slate-50 dark:bg-[#121316] rounded-xl p-2.5 text-[11px] space-y-1 border border-slate-200/50 dark:border-[#2d313b] text-slate-800 dark:text-slate-200">
                           <div className="truncate">
-                            <strong className="text-slate-500">بھیجنے والا:</strong> {b.senderName || b.consignor || '—'}
+                            <strong className="text-slate-500 dark:text-slate-400">بھیجنے والا:</strong> {b.senderName || b.consignor || '—'}
                           </div>
                           <div className="truncate">
-                            <strong className="text-slate-500">وصول کنندہ:</strong> {b.receiverName || b.consignee || '—'}
+                            <strong className="text-slate-500 dark:text-slate-400">وصول کنندہ:</strong> {b.receiverName || b.consignee || '—'}
                           </div>
-                          <div className="truncate text-slate-700">
-                            <strong className="text-slate-500">مال:</strong> {b.itemDescription || '—'} {b.weight ? `(${b.weight} kg)` : ''}
+                          <div className="truncate text-slate-700 dark:text-slate-300">
+                            <strong className="text-slate-500 dark:text-slate-400">مال:</strong> {b.itemDescription || '—'} {b.weight ? `(${b.weight} kg)` : ''}
                           </div>
                         </div>
 
                         {/* Financial Pills */}
                         <div className="grid grid-cols-3 gap-1.5 font-mono text-center text-[11px]">
-                          <div className="bg-slate-100 p-1.5 rounded-lg">
-                            <div className="text-[9px] text-slate-500">{isUrdu ? 'کل' : 'Total'}</div>
-                            <div className="font-bold text-slate-900">Rs {Number(b.total || 0).toLocaleString('en-PK')}</div>
+                          <div className="bg-slate-100 dark:bg-[#22252c] p-1.5 rounded-lg border border-slate-200 dark:border-[#2d313b]">
+                            <div className="text-[9px] text-slate-500 dark:text-slate-400">{isUrdu ? 'کل' : 'Total'}</div>
+                            <div className="font-bold text-slate-900 dark:text-[#f8fafc]">Rs {Number(b.total || 0).toLocaleString('en-PK')}</div>
                           </div>
-                          <div className="bg-blue-50 p-1.5 rounded-lg text-blue-800">
-                            <div className="text-[9px] text-blue-600">{isUrdu ? 'پیشگی' : 'Advance'}</div>
+                          <div className="bg-blue-50 dark:bg-blue-950/60 p-1.5 rounded-lg text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+                            <div className="text-[9px] text-blue-600 dark:text-blue-400">{isUrdu ? 'پیشگی' : 'Advance'}</div>
                             <div className="font-bold">Rs {Number(b.advance || 0).toLocaleString('en-PK')}</div>
                           </div>
-                          <div className="bg-rose-50 p-1.5 rounded-lg text-rose-800">
-                            <div className="text-[9px] text-rose-600">{isUrdu ? 'بقایا' : 'Due'}</div>
+                          <div className="bg-rose-50 dark:bg-rose-950/60 p-1.5 rounded-lg text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
+                            <div className="text-[9px] text-rose-600 dark:text-rose-400">{isUrdu ? 'بقایا' : 'Due'}</div>
                             <div className="font-bold">Rs {Number(b.payable || 0).toLocaleString('en-PK')}</div>
                           </div>
                         </div>
@@ -1664,7 +1664,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
                             <button
                               type="button"
                               onClick={() => setSelectedModalBilty(b)}
-                              className="py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
+                              className="py-2 bg-slate-100 hover:bg-slate-200 dark:bg-[#22252c] dark:hover:bg-[#2c3038] text-slate-800 dark:text-slate-200 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors border border-slate-200/60 dark:border-[#2d313b]"
                             >
                               <Eye className="w-3.5 h-3.5" />
                               <span>دیکھیں</span>
@@ -1672,7 +1672,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
                             <button
                               type="button"
                               onClick={() => handlePrintBuilty(b)}
-                              className="py-2 bg-slate-900 text-amber-400 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
+                              className="py-2 bg-slate-900 dark:bg-slate-950 text-amber-400 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors border border-amber-400/30"
                             >
                               <Printer className="w-3.5 h-3.5" />
                               <span>پرنٹ</span>
@@ -1680,7 +1680,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
                             <button
                               type="button"
                               onClick={() => handleDownloadPDF(b)}
-                              className="py-2 bg-emerald-50 text-emerald-800 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors"
+                              className="py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors border border-emerald-200 dark:border-emerald-800"
                             >
                               <Download className="w-3.5 h-3.5" />
                               <span>پی ڈی ایف</span>
@@ -1702,9 +1702,9 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
                                 setVaultModalBilty(b);
                                 setIsVaultModalOpen(true);
                               }}
-                              className="py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1.5 cursor-pointer transition-colors relative border border-blue-200"
+                              className="py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-800 dark:text-blue-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1.5 cursor-pointer transition-colors relative border border-blue-200 dark:border-blue-800"
                             >
-                              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                              <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                               <span>قانونی والٹ</span>
                               {b.legalVault && (
                                 <span className="bg-blue-600 text-white text-[9px] px-1 rounded-full font-bold">
@@ -1715,25 +1715,25 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
                             <button
                               type="button"
                               onClick={() => handleDownloadZip(b)}
-                              className="py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1.5 cursor-pointer transition-colors border border-amber-200"
+                              className="py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1.5 cursor-pointer transition-colors border border-amber-200 dark:border-amber-800"
                             >
-                              <FileArchive className="w-3.5 h-3.5 text-amber-600" />
+                              <FileArchive className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                               <span>ZIP والٹ</span>
                             </button>
                             {onDeleteBilty ? (
                               <button
                                 type="button"
                                 onClick={() => setBiltyToDelete(b)}
-                                className="py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors border border-rose-200"
+                                className="py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors border border-rose-200 dark:border-rose-800"
                               >
-                                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                                <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                                 <span>حذف</span>
                               </button>
                             ) : (
                               <button
                                 type="button"
                                 onClick={() => setSelectedModalBilty(b)}
-                                className="py-2 bg-slate-100 text-slate-500 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1"
+                                className="py-2 bg-slate-100 dark:bg-[#22252c] text-slate-700 dark:text-slate-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer"
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 <span>تصدیق</span>

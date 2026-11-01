@@ -570,42 +570,42 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
       )}
 
       {/* Middle Row: Live Weather Status Compact Card */}
-      <div className="bg-gradient-to-r from-[#fbfbfa] via-[#f8f9f5] to-emerald-50/30 p-3 sm:p-3.5 rounded-2xl border border-[#ecece0] flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+      <div className="bg-gradient-to-r from-[#fbfbfa] via-[#f8f9f5] to-emerald-50/30 dark:from-[#1a1c22] dark:via-[#16181e] dark:to-[#16181e] p-3 sm:p-3.5 rounded-2xl border border-[#ecece0] dark:border-[#2d313b] flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs shadow-2xs">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white border border-[#ecece0] shadow-2xs flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-white dark:bg-[#22252c] border border-[#ecece0] dark:border-[#2d313b] shadow-2xs flex items-center justify-center shrink-0">
             {renderWeatherIcon()}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-[#4a4a35] font-serif">
+              <span className="font-bold text-sm text-[#4a4a35] dark:text-[#f8fafc] font-serif">
                 {isUrdu 
                   ? (weatherData?.cityNameUr || selectedCity.nameUr) 
                   : (weatherData?.cityNameEn || selectedCity.nameEn)}
               </span>
               {isCurrentGpsActive && (
-                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                   GPS
                 </span>
               )}
-              <span className="text-base font-extrabold font-mono text-emerald-800">
+              <span className="text-base font-extrabold font-mono text-emerald-800 dark:text-emerald-400">
                 {weatherData ? `${weatherData.temp}°C` : '--'}
               </span>
-              <span className="text-[11px] text-slate-500 font-medium">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                 ({isUrdu ? 'محسوس:' : 'Feels:'} {weatherData ? `${weatherData.feelsLike}°C` : '--'})
               </span>
             </div>
-            <div className="text-[11px] text-slate-600 mt-0.5 flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-emerald-900">
+            <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-emerald-900 dark:text-emerald-300">
                 {weatherData ? (isUrdu ? weatherData.conditionUr : weatherData.conditionEn) : '--'}
               </span>
               <span>·</span>
-              <span className="text-[#8e8e75]">
+              <span className="text-[#8e8e75] dark:text-slate-400">
                 {weatherData ? (isUrdu ? weatherData.roadStatusUr : weatherData.roadStatusEn) : '--'}
               </span>
               {weatherData?.updatedAt && (
                 <>
                   <span>·</span>
-                  <span className="text-[10px] text-emerald-700 font-mono">
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono">
                     {isUrdu ? `تازہ ترین: ${weatherData.updatedAt}` : `Updated: ${weatherData.updatedAt}`}
                   </span>
                 </>
@@ -615,19 +615,19 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
         </div>
 
         {/* Weather Metrics: Visibility & Wind */}
-        <div className="flex items-center gap-3 self-end md:self-auto text-[11px] text-[#5a5a40] font-mono bg-white/80 px-2.5 py-1.5 rounded-xl border border-[#ecece0]">
+        <div className="flex items-center gap-3 self-end md:self-auto text-[11px] text-[#5a5a40] dark:text-slate-200 font-mono bg-white/80 dark:bg-[#16181e] px-2.5 py-1.5 rounded-xl border border-[#ecece0] dark:border-[#2d313b]">
           <div className="flex items-center gap-1">
-            <Eye className="w-3.5 h-3.5 text-slate-400" />
+            <Eye className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
             <span>{isUrdu ? 'حدِ نگاہ:' : 'Vis:'} <b>{weatherData ? `${weatherData.visibilityKm}km` : '--'}</b></span>
           </div>
           <span>|</span>
           <div className="flex items-center gap-1">
-            <Wind className="w-3.5 h-3.5 text-slate-400" />
+            <Wind className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
             <span>{weatherData ? `${weatherData.windSpeed}km/h` : '--'}</span>
           </div>
           <span>|</span>
           <div className="flex items-center gap-1">
-            <Droplets className="w-3.5 h-3.5 text-slate-400" />
+            <Droplets className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
             <span>{weatherData ? `${weatherData.humidity}%` : '--'}</span>
           </div>
         </div>
@@ -638,26 +638,26 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
         {/* Header: PSO / OGRA Official Tag + Effective Date + Refresh */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded-md bg-emerald-900/10 text-emerald-900 font-bold text-[10px] tracking-wide border border-emerald-900/20 flex items-center gap-1.5 font-sans">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-700 animate-pulse"></span>
+            <span className="px-2 py-0.5 rounded-md bg-emerald-900/10 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-300 font-bold text-[10px] tracking-wide border border-emerald-900/20 dark:border-emerald-700/50 flex items-center gap-1.5 font-sans">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-700 dark:bg-emerald-400 animate-pulse"></span>
               OGRA / PSO
             </span>
-            <h3 className="font-serif font-bold text-xs sm:text-sm text-[#4a4a35]">
+            <h3 className="font-serif font-bold text-xs sm:text-sm text-[#4a4a35] dark:text-[#f8fafc]">
               {isUrdu ? 'پاکستان پول ریٹ مانیٹر' : 'Pakistan POL Rates'}
             </h3>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-[#8e8e75]">
-              {isUrdu ? 'مؤثر از:' : 'Effective:'} <b className="text-slate-700">{effectiveDate}</b>
+            <span className="text-[10px] font-mono text-[#8e8e75] dark:text-slate-400">
+              {isUrdu ? 'مؤثر از:' : 'Effective:'} <b className="text-slate-700 dark:text-slate-200">{effectiveDate}</b>
             </span>
             <button
               type="button"
               onClick={() => fetchFuel(true)}
               disabled={fuelLoading}
               title={isUrdu ? 'تازہ ترین سرکاری نرخ حاصل کریں' : 'Refresh official rates'}
-              className="p-1 rounded-md hover:bg-[#ecece0] text-[#5a5a40] transition-colors cursor-pointer disabled:opacity-50"
+              className="p-1 rounded-md hover:bg-[#ecece0] dark:hover:bg-[#22252c] text-[#5a5a40] dark:text-slate-300 transition-colors cursor-pointer disabled:opacity-50"
             >
-              <RefreshCw className={'w-3 h-3 ' + (fuelLoading ? 'animate-spin text-emerald-600' : '')} />
+              <RefreshCw className={'w-3 h-3 ' + (fuelLoading ? 'animate-spin text-emerald-600 dark:text-emerald-400' : '')} />
             </button>
           </div>
         </div>
@@ -665,81 +665,81 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
         {/* Petrol & Diesel in ONE Line (Single Row) - Clean, High Contrast, No Redundant Text */}
         <div className="grid grid-cols-2 gap-2">
           {/* High Speed Diesel (HSD) */}
-          <div className="bg-gradient-to-br from-emerald-50/80 via-[#fdfbf7] to-emerald-50/40 p-2.5 rounded-xl border border-emerald-500/70 shadow-2xs hover:border-emerald-600 transition-all flex flex-col justify-between">
+          <div className="bg-gradient-to-br from-emerald-50/80 via-[#fdfbf7] to-emerald-50/40 dark:from-[#0d281a] dark:via-[#16181e] dark:to-[#0d281a] p-2.5 rounded-xl border border-emerald-500/70 dark:border-emerald-600/60 shadow-2xs hover:border-emerald-600 transition-all flex flex-col justify-between">
             <div className="flex items-center justify-between gap-1">
-              <span className="text-[11px] sm:text-xs font-bold text-emerald-950 flex items-center gap-1 font-serif truncate">
+              <span className="text-[11px] sm:text-xs font-bold text-emerald-950 dark:text-emerald-200 flex items-center gap-1 font-serif truncate">
                 <span>🛢️</span>
                 <span>{isUrdu ? 'ڈیزل (HSD)' : 'Diesel (HSD)'}</span>
               </span>
             </div>
             
             <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-[11px] font-bold text-emerald-800 font-mono">Rs.</span>
-              <span className="text-lg sm:text-2xl font-black font-mono text-emerald-900 tracking-tight">
+              <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-400 font-mono">Rs.</span>
+              <span className="text-lg sm:text-2xl font-black font-mono text-emerald-900 dark:text-emerald-300 tracking-tight">
                 {dieselPrice}
               </span>
-              <span className="text-[10px] font-medium text-emerald-800/80">/ {isUrdu ? 'لیٹر' : 'Ltr'}</span>
+              <span className="text-[10px] font-medium text-emerald-800/80 dark:text-emerald-400/90">/ {isUrdu ? 'لیٹر' : 'Ltr'}</span>
             </div>
           </div>
 
           {/* Super Petrol (PMG) */}
-          <div className="bg-[#fdfbf7] p-2.5 rounded-xl border border-[#ecece0] hover:border-[#8b9d77] transition-all shadow-2xs flex flex-col justify-between">
+          <div className="bg-[#fdfbf7] dark:bg-[#16181e] p-2.5 rounded-xl border border-[#ecece0] dark:border-[#2d313b] hover:border-[#8b9d77] transition-all shadow-2xs flex flex-col justify-between">
             <div className="flex items-center justify-between gap-1">
-              <span className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center gap-1 font-serif truncate">
+              <span className="text-[11px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1 font-serif truncate">
                 <span>⛽</span>
                 <span>{isUrdu ? 'پٹرول (PMG)' : 'Petrol (PMG)'}</span>
               </span>
             </div>
 
             <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-[11px] font-bold text-slate-600 font-mono">Rs.</span>
-              <span className="text-lg sm:text-2xl font-black font-mono text-slate-900 tracking-tight">
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 font-mono">Rs.</span>
+              <span className="text-lg sm:text-2xl font-black font-mono text-slate-900 dark:text-slate-100 tracking-tight">
                 {petrolPrice}
               </span>
-              <span className="text-[10px] font-medium text-slate-500">/ {isUrdu ? 'لیٹر' : 'Ltr'}</span>
+              <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">/ {isUrdu ? 'لیٹر' : 'Ltr'}</span>
             </div>
           </div>
         </div>
 
         {/* Secondary Products: Hi-Octane, Light Diesel, Kerosene & CNG - 4-Column Minimized Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-[#f9f9f2] p-2 rounded-xl border border-[#ecece0]">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-[#f9f9f2] dark:bg-[#121316] p-2 rounded-xl border border-[#ecece0] dark:border-[#2d313b]">
           {/* Hi-Octane 97 */}
-          <div className="bg-white/80 p-1.5 rounded-lg border border-[#ecece0]/80 text-center shadow-2xs">
-            <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] block truncate">
+          <div className="bg-white/80 dark:bg-[#1a1c22] p-1.5 rounded-lg border border-[#ecece0]/80 dark:border-[#2d313b] text-center shadow-2xs">
+            <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] dark:text-slate-400 block truncate">
               {isUrdu ? 'الٹران 97' : 'Altron 97'}
             </span>
-            <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] mt-0.5 block">
+            <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] dark:text-slate-100 mt-0.5 block">
               Rs. {hiOctanePrice}
             </span>
           </div>
 
           {/* Light Diesel (LDO) */}
-          <div className="bg-white/80 p-1.5 rounded-lg border border-[#ecece0]/80 text-center shadow-2xs">
-            <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] block truncate">
+          <div className="bg-white/80 dark:bg-[#1a1c22] p-1.5 rounded-lg border border-[#ecece0]/80 dark:border-[#2d313b] text-center shadow-2xs">
+            <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] dark:text-slate-400 block truncate">
               {isUrdu ? 'لائٹ ڈیزل (LDO)' : 'LDO'}
             </span>
-            <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] mt-0.5 block">
+            <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] dark:text-slate-100 mt-0.5 block">
               Rs. {ldoPrice}
             </span>
           </div>
 
           {/* Kerosene (SKO) */}
-          <div className="bg-white/80 p-1.5 rounded-lg border border-[#ecece0]/80 text-center shadow-2xs">
-            <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] block truncate">
+          <div className="bg-white/80 dark:bg-[#1a1c22] p-1.5 rounded-lg border border-[#ecece0]/80 dark:border-[#2d313b] text-center shadow-2xs">
+            <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] dark:text-slate-400 block truncate">
               {isUrdu ? 'مٹی کا تیل' : 'Kerosene'}
             </span>
-            <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] mt-0.5 block">
+            <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] dark:text-slate-100 mt-0.5 block">
               Rs. {skoPrice}
             </span>
           </div>
 
           {/* CNG */}
-          <div className="bg-white/80 p-1.5 rounded-lg border border-[#ecece0]/80 text-center shadow-2xs">
-            <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] block truncate">
+          <div className="bg-white/80 dark:bg-[#1a1c22] p-1.5 rounded-lg border border-[#ecece0]/80 dark:border-[#2d313b] text-center shadow-2xs">
+            <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] dark:text-slate-400 block truncate">
               {isUrdu ? 'سی این جی (CNG)' : 'CNG'}
             </span>
-            <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] mt-0.5 block">
-              Rs. 200<span className="text-[9px] font-sans font-normal text-slate-500">/kg</span>
+            <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] dark:text-slate-100 mt-0.5 block">
+              Rs. 200/kg
             </span>
           </div>
         </div>

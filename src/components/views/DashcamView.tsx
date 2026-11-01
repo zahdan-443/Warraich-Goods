@@ -432,40 +432,40 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
         )}
 
         {/* Main Recorder Card */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-[#e2e8d8] space-y-5">
+        <div className="bg-white dark:bg-[#1a1c22] rounded-3xl p-5 sm:p-6 shadow-sm border border-[#e2e8d8] dark:border-[#2d313b] space-y-5">
           {/* Active Recording Engine Badge */}
-          <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-gray-50 rounded-2xl border border-gray-200 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-gray-50 dark:bg-[#16181e] rounded-2xl border border-gray-200 dark:border-[#2d313b] text-xs">
             <div className="flex items-center gap-2">
               <span className={`w-2.5 h-2.5 rounded-full ${platform === 'native' ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'}`} />
-              <span className="font-semibold text-gray-800">
+              <span className="font-semibold text-gray-800 dark:text-gray-200">
                 {platform === 'native'
                   ? (isUrdu ? 'پلیٹ فارم: اینڈرائیڈ فار گراؤنڈ سروس (Native CameraX Background Service)' : 'Platform: Native Android Foreground Service (Screen Lock Continuous)')
                   : (isUrdu ? 'پلیٹ فارم: ویب موڈ (اسکرین ویک لاک فعال ہے تاکہ ڈرائیونگ کے دوران ڈسپلے سلیپ نہ ہو)' : 'Platform: Web Mode (Screen WakeLock Active • Display Keeps Awake)')}
               </span>
             </div>
-            <span className="text-[11px] font-semibold text-gray-500 bg-white px-2 py-0.5 rounded border border-gray-200">
+            <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-300 bg-white dark:bg-[#22252c] px-2 py-0.5 rounded border border-gray-200 dark:border-[#2d313b]">
               {platform === 'native' ? 'Capacitor Native' : 'Web / Browser'}
             </span>
           </div>
 
           {/* Mode Selector (When Dual is available or when selecting) */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-[#2d313b]">
             <div className="flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-[#1b4332]" />
-              <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+              <Sliders className="w-4 h-4 text-[#1b4332] dark:text-emerald-400" />
+              <span className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                 {isUrdu ? 'ریکارڈنگ موڈ کا انتخاب' : 'Recording Mode'}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-2xl">
+            <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-[#121316] p-1 rounded-2xl">
               <button
                 type="button"
                 disabled={isRecording}
                 onClick={() => setSelectedMode('auto')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                   selectedMode === 'auto'
-                    ? 'bg-white text-[#1b4332] shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white dark:bg-[#22252c] text-[#1b4332] dark:text-emerald-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 } ${isRecording ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {isUrdu ? 'خودکار (Auto Dual/Road)' : 'Auto (Dual/Road)'}
@@ -478,7 +478,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                   selectedMode === 'dual'
                     ? 'bg-[#1b4332] text-white shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 } ${isRecording || !dualCapability.supported ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title={!dualCapability.supported ? (isUrdu ? 'ڈوئل کیمرہ ہارڈویئر موجود نہیں' : 'Dual hardware unavailable') : ''}
               >
@@ -491,8 +491,8 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                 onClick={() => setSelectedMode('rear')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                   selectedMode === 'rear'
-                    ? 'bg-white text-[#1b4332] shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-white dark:bg-[#22252c] text-[#1b4332] dark:text-emerald-400 shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 } ${isRecording ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {isUrdu ? 'صرف روڈ کیمرہ' : 'Road Only'}
@@ -644,19 +644,19 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
         </div>
 
         {/* Saved Clips Section */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-[#e2e8d8] space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+        <div className="bg-white dark:bg-[#1a1c22] rounded-3xl p-5 sm:p-6 shadow-sm border border-[#e2e8d8] dark:border-[#2d313b] space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-[#2d313b]">
             <div>
               <div className="flex items-center gap-2">
-                <Film className="w-5 h-5 text-[#1b4332]" />
-                <h2 className="text-base sm:text-lg font-bold text-gray-900">
+                <Film className="w-5 h-5 text-[#1b4332] dark:text-emerald-400" />
+                <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100">
                   {isUrdu ? 'محفوظ شدہ کلپس (Saved Clips)' : 'Saved Dashcam Clips'}
                 </h2>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#22252c] text-gray-700 dark:text-gray-300">
                   {clips.length}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 {isUrdu
                   ? 'تمام ویڈیوز مستقل محفوظ ہیں۔ آپ کسی بھی وقت دیکھ یا ڈیلیٹ کر سکتے ہیں۔'
                   : 'All clips are permanently retained until you manually delete them.'}
@@ -664,12 +664,12 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
             </div>
 
             {/* Clip Filter Tabs */}
-            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl self-start sm:self-auto">
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-[#121316] p-1 rounded-xl self-start sm:self-auto">
               <button
                 type="button"
                 onClick={() => setClipFilter('all')}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                  clipFilter === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                  clipFilter === 'all' ? 'bg-white dark:bg-[#22252c] text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
                 {isUrdu ? 'تمام' : 'All'}
@@ -678,7 +678,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                 type="button"
                 onClick={() => setClipFilter('rear')}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                  clipFilter === 'rear' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                  clipFilter === 'rear' ? 'bg-white dark:bg-[#22252c] text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
                 {isUrdu ? 'روڈ (Road)' : 'Road'}
@@ -687,7 +687,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                 type="button"
                 onClick={() => setClipFilter('front')}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
-                  clipFilter === 'front' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                  clipFilter === 'front' ? 'bg-white dark:bg-[#22252c] text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
                 {isUrdu ? 'کیبن (Cabin)' : 'Cabin'}
@@ -698,18 +698,18 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
           {/* Clips List */}
           {loadingClips ? (
             <div className="py-12 text-center text-gray-400 space-y-2">
-              <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#1b4332]" />
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#1b4332] dark:text-emerald-400" />
               <p className="text-xs">{isUrdu ? 'کلپس لوڈ ہو رہے ہیں...' : 'Loading clips...'}</p>
             </div>
           ) : filteredClips.length === 0 ? (
             <div className="py-12 text-center text-gray-400 space-y-3">
-              <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center mx-auto text-gray-300">
+              <div className="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-[#16181e] flex items-center justify-center mx-auto text-gray-300 dark:text-gray-600">
                 <Video className="w-7 h-7" />
               </div>
-              <p className="text-sm font-medium text-gray-500">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                 {isUrdu ? 'ابھی کوئی کلپ محفوظ نہیں ہے۔' : 'No recorded clips found.'}
               </p>
-              <p className="text-xs text-gray-400 max-w-xs mx-auto">
+              <p className="text-xs text-gray-400 dark:text-gray-500 max-w-xs mx-auto">
                 {isUrdu
                   ? 'ریکارڈنگ بٹن دبائیں اور سفر کے دوران ویڈیو محفوظ کریں۔'
                   : 'Start recording during trips to capture tamper-evident video footage.'}
@@ -724,53 +724,53 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                 return (
                   <div
                     key={clip.id}
-                    className="p-4 rounded-2xl border border-gray-100 hover:border-gray-200 bg-gray-50/70 hover:bg-white transition-all space-y-3 shadow-sm hover:shadow"
+                    className="p-4 rounded-2xl border border-gray-100 dark:border-[#2d313b] hover:border-gray-200 dark:hover:border-slate-600 bg-gray-50/70 dark:bg-[#16181e] hover:bg-white dark:hover:bg-[#1e222a] transition-all space-y-3 shadow-sm hover:shadow"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="space-y-1">
                         {/* Camera Tag Badge */}
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {isCabin ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
                               <span>📷</span>
                               <span>{isUrdu ? 'کیبن کیمرہ (Cabin)' : 'Cabin Camera'}</span>
                             </span>
                           ) : isRoad ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1">
                               <span>🛣️</span>
                               <span>{isUrdu ? 'روڈ کیمرہ (Road)' : 'Road Camera'}</span>
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-200 text-gray-800">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-200 dark:bg-[#22252c] text-gray-800 dark:text-gray-200">
                               {isUrdu ? 'ڈیش کیم' : 'Dashcam'}
                             </span>
                           )}
 
                           {clip.pairId && (
-                            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-semibold bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                               {isUrdu ? 'ہم وقت جوڑا' : 'Synced Pair'}
                             </span>
                           )}
                         </div>
 
-                        <p className="text-xs font-bold text-gray-800 font-mono truncate max-w-[240px]" title={clip.filename}>
+                        <p className="text-xs font-bold text-gray-800 dark:text-slate-100 font-mono truncate max-w-[240px]" title={clip.filename}>
                           {clip.filename}
                         </p>
                       </div>
 
                       {/* File Size */}
-                      <span className="text-[11px] font-mono text-gray-500 bg-white px-2 py-0.5 rounded-md border border-gray-150 shrink-0">
+                      <span className="text-[11px] font-mono text-gray-500 dark:text-slate-300 bg-white dark:bg-[#22252c] px-2 py-0.5 rounded-md border border-gray-150 dark:border-[#2d313b] shrink-0">
                         {formatFileSize(clip.sizeBytes)}
                       </span>
                     </div>
 
                     {/* Metadata: Date & Duration */}
-                    <div className="flex items-center justify-between text-xs text-gray-500 pt-1 border-t border-gray-100">
+                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 pt-1 border-t border-gray-100 dark:border-[#2d313b]">
                       <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-gray-400" />
+                        <Clock className="w-3.5 h-3.5 text-gray-400 dark:text-slate-500" />
                         <span>{clip.durationSeconds > 0 ? formatTime(clip.durationSeconds) : '< 1s'}</span>
                       </div>
-                      <span className="text-[11px] text-gray-400">{clip.dateFormatted}</span>
+                      <span className="text-[11px] text-gray-400 dark:text-slate-500">{clip.dateFormatted}</span>
                     </div>
 
                     {/* Actions: Play, Share & Delete */}

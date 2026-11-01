@@ -571,29 +571,10 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
 
   return (
     <div className={`flex-1 p-3 sm:p-5 md:p-6 pb-28 md:pb-16 max-w-4xl mx-auto w-full font-sans ${isUrdu ? 'text-right' : 'text-left'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
-      {/* Top Header with Icon */}
-      <div className="w-full flex items-center justify-between pb-2 mb-3 shrink-0 border-b border-[#ecece0]">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
-            <PublicImage
-              fileName="gari-hisaab-icon.png"
-              alt="Vehicle Trip Account, Ledger and Income Calculator"
-              width={40}
-              height={40}
-              className="w-full h-full object-cover rounded-xl"
-              fallbackIcon={<Calculator className="w-5 h-5 text-[#8b9d77]" />}
-            />
-          </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-[#4a4a35] leading-tight">
-              {isUrdu ? 'گاڑی کا حساب و روزنامچہ' : 'Vehicle Account & Roznamcha'}
-            </h1>
-            <p className="text-xs text-[#8e8e75]">
-              {isUrdu ? 'گاڑی نفع و نقصان اور روزانہ کیش آمدن و خرچہ' : 'Vehicle P&L and daily cash income/expense ledger'}
-            </p>
-          </div>
-        </div>
-      </div>
+      {/* Semantic Accessibility Heading */}
+      <h1 className="sr-only">
+        {isUrdu ? 'گاڑی کا حساب و روزنامچہ' : 'Vehicle Account & Roznamcha'}
+      </h1>
 
       {/* Main Page Three Tabs: گاڑی کا حساب | گاڑی P&L | روزنامچہ */}
       <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-[#f0f0e4] mb-4 shadow-inner">
