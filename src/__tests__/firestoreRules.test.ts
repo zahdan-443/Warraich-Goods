@@ -27,17 +27,19 @@ describe('Firestore Rules Security Audit & Structure', () => {
     expect(rulesContent).toMatch(/match \/bilties\/\{biltyId\} \{\s*allow read, write: if false;\s*\}/);
   });
 
-  it('should restrict publicBiltyVerifications writes with non-PII and non-financial whitelist', () => {
+  it('should restrict publicBiltyVerifications writes with non-PII, non-financial whitelist and ownerUid check', () => {
     expect(rulesContent).toContain('match /publicBiltyVerifications/{docId}');
     expect(rulesContent).toContain('allow read: if true;');
-    expect(rulesContent).toContain('allow create, update: if isSignedIn() && hasOnlyPublicBiltyFields();');
-    expect(rulesContent).toContain('allow delete: if isOwner();');
+    expect(rulesContent).toContain('request.resource.data.ownerUid == request.auth.uid');
+    expect(rulesContent).toContain('resource.data.ownerUid == request.auth.uid');
+    expect(rulesContent).toContain('allow delete: if isOwner() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);');
     
     // Explicit allowed non-sensitive fields
     expect(rulesContent).toContain('senderName');
     expect(rulesContent).toContain('receiverName');
     expect(rulesContent).toContain('driverName');
     expect(rulesContent).toContain('paymentStatus');
+    expect(rulesContent).toContain('ownerUid');
 
     // Explicit forbidden keys in defense-in-depth guard
     expect(rulesContent).toContain('senderCnic');
@@ -61,8 +63,20 @@ describe('Firestore Rules Security Audit & Structure', () => {
     expect(rulesContent).toContain('match /admins/{adminId}');
   });
 
-  it('should allow counters collection to signed-in users for atomic online number allocation', () => {
+  it('should allow counters collection only to authorized bilty accounts with strict integer check', () => {
     expect(rulesContent).toContain('match /counters/{counterId}');
-    expect(rulesContent).toContain('allow read, write: if isSignedIn();');
+    expect(rulesContent).toContain('allow read: if isSignedIn();');
+    expect(rulesContent).toContain('allow write: if isBiltyAuthorized()');
+    expect(rulesContent).toContain("request.resource.data.keys().hasOnly(['currentValue', 'value', 'updatedAt'])");
+  });
+
+  it('should enforce strict schema and GPS bounding on hazardReports', () => {
+    expect(rulesContent).toContain('match /hazardReports/{reportId}');
+    expect(rulesContent).toContain('allow read: if isSignedIn();');
+    expect(rulesContent).toContain('request.resource.data.reporterUid == request.auth.uid');
+    expect(rulesContent).toContain('request.resource.data.lat >= 23.0 && request.resource.data.lat <= 38.0');
+    expect(rulesContent).toContain('request.resource.data.lng >= 60.0 && request.resource.data.lng <= 78.0');
+    expect(rulesContent).toContain('request.resource.data.createdAt == request.time;');
+    expect(rulesContent).toContain('allow update: if false;');
   });
 });

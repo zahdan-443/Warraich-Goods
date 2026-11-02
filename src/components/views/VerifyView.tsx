@@ -592,14 +592,39 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                 </a>
               </div>
 
-              {/* Policy Disclaimer Banner (Play Store / Palm Store Anti-Impersonation Compliance) */}
-              <div className="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-[10.5px] text-slate-600 flex items-start gap-2">
-                <Info className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
-                <span>
+              {/* Prominent Play Store Government Non-Affiliation Disclaimer Banner */}
+              <div className="p-3.5 sm:p-4 bg-amber-500/10 dark:bg-amber-950/40 rounded-2xl border-2 border-amber-500/40 dark:border-amber-600/50 text-amber-950 dark:text-amber-200 space-y-2 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs sm:text-[13px] font-bold font-serif text-amber-900 dark:text-amber-200">
+                    {isUrdu ? '⚠️ غیر سرکاری نجی پلیٹ فارم (Non-Government Entity Declaration)' : '⚠️ Independent Private Application (Non-Government Entity)'}
+                  </span>
+                </div>
+                <p className="text-[11px] sm:text-xs leading-relaxed text-amber-900/90 dark:text-amber-200/90">
                   {isUrdu
-                    ? 'قانونی وضاحت: ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ سسٹم ہے اور کسی سرکاری ادارے کی نمائندگی نہیں کرتا۔ سرکاری ریکارڈ کی حتمی تصدیق اوپر دیے گئے آفیشل پورٹل سے حاصل کی جاتی ہے۔'
-                    : 'Notice: Driver Dost is an independent fleet management application and does not represent any government entity. Government records are verified via the official portal above.'}
-                </span>
+                    ? 'ڈرائیور دوست وڑائچ گڈز ٹرانسپورٹ کمپنی کا ایک نجی لاجسٹکس و فلیٹ مینجمنٹ سسٹم ہے اور یہ ایپ کسی سرکاری ادارے، ایکسائز، پنجاب پولیس، یا سیف سٹی اتھارٹی کی نمائندگی نہیں کرتی اور نہ ہی ان سے الحاق شدہ ہے۔ گاڑی کی رجسٹریشن اور ٹوکن ٹیکس کی تصدیق سرکاری پورٹل کے ذریعے براہ راست حاصل کی جاتی ہے۔'
+                    : 'Driver Dost is an independent private fleet logistics application developed by Warraich Goods Transport Company. It does NOT represent, nor is it affiliated with or authorized by, the Government of Pakistan, Punjab Excise & Taxation, or any government entity. Official registration and token records are verified directly on the official portal below.'}
+                </p>
+                <div className="flex items-center gap-2 pt-1 border-t border-amber-500/20 text-[10.5px] font-mono text-amber-800 dark:text-amber-300">
+                  <span className="font-sans font-semibold">{isUrdu ? 'باضابطہ سرکاری ویب سائٹ:' : 'Official Government Source:'}</span>
+                  <a
+                    href={
+                      vehicleProvince === 'punjab'
+                        ? 'https://mtmis.excise.punjab.gov.pk'
+                        : vehicleProvince === 'sindh'
+                        ? 'https://excise.gos.pk/vehicle/vehicle_search'
+                        : 'https://islamabadexcise.gov.pk'
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-bold inline-flex items-center gap-1 hover:text-amber-950 dark:hover:text-amber-100"
+                  >
+                    <span>{vehicleProvince === 'punjab' ? 'mtmis.excise.punjab.gov.pk' : vehicleProvince === 'sindh' ? 'excise.gos.pk' : 'islamabadexcise.gov.pk'}</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -802,14 +827,33 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                 </a>
               </div>
 
-              {/* Policy Disclaimer Banner */}
-              <div className="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-[10.5px] text-slate-600 flex items-start gap-2">
-                <Info className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
-                <span>
+              {/* Prominent Play Store Government Non-Affiliation Disclaimer Banner */}
+              <div className="p-3.5 sm:p-4 bg-amber-500/10 dark:bg-amber-950/40 rounded-2xl border-2 border-amber-500/40 dark:border-amber-600/50 text-amber-950 dark:text-amber-200 space-y-2 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs sm:text-[13px] font-bold font-serif text-amber-900 dark:text-amber-200">
+                    {isUrdu ? '⚠️ غیر سرکاری نجی پلیٹ فارم (Non-Government Entity Declaration)' : '⚠️ Independent Private Application (Non-Government Entity)'}
+                  </span>
+                </div>
+                <p className="text-[11px] sm:text-xs leading-relaxed text-amber-900/90 dark:text-amber-200/90">
                   {isUrdu
-                    ? 'قانونی وضاحت: ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ سسٹم ہے اور کسی پولیس یا لائسنسنگ اتھارٹی کی نمائندگی نہیں کرتا۔ آفیشل جانچ کے لیے اوپر دیے گئے سرکاری پورٹل کا استعمال کریں۔'
-                    : 'Notice: Driver Dost is an independent transport fleet system and does not represent any police or licensing authority. Official license status is verified via the portal above.'}
-                </span>
+                    ? 'ڈرائیور دوست وڑائچ گڈز ٹرانسپورٹ کمپنی کا ایک آزاد نجی سسٹم ہے اور کسی پولیس، ٹریفک ہیڈکوارٹرز، یا ڈرائیونگ لائسنس اتھارٹی کی نمائندگی نہیں کرتا۔ ڈرائیور لائسنس اور فٹنس کی باضابطہ تصدیق پنجاب پولیس کی آفیشل ڈی ایل آئی ایم ایس (DLIMS) ویب سائٹ کے ذریعے کی جاتی ہے۔'
+                    : 'Driver Dost is an independent private fleet logistics application developed by Warraich Goods Transport Company. It does NOT represent, nor is it affiliated with, Punjab Police or any licensing authority. Driving license status is verified directly via the official DLIMS Punjab portal.'}
+                </p>
+                <div className="flex items-center gap-2 pt-1 border-t border-amber-500/20 text-[10.5px] font-mono text-amber-800 dark:text-amber-300">
+                  <span className="font-sans font-semibold">{isUrdu ? 'باضابطہ سرکاری ویب سائٹ:' : 'Official Government Source:'}</span>
+                  <a
+                    href="https://dlims.punjab.gov.pk/verify"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-bold inline-flex items-center gap-1 hover:text-amber-950 dark:hover:text-amber-100"
+                  >
+                    <span>dlims.punjab.gov.pk</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
               </div>
             </div>
 
@@ -991,14 +1035,33 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                 </a>
               </div>
 
-              {/* Policy Disclaimer Banner */}
-              <div className="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200 text-[10.5px] text-slate-600 flex items-start gap-2">
-                <Info className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
-                <span>
+              {/* Prominent Play Store Government Non-Affiliation Disclaimer Banner */}
+              <div className="p-3.5 sm:p-4 bg-amber-500/10 dark:bg-amber-950/40 rounded-2xl border-2 border-amber-500/40 dark:border-amber-600/50 text-amber-950 dark:text-amber-200 space-y-2 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs sm:text-[13px] font-bold font-serif text-amber-900 dark:text-amber-200">
+                    {isUrdu ? '⚠️ غیر سرکاری نجی پلیٹ فارم (Non-Government Entity Declaration)' : '⚠️ Independent Private Application (Non-Government Entity)'}
+                  </span>
+                </div>
+                <p className="text-[11px] sm:text-xs leading-relaxed text-amber-900/90 dark:text-amber-200/90">
                   {isUrdu
-                    ? 'قانونی وضاحت: ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ سسٹم ہے اور پنجاب سیف سٹی اتھارٹی یا ٹریفک پولیس کی نمائندگی نہیں کرتا۔ سرکاری چالان چیکنگ کے لیے اوپر دیے گئے آفیشل پورٹل کا استعمال کریں۔'
-                    : 'Notice: Driver Dost is an independent fleet management application and does not represent PSCA or traffic police. E-challan status is verified via the official portal above.'}
-                </span>
+                    ? 'ڈرائیور دوست نجی ٹرانسپورٹ فلیٹ سسٹم ہے اور پنجاب سیف سٹی اتھارٹی (PSCA) یا ٹریفک پولیس کی نمائندگی نہیں کرتا۔ ٹریفک چالان اور کیمرہ جرمانوں کی باضابطہ جانچ براہ راست سرکاری ای چالان پورٹل پر ہوتی ہے۔'
+                    : 'Driver Dost is an independent private fleet application and does NOT represent Punjab Safe Cities Authority (PSCA) or traffic police. E-challan status and camera violation records are inspected directly on the official PSCA portal.'}
+                </p>
+                <div className="flex items-center gap-2 pt-1 border-t border-amber-500/20 text-[10.5px] font-mono text-amber-800 dark:text-amber-300">
+                  <span className="font-sans font-semibold">{isUrdu ? 'باضابطہ سرکاری ویب سائٹ:' : 'Official Government Source:'}</span>
+                  <a
+                    href="https://echallan.psca.gop.pk"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-bold inline-flex items-center gap-1 hover:text-amber-950 dark:hover:text-amber-100"
+                  >
+                    <span>echallan.psca.gop.pk</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
               </div>
             </div>
 

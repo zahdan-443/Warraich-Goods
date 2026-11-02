@@ -5,6 +5,18 @@ import { getBiltyVerificationUrl } from '../utils/biltyHelpers';
 import { BiltyRecord } from '../types';
 
 describe('Deep Audit Fixes Verification Suite', () => {
+  const store: Record<string, string> = {};
+  if (typeof globalThis.localStorage === 'undefined') {
+    globalThis.localStorage = {
+      getItem: (key: string) => store[key] || null,
+      setItem: (key: string, val: string) => { store[key] = String(val); },
+      removeItem: (key: string) => { delete store[key]; },
+      clear: () => { Object.keys(store).forEach(k => delete store[k]); },
+      key: (i: number) => Object.keys(store)[i] || null,
+      get length() { return Object.keys(store).length; }
+    } as any;
+  }
+
   beforeEach(() => {
     if (typeof localStorage !== 'undefined') {
       localStorage.clear();
@@ -115,6 +127,35 @@ describe('Deep Audit Fixes Verification Suite', () => {
 
       const num2 = await allocateNextBiltyNumber();
       expect(num2).toBe('WG-1002');
+    });
+  });
+
+  describe('Fuel Price Logic & Sanity Bounds (Audit Fix B-01 & B-02)', () => {
+    it('should accept diesel prices below 340 if within sane economic bounds (100 - 1000 PKR)', async () => {
+      const { isSaneFuelPrice, getStoredFuelPrices, FUEL_CACHE_KEY } = await import('../utils/fuelPrice');
+      
+      expect(isSaneFuelPrice(320)).toBe(true);
+      expect(isSaneFuelPrice(374.31)).toBe(true);
+      expect(isSaneFuelPrice(99)).toBe(false);
+      expect(isSaneFuelPrice(1200)).toBe(false);
+      expect(isSaneFuelPrice(NaN)).toBe(false);
+
+      // Verify that storing a valid price under 340 (e.g. 320) is preserved and not discarded
+      localStorage.setItem(FUEL_CACHE_KEY, JSON.stringify({
+        diesel: '320.00',
+        petrol: '310.00',
+        hiOctane: '350.00',
+        ldo: '190.00',
+        kerosene: '270.00',
+        effectiveDate: '01-October-2026',
+        lastUpdated: '01:00 AM',
+        source: 'fuel.trackmate.page',
+        timestamp: Date.now()
+      }));
+
+      const stored = getStoredFuelPrices();
+      expect(stored.diesel).toBe('320.00');
+      expect(stored.petrol).toBe('310.00');
     });
   });
 });

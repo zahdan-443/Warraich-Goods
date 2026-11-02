@@ -29,18 +29,26 @@ export const FUEL_CACHE_KEY = 'ah_fuel_prices_cache';
 const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours
 
 /**
+ * Checks if a fuel rate falls within realistic Pakistan economic bounds (100 - 1000 PKR).
+ * Prevents corrupt zero/NaN rates or extreme outliers without breaking when diesel drops below 340 PKR.
+ */
+export function isSaneFuelPrice(n: number): boolean {
+  return typeof n === 'number' && !isNaN(n) && n >= 100 && n <= 1000;
+}
+
+/**
  * Get stored fuel prices from localStorage or fallback to the latest verified benchmark.
  */
 export function getStoredFuelPrices(): FuelPricesData {
-  if (typeof window === 'undefined') return CURRENT_OFFICIAL_BENCHMARK;
+  if (typeof localStorage === 'undefined') return CURRENT_OFFICIAL_BENCHMARK;
 
   try {
     const cachedStr = localStorage.getItem(FUEL_CACHE_KEY);
     if (cachedStr) {
       const cached = JSON.parse(cachedStr);
-      // If cache has old obsolete rates like 311.47 or 298.50, invalidate it immediately
       const dNum = parseFloat(cached.diesel);
-      if (dNum && dNum < 340) {
+      // Invalidate if price is corrupt or outside sane economic bounds
+      if (dNum && !isSaneFuelPrice(dNum)) {
         localStorage.removeItem(FUEL_CACHE_KEY);
         return CURRENT_OFFICIAL_BENCHMARK;
       }
@@ -54,7 +62,7 @@ export function getStoredFuelPrices(): FuelPricesData {
           kerosene: cached.kerosene ? String(cached.kerosene) : CURRENT_OFFICIAL_BENCHMARK.kerosene,
           effectiveDate: cached.effectiveDate || CURRENT_OFFICIAL_BENCHMARK.effectiveDate,
           lastUpdated: cached.lastUpdated || 'Cached',
-          source: cached.source || 'PSO / OGRA'
+          source: cached.source || CURRENT_OFFICIAL_BENCHMARK.source
         };
       }
     }
@@ -75,7 +83,7 @@ export async function fetchLiveFuelPrices(force = false): Promise<FuelPricesData
       if (cachedStr) {
         const cached = JSON.parse(cachedStr);
         const dNum = parseFloat(cached.diesel);
-        if (dNum && dNum >= 340 && cached.timestamp && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+        if (dNum && isSaneFuelPrice(dNum) && cached.timestamp && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
           return getStoredFuelPrices();
         }
       }
@@ -127,11 +135,21 @@ export async function fetchLiveFuelPrices(force = false): Promise<FuelPricesData
       const keroObj = data.prices.find((p: any) => p.product === 'kerosene');
       const lsdObj = data.prices.find((p: any) => p.product === 'lsd' || p.product === 'ldo');
 
-      if (hsdObj?.price_pkr) fetchedDiesel = String(hsdObj.price_pkr);
-      if (petrolObj?.price_pkr) fetchedPetrol = String(petrolObj.price_pkr);
-      if (octaneObj?.price_pkr) fetchedOctane = String(octaneObj.price_pkr);
-      if (keroObj?.price_pkr) fetchedKerosene = String(keroObj.price_pkr);
-      if (lsdObj?.price_pkr) fetchedLdo = String(lsdObj.price_pkr);
+      if (hsdObj?.price_pkr && isSaneFuelPrice(Number(hsdObj.price_pkr))) {
+        fetchedDiesel = String(hsdObj.price_pkr);
+      }
+      if (petrolObj?.price_pkr && isSaneFuelPrice(Number(petrolObj.price_pkr))) {
+        fetchedPetrol = String(petrolObj.price_pkr);
+      }
+      if (octaneObj?.price_pkr && isSaneFuelPrice(Number(octaneObj.price_pkr))) {
+        fetchedOctane = String(octaneObj.price_pkr);
+      }
+      if (keroObj?.price_pkr && isSaneFuelPrice(Number(keroObj.price_pkr))) {
+        fetchedKerosene = String(keroObj.price_pkr);
+      }
+      if (lsdObj?.price_pkr && isSaneFuelPrice(Number(lsdObj.price_pkr))) {
+        fetchedLdo = String(lsdObj.price_pkr);
+      }
 
       if (hsdObj?.effective_date) effectiveDate = String(hsdObj.effective_date);
     }
@@ -144,7 +162,7 @@ export async function fetchLiveFuelPrices(force = false): Promise<FuelPricesData
       kerosene: fetchedKerosene || CURRENT_OFFICIAL_BENCHMARK.kerosene,
       effectiveDate: effectiveDate || CURRENT_OFFICIAL_BENCHMARK.effectiveDate,
       lastUpdated: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      source: 'Live PSO / OGRA API'
+      source: 'fuel.trackmate.page (PSO/OGRA Rates)'
     };
 
     try {
@@ -161,15 +179,8 @@ export async function fetchLiveFuelPrices(force = false): Promise<FuelPricesData
   } catch (error) {
     console.warn('Live fuel prices fetch error, using latest official benchmark:', error);
     const fallback = getStoredFuelPrices();
-    try {
-      localStorage.setItem(FUEL_CACHE_KEY, JSON.stringify({
-        ...fallback,
-        timestamp: Date.now()
-      }));
-      window.dispatchEvent(new CustomEvent('fuelPricesUpdated', { detail: fallback }));
-    } catch {
-      // ignore
-    }
+    // Do NOT re-stamp fallback with a new fresh timestamp on fetch failure; preserve fallback state
+    window.dispatchEvent(new CustomEvent('fuelPricesUpdated', { detail: fallback }));
     return fallback;
   }
 }

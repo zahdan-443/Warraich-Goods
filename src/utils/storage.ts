@@ -563,6 +563,7 @@ export interface PublicBiltyVerification {
   paymentStatus?: 'paid' | 'topay';
   branch?: 'samundri' | 'kamalia';
   verifiedPublicly: true;
+  ownerUid?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -593,6 +594,12 @@ export function extractPublicBiltyVerification(bilty: Partial<BiltyRecord>): Pub
     verifiedPublicly: true,
     createdAt: new Date().toISOString()
   };
+
+  if (auth.currentUser?.uid) {
+    result.ownerUid = auth.currentUser.uid;
+  } else if ((bilty as any)?.ownerUid) {
+    result.ownerUid = (bilty as any).ownerUid;
+  }
 
   const sName = (bilty.senderName || bilty.consignor || '').trim();
   if (sName) result.senderName = sName;

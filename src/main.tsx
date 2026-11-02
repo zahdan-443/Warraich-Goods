@@ -4,6 +4,10 @@ import App from './App.tsx';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 import './index.css';
 import { requestPersistentStorage, hydrateStorageFromIndexedDB } from './utils/persistentStorage';
+import { initCrashReporting } from './utils/crashReportingService';
+
+// Initialize automated crash diagnostics & telemetry
+initCrashReporting();
 
 // Global safety handler for unhandled promise rejections and browser lifecycle events
 if (typeof window !== 'undefined') {

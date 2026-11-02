@@ -88,41 +88,24 @@ jobs:
             echo "⚠️ Notice: google-services.json not found in repository or secrets."
           fi
 
-      - name: Prepare Release Keystore (Strict Production Secrets or Auto-Provision)
+      - name: Prepare Release Keystore
         if: ${{ inputs.build_type == 'release' }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'driverdost2026' }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'driverdost' }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || 'driverdost2026' }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "Using custom Release Keystore from GitHub Secrets..."
-            echo "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > android/app/release-keystore.jks
-            echo "Decoded release-keystore.jks ($(wc -c < android/app/release-keystore.jks) bytes)"
-            echo "ANDROID_KEYSTORE_PATH=release-keystore.jks" >> $GITHUB_ENV
-            echo "ANDROID_KEYSTORE_PASSWORD=${ANDROID_KEYSTORE_PASSWORD}" >> $GITHUB_ENV
-            echo "ANDROID_KEY_ALIAS=${ANDROID_KEY_ALIAS}" >> $GITHUB_ENV
-            echo "ANDROID_KEY_PASSWORD=${ANDROID_KEY_PASSWORD}" >> $GITHUB_ENV
-          else
-            echo "Generating production Release Keystore (valid for 27+ years)..."
-            keytool -genkeypair -v \
-              -keystore android/app/release-keystore.jks \
-              -alias driverdost \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -storepass driverdost2026 \
-              -keypass driverdost2026 \
-              -dname "CN=Warraich Goods, OU=Transport, O=Warraich Goods Transport Company, L=Samundri, ST=Punjab, C=PK"
-            echo "✅ Created release-keystore.jks"
-            echo "ANDROID_KEYSTORE_PATH=release-keystore.jks" >> $GITHUB_ENV
-            echo "ANDROID_KEYSTORE_PASSWORD=driverdost2026" >> $GITHUB_ENV
-            echo "ANDROID_KEY_ALIAS=driverdost" >> $GITHUB_ENV
-            echo "ANDROID_KEY_PASSWORD=driverdost2026" >> $GITHUB_ENV
-            echo "::notice title=Backup Keystore::Save this base64 keystore for future app updates:"
-            base64 -w 0 android/app/release-keystore.jks || true
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 secret is missing. Release build requires configured keystore secrets."
+            exit 1
           fi
+          echo "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > android/app/release-keystore.jks
+          echo "Decoded release-keystore.jks ($(wc -c < android/app/release-keystore.jks) bytes)"
+          echo "ANDROID_KEYSTORE_PATH=release-keystore.jks" >> $GITHUB_ENV
+          echo "ANDROID_KEYSTORE_PASSWORD=${ANDROID_KEYSTORE_PASSWORD}" >> $GITHUB_ENV
+          echo "ANDROID_KEY_ALIAS=${ANDROID_KEY_ALIAS}" >> $GITHUB_ENV
+          echo "ANDROID_KEY_PASSWORD=${ANDROID_KEY_PASSWORD}" >> $GITHUB_ENV
 
       - name: Print Keystore Fingerprints (SHA-1 & SHA-256 for Firebase & Palm Store)
         if: ${{ inputs.build_type == 'release' }}

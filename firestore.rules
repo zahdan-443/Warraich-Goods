@@ -60,7 +60,7 @@ service cloud.firestore {
         'biltyNo', 'date', 'senderName', 'receiverName',
         'senderAddress', 'receiverAddress', 'sendingCity', 'receivingCity',
         'vehicleNo', 'driverName', 'itemDescription', 'weight', 'qty',
-        'paymentStatus', 'branch', 'verifiedPublicly', 'isDelivered', 'createdAt', 'updatedAt'
+        'paymentStatus', 'branch', 'verifiedPublicly', 'isDelivered', 'createdAt', 'updatedAt', 'ownerUid'
       ];
       let forbiddenKeys = [
         'senderCnic', 'receiverCnic', 'cnic', 'senderMobile', 'receiverMobile',
@@ -103,17 +103,27 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Public bilty verification records (read allowed for anyone for QR verification; create/update restricted to authenticated users with public schema validation)
+    // Public bilty verification records (read allowed for anyone for QR verification; create/update restricted to ownerUid matching auth.uid)
     match /publicBiltyVerifications/{docId} {
       allow read: if true;
-      allow create, update: if isSignedIn() && hasOnlyPublicBiltyFields();
-      allow delete: if isOwner();
+      allow create: if isSignedIn() && hasOnlyPublicBiltyFields() &&
+                    request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isSignedIn() && hasOnlyPublicBiltyFields() &&
+                    resource.data.ownerUid == request.auth.uid &&
+                    request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if isOwner() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
     }
 
     // Counters collection for transaction-based sequential Bilty allocation
-    // Any signed-in user creating a bilty can atomically reserve/increment numbers without permission error
+    // Restrict write strictly to authorized bilty accounts with integer counter values
     match /counters/{counterId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isBiltyAuthorized() &&
+                   request.resource.data.keys().hasOnly(['currentValue', 'value', 'updatedAt']) &&
+                   (
+                     ('currentValue' in request.resource.data && request.resource.data.currentValue is int && request.resource.data.currentValue >= 0) ||
+                     ('value' in request.resource.data && request.resource.data.value is int && request.resource.data.value >= 0)
+                   );
     }
 
     // Company Profile and System Settings (All can read, ONLY Owner can write)
@@ -134,11 +144,29 @@ service cloud.firestore {
       allow update, delete: if isOwner();
     }
 
-    // Crowd-sourced road hazard reports (read for signed in users; create/delete restricted to reporter; no updates)
+    // Crowd-sourced road hazard reports (read for signed in users; create/delete restricted to reporter with strict schema & GPS bounding)
     match /hazardReports/{reportId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.reporterUid == request.auth.uid;
+      allow create: if isSignedIn() &&
+                    request.resource.data.reporterUid == request.auth.uid &&
+                    request.resource.data.keys().hasAll(['category', 'lat', 'lng', 'createdAt', 'expiresAt', 'reporterUid']) &&
+                    request.resource.data.keys().hasOnly(['category', 'lat', 'lng', 'cityNear', 'createdAt', 'expiresAt', 'reporterUid']) &&
+                    request.resource.data.category in ['checkpoint', 'flooding', 'accident', 'closure', 'traffic'] &&
+                    request.resource.data.lat is number && request.resource.data.lat >= 23.0 && request.resource.data.lat <= 38.0 &&
+                    request.resource.data.lng is number && request.resource.data.lng >= 60.0 && request.resource.data.lng <= 78.0 &&
+                    request.resource.data.createdAt == request.time;
       allow delete: if isSignedIn() && resource.data.reporterUid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // Automated Crash Diagnostics & Telemetry (Devices can submit telemetry with valid schema; read/delete strictly restricted to Fleet Owner)
+    match /crashReports/{reportId} {
+      allow read, delete: if isOwner();
+      allow create: if request.resource.data.keys().hasAll(['errorMessage', 'appVersion', 'createdAt']) &&
+                    request.resource.data.keys().hasOnly(['errorName', 'errorMessage', 'stack', 'componentStack', 'deviceModel', 'platform', 'appVersion', 'url', 'userUid', 'createdAt']) &&
+                    request.resource.data.errorMessage is string && request.resource.data.errorMessage.size() <= 2000 &&
+                    request.resource.data.appVersion is string &&
+                    request.resource.data.createdAt == request.time;
       allow update: if false;
     }
   }

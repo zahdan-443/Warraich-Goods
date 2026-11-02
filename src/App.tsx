@@ -28,6 +28,7 @@ import {
   autoReconcileAllLocalToCloud
 } from './utils/storage';
 import { fetchLiveFuelPrices } from './utils/fuelPrice';
+import { runScheduledDailyCloudBackup } from './utils/backupService';
 import { auth, onAuthStateChanged, logoutUser, checkRedirectAuthResult, loginWithGoogle } from './utils/firebase';
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
@@ -42,19 +43,19 @@ import {
   ensureNotificationChannel
 } from './utils/notifications';
 
-import { TripCostView } from './components/views/TripCostView';
-import { VehiclesView } from './components/views/VehiclesView';
-import { DriversView } from './components/views/DriversView';
-import { RoutesView } from './components/views/RoutesView';
-import { FuelLogView } from './components/views/FuelLogView';
-import { VerifyView } from './components/views/VerifyView';
-import { BiltyView } from './components/views/BiltyView';
-import { VehicleAccountView } from './components/views/VehicleAccountView';
-import { MapView } from './components/views/MapView';
-import { TollPlazaView } from './components/views/TollPlazaView';
-import { NavigationView } from './components/views/NavigationView';
-import { DashcamView } from './components/views/DashcamView';
-import { LedgerView } from './components/views/LedgerView';
+const TripCostView = React.lazy(() => import('./components/views/TripCostView').then(m => ({ default: m.TripCostView })));
+const VehiclesView = React.lazy(() => import('./components/views/VehiclesView').then(m => ({ default: m.VehiclesView })));
+const DriversView = React.lazy(() => import('./components/views/DriversView').then(m => ({ default: m.DriversView })));
+const RoutesView = React.lazy(() => import('./components/views/RoutesView').then(m => ({ default: m.RoutesView })));
+const FuelLogView = React.lazy(() => import('./components/views/FuelLogView').then(m => ({ default: m.FuelLogView })));
+const VerifyView = React.lazy(() => import('./components/views/VerifyView').then(m => ({ default: m.VerifyView })));
+const BiltyView = React.lazy(() => import('./components/views/BiltyView').then(m => ({ default: m.BiltyView })));
+const VehicleAccountView = React.lazy(() => import('./components/views/VehicleAccountView').then(m => ({ default: m.VehicleAccountView })));
+const MapView = React.lazy(() => import('./components/views/MapView').then(m => ({ default: m.MapView })));
+const TollPlazaView = React.lazy(() => import('./components/views/TollPlazaView').then(m => ({ default: m.TollPlazaView })));
+const NavigationView = React.lazy(() => import('./components/views/NavigationView').then(m => ({ default: m.NavigationView })));
+const DashcamView = React.lazy(() => import('./components/views/DashcamView').then(m => ({ default: m.DashcamView })));
+const LedgerView = React.lazy(() => import('./components/views/LedgerView').then(m => ({ default: m.LedgerView })));
 import { ViewHeader } from './components/ViewHeader';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
@@ -780,6 +781,7 @@ export default function App() {
         setRoutes(getStoredRoutes());
         setFuelLogs(getStoredFuelLog());
         setBilties(getStoredBilties());
+        runScheduledDailyCloudBackup().catch(() => {});
       } else {
         if (unsubBilty) {
           unsubBilty();

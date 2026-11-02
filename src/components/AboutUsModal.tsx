@@ -134,6 +134,19 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
             </div>
           </div>
 
+          {/* Play Store Non-Government Disclosure */}
+          <div className="p-3.5 bg-amber-500/10 rounded-2xl border border-amber-500/30 text-amber-950 text-xs space-y-1">
+            <span className="font-bold flex items-center gap-1.5 text-amber-900">
+              <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>{lang === 'ur' ? 'سرکاری عدم الحاق کا اعلان (Non-Government Entity Declaration)' : 'Non-Government Entity Declaration'}</span>
+            </span>
+            <p className="text-[11px] leading-relaxed text-amber-900/90">
+              {lang === 'ur'
+                ? 'ڈرائیور دوست وڑائچ گڈز ٹرانسپورٹ کمپنی کا ایک آزاد نجی لاجسٹکس و فلیٹ سسٹم ہے اور یہ ایپ کسی سرکاری ادارے، ایکسائز، پنجاب پولیس یا سیف سٹی اتھارٹی کی نمائندگی نہیں کرتی اور نہ ہی ان سے الحاق شدہ ہے۔'
+                : 'Driver Dost is an independent private fleet logistics application developed by Warraich Goods Transport Company. It does not represent, nor is it affiliated with, any government entity.'}
+            </p>
+          </div>
+
           {/* Contact Details Card */}
           <div className="bg-gradient-to-br from-white to-[#f7f5ed] p-5 rounded-2xl border border-[#ecece0] shadow-xs space-y-4">
             <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2">

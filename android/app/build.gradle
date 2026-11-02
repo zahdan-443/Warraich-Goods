@@ -32,12 +32,12 @@ android {
     signingConfigs {
         release {
             def keystorePath = System.getenv("ANDROID_KEYSTORE_PATH") ?: project.findProperty("RELEASE_STORE_FILE") ?: "release-keystore.jks"
-            def keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: project.findProperty("RELEASE_STORE_PASSWORD") ?: "driverdost2026"
+            def keystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: project.findProperty("RELEASE_STORE_PASSWORD")
             def keyAliasVal = System.getenv("ANDROID_KEY_ALIAS") ?: project.findProperty("RELEASE_KEY_ALIAS") ?: "driverdost"
-            def keyPasswordVal = System.getenv("ANDROID_KEY_PASSWORD") ?: project.findProperty("RELEASE_KEY_PASSWORD") ?: "driverdost2026"
+            def keyPasswordVal = System.getenv("ANDROID_KEY_PASSWORD") ?: project.findProperty("RELEASE_KEY_PASSWORD")
 
             def kFile = keystorePath ? (file(keystorePath).exists() ? file(keystorePath) : (rootProject.file(keystorePath).exists() ? rootProject.file(keystorePath) : null)) : null
-            if (kFile) {
+            if (kFile && keystorePassword && keyAliasVal && keyPasswordVal) {
                 storeFile kFile
                 storePassword keystorePassword
                 keyAlias keyAliasVal

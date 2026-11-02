@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { RefreshCw, Trash2, Home, AlertOctagon } from 'lucide-react';
 import { logError } from '../utils/storage';
+import { reportAppCrash } from '../utils/crashReportingService';
 
 interface Props {
   children: ReactNode;
@@ -33,6 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('Driver Dost React ErrorBoundary caught an error:', error, errorInfo);
     try {
       logError('ErrorBoundary Catch', error, { componentStack: errorInfo?.componentStack });
+      reportAppCrash(error, errorInfo?.componentStack);
     } catch {
       // Ignore fallback log error
     }

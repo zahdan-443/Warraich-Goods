@@ -588,10 +588,10 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
                 </span>
               )}
               <span className="text-base font-extrabold font-mono text-emerald-800 dark:text-emerald-400">
-                {weatherData ? `${weatherData.temp}°C` : '--'}
+                <bdi dir="ltr">{weatherData ? `${weatherData.temp}°C` : '--'}</bdi>
               </span>
               <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                ({isUrdu ? 'محسوس:' : 'Feels:'} {weatherData ? `${weatherData.feelsLike}°C` : '--'})
+                ({isUrdu ? 'محسوس:' : 'Feels:'} <bdi dir="ltr">{weatherData ? `${weatherData.feelsLike}°C` : '--'}</bdi>)
               </span>
             </div>
             <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 flex items-center gap-2 flex-wrap">
@@ -676,7 +676,7 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
             <div className="flex items-baseline gap-1 mt-1">
               <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-400 font-mono">Rs.</span>
               <span className="text-lg sm:text-2xl font-black font-mono text-emerald-900 dark:text-emerald-300 tracking-tight">
-                {dieselPrice}
+                <bdi dir="ltr">{dieselPrice}</bdi>
               </span>
               <span className="text-[10px] font-medium text-emerald-800/80 dark:text-emerald-400/90">/ {isUrdu ? 'لیٹر' : 'Ltr'}</span>
             </div>
@@ -694,7 +694,7 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
             <div className="flex items-baseline gap-1 mt-1">
               <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 font-mono">Rs.</span>
               <span className="text-lg sm:text-2xl font-black font-mono text-slate-900 dark:text-slate-100 tracking-tight">
-                {petrolPrice}
+                <bdi dir="ltr">{petrolPrice}</bdi>
               </span>
               <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">/ {isUrdu ? 'لیٹر' : 'Ltr'}</span>
             </div>
@@ -709,7 +709,7 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
               {isUrdu ? 'الٹران 97' : 'Altron 97'}
             </span>
             <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] dark:text-slate-100 mt-0.5 block">
-              Rs. {hiOctanePrice}
+              Rs. <bdi dir="ltr">{hiOctanePrice}</bdi>
             </span>
           </div>
 
@@ -719,7 +719,7 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
               {isUrdu ? 'لائٹ ڈیزل (LDO)' : 'LDO'}
             </span>
             <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] dark:text-slate-100 mt-0.5 block">
-              Rs. {ldoPrice}
+              Rs. <bdi dir="ltr">{ldoPrice}</bdi>
             </span>
           </div>
 
@@ -729,7 +729,7 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
               {isUrdu ? 'مٹی کا تیل' : 'Kerosene'}
             </span>
             <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] dark:text-slate-100 mt-0.5 block">
-              Rs. {skoPrice}
+              Rs. <bdi dir="ltr">{skoPrice}</bdi>
             </span>
           </div>
 

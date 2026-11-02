@@ -1,29 +1,29 @@
-# UI/UX Contrast Fixes, Gari Hisab Header Cleanup & Dashboard Owner Panel Modernization
+# Play Store Policy Compliance, Crash Diagnostics & Scheduled Backup Plan
 
-Comprehensive UI/UX overhaul to eliminate dark mode illegibility, remove redundant headers from Vehicle Account (Gari Hisab), and elevate the Owner Panel to the top of the dashboard with fast dual-action buttons.
+Comprehensive roadmap to guarantee Google Play Store review approval by eliminating government impersonation risks (U-03), installing an automated device crash reporting engine (Crashlytics alternative logging to Firestore with hardware metadata), and establishing automated daily Firestore backup sync alongside a one-click full backup download for the fleet owner.
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The following choices were confirmed during Phase 1 interactive clarification:
+> The following architectural decisions were confirmed during Phase 1 interactive clarification:
 >
-> - **Confirmed Decision 1 (Dashboard Owner Panel)**: Elevate the clean Owner Panel to the top of the dashboard (above the 10 core feature icons) featuring an official seal, a badge with the saved bilties count (`{bilties.length} بلٹیاں`), and two primary action buttons: **"نئی بلٹی بنائیں" (Create Bilty)** and **"تمام بلٹیاں دیکھیں" (View All Bilties)**. Remove the bulky 3 KPI cards ("کل فریٹ حجم", "کل بلٹیاں", "بقایا وصولی") and descriptions, as fleet accounting is managed directly in the Ledger.
-> - **Confirmed Decision 2 (Dark Theme Silver Background & Contrast Fix)**: Replace all silver, light-gray, and washed-out gradient card surfaces (`bg-gray-50`, `bg-gray-100`, `bg-slate-50`, `bg-slate-100`, light linear gradients) with cohesive deep dark slate surfaces (`#16181e` / `#1a1c22` / `#1e293b`) with crisp typography (`#f8fafc` primary text, `#34d399` emerald for diesel/success, `#fbbf24` gold for accents) ensuring 100% legibility across Dashcam clips, Weather & POL Fuel rate cards, and Bilty mobile cards.
-> - **Confirmed Decision 3 (Gari Hisab Header Streamlining)**: Eliminate the top title block ("گاڑی کا حساب و روزنامچہ - گاڑی نفع و نقصان اور روزانہ کیش آمدن و خرچہ") above the tabs in `VehicleAccountView.tsx`, placing the three interactive tabs ("گاڑی کا حساب", "گاڑی P&L", "روزنامچہ") directly at the top with clean ergonomic vertical spacing.
+> - **Play Store Policy & Government Disclaimers (U-03)**: Display prominent, high-contrast compliance banners on all verification and portal screens with explicit non-affiliation declarations and verified official source URLs (MTMIS, DLIMS, PSCA).
+> - **Crash Diagnostics Engine**: Automated device crash reporting directly to Firestore (`/crashReports`), capturing error stack traces, Android/browser device model, OS version, and network status with local loop-throttling.
+> - **Data Backup & Export Strategy**: Automated daily cloud snapshot sync combined with an instant one-click full JSON backup vault for the fleet owner (`warraichgoods43@gmail.com`).
+> - **Asset Preservation**: Keep existing user media assets intact and adhere to strict access controls for owner freight documents.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                 DASHBOARD & UI/UX MODERNIZATION WORKFLOW                    │
+│                 PLAY STORE COMPLIANCE & RELIABILITY ROADMAP                 │
 └──────────────────────────────────────┬──────────────────────────────────────┘
                                        │
      ┌─────────────────────────────────┼─────────────────────────────────┐
      ▼                                 ▼                                 ▼
-[ 1. DASHBOARD OWNER BAR ]    [ 2. GARI HISAB CLEANUP ]     [ 3. DARK CONTRAST ENGINE ]
-• Positioned ABOVE icons grid • Remove redundant title text • Fix silver card backgrounds
-• Official seal & owner badge • Tabs placed directly at top • High-contrast dark slate (#16181e)
-• Bilty count badge           • Maximize vertical space     • Fuel: Diesel & Petrol readable
-• [نئی بلٹی بنائیں] button    • Instant tab access          • Dashcam: Clips & badges legible
-• [تمام بلٹیاں دیکھیں] button • Zero scroll friction        • Bilty: Parties & total visible
+[ 1. PLAY STORE COMPLIANCE ]   [ 2. CRASH DIAGNOSTICS ]       [ 3. BACKUP & EXPORT VAULT ]
+• High-contrast disclaimer     • Global error & promise hook  • Daily automated cloud snapshot
+• Explicit non-gov statement   • Device model & OS metadata   • One-click full JSON export
+• Direct official portal links • Rate-limited Firestore write • Owner-only archive download
+• Prominent permission prompts • Owner live crash dashboard   • Instant disaster recovery
      │                                 │                                 │
      └─────────────────────────────────┴─────────────────────────────────┘
 ```
@@ -33,53 +33,57 @@ Comprehensive UI/UX overhaul to eliminate dark mode illegibility, remove redunda
 ## 1. Overview & Core Concept
 
 - **What It Does**:
-  1. **Dashboard Owner Panel Upgrade**: Removes the heavy, oversized command center with the 3 redundant KPI cards from the top of the dashboard. Instead, brings the sleek Owner Panel from underneath the icons up to the top of the dashboard, displaying the official seal, bilty count badge, and side-by-side action buttons: "نئی بلٹی بنائیں" and "تمام بلٹیاں دیکھیں".
-  2. **Vehicle Account (Gari Hisab) Header Removal**: Cleans up the top of `VehicleAccountView.tsx` by removing the bulky title and subtitle section above the navigation tabs, giving immediate access to "گاڑی کا حساب", "گاڑی P&L", and "روزنامچہ".
-  3. **Dark Theme Contrast & Silver Background Resolution**:
-     - **Dashcam Recorder (`DashcamView.tsx`)**: Replaces the silver clip item backgrounds and platform/recording mode cards with deep slate containers, ensuring filenames, dates, and action icons stand out cleanly.
-     - **Weather & Pakistan POL Fuel Monitor (`HomeWeatherFuelCard.tsx`)**: Upgrades the top weather card and the Diesel/Petrol cards to dark-mode-aware styles so gradients do not turn into washed-out silver boxes; guarantees prices (e.g. `402.96 Rs / لیٹر`) are bold, bright, and legible.
-     - **Bilty Card Details (`BiltyView.tsx`)**: Fixes the party details box (`بھیجنے والا`, `وصول کنندہ`, `مال`) and the total financial pill (`کل: Rs 21,000`) so they use dark slate surfaces with clear contrast rather than bright white/silver on white text.
-     - **Global CSS Overrides (`index.css`)**: Enhances `html.dark` rules for `.bg-gray-50`, `.bg-gray-100`, `.bg-slate-50`, `.bg-slate-100`, `.bg-slate-200`, and gradient backgrounds so dark theme remains consistent across all present and future components.
+  1. **Google Play Store Government Apps Policy Compliance (U-03)**:
+     - Upgrades vehicle verification, driving licence lookup, and traffic challan screens (`VerifyView.tsx`) with bold, high-contrast disclaimer banners.
+     - Formally states in prominent typography: *"Driver Dost is an independent fleet logistics tool developed by Warraich Goods Transport Company. It is NOT affiliated with, authorized by, or an official representative of the Government of Pakistan, Punjab Police, PSCA, MTMIS, or DLIMS."*
+     - Provides clear, labeled external links directly to the official provincial portals (`mtmis.excise.punjab.gov.pk`, `dlims.punjab.gov.pk`, `echallan.psca.gop.pk`).
+     - Adds clear runtime permission rationale banners before requesting Camera, Microphone, or GPS access, ensuring zero compliance surprises during Play Store review.
+  2. **Automated Device Crash Diagnostics Engine**:
+     - Introduces `crashReportingService.ts` to capture unhandled runtime exceptions, React component errors, and failed network calls.
+     - Records device details: Device model / User-Agent, Android version, screen dimensions, online/offline status, app version (`1.2.1`), and anonymized user ID.
+     - Stores reports into a dedicated, hardened Firestore collection (`/crashReports/{reportId}`) with strict loop prevention (max 1 report per error signature per session).
+     - Provides an Owner Crash Diagnostics panel inside the Owner Command Center to inspect crash frequency and debug specific phone models.
+  3. **Automated Scheduled Backup & One-Click Export Vault**:
+     - Implements a scheduled daily snapshot routine that automatically aggregates trips, vehicles, drivers, fuel logs, and ledger records into `usersData/{uid}/backups/latest`.
+     - Equips the fleet owner with a dedicated "ڈیٹا بیک اپ و ڈاؤن لوڈ" (Export & Backup Vault) button that generates and downloads a full timestamped JSON archive (`driver-dost-backup-YYYY-MM-DD.json`) with zero data loss.
 
-- **Target Audience**: Warraich Goods Transport Company fleet managers, drivers, and the authorized owner (`warraichgoods43@gmail.com`).
+- **Target Audience**: Pakistani commercial truckers, fleet managers, Warraich Goods Transport operations, and Google Play Store review engineers.
 
-- **Key Value**: Crisp nighttime readability, frictionless navigation on mobile screens, and instantaneous access to Bilty creation and lookup directly from the dashboard top.
+- **Key Value**: 100% Google Play Store policy approval without rejection risks, immediate visibility into field crashes on diverse driver smartphones, and ironclad data protection against cloud or hardware failure.
 
 ---
 
 ## 2. User Experience & Visual Design
 
 - **Key User Flows**:
-  1. *Owner Visiting Home Dashboard*:
-     - When authenticated as `warraichgoods43@gmail.com`, the user immediately sees a streamlined Owner Action Bar at the top of the page.
-     - The bar presents: Official Seal + "آفیشل بلٹی لیجر" + `{bilties.length} بلٹیاں محفوظ ہیں` + Two distinct buttons: `[+ نئی بلٹی بنائیں]` (emerald gradient) and `[تمام بلٹیاں دیکھیں]` (amber gradient).
-     - Regular guests and non-owner users do not see this bar (preserving strict access control from `AGENTS.md`).
-  2. *Navigating to Gari Hisab (Vehicle Account)*:
-     - Upon tapping "گاڑی کا حساب", the screen opens directly with the three navigation tabs ("گاڑی کا حساب" | "گاڑی P&L" | "روزنامچہ") without the previously redundant 2-line title block, maximizing viewable entries on mobile screens.
-  3. *Reviewing Fuel, Dashcam Clips & Bilties in Dark Theme*:
-     - In dark mode, all surfaces adhere to deep dark slate (`#16181e` / `#1a1c22` / `#1e293b`), avoiding bright silver glare.
-     - Diesel rates (`402.96 Rs / لیٹر`) glow in high-contrast emerald text on dark container.
-     - Dashcam clips display clear white filenames and timestamps against dark slate cards.
-     - Bilty consignment details and financial badges render with crisp contrast.
+  1. *Driver Checking Challans or DLIMS*:
+     - User navigates to Verify -> Vehicle / Licence / Challan.
+     - At the very top, a high-contrast amber/slate notice displays: an official shield badge, the independent transport company statement, and a verified link to the official government portal.
+     - User understands clearly that Driver Dost is a private helper tool that redirects to the government website for official records.
+  2. *App Crash or Error in the Field*:
+     - If an unhandled exception or plugin crash occurs on a driver's phone, the app boundary displays a polite recovery prompt (*"ایپ میں عارضی مسئلہ آیا ہے - ڈیٹا محفوظ ہے"*).
+     - In the background, error telemetry with device model and stack trace is quietly transmitted to Firestore `/crashReports`.
+  3. *Owner Exporting Fleet Backup*:
+     - Authorized owner opens the Owner Menu / Settings and clicks *"مکمل ڈیٹا ڈاؤن لوڈ کریں"*.
+     - The app packages all database documents and local records into a clean JSON file and triggers an instant browser download.
 
 - **Visual Identity & Theme**:
-  - Dark Theme Baseline: Surface background `#121316`, Card background `#1a1c22` / `#16181e`, Card borders `#2d313b`.
-  - Accent Colors: Emerald (`#10b981` / `#34d399`) for verified/active states, Amber/Gold (`#f59e0b` / `#fbbf24`) for master actions, Crisp White (`#f8fafc`) for primary text, Slate (`#94a3b8`) for secondary text.
-  - Typography: Authentic Pakistani Nastaleeq for Urdu headings, JetBrains Mono for monetary values and dates.
+  - Disclaimer Banner: High-contrast amber/slate container (`bg-amber-500/10 border-amber-500/30 text-amber-950 dark:text-amber-200`) with high readability.
+  - Zero disruption: All existing home tiles, quick-ops layouts, and navigation tabs remain visually identical.
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-- **Decision 1: Relocating and Rebuilding the Top Owner Bar**:
-  - *Chosen Approach*: Remove both the bulky 3-card metrics banner and the bottom duplicate link, replacing them with a single ergonomic top bar above the 10 dashboard icons with both "نئی بلٹی بنائیں" and "تمام بلٹیاں دیکھیں" buttons.
-  - *Why*: Eliminates clutter, respects the user's preference to track finances in Ledger, and speeds up Bilty creation by putting it directly at the top of the dashboard.
-- **Decision 2: Direct CSS + Component-Level Dark Mode Classes**:
-  - *Chosen Approach*: Apply both Tailwind `dark:` utility classes inside the JSX components (`DashcamView`, `HomeWeatherFuelCard`, `BiltyView`) and add comprehensive fallback overrides in `index.css` for `.bg-gray-50`, `.bg-gray-100`, `.bg-slate-50`, `.bg-slate-100`.
-  - *Why*: Ensures bulletproof dark theme rendering regardless of whether components use inline utility classes or semantic Tailwind tokens.
-- **Decision 3: Zero-Pill & Compact Layout in Vehicle Account**:
-  - *Chosen Approach*: Remove lines 574-596 in `VehicleAccountView.tsx` without adding secondary badges or fluff, letting the segmented tab control sit right at the top.
-  - *Why*: Gives drivers and account managers an immediate, app-like operational canvas without wasting precious vertical pixels on mobile screens.
+- **Decision 1: Prominent In-App Banner vs Hidden Footer Note**:
+  - *Chosen Approach*: Place a high-contrast disclaimer card with official source links directly on verification screens above the input forms, plus links in the Privacy Policy and About modal.
+  - *Why*: Google Play policy explicitly requires government disclosures to be prominent and conspicuous to users before interaction, not buried in footer links.
+- **Decision 2: Firestore Crash Reporting vs Native SDK Overhead**:
+  - *Chosen Approach*: Build a lightweight Firestore-backed crash telemetry service with device metadata and loop throttling.
+  - *Why*: Works identically across both Web (PWA) and Capacitor Android builds without complex Gradle binary conflicts, giving the fleet owner an instant in-app dashboard to review crashes without opening Firebase Console.
+- **Decision 3: Dual Backup Architecture (Automated Cloud Snapshot + Local File Export)**:
+  - *Chosen Approach*: Automate daily cloud sync snapshots in Firestore under `usersData/{uid}/backups/latest` and provide a one-click local file download.
+  - *Why*: Protects users who lose their physical device (cloud sync) while giving the owner independent offline sovereignty over all company business records (JSON file export).
 
 ---
 
@@ -87,56 +91,54 @@ Comprehensive UI/UX overhaul to eliminate dark mode illegibility, remove redunda
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          COMPONENT INTERACTION MAP                          │
+│                       TECHNICAL DATA & FLOW ARCHITECTURE                     │
 └─────────────────────────────────────────────────────────────────────────────┘
 
- [ App.tsx ]
-      │
-      ├── [ Header.tsx ] (Dark mode toggle & persistence in localStorage)
-      │
-      ├── [ HomeView.tsx ]
-      │     ├── (NEW) Top Owner Action Bar:
-      │     │     ├── Bilty Seal & Total Badge ({bilties.length})
-      │     │     ├── Button: onNavigate('bilty', 'create')
-      │     │     └── Button: onNavigate('bilty', 'ledger')
-      │     ├── 10 Core QuickAction Buttons Grid
-      │     └── [ HomeWeatherFuelCard.tsx ] (Fixed dark mode gradient & font contrast)
-      │
-      ├── [ VehicleAccountView.tsx ] (Streamlined: Tabs directly at top)
-      │
-      ├── [ DashcamView.tsx ] (Dark slate clip cards & platform badges)
-      │
-      └── [ BiltyView.tsx ] (Dark slate mobile card & financial pill contrast)
+ [ Client App & Crash Boundaries ]
+        │
+        ├── [ VerifyView.tsx ] ─────────> High-contrast Play Store Disclaimer Banner
+        │                                 & Official Portal Attribution Links
+        │
+        ├── [ crashReportingService.ts ]
+        │       ├── Window 'error' & 'unhandledrejection' Listeners
+        │       ├── React ErrorBoundary Integration
+        │       ├── Device Hardware Metadata (Navigator, OS, Screen, Platform)
+        │       └── In-Memory Throttle (1 event / signature / 10 min)
+        │               │
+        │               ▼
+        │       [ Firestore: /crashReports/{reportId} ]
+        │               ▲ (Owner-only Read & Purge)
+        │
+        └── [ backupService.ts ]
+                ├── Daily Cloud Snapshot Schedule (usersData/{uid}/backups/latest)
+                └── One-Click JSON Vault Generator (Client Download)
 ```
 
-### Component & State Mapping
+### Component & File Mapping
 
-| File | Change Details |
-|---|---|
-| `src/components/views/HomeView.tsx` | 1. Remove the old top owner command center (lines 272–399) with 3 KPI cards.<br>2. Insert modern Top Owner Panel above the icons grid with official seal, bilty count badge, and side-by-side "نئی بلٹی بنائیں" and "تمام بلٹیاں دیکھیں" buttons.<br>3. Remove the bottom duplicate owner link under the icons (lines 645–674). |
-| `src/components/views/VehicleAccountView.tsx` | Remove the top title block (lines 574–596) so the three tabs ("گاڑی کا حساب" \| "گاڑی P&L" \| "روزنامچہ") render cleanly at the top of the view. |
-| `src/index.css` | Add comprehensive dark theme rules for `.bg-gray-50`, `.bg-gray-100`, `.bg-slate-50`, `.bg-slate-100`, `.bg-slate-200`, and gradient classes under `html.dark` to guarantee `#16181e` / `#1a1c22` surfaces and `#f8fafc` text. |
-| `src/components/views/DashcamView.tsx` | Add explicit dark theme classes (`dark:bg-[#16181e]`, `dark:border-[#2d313b]`, `dark:text-slate-100`) to the clips list cards, platform mode container, and recording mode switcher. |
-| `src/components/HomeWeatherFuelCard.tsx` | Replace static light gradients on weather overview and HSD Diesel cards with dark-mode-friendly backgrounds (`dark:from-[#1a1c22] dark:to-[#16181e]`, `dark:border-emerald-600/50`) and ensure fuel rate values stand out with crisp `#34d399` / `#f8fafc`. |
-| `src/components/views/BiltyView.tsx` | Update mobile responsive Bilty cards: set consignment details box to `dark:bg-[#16181e]` and total financial badge to `dark:bg-[#252830] dark:text-[#f8fafc]` so numbers like `Rs 21,000` are completely legible. |
+| Module / Area | Target Files | Key Changes |
+|---|---|---|
+| **Play Store Disclaimer Banners** | `src/components/views/VerifyView.tsx` | Replace low-contrast notes with high-contrast, prominent disclaimer cards with verified official source links for MTMIS, DLIMS, and PSCA. |
+| **Permissions Rationale** | `src/components/views/DashcamView.tsx`, `src/components/views/NavigationView.tsx` | Add clear pre-permission disclosure modals explaining why Camera, Audio, or GPS is needed before requesting Android system dialogs. |
+| **Crash Reporting Service** | `src/utils/crashReportingService.ts`, `src/components/ErrorBoundary.tsx` | Capture global runtime errors, device specs (OS, screen, userAgent), throttle spam, and write to Firestore `/crashReports`. |
+| **Firestore Security Rules** | `firestore.rules`, `firebase-blueprint.json` | Add `/crashReports/{id}` schema: signed-in users can `create` with valid fields; `read`/`delete` strictly restricted to `isOwner()`. |
+| **Data Backup & Export Service** | `src/utils/backupService.ts`, `src/components/BiltyLegalVaultModal.tsx` | Implement scheduled cloud sync snapshot and one-click JSON fleet archive download for authorized owner. |
+| **Unit Tests** | `src/__tests__/crashAndCompliance.test.ts` | Verify disclaimer text, crash report payload formatting, and backup JSON serialization. |
 
 ---
 
 ## 5. Verification & Testing Plan
 
-1. **Owner Panel Verification**:
-   - Verify that when logged in as `warraichgoods43@gmail.com`, the owner panel displays at the top above the icons grid.
-   - Verify clicking "نئی بلٹی بنائیں" navigates straight to the Bilty creation form (`onNavigate('bilty', 'create')`).
-   - Verify clicking "تمام بلٹیاں دیکھیں" navigates straight to the Bilty ledger list (`onNavigate('bilty', 'ledger')`).
-   - Verify the 3 KPI cards are gone and no duplicate owner panel appears at the bottom.
-2. **Vehicle Account (Gari Hisab) Verification**:
-   - Navigate to "گاڑی کا حساب" and verify the top title section is eliminated.
-   - Verify the tabs switch seamlessly between Trip Account, P&L, and Roznamcha without layout distortion.
-3. **Dark Theme Contrast Verification**:
-   - Toggle Dark Theme in Header.
-   - Open Dashcam view: confirm Saved Clips cards have dark slate backgrounds with readable white filenames and timestamps.
-   - Inspect Home Weather and Fuel cards: confirm Diesel price (`Rs. 402.96 / لیٹر`) and Weather metrics are crisp and readable.
-   - Open Bilty view: confirm party details and "کل" total amount are clearly visible on dark cards.
+1. **Play Store Compliance Verification**:
+   - Inspect all 3 verification sections (Vehicle, License, Challan) in light and dark mode; confirm disclaimer text and external official links are prominent, legible, and functional.
+   - Confirm privacy policy and terms modal explicitly reference the independent entity status.
+2. **Crash Diagnostics Testing**:
+   - Trigger a simulated test exception and verify payload format in `crashReportingService.ts`.
+   - Verify that duplicate errors within the throttle window are suppressed.
+   - Verify Firestore rules enforce that non-owners cannot read or delete crash reports.
+3. **Backup & Export Testing**:
+   - Trigger the one-click backup generator; verify exported JSON contains valid trips, vehicles, drivers, and bilty records without data corruption.
+   - Verify daily snapshot updates timestamp in `usersData/{uid}/backups/latest`.
 4. **Build & Automated Testing**:
-   - Run `compile_applet` to ensure TypeScript compilation succeeds with zero errors.
-   - Run unit test suite to ensure existing tests pass cleanly.
+   - Run vitest test suite ensuring all tests pass.
+   - Run `compile_applet` and `lint_applet` to confirm zero TypeScript compilation or linting errors.

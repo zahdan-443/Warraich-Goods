@@ -20,6 +20,7 @@ import {
   exportAllTripsCSV, 
   exportContactsCSV 
 } from '../utils/storage';
+import { downloadFleetBackupJson } from '../utils/backupService';
 
 interface ExportPrivacyModalProps {
   isOpen: boolean;
@@ -42,8 +43,13 @@ export const ExportPrivacyModal: React.FC<ExportPrivacyModalProps> = ({ isOpen, 
     setExportFeedback(null);
     try {
       if (type === 'json') {
-        exportAllBusinessDataJSON(privacyOptions);
-        setExportFeedback(lang === 'ur' ? 'مکمل ڈیٹا بیک اپ (JSON) ڈاؤن لوڈ ہو گیا!' : 'Full JSON backup downloaded!');
+        const ok = downloadFleetBackupJson();
+        if (ok) {
+          setExportFeedback(lang === 'ur' ? 'مکمل فلیٹ و کھاتہ بیک اپ (JSON) ڈاؤن لوڈ ہو گیا!' : 'Full Fleet & Ledger JSON backup downloaded!');
+        } else {
+          exportAllBusinessDataJSON(privacyOptions);
+          setExportFeedback(lang === 'ur' ? 'ڈیٹا بیک اپ (JSON) ڈاؤن لوڈ ہو گیا!' : 'Backup downloaded!');
+        }
       } else if (type === 'bilties') {
         exportAllBiltiesCSV(privacyOptions);
         setExportFeedback(lang === 'ur' ? 'بلٹی ریکارڈز (CSV) فائل ڈاؤن لوڈ ہو گئی!' : 'Bilties CSV downloaded!');

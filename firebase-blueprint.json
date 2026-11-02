@@ -137,6 +137,24 @@
       },
       "required": ["category", "lat", "lng", "createdAt", "expiresAt", "reporterUid"]
     },
+    "CrashReport": {
+      "title": "CrashReport",
+      "description": "Automated crash telemetry report with hardware and OS metadata",
+      "type": "object",
+      "properties": {
+        "errorName": { "type": "string" },
+        "errorMessage": { "type": "string" },
+        "stack": { "type": "string" },
+        "componentStack": { "type": "string" },
+        "deviceModel": { "type": "string" },
+        "platform": { "type": "string" },
+        "appVersion": { "type": "string" },
+        "url": { "type": "string" },
+        "userUid": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["errorMessage", "appVersion", "timestamp"]
+    },
     "PublicBiltyVerification": {
       "title": "PublicBiltyVerification",
       "description": "Public bilty verification document containing non-sensitive, non-financial fields for public verification",
@@ -158,6 +176,7 @@
         "paymentStatus": { "type": "string" },
         "branch": { "type": "string" },
         "verifiedPublicly": { "type": "boolean" },
+        "ownerUid": { "type": "string" },
         "createdAt": { "type": "string" },
         "updatedAt": { "type": "string" }
       },
@@ -208,6 +227,10 @@
     "/hazardReports/{reportId}": {
       "schema": "HazardReport",
       "description": "Crowd-sourced active highway hazard reports"
+    },
+    "/crashReports/{reportId}": {
+      "schema": "CrashReport",
+      "description": "Automated device diagnostics and crash telemetry logs"
     }
   }
 }
