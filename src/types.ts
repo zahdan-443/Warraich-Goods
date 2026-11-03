@@ -283,6 +283,7 @@ export interface BiltyRecord {
   podConfirmation?: PodConfirmation;
   isDelivered?: boolean;
   legalVault?: BiltyLegalVault;
+  updatedAt?: string;
 }
 
 export type UserRole = 'owner' | 'driver' | 'accountant';

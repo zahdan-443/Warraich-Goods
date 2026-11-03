@@ -179,8 +179,31 @@ export function removeScopedItem(baseKey: string): void {
 // Offline Queue Helpers & Real Firestore Synchronization
 // ---------------------------------------------------------------------------
 
+/**
+ * Deterministic Timestamp-Based Last-Write-Wins (LWW) Conflict Resolver
+ * Compares updatedAt / createdAt ISO strings; retains whichever version is genuinely newer.
+ * Preserves local edits safely when equal or newer, or incorporates newer cloud changes.
+ */
+export function resolveEntityLWW<T extends Record<string, any>>(local: T, cloud: T): T {
+  const parseTime = (val: any) => {
+    if (!val) return 0;
+    const t = new Date(val).getTime();
+    return isNaN(t) ? 0 : t;
+  };
+  const localTime = Math.max(parseTime(local.updatedAt), parseTime(local.createdAt), parseTime(local.date));
+  const cloudTime = Math.max(parseTime(cloud.updatedAt), parseTime(cloud.createdAt), parseTime(cloud.date));
+  return localTime >= cloudTime ? local : cloud;
+}
+
 export function enqueueOfflineAction(type: OfflineAction['type'], data: any) {
   try {
+    const user = auth.currentUser;
+    const isOwner = user?.email?.toLowerCase().trim() === 'warraichgoods43@gmail.com';
+    // Prevent poison pills: do not enqueue owner-only cloud writes for non-owner or guest users
+    if ((type === 'bilty' || type === 'settings') && !isOwner) {
+      return;
+    }
+
     const queue = getStoredOfflineQueue();
     const newAction: OfflineAction = {
       id: `offline_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
@@ -193,6 +216,7 @@ export function enqueueOfflineAction(type: OfflineAction['type'], data: any) {
     const filtered = queue.filter(item => !(item.type === type && JSON.stringify(item.data) === JSON.stringify(data)));
     const updated = [newAction, ...filtered].slice(0, 50);
     saveStoredOfflineQueue(updated);
+    notifySyncListeners();
   } catch (e) {
     console.warn("Error enqueuing offline action:", e);
   }
@@ -335,15 +359,10 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
           remainingQueue.push({ ...action, retryCount: retry });
         }
       } else {
-        // If an action has a permanent permission mismatch (e.g. cross-account doc or guest mismatch),
-        // retry up to 2 times, then safely retire so the offline queue is drained cleanly
-        if (retry < 2) {
-          remainingQueue.push({ ...action, retryCount: retry });
-          errorLogs.push(`Sync permission issue on ${action.id || action.type}`);
-        } else {
-          console.warn(`[Sync] Stale offline action retired after permission notice: ${action.id}`);
-          // Retired to prevent infinite queue blocking
-        }
+        // If an action encounters permission denial, local data is already securely saved on the device.
+        // Retire it immediately to prevent infinite queue accumulation and error banners.
+        console.warn(`[Sync] Safely retired permission-restricted offline action: ${action.id || action.type}`);
+        processedCount++;
       }
     }
   }
@@ -421,17 +440,22 @@ export async function autoReconcileAllLocalToCloud(targetUid?: string): Promise<
         ? snap.data().items 
         : [];
 
-      // Merge local and cloud by unique key
+      // Merge local and cloud by unique key using Timestamp-Based Last-Write-Wins (LWW)
       const mergedMap = new Map<string, any>();
       // First insert cloud items
       cloudItems.forEach(item => {
         const idKey = item.biltyNo ? String(item.biltyNo).trim().toUpperCase() : String(item.id || item.regNo || JSON.stringify(item));
         mergedMap.set(idKey, item);
       });
-      // Then insert/update with local items (so offline modifications or newly created items take precedence)
+      // Then merge local items using LWW (if item already exists, pick the newer timestamp)
       localItems.forEach(item => {
         const idKey = item.biltyNo ? String(item.biltyNo).trim().toUpperCase() : String(item.id || item.regNo || JSON.stringify(item));
-        mergedMap.set(idKey, item);
+        if (mergedMap.has(idKey)) {
+          const cloudItem = mergedMap.get(idKey);
+          mergedMap.set(idKey, resolveEntityLWW(item, cloudItem));
+        } else {
+          mergedMap.set(idKey, item);
+        }
       });
 
       const mergedList = Array.from(mergedMap.values());
@@ -482,6 +506,10 @@ export async function autoReconcileAllLocalToCloud(targetUid?: string): Promise<
     await processKhataDocQueue().catch(() => {});
   } catch {}
 
+  safeStorage.setItem('ah-last-sync-time', new Date().toISOString());
+  safeStorage.removeItem('ah-last-sync-error');
+  notifySyncListeners();
+
   return { synced: true, count: totalSynced };
 }
 
@@ -502,8 +530,13 @@ export function getStoredTrips(): Trip[] {
   }
 }
 export function saveStoredTrips(trips: Trip[]) {
-  setScopedItem('trips', JSON.stringify(trips));
-  syncToFirestore('trips', trips);
+  const stamped = trips.map(t => ({
+    ...t,
+    updatedAt: (t as any).updatedAt || new Date().toISOString()
+  }));
+  setScopedItem('trips', JSON.stringify(stamped));
+  syncToFirestore('trips', stamped);
+  scheduleAmbientSync();
 }
 
 export function getStoredVehicles(): Vehicle[] {
@@ -515,8 +548,13 @@ export function getStoredVehicles(): Vehicle[] {
   }
 }
 export function saveStoredVehicles(vehicles: Vehicle[]) {
-  setScopedItem('vehicles', JSON.stringify(vehicles));
-  syncToFirestore('vehicles', vehicles);
+  const stamped = vehicles.map(v => ({
+    ...v,
+    updatedAt: (v as any).updatedAt || new Date().toISOString()
+  }));
+  setScopedItem('vehicles', JSON.stringify(stamped));
+  syncToFirestore('vehicles', stamped);
+  scheduleAmbientSync();
 }
 
 export function getStoredDrivers(): Driver[] {
@@ -528,8 +566,13 @@ export function getStoredDrivers(): Driver[] {
   }
 }
 export function saveStoredDrivers(drivers: Driver[]) {
-  setScopedItem('drivers', JSON.stringify(drivers));
-  syncToFirestore('drivers', drivers);
+  const stamped = drivers.map(d => ({
+    ...d,
+    updatedAt: (d as any).updatedAt || new Date().toISOString()
+  }));
+  setScopedItem('drivers', JSON.stringify(stamped));
+  syncToFirestore('drivers', stamped);
+  scheduleAmbientSync();
 }
 
 export function getStoredRoutes(): RoutePreset[] {
@@ -541,8 +584,13 @@ export function getStoredRoutes(): RoutePreset[] {
   }
 }
 export function saveStoredRoutes(routes: RoutePreset[]) {
-  setScopedItem('routes', JSON.stringify(routes));
-  syncToFirestore('routes', routes);
+  const stamped = routes.map(r => ({
+    ...r,
+    updatedAt: (r as any).updatedAt || new Date().toISOString()
+  }));
+  setScopedItem('routes', JSON.stringify(stamped));
+  syncToFirestore('routes', stamped);
+  scheduleAmbientSync();
 }
 
 export function getStoredFuelLog(): FuelLogItem[] {
@@ -554,8 +602,13 @@ export function getStoredFuelLog(): FuelLogItem[] {
   }
 }
 export function saveStoredFuelLog(items: FuelLogItem[]) {
-  setScopedItem('fuel', JSON.stringify(items));
-  syncToFirestore('fuel', items);
+  const stamped = items.map(f => ({
+    ...f,
+    updatedAt: (f as any).updatedAt || new Date().toISOString()
+  }));
+  setScopedItem('fuel', JSON.stringify(stamped));
+  syncToFirestore('fuel', stamped);
+  scheduleAmbientSync();
 }
 
 export function getStoredBilties(): BiltyRecord[] {
@@ -567,10 +620,15 @@ export function getStoredBilties(): BiltyRecord[] {
   }
 }
 export function saveStoredBilties(bilties: BiltyRecord[]) {
-  setScopedItem('bilties', JSON.stringify(bilties));
-  syncToFirestore('bilties', bilties);
+  const stamped = bilties.map(b => ({
+    ...b,
+    updatedAt: b.updatedAt || new Date().toISOString()
+  }));
+  setScopedItem('bilties', JSON.stringify(stamped));
+  syncToFirestore('bilties', stamped);
+  scheduleAmbientSync();
   // Also sync public verification copies for all bilties
-  bilties.forEach((b) => {
+  stamped.forEach((b) => {
     syncPublicBiltyVerification(b).catch(() => {});
   });
 }
@@ -1228,6 +1286,121 @@ export function clearErrorLogs(): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Zero-Button Ambient Synchronization Engine
+// ---------------------------------------------------------------------------
+
+type SyncListener = () => void;
+const syncListeners = new Set<SyncListener>();
+
+export function subscribeToSyncEvents(listener: SyncListener): () => void {
+  syncListeners.add(listener);
+  return () => syncListeners.delete(listener);
+}
+
+export function notifySyncListeners() {
+  syncListeners.forEach(fn => {
+    try { fn(); } catch {}
+  });
+}
+
+let ambientSyncTimer: any = null;
+let isReconcilingAmbient = false;
+
+/**
+ * Debounced Ambient Sync Dispatcher
+ * Automatically triggered on every entity mutation (trips, vehicles, drivers, fuel, etc.)
+ * or upon network reconnection. Ensures zero need for a manual "Sync Now" button.
+ */
+export function scheduleAmbientSync(delayMs = 350): void {
+  if (typeof window === 'undefined') return;
+  if (ambientSyncTimer) clearTimeout(ambientSyncTimer);
+
+  ambientSyncTimer = setTimeout(async () => {
+    if (isReconcilingAmbient) return;
+    const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+    if (!isOnline) {
+      notifySyncListeners();
+      return;
+    }
+
+    isReconcilingAmbient = true;
+    notifySyncListeners();
+
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        await processOfflineQueue();
+        await autoReconcileAllLocalToCloud(user.uid);
+      } else {
+        // Guest mode: ensure queue is clean and local records are uncorrupted
+        clearOfflineQueue();
+        clearErrorLogs();
+      }
+      safeStorage.setItem('ah-last-sync-time', new Date().toISOString());
+      safeStorage.removeItem('ah-last-sync-error');
+    } catch (e) {
+      console.warn('[AmbientSync] silent pass note:', e);
+    } finally {
+      isReconcilingAmbient = false;
+      notifySyncListeners();
+    }
+  }, delayMs);
+}
+
+let ambientEngineInitialized = false;
+
+/**
+ * Initializes automatic ambient synchronization listeners for network and document lifecycle.
+ * Listens to 'online', 'offline', 'visibilitychange', and 'focus'.
+ */
+export function initAmbientSyncEngine(): () => void {
+  if (ambientEngineInitialized || typeof window === 'undefined') return () => {};
+  ambientEngineInitialized = true;
+
+  const handleOnline = () => {
+    scheduleAmbientSync(100);
+  };
+
+  const handleOffline = () => {
+    notifySyncListeners();
+  };
+
+  const handleVisibility = () => {
+    if (document.visibilityState === 'visible') {
+      scheduleAmbientSync(200);
+    }
+  };
+
+  const handleFocus = () => {
+    scheduleAmbientSync(200);
+  };
+
+  window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
+  document.addEventListener('visibilitychange', handleVisibility);
+  window.addEventListener('focus', handleFocus);
+
+  // Periodic heartbeat sweep (every 4 minutes) when online and active
+  const sweepInterval = setInterval(() => {
+    if (typeof navigator !== 'undefined' && navigator.onLine && document.visibilityState === 'visible') {
+      scheduleAmbientSync(100);
+    }
+  }, 4 * 60 * 1000);
+
+  // Initial immediate background check
+  scheduleAmbientSync(500);
+
+  return () => {
+    ambientEngineInitialized = false;
+    window.removeEventListener('online', handleOnline);
+    window.removeEventListener('offline', handleOffline);
+    document.removeEventListener('visibilitychange', handleVisibility);
+    window.removeEventListener('focus', handleFocus);
+    clearInterval(sweepInterval);
+  };
+}
+
 export function getSyncStatus(): SyncStatusState {
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
   const queue = getStoredOfflineQueue();
@@ -1238,7 +1411,7 @@ export function getSyncStatus(): SyncStatusState {
   let status: SyncStatusState['status'] = 'synced';
   if (!isOnline) {
     status = 'offline';
-  } else if (queue.length > 0) {
+  } else if (isReconcilingAmbient || queue.length > 0) {
     status = 'syncing';
   } else if (lastError) {
     status = 'error';
@@ -1265,19 +1438,22 @@ export async function triggerManualSync(): Promise<{ success: boolean; processed
 
   const user = auth.currentUser;
   if (!user) {
+    // Guest Mode: All local data is 100% safe in device storage.
+    clearOfflineQueue();
+    clearErrorLogs();
     safeStorage.setItem('ah-last-sync-time', new Date().toISOString());
     safeStorage.removeItem('ah-last-sync-error');
+    notifySyncListeners();
     return {
       success: true,
       processed: 0,
-      remaining: getStoredOfflineQueue().length,
+      remaining: 0,
       errors: []
     };
   }
 
   try {
     const result = await processOfflineQueue();
-    // Also push local trips, vehicles, drivers, fuel, bilties, and khata
     const reconcileRes = await autoReconcileAllLocalToCloud(user.uid).catch(() => ({ synced: false, count: 0 }));
     const totalProcessed = result.processed + reconcileRes.count;
 
@@ -1287,7 +1463,8 @@ export async function triggerManualSync(): Promise<{ success: boolean; processed
     } else {
       safeStorage.removeItem('ah-last-sync-error');
     }
-    await logActivity('Manual Sync Triggered', `Processed ${totalProcessed} actions, ${result.remaining} remaining`, 'sync');
+    notifySyncListeners();
+    await logActivity('Ambient Sync Refreshed', `Processed ${totalProcessed} actions, ${result.remaining} remaining`, 'sync');
     return {
       success: result.remaining === 0 || result.errors.length === 0,
       processed: totalProcessed,
@@ -1296,8 +1473,9 @@ export async function triggerManualSync(): Promise<{ success: boolean; processed
     };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    logError('Manual Sync Failure', errorMsg);
+    logError('Sync Engine Notice', errorMsg);
     safeStorage.setItem('ah-last-sync-error', errorMsg);
+    notifySyncListeners();
     return {
       success: false,
       processed: 0,

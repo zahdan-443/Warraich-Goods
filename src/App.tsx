@@ -26,6 +26,7 @@ import {
   saveUserProfileInFirestore,
   processOfflineQueue,
   autoReconcileAllLocalToCloud,
+  initAmbientSyncEngine,
   getAccountDeletionStatus,
   cancelAccountDeletion,
   type AccountDeletionRequest
@@ -597,25 +598,20 @@ export default function App() {
     }
   }, [activeTab, isBiltyAuthorized]);
 
-  // Real Network Connectivity and Auto-Sync Listeners
+  // Real Network Connectivity and Ambient Auto-Sync Engine
   useEffect(() => {
+    // Initialize ambient background sync engine (network, visibilitychange, focus, and periodic heartbeat)
+    const cleanupAmbient = initAmbientSyncEngine();
+
     const handleOnline = async () => {
       setIsOffline(false);
-      const res = await autoReconcileAllLocalToCloud(currentUid || undefined);
-      const remaining = getStoredOfflineQueue();
-      setOfflineQueue(remaining);
+      await autoReconcileAllLocalToCloud(currentUid || undefined);
+      setOfflineQueue(getStoredOfflineQueue());
       setBilties(getStoredBilties());
       setTrips(getStoredTrips());
       setVehicles(getStoredVehicles());
       setDrivers(getStoredDrivers());
       setFuelLogs(getStoredFuelLog());
-      if (res.synced && res.count > 0) {
-        pushAppNotification(
-          lang === 'ur' ? 'کلاؤڈ سنک مکمل' : 'Cloud Sync Complete',
-          lang === 'ur' ? `${res.count} ریکارڈز کلاؤڈ ڈیٹا بیس میں کامیابی سے سنک ہو گئے۔` : `${res.count} offline records automatically synced to cloud storage.`,
-          'system'
-        );
-      }
     };
 
     const handleOffline = () => {
@@ -630,10 +626,11 @@ export default function App() {
     window.addEventListener('offline', handleOffline);
 
     return () => {
+      cleanupAmbient();
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [lang, currentUid]);
+  }, [currentUid]);
 
   // Check vehicle & driver document expiries on app load and dispatch 30/15/7 day reminders (Feature A)
   useEffect(() => {
