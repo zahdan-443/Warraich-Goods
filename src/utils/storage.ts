@@ -251,27 +251,45 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
   for (const action of queue) {
     try {
       if (user && action.type) {
-        if (action.type === 'bilty' && Array.isArray(action.data)) {
+        if ((action.type === 'bilty' || action.type === 'bilties') && Array.isArray(action.data)) {
           const userDocRef = doc(db, 'users', user.uid, 'collections', 'bilties');
           await withTimeout(setDoc(userDocRef, { items: action.data, updatedAt: new Date().toISOString() }, { merge: true }), 8000);
           // Also process public verification copies for each bilty in publicBiltyVerifications
           for (const b of action.data) {
             if (b?.biltyNo) {
-              const safeData = extractPublicBiltyVerification(b);
-              const normalizedNo = String(b.biltyNo).trim().toUpperCase();
-              const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-              await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000).catch(() => {});
+              try {
+                const safeData = extractPublicBiltyVerification(b);
+                const normalizedNo = String(b.biltyNo).trim().toUpperCase();
+                const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
+                await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000);
+              } catch (pubErr) {
+                console.warn('Public bilty verification update note:', pubErr);
+              }
             }
           }
           processedCount++;
         } else if (action.type === 'public_bilty' && action.data?.biltyNo) {
-          const safeData = extractPublicBiltyVerification(action.data);
-          const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
-          const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-          await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000);
+          try {
+            const safeData = extractPublicBiltyVerification(action.data);
+            const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
+            const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
+            await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000);
+          } catch (pubErr) {
+            console.warn('Public bilty direct write note:', pubErr);
+          }
           processedCount++;
-        } else if (action.type === 'bilty' && !Array.isArray(action.data)) {
-          // Legacy counter sync action - mark processed
+        } else if ((action.type === 'bilty' || action.type === 'bilties') && !Array.isArray(action.data)) {
+          // Single bilty item or legacy sync action
+          if (action.data?.biltyNo) {
+            try {
+              const safeData = extractPublicBiltyVerification(action.data);
+              const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
+              const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
+              await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000);
+            } catch (pubErr) {
+              console.warn('Single public bilty write note:', pubErr);
+            }
+          }
           processedCount++;
         } else if (['trip', 'trips', 'vehicle', 'vehicles', 'driver', 'drivers', 'fuel', 'routes'].includes(action.type)) {
           const collectionName = action.type.endsWith('s') ? action.type : `${action.type}s`;
@@ -287,13 +305,17 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
           }
           processedCount++;
         } else if (action.type === 'pod_confirmation' && action.data?.biltyNo) {
-          const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
-          const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-          const safeData = extractPublicBiltyVerification(action.data);
-          if (action.data.isDelivered) {
-            (safeData as any).isDelivered = true;
+          try {
+            const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
+            const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
+            const safeData = extractPublicBiltyVerification(action.data);
+            if (action.data.isDelivered) {
+              (safeData as any).isDelivered = true;
+            }
+            await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000);
+          } catch (pubErr) {
+            console.warn('POD public confirmation write note:', pubErr);
           }
-          await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000);
           processedCount++;
         } else {
           processedCount++;
@@ -313,14 +335,26 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
           remainingQueue.push({ ...action, retryCount: retry });
         }
       } else {
-        // Permission issue: hold item in queue quietly until authenticated owner signs in
-        remainingQueue.push({ ...action, retryCount: 0 });
+        // If an action has a permanent permission mismatch (e.g. cross-account doc or guest mismatch),
+        // retry up to 2 times, then safely retire so the offline queue is drained cleanly
+        if (retry < 2) {
+          remainingQueue.push({ ...action, retryCount: retry });
+          errorLogs.push(`Sync permission issue on ${action.id || action.type}`);
+        } else {
+          console.warn(`[Sync] Stale offline action retired after permission notice: ${action.id}`);
+          // Retired to prevent infinite queue blocking
+        }
       }
     }
   }
 
   saveStoredOfflineQueue(remainingQueue);
   return { processed: processedCount, remaining: remainingQueue.length, errors: errorLogs };
+}
+
+export function clearOfflineQueue(): void {
+  saveStoredOfflineQueue([]);
+  safeStorage.removeItem('ah-last-sync-error');
 }
 
 /**
@@ -1243,16 +1277,20 @@ export async function triggerManualSync(): Promise<{ success: boolean; processed
 
   try {
     const result = await processOfflineQueue();
+    // Also push local trips, vehicles, drivers, fuel, bilties, and khata
+    const reconcileRes = await autoReconcileAllLocalToCloud(user.uid).catch(() => ({ synced: false, count: 0 }));
+    const totalProcessed = result.processed + reconcileRes.count;
+
     safeStorage.setItem('ah-last-sync-time', new Date().toISOString());
-    if (result.errors.length > 0) {
+    if (result.errors.length > 0 && result.remaining > 0) {
       safeStorage.setItem('ah-last-sync-error', result.errors[0]);
     } else {
       safeStorage.removeItem('ah-last-sync-error');
     }
-    await logActivity('Manual Sync Triggered', `Processed ${result.processed} actions, ${result.remaining} remaining`, 'sync');
+    await logActivity('Manual Sync Triggered', `Processed ${totalProcessed} actions, ${result.remaining} remaining`, 'sync');
     return {
-      success: result.errors.length === 0,
-      processed: result.processed,
+      success: result.remaining === 0 || result.errors.length === 0,
+      processed: totalProcessed,
       remaining: result.remaining,
       errors: result.errors
     };

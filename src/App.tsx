@@ -25,7 +25,10 @@ import {
   updateBiltyAccessInFirestore,
   saveUserProfileInFirestore,
   processOfflineQueue,
-  autoReconcileAllLocalToCloud
+  autoReconcileAllLocalToCloud,
+  getAccountDeletionStatus,
+  cancelAccountDeletion,
+  type AccountDeletionRequest
 } from './utils/storage';
 import { fetchLiveFuelPrices } from './utils/fuelPrice';
 import { runScheduledDailyCloudBackup } from './utils/backupService';
@@ -162,6 +165,30 @@ export default function App() {
 
   // Floating "Back to Dashboard" button: appears in upper-left corner when scrolled down on any inner screen
   const [showFloatingBack, setShowFloatingBack] = useState(false);
+  const [pendingDeletion, setPendingDeletion] = useState<AccountDeletionRequest | null>(null);
+
+  // Check account deletion status on user or auth change
+  useEffect(() => {
+    const target = currentUid || userEmail;
+    if (target) {
+      const status = getAccountDeletionStatus(target);
+      setPendingDeletion(status);
+    } else {
+      setPendingDeletion(null);
+    }
+  }, [currentUid, userEmail]);
+
+  const handleCancelDeletion = async () => {
+    const target = currentUid || userEmail;
+    if (!target) return;
+    await cancelAccountDeletion(target);
+    setPendingDeletion(null);
+    pushAppNotification(
+      lang === 'ur' ? 'اکاؤنٹ بحال ہو گیا' : 'Account Restored',
+      lang === 'ur' ? 'اکاؤنٹ ڈیلیٹ کرنے کی درخواست منسوخ کر دی گئی ہے۔' : 'Account deletion request has been cancelled.',
+      'system'
+    );
+  };
 
   useEffect(() => {
     if (activeTab === 'home') {
@@ -1176,6 +1203,25 @@ export default function App() {
               onBackToDashboard={() => handleNavigate('home')}
               onToggleLang={handleToggleLang}
             />
+          )}
+
+          {pendingDeletion && (
+            <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-amber-950 px-4 py-2.5 text-xs flex flex-wrap items-center justify-between gap-2 shadow-sm border-b border-amber-400">
+              <div className="flex items-center gap-2 font-medium">
+                <span className="text-base">⏳</span>
+                <span>
+                  {lang === 'ur'
+                    ? `اکاؤنٹ ڈیلیٹ کی درخواست زیرِ کارروائی ہے (30 دن کی مہلت)۔ شیڈول: ${new Date(pendingDeletion.scheduledFor).toLocaleDateString('ur-PK', { day: 'numeric', month: 'short' })}`
+                    : `Account deletion pending (30-day grace period). Scheduled: ${new Date(pendingDeletion.scheduledFor).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}`}
+                </span>
+              </div>
+              <button
+                onClick={handleCancelDeletion}
+                className="px-3 py-1 bg-white hover:bg-amber-50 text-amber-950 font-bold rounded-lg border border-amber-300 cursor-pointer text-[11px] transition-all shadow-xs"
+              >
+                {lang === 'ur' ? 'درخواست منسوخ کریں' : 'Cancel Deletion'}
+              </button>
+            </div>
           )}
 
           <main className="flex-1 flex flex-col w-full min-h-0 pb-16 sm:pb-20">

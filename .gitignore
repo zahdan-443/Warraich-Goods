@@ -23,3 +23,8 @@ android/app/*.jks
 android/app/src/main/assets/public/
 firebase-debug.log*
 firestore-debug.log*
+public/assets/
+public/assets/**
+*.pdf
+*.docx
+*.zip

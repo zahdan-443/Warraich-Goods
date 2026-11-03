@@ -1,144 +1,89 @@
-# Play Store Policy Compliance, Crash Diagnostics & Scheduled Backup Plan
+# Implementation Plan: Google Play Readiness & Security Hardening
 
-Comprehensive roadmap to guarantee Google Play Store review approval by eliminating government impersonation risks (U-03), installing an automated device crash reporting engine (Crashlytics alternative logging to Firestore with hardware metadata), and establishing automated daily Firestore backup sync alongside a one-click full backup download for the fleet owner.
-
-## User Review & Critical Decisions
-
-> [!IMPORTANT]
-> The following architectural decisions were confirmed during Phase 1 interactive clarification:
->
-> - **Play Store Policy & Government Disclaimers (U-03)**: Display prominent, high-contrast compliance banners on all verification and portal screens with explicit non-affiliation declarations and verified official source URLs (MTMIS, DLIMS, PSCA).
-> - **Crash Diagnostics Engine**: Automated device crash reporting directly to Firestore (`/crashReports`), capturing error stack traces, Android/browser device model, OS version, and network status with local loop-throttling.
-> - **Data Backup & Export Strategy**: Automated daily cloud snapshot sync combined with an instant one-click full JSON backup vault for the fleet owner (`warraichgoods43@gmail.com`).
-> - **Asset Preservation**: Keep existing user media assets intact and adhere to strict access controls for owner freight documents.
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                 PLAY STORE COMPLIANCE & RELIABILITY ROADMAP                 │
-└──────────────────────────────────────┬──────────────────────────────────────┘
-                                       │
-     ┌─────────────────────────────────┼─────────────────────────────────┐
-     ▼                                 ▼                                 ▼
-[ 1. PLAY STORE COMPLIANCE ]   [ 2. CRASH DIAGNOSTICS ]       [ 3. BACKUP & EXPORT VAULT ]
-• High-contrast disclaimer     • Global error & promise hook  • Daily automated cloud snapshot
-• Explicit non-gov statement   • Device model & OS metadata   • One-click full JSON export
-• Direct official portal links • Rate-limited Firestore write • Owner-only archive download
-• Prominent permission prompts • Owner live crash dashboard   • Instant disaster recovery
-     │                                 │                                 │
-     └─────────────────────────────────┴─────────────────────────────────┘
-```
+Address the latest audit findings and user selections to protect against public leaks, ensure Google Play policy compliance, prevent Firestore Denial-of-Wallet vulnerabilities, and eliminate the 1MB backup document limit.
 
 ---
 
-## 1. Overview & Core Concept
-
-- **What It Does**:
-  1. **Google Play Store Government Apps Policy Compliance (U-03)**:
-     - Upgrades vehicle verification, driving licence lookup, and traffic challan screens (`VerifyView.tsx`) with bold, high-contrast disclaimer banners.
-     - Formally states in prominent typography: *"Driver Dost is an independent fleet logistics tool developed by Warraich Goods Transport Company. It is NOT affiliated with, authorized by, or an official representative of the Government of Pakistan, Punjab Police, PSCA, MTMIS, or DLIMS."*
-     - Provides clear, labeled external links directly to the official provincial portals (`mtmis.excise.punjab.gov.pk`, `dlims.punjab.gov.pk`, `echallan.psca.gop.pk`).
-     - Adds clear runtime permission rationale banners before requesting Camera, Microphone, or GPS access, ensuring zero compliance surprises during Play Store review.
-  2. **Automated Device Crash Diagnostics Engine**:
-     - Introduces `crashReportingService.ts` to capture unhandled runtime exceptions, React component errors, and failed network calls.
-     - Records device details: Device model / User-Agent, Android version, screen dimensions, online/offline status, app version (`1.2.1`), and anonymized user ID.
-     - Stores reports into a dedicated, hardened Firestore collection (`/crashReports/{reportId}`) with strict loop prevention (max 1 report per error signature per session).
-     - Provides an Owner Crash Diagnostics panel inside the Owner Command Center to inspect crash frequency and debug specific phone models.
-  3. **Automated Scheduled Backup & One-Click Export Vault**:
-     - Implements a scheduled daily snapshot routine that automatically aggregates trips, vehicles, drivers, fuel logs, and ledger records into `usersData/{uid}/backups/latest`.
-     - Equips the fleet owner with a dedicated "ڈیٹا بیک اپ و ڈاؤن لوڈ" (Export & Backup Vault) button that generates and downloads a full timestamped JSON archive (`driver-dost-backup-YYYY-MM-DD.json`) with zero data loss.
-
-- **Target Audience**: Pakistani commercial truckers, fleet managers, Warraich Goods Transport operations, and Google Play Store review engineers.
-
-- **Key Value**: 100% Google Play Store policy approval without rejection risks, immediate visibility into field crashes on diverse driver smartphones, and ironclad data protection against cloud or hardware failure.
+## 1. Public Leak Remediation & Repository Hygiene
+- **Delete Leak Directory**:
+  - Completely remove `/public/assets/aistudio` and all its sensitive contents (audit PDF, docx, screenshots, zip).
+  - Note: User-uploaded core branding images in `/public` root will be preserved untouched in compliance with Rule 1.
+- **Update `.gitignore`**:
+  - Add explicit rules ignoring `public/assets/aistudio/`, `*.pdf`, `*.docx`, `*.zip` to prevent accidental commits or uploads.
 
 ---
 
-## 2. User Experience & Visual Design
-
-- **Key User Flows**:
-  1. *Driver Checking Challans or DLIMS*:
-     - User navigates to Verify -> Vehicle / Licence / Challan.
-     - At the very top, a high-contrast amber/slate notice displays: an official shield badge, the independent transport company statement, and a verified link to the official government portal.
-     - User understands clearly that Driver Dost is a private helper tool that redirects to the government website for official records.
-  2. *App Crash or Error in the Field*:
-     - If an unhandled exception or plugin crash occurs on a driver's phone, the app boundary displays a polite recovery prompt (*"ایپ میں عارضی مسئلہ آیا ہے - ڈیٹا محفوظ ہے"*).
-     - In the background, error telemetry with device model and stack trace is quietly transmitted to Firestore `/crashReports`.
-  3. *Owner Exporting Fleet Backup*:
-     - Authorized owner opens the Owner Menu / Settings and clicks *"مکمل ڈیٹا ڈاؤن لوڈ کریں"*.
-     - The app packages all database documents and local records into a clean JSON file and triggers an instant browser download.
-
-- **Visual Identity & Theme**:
-  - Disclaimer Banner: High-contrast amber/slate container (`bg-amber-500/10 border-amber-500/30 text-amber-950 dark:text-amber-200`) with high readability.
-  - Zero disruption: All existing home tiles, quick-ops layouts, and navigation tabs remain visually identical.
+## 2. Play Store Policy: 30-Day Account Deletion Grace Period & Cancellation
+- **Grace Period Workflow**:
+  - In `src/components/AccountDeletionModal.tsx` & `src/utils/storage.ts`:
+    - When user confirms deletion, create an account deletion request in Firestore:
+      `accountDeletionRequests/{uid}` with `scheduledDeletionAt = now + 30 days`, `requestedAt = now`, `status = "pending"`.
+    - Set local state and inform the user that their account is scheduled for deletion on `<date> (30 days)`.
+    - Provide an explicit "Cancel Account Deletion" button on app load/login if an active deletion request exists.
+    - If user clicks "Cancel Deletion Request", immediately update status to `"cancelled"` and remove the pending flag.
+- **Update `public/delete-account.html`**:
+  - Update public account deletion web page to detail the 30-day grace period, how to cancel before expiry, and the direct contact (`warraichgoods43@gmail.com`).
 
 ---
 
-## 3. Key Product Decisions & Trade-Offs
-
-- **Decision 1: Prominent In-App Banner vs Hidden Footer Note**:
-  - *Chosen Approach*: Place a high-contrast disclaimer card with official source links directly on verification screens above the input forms, plus links in the Privacy Policy and About modal.
-  - *Why*: Google Play policy explicitly requires government disclosures to be prominent and conspicuous to users before interaction, not buried in footer links.
-- **Decision 2: Firestore Crash Reporting vs Native SDK Overhead**:
-  - *Chosen Approach*: Build a lightweight Firestore-backed crash telemetry service with device metadata and loop throttling.
-  - *Why*: Works identically across both Web (PWA) and Capacitor Android builds without complex Gradle binary conflicts, giving the fleet owner an instant in-app dashboard to review crashes without opening Firebase Console.
-- **Decision 3: Dual Backup Architecture (Automated Cloud Snapshot + Local File Export)**:
-  - *Chosen Approach*: Automate daily cloud sync snapshots in Firestore under `usersData/{uid}/backups/latest` and provide a one-click local file download.
-  - *Why*: Protects users who lose their physical device (cloud sync) while giving the owner independent offline sovereignty over all company business records (JSON file export).
-
----
-
-## 4. Technical Architecture & Data Strategy
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                       TECHNICAL DATA & FLOW ARCHITECTURE                     │
-└─────────────────────────────────────────────────────────────────────────────┘
-
- [ Client App & Crash Boundaries ]
-        │
-        ├── [ VerifyView.tsx ] ─────────> High-contrast Play Store Disclaimer Banner
-        │                                 & Official Portal Attribution Links
-        │
-        ├── [ crashReportingService.ts ]
-        │       ├── Window 'error' & 'unhandledrejection' Listeners
-        │       ├── React ErrorBoundary Integration
-        │       ├── Device Hardware Metadata (Navigator, OS, Screen, Platform)
-        │       └── In-Memory Throttle (1 event / signature / 10 min)
-        │               │
-        │               ▼
-        │       [ Firestore: /crashReports/{reportId} ]
-        │               ▲ (Owner-only Read & Purge)
-        │
-        └── [ backupService.ts ]
-                ├── Daily Cloud Snapshot Schedule (usersData/{uid}/backups/latest)
-                └── One-Click JSON Vault Generator (Client Download)
-```
-
-### Component & File Mapping
-
-| Module / Area | Target Files | Key Changes |
-|---|---|---|
-| **Play Store Disclaimer Banners** | `src/components/views/VerifyView.tsx` | Replace low-contrast notes with high-contrast, prominent disclaimer cards with verified official source links for MTMIS, DLIMS, and PSCA. |
-| **Permissions Rationale** | `src/components/views/DashcamView.tsx`, `src/components/views/NavigationView.tsx` | Add clear pre-permission disclosure modals explaining why Camera, Audio, or GPS is needed before requesting Android system dialogs. |
-| **Crash Reporting Service** | `src/utils/crashReportingService.ts`, `src/components/ErrorBoundary.tsx` | Capture global runtime errors, device specs (OS, screen, userAgent), throttle spam, and write to Firestore `/crashReports`. |
-| **Firestore Security Rules** | `firestore.rules`, `firebase-blueprint.json` | Add `/crashReports/{id}` schema: signed-in users can `create` with valid fields; `read`/`delete` strictly restricted to `isOwner()`. |
-| **Data Backup & Export Service** | `src/utils/backupService.ts`, `src/components/BiltyLegalVaultModal.tsx` | Implement scheduled cloud sync snapshot and one-click JSON fleet archive download for authorized owner. |
-| **Unit Tests** | `src/__tests__/crashAndCompliance.test.ts` | Verify disclaimer text, crash report payload formatting, and backup JSON serialization. |
+## 3. CrashReports Security Hardening & Spam Throttling
+- **Firestore Rules Hardening (`firestore.rules`)**:
+  - Allow unauthenticated and authenticated users to submit crash reports, but enforce strict character length and timestamp validation:
+    - `request.resource.data.errorMessage is string && request.resource.data.errorMessage.size() <= 500`
+    - `(!('stack' in request.resource.data) || (request.resource.data.stack is string && request.resource.data.stack.size() <= 1000))`
+    - `(!('componentStack' in request.resource.data) || (request.resource.data.componentStack is string && request.resource.data.componentStack.size() <= 500))`
+    - `(!('deviceModel' in request.resource.data) || (request.resource.data.deviceModel is string && request.resource.data.deviceModel.size() <= 100))`
+    - `request.resource.data.createdAt == request.time`
+  - Restrict `read`, `update`, and `delete` permissions strictly to the authenticated app owner (`warraichgoods43@gmail.com`).
+- **Client-Side Throttling (`src/utils/crashReportingService.ts`)**:
+  - Enforce a local rate limit (max 5 crash logs per hour per device) using in-memory and local storage counters, preventing infinite error loop spam from racking up Firestore write operations.
 
 ---
 
-## 5. Verification & Testing Plan
+## 4. Chunked Cloud Backup (Fixing Firestore 1MB Document Limit)
+- **Problem**: Storing all trips, documents, ledger items, and vehicle data in a single document `backups/latest` risks silent failure as soon as total payload exceeds Firestore's 1MB limit.
+- **Solution (`src/utils/backupService.ts`)**:
+  - Split backup payload across individual sub-collection documents:
+    - `usersData/{uid}/cloudBackups/{backupId}/chunks/trips`
+    - `usersData/{uid}/cloudBackups/{backupId}/chunks/documents`
+    - `usersData/{uid}/cloudBackups/{backupId}/chunks/ledger`
+    - `usersData/{uid}/cloudBackups/{backupId}/chunks/vehicles`
+  - Store a lightweight index document `usersData/{uid}/cloudBackups/latestIndex` containing:
+    - `backupId`, `createdAt`, total item counts, backup size summary.
+  - Update `restoreFromCloudBackup` to fetch all available entity chunks and reconstruct the complete local store.
 
-1. **Play Store Compliance Verification**:
-   - Inspect all 3 verification sections (Vehicle, License, Challan) in light and dark mode; confirm disclaimer text and external official links are prominent, legible, and functional.
-   - Confirm privacy policy and terms modal explicitly reference the independent entity status.
-2. **Crash Diagnostics Testing**:
-   - Trigger a simulated test exception and verify payload format in `crashReportingService.ts`.
-   - Verify that duplicate errors within the throttle window are suppressed.
-   - Verify Firestore rules enforce that non-owners cannot read or delete crash reports.
-3. **Backup & Export Testing**:
-   - Trigger the one-click backup generator; verify exported JSON contains valid trips, vehicles, drivers, and bilty records without data corruption.
-   - Verify daily snapshot updates timestamp in `usersData/{uid}/backups/latest`.
-4. **Build & Automated Testing**:
-   - Run vitest test suite ensuring all tests pass.
-   - Run `compile_applet` and `lint_applet` to confirm zero TypeScript compilation or linting errors.
+---
+
+## 5. Play Store UGC Policy: In-App Hazard Report Flagging
+- **Add Flag / Report Button**:
+  - Google Play policy requires user-generated content (like road hazard reports) to have an in-app reporting/flagging mechanism for abusive, inaccurate, or spam content.
+  - In `src/components/views/HazardReportingModal.tsx` and `src/components/views/MapView.tsx`:
+    - Add a "Flag Inaccurate / Inappropriate" (غیر مناسب رپورٹ) button on individual hazard pins/cards.
+    - Increment flag count and store flagged reasons in Firestore hazard report doc.
+    - Automatically hide hazards if flagged by multiple users until owner review.
+
+---
+
+## 6. Privacy Policy & Data Safety Form Synchronization
+- **Update `public/privacy.html` & In-App Privacy Modal**:
+  - Add explicit diagnostic telemetry disclosure:
+    - "App Stability & Diagnostics: Device model, operating system version, app version, error messages, and crash stack traces are collected anonymously to diagnose app crashes and enhance stability."
+  - Add cloud backup retention details:
+    - 30-day retention and deletion grace period for user data.
+  - Disclose Google Fonts runtime network requests.
+
+---
+
+## 7. Android Build & Security Configuration
+- **Fail Release Build on Missing Signing Secrets (`android/app/build.gradle`)**:
+  - In `signingConfigs.release`, check if keystore file exists and passwords are provided. If missing during release assembly, fail fast with a descriptive error instead of silently building an unsigned or test-signed APK.
+- **Narrow FileProvider Path (`android/app/src/main/res/xml/file_paths.xml`)**:
+  - Remove `<external-path name="my_images" path="." />` (which flags warnings on Google Play Console for over-permissioned external storage access).
+  - Restrict strictly to app-specific file paths (`<files-path>` and `<cache-path>`).
+
+---
+
+## 8. Verification & Test Plan
+- Run `npm test` across all Vitest suites to ensure 100% test pass rate.
+- Add tests for chunked backup logic, rate-limited crash reporting, and account deletion grace period.
+- Run `lint_applet` and `compile_applet` to verify clean build without TypeScript or Vite errors.

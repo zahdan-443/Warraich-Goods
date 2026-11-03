@@ -37,6 +37,8 @@ android {
             def keyPasswordVal = System.getenv("ANDROID_KEY_PASSWORD") ?: project.findProperty("RELEASE_KEY_PASSWORD")
 
             def kFile = keystorePath ? (file(keystorePath).exists() ? file(keystorePath) : (rootProject.file(keystorePath).exists() ? rootProject.file(keystorePath) : null)) : null
+            def isReleaseTask = gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }
+
             if (kFile && keystorePassword && keyAliasVal && keyPasswordVal) {
                 storeFile kFile
                 storePassword keystorePassword
@@ -44,6 +46,8 @@ android {
                 keyPassword keyPasswordVal
                 v1SigningEnabled true
                 v2SigningEnabled true
+            } else if (isReleaseTask) {
+                throw new GradleException("Release build rejected: Keystore credentials (ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_PASSWORD) or keystore file are missing. Insecure unsigned release builds are prohibited.")
             }
         }
     }

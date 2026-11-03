@@ -52,6 +52,7 @@ import {
   HazardReport, 
   fetchActiveHazardReports, 
   deleteHazardReport, 
+  flagHazardReport,
   getRouteHazardSummaries, 
   HAZARD_CATEGORIES, 
   formatTimeAgo 
@@ -1051,7 +1052,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
           ${isMyReport ? `
             <button id="del-hazard-${hazard.id}" style="
               width: 100%;
-              padding: 4px 8px;
+              padding: 5px 8px;
               background: #fee2e2;
               color: #dc2626;
               border: 1px solid #fca5a5;
@@ -1062,7 +1063,21 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
             ">
               ${isUrdu ? 'میری رپورٹ حذف کریں' : 'Delete my report'}
             </button>
-          ` : ''}
+          ` : `
+            <button id="flag-hazard-${hazard.id}" style="
+              width: 100%;
+              padding: 5px 8px;
+              background: #fef3c7;
+              color: #92400e;
+              border: 1px solid #fde68a;
+              border-radius: 6px;
+              font-size: 10px;
+              font-weight: bold;
+              cursor: pointer;
+            ">
+              🚩 ${isUrdu ? 'غیر مناسب رپورٹ (Flag / Report)' : 'Flag / Report Inaccurate'}
+            </button>
+          `}
         </div>
       `;
 
@@ -1076,6 +1091,17 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
           if (btn) {
             btn.onclick = async () => {
               await deleteHazardReport(hazard.id, hazard.reporterUid);
+              loadHazards();
+              map.closePopup();
+            };
+          }
+        } else {
+          const flagBtn = document.getElementById(`flag-hazard-${hazard.id}`);
+          if (flagBtn) {
+            flagBtn.onclick = async () => {
+              flagBtn.textContent = isUrdu ? 'رپورٹ ہو رہا ہے...' : 'Flagging...';
+              const res = await flagHazardReport(hazard.id, 'Inaccurate or inappropriate user submission');
+              alert(isUrdu ? 'شکریہ! رپورٹ جائزے کے لیے درج کر لی گئی ہے۔' : (res.message || 'Report has been flagged for safety review.'));
               loadHazards();
               map.closePopup();
             };

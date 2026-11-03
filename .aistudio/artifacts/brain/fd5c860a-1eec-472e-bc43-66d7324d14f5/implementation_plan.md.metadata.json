@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for Play Store policy compliance (prominent non-government disclaimer banner and official portal attribution), automated device crash reporting to Firestore with hardware/OS diagnostics, and scheduled Firestore backup sync with one-click owner backup download.",
-  "updatedAt":  "2026-11-02T14:50:53.824211752Z",
-  "requestFeedback":  true,
-  "userFacing":  true
+  "summary": "Implementation plan for resolving security leak, Play Store compliance (30-day account deletion grace period, UGC hazard flagging, FileProvider narrowing), Denial of Wallet crashReports rule limits, chunked cloud backups to prevent 1MB Firestore limit, privacy policy updates, and release signing fail-safes.",
+  "updatedAt": "2026-11-03T02:03:59.572419557Z",
+  "requestFeedback": true,
+  "userFacing": true
 }

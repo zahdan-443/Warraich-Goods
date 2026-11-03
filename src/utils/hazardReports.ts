@@ -2,6 +2,8 @@ import {
   collection, 
   doc, 
   setDoc, 
+  getDoc,
+  updateDoc,
   getDocs, 
   deleteDoc, 
   query, 
@@ -24,6 +26,8 @@ export interface HazardReport {
   createdAt: any; // Firestore Timestamp, ISO string, or Date
   expiresAt: any; // Firestore Timestamp, ISO string, or Date
   reporterUid: string;
+  flags?: number;
+  flaggedBy?: string[];
 }
 
 export interface HazardCategoryMeta {
@@ -323,6 +327,10 @@ export async function fetchActiveHazardReports(): Promise<HazardReport[]> {
 
     querySnap.forEach((docSnap) => {
       const data = docSnap.data();
+      const flags = typeof data.flags === 'number' ? data.flags : 0;
+      // Auto-hide reports flagged by 3 or more users until reviewed
+      if (flags >= 3) return;
+
       reports.push({
         id: docSnap.id,
         category: data.category as HazardCategory,
@@ -331,7 +339,9 @@ export async function fetchActiveHazardReports(): Promise<HazardReport[]> {
         cityNear: data.cityNear || undefined,
         createdAt: data.createdAt,
         expiresAt: data.expiresAt,
-        reporterUid: data.reporterUid
+        reporterUid: data.reporterUid,
+        flags,
+        flaggedBy: Array.isArray(data.flaggedBy) ? data.flaggedBy : []
       });
     });
 
@@ -349,7 +359,7 @@ export async function fetchActiveHazardReports(): Promise<HazardReport[]> {
       if (cached) {
         const parsed: HazardReport[] = JSON.parse(cached);
         const nowMs = Date.now();
-        return parsed.filter(p => getMillisFromTimestamp(p.expiresAt) > nowMs);
+        return parsed.filter(p => getMillisFromTimestamp(p.expiresAt) > nowMs && (p.flags || 0) < 3);
       }
     } catch {}
     return [];
@@ -368,6 +378,47 @@ export async function deleteHazardReport(reportId: string, reporterUid: string):
   } catch (err) {
     console.error('[HazardReports] Error deleting hazard report:', err);
     return false;
+  }
+}
+
+/**
+ * Flag an inappropriate, misleading or false hazard report (Google Play UGC Policy Compliance).
+ */
+export async function flagHazardReport(
+  reportId: string, 
+  reason: string = 'Inaccurate or inappropriate user submission'
+): Promise<{ success: boolean; message?: string }> {
+  if (!auth.currentUser) {
+    return { success: false, message: 'Please sign in to report/flag content.' };
+  }
+  const uid = auth.currentUser.uid;
+  try {
+    const docRef = doc(db, 'hazardReports', reportId);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      return { success: false, message: 'Report no longer exists.' };
+    }
+    const data = snap.data();
+    const currentFlags = typeof data.flags === 'number' ? data.flags : 0;
+    const flaggedBy: string[] = Array.isArray(data.flaggedBy) ? data.flaggedBy : [];
+
+    if (flaggedBy.includes(uid)) {
+      return { success: true, message: 'You have already flagged this report.' };
+    }
+
+    flaggedBy.push(uid);
+    const updatedFlags = currentFlags + 1;
+
+    await updateDoc(docRef, {
+      flags: updatedFlags,
+      flaggedBy,
+      flagReasons: [reason.slice(0, 100)]
+    });
+
+    return { success: true, message: 'Thank you! The report has been flagged for safety review.' };
+  } catch (err: any) {
+    console.error('[HazardReports] Error flagging hazard report:', err);
+    return { success: false, message: err?.message || 'Could not flag report.' };
   }
 }
 

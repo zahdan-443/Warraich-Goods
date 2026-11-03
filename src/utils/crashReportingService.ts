@@ -34,6 +34,35 @@ export interface CrashReportPayload {
 // In-memory throttle set to prevent flood loops (max 1 report per error signature per 5 minutes)
 const reportedErrorSignatures = new Map<string, number>();
 const THROTTLE_WINDOW_MS = 5 * 60 * 1000;
+const MAX_REPORTS_PER_HOUR = 5;
+const HOURLY_WINDOW_MS = 60 * 60 * 1000;
+
+function isHourlyRateLimitExceeded(): boolean {
+  try {
+    if (typeof localStorage === 'undefined') return false;
+    const raw = localStorage.getItem('wg_crash_rate_limit');
+    const now = Date.now();
+    let timestamps: number[] = [];
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          timestamps = parsed.filter((t: number) => typeof t === 'number' && now - t < HOURLY_WINDOW_MS);
+        }
+      } catch {
+        timestamps = [];
+      }
+    }
+    if (timestamps.length >= MAX_REPORTS_PER_HOUR) {
+      return true;
+    }
+    timestamps.push(now);
+    localStorage.setItem('wg_crash_rate_limit', JSON.stringify(timestamps));
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 export function getDeviceDiagnostics(): DeviceMetadata {
   const isCapacitor = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform();
@@ -64,8 +93,8 @@ export function getDeviceDiagnostics(): DeviceMetadata {
   return {
     platform,
     isNative: isCapacitor,
-    userAgent: typeof navigator !== 'undefined' ? (navigator.userAgent || '').slice(0, 300) : '',
-    deviceModel,
+    userAgent: typeof navigator !== 'undefined' ? (navigator.userAgent || '').slice(0, 200) : '',
+    deviceModel: deviceModel.slice(0, 100),
     screenWidth: typeof window !== 'undefined' ? window.innerWidth : 0,
     screenHeight: typeof window !== 'undefined' ? window.innerHeight : 0,
     online: typeof navigator !== 'undefined' ? navigator.onLine : true
@@ -107,17 +136,25 @@ export async function reportAppCrash(
       // Throttled duplicate error
       return false;
     }
+
+    // Check hourly device quota (prevents Denial of Wallet spam)
+    if (isHourlyRateLimitExceeded()) {
+      return false;
+    }
+
     reportedErrorSignatures.set(signature, now);
 
     const diagnostics = getDeviceDiagnostics();
     const url = typeof window !== 'undefined' ? (window.location.href || '').slice(0, 200) : '';
-    const userUid = auth?.currentUser?.uid || undefined;
+    const rawUid = auth?.currentUser?.uid;
+    const userUid = rawUid ? rawUid.slice(0, 128) : undefined;
 
-    // Truncate fields to satisfy Firestore limits & avoid oversized packets
+    // Truncate fields strictly to satisfy Firestore security rules (<= 500 / <= 1000)
     const safeErrorName = (errorName || 'Error').slice(0, 100);
-    const safeErrorMessage = (errorMessage || 'Unknown Error').slice(0, 1500);
-    const safeStack = (stack || '').slice(0, 1500);
-    const safeCompStack = (componentStack || '').slice(0, 1000);
+    const safeErrorMessage = (errorMessage || 'Unknown Error').slice(0, 500);
+    const safeStack = (stack || '').slice(0, 1000);
+    const safeCompStack = (componentStack || '').slice(0, 500);
+    const safeDeviceModel = (diagnostics.deviceModel || 'Generic Device').slice(0, 100);
 
     const reportId = `crash_${now}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -126,9 +163,9 @@ export async function reportAppCrash(
       errorMessage: safeErrorMessage,
       stack: safeStack,
       componentStack: safeCompStack,
-      deviceModel: diagnostics.deviceModel,
-      platform: diagnostics.platform,
-      appVersion: APP_VERSION,
+      deviceModel: safeDeviceModel,
+      platform: diagnostics.platform.slice(0, 50),
+      appVersion: APP_VERSION.slice(0, 50),
       url,
       ...(userUid ? { userUid } : {}),
       createdAt: serverTimestamp()

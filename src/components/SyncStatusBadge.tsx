@@ -15,7 +15,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { SyncStatusState, Language } from '../types';
-import { getSyncStatus, triggerManualSync, getErrorLogs, clearErrorLogs } from '../utils/storage';
+import { getSyncStatus, triggerManualSync, getErrorLogs, clearErrorLogs, clearOfflineQueue } from '../utils/storage';
 
 interface SyncStatusBadgeProps {
   lang: Language;
@@ -74,6 +74,16 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({ lang, onSyncCo
   const handleClearLogs = () => {
     clearErrorLogs();
     setErrorLogs([]);
+    setSyncState(getSyncStatus());
+  };
+
+  const handleClearQueue = () => {
+    clearOfflineQueue();
+    clearErrorLogs();
+    setSyncState(getSyncStatus());
+    setErrorLogs([]);
+    setFeedback(lang === 'ur' ? 'زیر التواء قطار اور تمام ایررز کامیابی سے صاف کر دیے گئے۔' : 'Pending queue and errors cleared successfully.');
+    if (onSyncComplete) onSyncComplete();
   };
 
   // Badge config based on state
@@ -198,18 +208,31 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({ lang, onSyncCo
                   </div>
                 )}
 
-                <button
-                  onClick={handleManualSync}
-                  disabled={isSyncing || isOffline}
-                  className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs ${
-                    isOffline
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-[#1e3a68] hover:bg-[#162a4d] text-white active:scale-95'
-                  }`}
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span>{isSyncing ? (lang === 'ur' ? 'ہم آہنگی ہو رہی ہے...' : 'Syncing...') : (lang === 'ur' ? 'ابھی ہم آہنگ کریں (Sync Now)' : 'Sync Now with Cloud')}</span>
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleManualSync}
+                    disabled={isSyncing || isOffline}
+                    className={`flex-1 py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs ${
+                      isOffline
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-[#1e3a68] hover:bg-[#162a4d] text-white active:scale-95'
+                    }`}
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                    <span>{isSyncing ? (lang === 'ur' ? 'ہم آہنگی ہو رہی ہے...' : 'Syncing...') : (lang === 'ur' ? 'ابھی ہم آہنگ کریں (Sync Now)' : 'Sync Now with Cloud')}</span>
+                  </button>
+
+                  {(syncState.pendingCount > 0 || syncState.lastError) && (
+                    <button
+                      onClick={handleClearQueue}
+                      title={lang === 'ur' ? 'زیر التواء قطار اور ایررز صاف کریں' : 'Clear pending queue and errors'}
+                      className="py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 cursor-pointer active:scale-95 transition-all shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                      <span>{lang === 'ur' ? 'قطار صاف کریں' : 'Clear Queue'}</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Error & Telemetry Logs */}

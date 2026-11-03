@@ -53,14 +53,14 @@ service cloud.firestore {
 
     // Helper function to enforce non-sensitive, non-financial fields in public verifications
     // Allowed: biltyNo, date, senderName, receiverName, senderAddress, receiverAddress, sendingCity,
-    // receivingCity, vehicleNo, driverName, itemDescription, weight, qty, paymentStatus, branch, verifiedPublicly, createdAt, updatedAt
+    // receivingCity, vehicleNo, driverName, itemDescription, weight, qty, paymentStatus, branch, verifiedPublicly, isDelivered, receivedBy, createdAt, updatedAt, ownerUid
     // Strictly FORBIDDEN: CNICs, phone numbers, freight price, advance, payable, charges, totals, or delivery tracking status
     function hasOnlyPublicBiltyFields() {
       let allowedKeys = [
         'biltyNo', 'date', 'senderName', 'receiverName',
         'senderAddress', 'receiverAddress', 'sendingCity', 'receivingCity',
         'vehicleNo', 'driverName', 'itemDescription', 'weight', 'qty',
-        'paymentStatus', 'branch', 'verifiedPublicly', 'isDelivered', 'createdAt', 'updatedAt', 'ownerUid'
+        'paymentStatus', 'branch', 'verifiedPublicly', 'isDelivered', 'receivedBy', 'createdAt', 'updatedAt', 'ownerUid'
       ];
       let forbiddenKeys = [
         'senderCnic', 'receiverCnic', 'cnic', 'senderMobile', 'receiverMobile',
@@ -77,9 +77,17 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Strict user data isolation: every user only has their own data;
-    // none of the users can share, access, or see data of any other user
+    // Strict user data isolation: every user only has their own data and backups
     match /usersData/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+
+      match /{subcollection=**} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // Play Store account deletion requests (30-day grace period tracking)
+    match /accountDeletionRequests/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
@@ -103,14 +111,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Public bilty verification records (read allowed for anyone for QR verification; create/update restricted to ownerUid matching auth.uid)
+    // Public bilty verification records (read allowed for anyone for QR verification; create/update restricted to ownerUid or authorized bilty accounts)
     match /publicBiltyVerifications/{docId} {
       allow read: if true;
       allow create: if isSignedIn() && hasOnlyPublicBiltyFields() &&
-                    request.resource.data.ownerUid == request.auth.uid;
+                    (isOwner() || isBiltyAuthorized() || request.resource.data.ownerUid == request.auth.uid);
       allow update: if isSignedIn() && hasOnlyPublicBiltyFields() &&
-                    resource.data.ownerUid == request.auth.uid &&
-                    request.resource.data.ownerUid == resource.data.ownerUid;
+                    (isOwner() || isBiltyAuthorized() || resource.data.ownerUid == request.auth.uid);
       allow delete: if isOwner() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
     }
 
@@ -144,28 +151,42 @@ service cloud.firestore {
       allow update, delete: if isOwner();
     }
 
-    // Crowd-sourced road hazard reports (read for signed in users; create/delete restricted to reporter with strict schema & GPS bounding)
+    // Crowd-sourced road hazard reports (read for signed in users; create/delete restricted to reporter; community flagging supported)
     match /hazardReports/{reportId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() &&
                     request.resource.data.reporterUid == request.auth.uid &&
                     request.resource.data.keys().hasAll(['category', 'lat', 'lng', 'createdAt', 'expiresAt', 'reporterUid']) &&
-                    request.resource.data.keys().hasOnly(['category', 'lat', 'lng', 'cityNear', 'createdAt', 'expiresAt', 'reporterUid']) &&
+                    request.resource.data.keys().hasOnly(['category', 'lat', 'lng', 'cityNear', 'createdAt', 'expiresAt', 'reporterUid', 'flags', 'flaggedBy', 'flagReasons']) &&
                     request.resource.data.category in ['checkpoint', 'flooding', 'accident', 'closure', 'traffic'] &&
                     request.resource.data.lat is number && request.resource.data.lat >= 23.0 && request.resource.data.lat <= 38.0 &&
                     request.resource.data.lng is number && request.resource.data.lng >= 60.0 && request.resource.data.lng <= 78.0 &&
                     request.resource.data.createdAt == request.time;
-      allow delete: if isSignedIn() && resource.data.reporterUid == request.auth.uid;
-      allow update: if false;
+      allow delete: if isOwner() || (isSignedIn() && resource.data.reporterUid == request.auth.uid);
+      // Allow community drivers to flag inaccurate or inappropriate hazards (Play Store UGC requirement)
+      allow update: if isSignedIn() &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['flags', 'flaggedBy', 'flagReasons']) &&
+                    request.resource.data.flags is int &&
+                    request.resource.data.flags >= resource.data.flags &&
+                    request.resource.data.flags <= 100 &&
+                    request.resource.data.flaggedBy is list &&
+                    request.resource.data.flaggedBy.size() <= 100;
     }
 
-    // Automated Crash Diagnostics & Telemetry (Devices can submit telemetry with valid schema; read/delete strictly restricted to Fleet Owner)
+    // Automated Crash Diagnostics & Telemetry (Enforce strict size caps against Denial of Wallet; read/delete strictly Fleet Owner)
     match /crashReports/{reportId} {
       allow read, delete: if isOwner();
       allow create: if request.resource.data.keys().hasAll(['errorMessage', 'appVersion', 'createdAt']) &&
                     request.resource.data.keys().hasOnly(['errorName', 'errorMessage', 'stack', 'componentStack', 'deviceModel', 'platform', 'appVersion', 'url', 'userUid', 'createdAt']) &&
-                    request.resource.data.errorMessage is string && request.resource.data.errorMessage.size() <= 2000 &&
-                    request.resource.data.appVersion is string &&
+                    request.resource.data.errorMessage is string && request.resource.data.errorMessage.size() <= 500 &&
+                    (!('stack' in request.resource.data) || (request.resource.data.stack is string && request.resource.data.stack.size() <= 1000)) &&
+                    (!('componentStack' in request.resource.data) || (request.resource.data.componentStack is string && request.resource.data.componentStack.size() <= 500)) &&
+                    (!('deviceModel' in request.resource.data) || (request.resource.data.deviceModel is string && request.resource.data.deviceModel.size() <= 100)) &&
+                    (!('errorName' in request.resource.data) || (request.resource.data.errorName is string && request.resource.data.errorName.size() <= 100)) &&
+                    (!('platform' in request.resource.data) || (request.resource.data.platform is string && request.resource.data.platform.size() <= 50)) &&
+                    (!('url' in request.resource.data) || (request.resource.data.url is string && request.resource.data.url.size() <= 200)) &&
+                    (!('userUid' in request.resource.data) || (request.resource.data.userUid is string && request.resource.data.userUid.size() <= 128)) &&
+                    request.resource.data.appVersion is string && request.resource.data.appVersion.size() <= 50 &&
                     request.resource.data.createdAt == request.time;
       allow update: if false;
     }
