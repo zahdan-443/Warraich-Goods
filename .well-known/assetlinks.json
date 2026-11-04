@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.warraichgoods.driverdost",
+      "sha256_cert_fingerprints": [
+        "E8:BA:C5:15:FD:EA:A1:D8:A9:E0:82:00:DF:28:41:31:13:52:0B:DC:F9:FC:32:8A:F3:81:28:70:71:AF:B9:AF"
+      ]
+    }
+  }
+]
