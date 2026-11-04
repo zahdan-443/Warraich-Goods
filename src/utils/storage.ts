@@ -141,19 +141,59 @@ export function getScopedItem(baseKey: string): string | null {
   const scopedKey = getScopedStorageKey(baseKey, scope);
   
   const scopedVal = safeStorage.getItem(scopedKey);
-  if (scopedVal !== null) {
+  // If valid non-empty data is already present in the scoped key, return it directly
+  if (scopedVal !== null && scopedVal !== '[]') {
     return scopedVal;
   }
 
-  // Fallback: Check legacy key 'ah-<baseKey>' and migrate data if present
+  // Fallback 1: Check owner / fallback email scope if active scope is a UID
+  const localEmail = safeStorage.getItem('ah-gmail-user');
+  if (localEmail) {
+    const emailScope = localEmail.replace(/[^a-zA-Z0-9_]/g, '_');
+    if (emailScope !== scope) {
+      const emailKey = getScopedStorageKey(baseKey, emailScope);
+      const emailVal = safeStorage.getItem(emailKey);
+      if (emailVal !== null && emailVal !== '[]') {
+        safeStorage.setItem(scopedKey, emailVal);
+        return emailVal;
+      }
+    }
+  }
+
+  // Fallback 2: Check guest scope if current scope is authenticated
+  if (scope !== 'guest') {
+    const guestKey = getScopedStorageKey(baseKey, 'guest');
+    const guestVal = safeStorage.getItem(guestKey);
+    if (guestVal !== null && guestVal !== '[]') {
+      safeStorage.setItem(scopedKey, guestVal);
+      return guestVal;
+    }
+  }
+
+  // Fallback 3: Check legacy key 'ah-<baseKey>'
   const legacyKey = `ah-${baseKey}`;
   const legacyVal = safeStorage.getItem(legacyKey);
-  if (legacyVal !== null) {
+  if (legacyVal !== null && legacyVal !== '[]') {
     safeStorage.setItem(scopedKey, legacyVal);
     return legacyVal;
   }
 
-  return null;
+  // Fallback 4: Check legacy backup key 'ah-<baseKey>-data'
+  const legacyDataKey = `ah-${baseKey}-data`;
+  const legacyDataVal = safeStorage.getItem(legacyDataKey);
+  if (legacyDataVal !== null && legacyDataVal !== '[]') {
+    safeStorage.setItem(scopedKey, legacyDataVal);
+    return legacyDataVal;
+  }
+
+  // Fallback 5: Check plain key '<baseKey>'
+  const plainVal = safeStorage.getItem(baseKey);
+  if (plainVal !== null && plainVal !== '[]') {
+    safeStorage.setItem(scopedKey, plainVal);
+    return plainVal;
+  }
+
+  return scopedVal;
 }
 
 /**
@@ -394,39 +434,80 @@ export async function autoReconcileAllLocalToCloud(targetUid?: string): Promise<
   // 1. Process offline action queue first
   await processOfflineQueue().catch(() => {});
 
-  // 2. Migrate any guest data if user was previously in guest mode offline
+  // 2. Migrate any guest or offline data across scopes if user was previously unauthenticated
   try {
-    const guestKeys = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel'];
-    for (const key of guestKeys) {
-      const guestKey = getScopedStorageKey(key, 'guest');
-      const rawGuest = safeStorage.getItem(guestKey);
-      if (rawGuest) {
-        try {
-          const guestItems = JSON.parse(rawGuest);
-          if (Array.isArray(guestItems) && guestItems.length > 0) {
-            const userKey = getScopedStorageKey(key, uid);
-            const rawUser = safeStorage.getItem(userKey);
-            const userItems = rawUser ? JSON.parse(rawUser) : [];
-            const mergedMap = new Map<string, any>();
-            userItems.forEach((item: any) => {
-              const id = item.biltyNo || item.id || JSON.stringify(item);
-              mergedMap.set(String(id), item);
-            });
-            guestItems.forEach((item: any) => {
-              const id = item.biltyNo || item.id || JSON.stringify(item);
-              mergedMap.set(String(id), item);
-            });
-            const merged = Array.from(mergedMap.values());
-            safeStorage.setItem(userKey, JSON.stringify(merged));
-            safeStorage.removeItem(guestKey);
-          }
-        } catch {}
+    const syncCollections = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel', 'routes'];
+    const localEmail = safeStorage.getItem('ah-gmail-user');
+    const emailScope = localEmail ? localEmail.replace(/[^a-zA-Z0-9_]/g, '_') : null;
+
+    for (const key of syncCollections) {
+      const userKey = getScopedStorageKey(key, uid);
+      const rawUser = safeStorage.getItem(userKey);
+      const userItems = rawUser ? JSON.parse(rawUser) : [];
+      const mergedMap = new Map<string, any>();
+      
+      userItems.forEach((item: any) => {
+        const id = item.biltyNo || item.id || JSON.stringify(item);
+        mergedMap.set(String(id), item);
+      });
+
+      const candidateKeysToMigrate = [
+        getScopedStorageKey(key, 'guest'),
+        getScopedStorageKey(key, 'warraichgoods43_gmail_com'),
+        emailScope && emailScope !== uid ? getScopedStorageKey(key, emailScope) : null,
+        `ah-${key}`,
+        `ah-${key}-data`,
+        key
+      ].filter((k): k is string => Boolean(k && k !== userKey));
+
+      for (const candKey of candidateKeysToMigrate) {
+        const raw = safeStorage.getItem(candKey);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              parsed.forEach((item: any) => {
+                const id = item.biltyNo || item.id || JSON.stringify(item);
+                if (mergedMap.has(String(id))) {
+                  mergedMap.set(String(id), resolveEntityLWW(item, mergedMap.get(String(id))));
+                } else {
+                  mergedMap.set(String(id), item);
+                }
+              });
+            }
+          } catch {}
+        }
+      }
+
+      const merged = Array.from(mergedMap.values());
+      if (merged.length > 0) {
+        safeStorage.setItem(userKey, JSON.stringify(merged));
+        if (key === 'bilties') {
+          safeStorage.setItem('wg_v2_warraichgoods43_gmail_com_bilties', JSON.stringify(merged));
+          safeStorage.setItem('ah-bilties', JSON.stringify(merged));
+          safeStorage.setItem('ah-bilties-data', JSON.stringify(merged));
+        }
+      }
+    }
+
+    // Also migrate guest khata keys
+    const khataGuestKeys = ['dd_khata_accounts_v2', 'dd_khata_entries_v2', 'dd_khata_cashbook_v2'];
+    for (const kKey of khataGuestKeys) {
+      const gKey = `${kKey}_guest`;
+      const gData = safeStorage.getItem(gKey);
+      if (gData) {
+        const uKey = `${kKey}_${uid}`;
+        if (!safeStorage.getItem(uKey)) {
+          safeStorage.setItem(uKey, gData);
+        }
+        safeStorage.removeItem(gKey);
       }
     }
   } catch {}
 
   // 3. Bi-directional reconcile for each collection
-  const collections = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel'];
+  const collections = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel', 'routes'];
+  let syncErrors = 0;
   for (const collName of collections) {
     try {
       const scopedKey = getScopedStorageKey(collName, uid);
@@ -495,22 +576,28 @@ export async function autoReconcileAllLocalToCloud(targetUid?: string): Promise<
         }
       }
     } catch (e) {
+      syncErrors++;
       console.warn(`Reconciliation notice for ${collName}:`, e);
     }
   }
 
   // 4. Also reconcile Khata / Ledger
   try {
-    const { fetchKhataFromFirestore, processKhataDocQueue } = await import('./ledgerStorage');
+    const { fetchKhataFromFirestore, syncAllKhataToFirestore, processKhataDocQueue } = await import('./ledgerStorage');
+    await syncAllKhataToFirestore().catch(() => {});
     await fetchKhataFromFirestore().catch(() => {});
     await processKhataDocQueue().catch(() => {});
-  } catch {}
+  } catch (kErr) {
+    console.warn('[KhataSync] reconciliation notice:', kErr);
+  }
 
   safeStorage.setItem('ah-last-sync-time', new Date().toISOString());
-  safeStorage.removeItem('ah-last-sync-error');
+  if (syncErrors === 0) {
+    safeStorage.removeItem('ah-last-sync-error');
+  }
   notifySyncListeners();
 
-  return { synced: true, count: totalSynced };
+  return { synced: syncErrors === 0, count: totalSynced };
 }
 
 export async function loadFromFirestore(uid: string) {
@@ -613,24 +700,103 @@ export function saveStoredFuelLog(items: FuelLogItem[]) {
 
 export function getStoredBilties(): BiltyRecord[] {
   try {
-    const data = getScopedItem('bilties');
-    return data ? JSON.parse(data) : [];
+    const activeScope = getActiveUserScope();
+    const candidateKeys = [
+      getScopedStorageKey('bilties', activeScope),
+      'wg_v2_warraichgoods43_gmail_com_bilties',
+      'wg_v2_guest_bilties',
+      'ah-bilties',
+      'ah-bilties-data',
+      'bilties'
+    ];
+
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const k = window.localStorage.key(i);
+          if (
+            k &&
+            (k.endsWith('_bilties') || k === 'ah-bilties' || k === 'ah-bilties-data') &&
+            !candidateKeys.includes(k) &&
+            !k.includes('access') &&
+            !k.includes('counter') &&
+            !k.includes('branch') &&
+            !k.includes('lang')
+          ) {
+            candidateKeys.push(k);
+          }
+        }
+      } catch {}
+    }
+
+    const mergedMap = new Map<string, BiltyRecord>();
+
+    for (const key of candidateKeys) {
+      const raw = safeStorage.getItem(key);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            for (const item of parsed) {
+              if (item && (item.biltyNo || item.id)) {
+                const uniqueKey = item.biltyNo ? String(item.biltyNo).trim().toUpperCase() : String(item.id);
+                if (mergedMap.has(uniqueKey)) {
+                  mergedMap.set(uniqueKey, resolveEntityLWW(item, mergedMap.get(uniqueKey)));
+                } else {
+                  mergedMap.set(uniqueKey, item);
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+    }
+
+    const result = Array.from(mergedMap.values());
+    result.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+
+    // If bilties were found in alternate or legacy keys, ensure active scoped key has the full count
+    if (result.length > 0) {
+      const activeScopedKey = getScopedStorageKey('bilties', activeScope);
+      const currentActiveRaw = safeStorage.getItem(activeScopedKey);
+      const currentActiveCount = currentActiveRaw ? (JSON.parse(currentActiveRaw)?.length || 0) : 0;
+      if (result.length > currentActiveCount) {
+        safeStorage.setItem(activeScopedKey, JSON.stringify(result));
+      }
+    }
+
+    return result;
   } catch {
     return [];
   }
 }
+
 export function saveStoredBilties(bilties: BiltyRecord[]) {
   const stamped = bilties.map(b => ({
     ...b,
     updatedAt: b.updatedAt || new Date().toISOString()
   }));
+
+  // Save to active scope
   setScopedItem('bilties', JSON.stringify(stamped));
+
+  // Guarantee persistent storage under owner and legacy backup keys so it can never be lost on auth switch
+  safeStorage.setItem('wg_v2_warraichgoods43_gmail_com_bilties', JSON.stringify(stamped));
+  safeStorage.setItem('ah-bilties', JSON.stringify(stamped));
+  safeStorage.setItem('ah-bilties-data', JSON.stringify(stamped));
+
   syncToFirestore('bilties', stamped);
   scheduleAmbientSync();
+
   // Also sync public verification copies for all bilties
   stamped.forEach((b) => {
     syncPublicBiltyVerification(b).catch(() => {});
   });
+
+  // Notify active components immediately
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('driverdost:bilties_updated', { detail: stamped }));
+  }
 }
 
 /**

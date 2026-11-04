@@ -54,7 +54,8 @@ import {
   exportAllBiltiesCSV,
   setScopedItem,
   syncToFirestore,
-  getStoredBilties
+  getStoredBilties,
+  saveStoredBilties
 } from '../../utils/storage';
 import { validateBiltyFreight } from '../../utils/calculator';
 import { generatePdfFromElement, shareBiltyPdfOrWhatsApp } from '../../utils/pdfHelper';
@@ -93,19 +94,33 @@ const BiltyQrCode: React.FC<{ record: BiltyRecord; className?: string }> = ({ re
 interface BiltyViewProps {
   lang: Language;
   bilties: BiltyRecord[];
+  initialSubTab?: 'all' | 'create' | 'search';
   onAddBilty: (record: Omit<BiltyRecord, 'id'>) => void;
   onDeleteBilty?: (id: number) => void;
-  onNavigate?: (tab: string) => void;
+  onNavigate?: (tab: string, subSection?: string) => void;
 }
 
-export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty, onDeleteBilty, onNavigate }) => {
+export const BiltyView: React.FC<BiltyViewProps> = ({
+  lang,
+  bilties,
+  initialSubTab,
+  onAddBilty,
+  onDeleteBilty,
+  onNavigate
+}) => {
   const isUrdu = lang === 'ur';
   const t = DICTIONARY[lang].bilty;
 
   // SubTab: 'all' (Sari Bilties) | 'create' (Nai Bilty) | 'search' (Talaash)
   const [subTab, setSubTab] = useState<'all' | 'create' | 'search'>(() => {
-    return bilties && bilties.length > 0 ? 'all' : 'create';
+    return initialSubTab || (bilties && bilties.length > 0 ? 'all' : 'create');
   });
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
 
   // Filters for "All Bilties" view
   const [allFilterQuery, setAllFilterQuery] = useState('');
@@ -183,8 +198,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({ lang, bilties, onAddBilty,
       }
       return b;
     });
-    setScopedItem('bilties', JSON.stringify(updated));
-    syncToFirestore('bilties', updated).catch(() => {});
+    saveStoredBilties(updated);
     if (selectedModalBilty && selectedModalBilty.id === biltyId) {
       setSelectedModalBilty({ ...selectedModalBilty, legalVault: updatedVault });
     }

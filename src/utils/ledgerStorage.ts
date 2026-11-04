@@ -663,6 +663,58 @@ export async function fetchKhataFromFirestore(): Promise<void> {
   }
 }
 
+/**
+ * Pushes all locally created Khata accounts, ledger entries, cashbook records and settings to Firestore
+ */
+export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: number; pushedEntries: number; pushedCash: number }> {
+  const user = auth.currentUser;
+  if (!user || !db) return { pushedAccounts: 0, pushedEntries: 0, pushedCash: 0 };
+
+  const accounts = getLedgerAccounts();
+  const entries = getAllLedgerEntries();
+  const cashEntries = getAllCashEntries();
+  const settings = getKhataSettings();
+
+  let pushedAccounts = 0;
+  let pushedEntries = 0;
+  let pushedCash = 0;
+
+  // 1. Push settings
+  try {
+    const setRef = doc(db, 'users', user.uid, 'khataSettings', 'config');
+    await setDoc(setRef, settings, { merge: true });
+  } catch {}
+
+  // 2. Push accounts
+  for (const acc of accounts) {
+    try {
+      const ref = doc(db, 'users', user.uid, 'ledgerAccounts', acc.id);
+      await setDoc(ref, acc, { merge: true });
+      pushedAccounts++;
+    } catch {}
+  }
+
+  // 3. Push entries
+  for (const entry of entries) {
+    try {
+      const ref = doc(db, 'users', user.uid, 'ledgerAccounts', entry.accountId, 'entries', entry.id);
+      await setDoc(ref, entry, { merge: true });
+      pushedEntries++;
+    } catch {}
+  }
+
+  // 4. Push cashbook
+  for (const cash of cashEntries) {
+    try {
+      const ref = doc(db, 'users', user.uid, 'cashbookEntries', cash.id);
+      await setDoc(ref, cash, { merge: true });
+      pushedCash++;
+    } catch {}
+  }
+
+  return { pushedAccounts, pushedEntries, pushedCash };
+}
+
 // ----------------- CRUD FOR LEDGER ACCOUNTS -----------------
 
 export function getLedgerAccounts(kind?: 'party' | 'broker'): LedgerAccount[] {

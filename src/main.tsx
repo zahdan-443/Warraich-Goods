@@ -18,7 +18,11 @@ if (typeof window !== 'undefined') {
     }
   }).catch(() => {});
 
-  hydrateStorageFromIndexedDB().catch(() => {});
+  hydrateStorageFromIndexedDB((count) => {
+    if (count > 0 && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('driverdost:storage_hydrated', { detail: count }));
+    }
+  }).catch(() => {});
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason?.message || String(event.reason || '');
     if (

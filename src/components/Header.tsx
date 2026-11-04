@@ -237,26 +237,34 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Right: User Status & Notification Bell */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Right: Sync Status, User Badge & Notification Bell */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Top Bar Quick Sync Pill */}
+            <SyncStatusBadge 
+              lang={lang} 
+              userEmail={userEmail} 
+              onSyncTrigger={onSyncOffline} 
+              onSignIn={onSignIn}
+            />
+
             {userEmail && (
               <button
                 onClick={handleOpenMenu}
-                className="py-1.5 px-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
+                className="py-1.5 px-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all"
                 title={userEmail}
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="max-w-[80px] sm:max-w-[120px] truncate">{isOwnerUser ? (lang === 'ur' ? 'آنر' : 'Owner') : (lang === 'ur' ? 'ڈرائیور' : 'Driver')}</span>
+                <span className="max-w-[70px] sm:max-w-[120px] truncate">{isOwnerUser ? (lang === 'ur' ? 'آنر' : 'Owner') : (lang === 'ur' ? 'ڈرائیور' : 'Driver')}</span>
               </button>
             )}
 
             <button
               onClick={() => setShowNotifs(true)}
-              className="p-2 rounded-xl bg-white border border-[#ecece0] hover:border-[#8b9d77] text-[#5a5a40] relative cursor-pointer active:scale-95 transition-all shadow-2xs shrink-0"
+              className="p-2 rounded-xl bg-white dark:bg-[#16181e] border border-[#ecece0] dark:border-[#2d313b] hover:border-[#8b9d77] text-[#5a5a40] dark:text-slate-200 relative cursor-pointer active:scale-95 transition-all shadow-2xs shrink-0"
               title={lang === 'ur' ? 'نوٹیفیکیشنز' : 'Notifications'}
               aria-label={lang === 'ur' ? 'نوٹیفیکیشنز کھولیں' : 'Open Notifications'}
             >
-              <Bell className="w-5 h-5 text-[#8b9d77]" />
+              <Bell className="w-5 h-5 text-[#8b9d77] dark:text-emerald-400" />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#EF4444] text-white text-[9px] font-bold flex items-center justify-center animate-pulse">
                   {unreadCount}
@@ -295,16 +303,24 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="p-5 space-y-4">
 
                 {/* CLOUD SYNC STATUS SECTION */}
-                <div className="p-3.5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] shadow-2xs flex items-center justify-between">
+                <div className="p-3.5 rounded-3xl bg-[#fdfbf7] dark:bg-[#16181e] border border-[#ecece0] dark:border-[#2d313b] shadow-2xs flex items-center justify-between">
                   <div>
-                    <div className="text-xs font-bold text-[#4a4a35] font-serif">
+                    <div className="text-xs font-bold text-[#4a4a35] dark:text-slate-100 font-serif">
                       {lang === 'ur' ? 'کلاؤڈ سنک اسٹیٹس' : 'Cloud Sync Status'}
                     </div>
-                    <div className="text-[10px] text-[#8e8e75]">
+                    <div className="text-[10px] text-[#8e8e75] dark:text-slate-400">
                       {lang === 'ur' ? 'آن لائن / آف لائن ڈیٹا ہم آہنگی' : 'Online / Offline sync'}
                     </div>
                   </div>
-                  <SyncStatusBadge lang={lang} onSyncComplete={onSyncOffline} />
+                  <SyncStatusBadge 
+                    lang={lang} 
+                    userEmail={userEmail} 
+                    onSyncTrigger={onSyncOffline} 
+                    onSignIn={() => {
+                      handleCloseMenu();
+                      if (onSignIn) onSignIn();
+                    }} 
+                  />
                 </div>
 
                 {/* AUTHENTICATED ACCOUNT CONTROL CARD (Or Guest Sign In Card) */}

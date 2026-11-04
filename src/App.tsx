@@ -27,6 +27,7 @@ import {
   processOfflineQueue,
   autoReconcileAllLocalToCloud,
   initAmbientSyncEngine,
+  subscribeToSyncEvents,
   getAccountDeletionStatus,
   cancelAccountDeletion,
   type AccountDeletionRequest
@@ -210,6 +211,7 @@ export default function App() {
   }, [activeTab]);
 
   const [verifySubSection, setVerifySubSection] = useState<'vehicle' | 'license' | 'challan' | 'history' | 'bilty'>('vehicle');
+  const [biltySubTab, setBiltySubTab] = useState<'all' | 'create' | 'search'>('all');
   const [initialBiltySearch, setInitialBiltySearch] = useState<string>('');
   const [initialBiltyToken, setInitialBiltyToken] = useState<string>('');
 
@@ -287,6 +289,11 @@ export default function App() {
     const target = (newTab === 'vehicles' ? 'vehicle' : newTab) as ActiveTab;
     if (subSection && ['vehicle', 'license', 'challan', 'history', 'bilty'].includes(subSection)) {
       setVerifySubSection(subSection as any);
+    }
+    if (newTab === 'bilty' && subSection) {
+      if (subSection === 'create') setBiltySubTab('create');
+      else if (subSection === 'ledger' || subSection === 'all') setBiltySubTab('all');
+      else if (subSection === 'search') setBiltySubTab('search');
     }
     if (target !== activeTab) {
       window.history.pushState({ tab: target }, '', `#${target}`);
@@ -452,8 +459,7 @@ export default function App() {
   };
 
   const handleSyncOffline = async () => {
-    if (offlineQueue.length === 0) return;
-    if (isOffline) {
+    if (isOffline || (typeof navigator !== 'undefined' && !navigator.onLine)) {
       pushAppNotification(
         lang === 'ur' ? 'انٹرنیٹ کنکشن درکار ہے' : 'Internet Required',
         lang === 'ur' ? 'کلاؤڈ پر ریکارڈز سنک کرنے کے لیے انٹرنیٹ بحال کریں۔' : 'Please connect to the internet to sync offline records.',
@@ -462,14 +468,43 @@ export default function App() {
       return;
     }
 
-    const result = await processOfflineQueue();
-    const remaining = getStoredOfflineQueue();
-    setOfflineQueue(remaining);
+    const user = auth.currentUser;
+    if (!user) {
+      pushAppNotification(
+        lang === 'ur' ? 'سائن ان درکار ہے' : 'Sign-in Required',
+        lang === 'ur' ? 'کلاؤڈ سنک اور تمام ڈیوائسز پر بیک اپ کے لیے پہلے گوگل سے سائن ان کریں۔' : 'Please sign in with Google to sync and backup your data across devices.',
+        'system'
+      );
+      return;
+    }
 
-    if (result.processed > 0) {
+    try {
+      const queueRes = await processOfflineQueue();
+      const reconRes = await autoReconcileAllLocalToCloud(user.uid);
+      
+      // Refresh local React state
+      const remaining = getStoredOfflineQueue();
+      setOfflineQueue(remaining);
+      setTrips(getStoredTrips());
+      setVehicles(getStoredVehicles());
+      setDrivers(getStoredDrivers());
+      setRoutes(getStoredRoutes());
+      setFuelLogs(getStoredFuelLog());
+      setBilties(getStoredBilties());
+
+      const totalCount = (queueRes.processed || 0) + (reconRes.count || 0);
       pushAppNotification(
         lang === 'ur' ? 'کلاؤڈ سنک مکمل' : 'Cloud Sync Complete',
-        lang === 'ur' ? `${result.processed} ریکارڈز کلاؤڈ ڈیٹا بیس میں کامیابی سے سنک ہو گئے۔` : `Successfully synced ${result.processed} records to cloud database.`,
+        lang === 'ur' 
+          ? `ڈیٹا کلاؤڈ کے ساتھ کامیابی سے ہم آہنگ ہو گیا (${totalCount} ریکارڈز اپ ڈیٹ)۔` 
+          : `Data successfully synchronized with cloud database (${totalCount} records updated).`,
+        'system'
+      );
+    } catch (err) {
+      console.warn("Manual sync error:", err);
+      pushAppNotification(
+        lang === 'ur' ? 'سنک میں تاخیر' : 'Sync Paused',
+        lang === 'ur' ? 'کلاؤڈ کنکشن میں عارضی تاخیر ہے۔ ڈیٹا فون پر محفوظ ہے اور خودکار سنک ہو جائے گا۔' : 'Temporary cloud latency. Data is safe locally and will retry automatically.',
         'system'
       );
     }
@@ -622,13 +657,40 @@ export default function App() {
       setIsOffline(!navigator.onLine);
     }
 
+    const handleBiltiesUpdated = (e: any) => {
+      if (Array.isArray(e?.detail)) {
+        setBilties(e.detail);
+      } else {
+        setBilties(getStoredBilties());
+      }
+    };
+
+    const handleStorageHydrated = () => {
+      setBilties(getStoredBilties());
+      setTrips(getStoredTrips());
+      setVehicles(getStoredVehicles());
+      setDrivers(getStoredDrivers());
+      setRoutes(getStoredRoutes());
+      setFuelLogs(getStoredFuelLog());
+    };
+
+    // Keep UI synced on storage/sync events
+    const unsubSyncStatus = subscribeToSyncEvents(() => {
+      setBilties(getStoredBilties());
+    });
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('driverdost:bilties_updated', handleBiltiesUpdated);
+    window.addEventListener('driverdost:storage_hydrated', handleStorageHydrated);
 
     return () => {
       cleanupAmbient();
+      unsubSyncStatus();
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('driverdost:bilties_updated', handleBiltiesUpdated);
+      window.removeEventListener('driverdost:storage_hydrated', handleStorageHydrated);
     };
   }, [currentUid]);
 
@@ -1051,7 +1113,9 @@ export default function App() {
       ...recordObj,
       id: Date.now()
     };
-    const updated = [newRecord, ...bilties];
+    const current = getStoredBilties();
+    const filtered = current.filter((b) => b.biltyNo !== newRecord.biltyNo);
+    const updated = [newRecord, ...filtered];
     setBilties(updated);
     saveStoredBilties(updated);
 
@@ -1063,8 +1127,9 @@ export default function App() {
   };
 
   const handleDeleteBilty = (id: number) => {
-    const target = bilties.find((b) => b.id === id);
-    const updated = bilties.filter((b) => b.id !== id);
+    const current = getStoredBilties();
+    const target = current.find((b) => b.id === id);
+    const updated = current.filter((b) => b.id !== id);
     setBilties(updated);
     saveStoredBilties(updated);
 
@@ -1249,6 +1314,7 @@ export default function App() {
                   onOpenBiltyAccess={() => setShowBiltyAccessModal(true)}
                   onSaveTrip={handleSaveTrip}
                   onLogFuelPrice={handleLogFuelPrice}
+                  onSync={handleSyncOffline}
                 />
               )}
 
@@ -1331,6 +1397,7 @@ export default function App() {
             <BiltyView
               lang={lang}
               bilties={bilties}
+              initialSubTab={biltySubTab}
               onAddBilty={handleAddBilty}
               onDeleteBilty={handleDeleteBilty}
               onNavigate={handleNavigate}

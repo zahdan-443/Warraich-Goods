@@ -36,7 +36,8 @@ import {
   AlertCircle,
   ShieldAlert,
   Camera,
-  Info
+  Info,
+  RefreshCw
 } from 'lucide-react';
 import { HomeWeatherFuelCard } from '../HomeWeatherFuelCard';
 import { TermsModal } from '../TermsModal';
@@ -76,6 +77,7 @@ interface HomeViewProps {
   onOpenBiltyAccess?: () => void;
   onSaveTrip?: (tripObj: Omit<Trip, 'id' | 'name'>, tripName: string) => void;
   onLogFuelPrice?: (diesel?: number, petrol?: number, cng?: number) => void;
+  onSync?: () => void;
 }
 
 const QuickActionButton: React.FC<{
@@ -163,7 +165,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onOpenSignIn,
   onOpenBiltyAccess,
   onSaveTrip,
-  onLogFuelPrice
+  onLogFuelPrice,
+  onSync
 }) => {
   const t = DICTIONARY[lang];
   const [showRecentLogs, setShowRecentLogs] = useState(false);
@@ -267,7 +270,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              {onSync && (
+                <button
+                  type="button"
+                  onClick={onSync}
+                  className="px-3 py-2 bg-white dark:bg-[#252830] hover:bg-gray-50 dark:hover:bg-[#2e323c] text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 font-bold text-xs rounded-xl shadow-2xs cursor-pointer transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                  title={lang === 'ur' ? 'کلاؤڈ ڈیٹا سنک کریں' : 'Sync Cloud Data'}
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>{lang === 'ur' ? 'سنک' : 'Sync'}</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => onNavigate('bilty', 'create')}
