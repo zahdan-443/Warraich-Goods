@@ -622,13 +622,13 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
       {activeSubTab === 'gari_hisaab' && (
         <div className="space-y-5 animate-in fade-in duration-200">
           {formError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-3 rounded-2xl text-center shadow-2xs">
+            <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300 text-xs font-bold p-3 rounded-2xl text-center shadow-2xs">
               {formError}
             </div>
           )}
 
           {pdfError && (
-            <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold p-3 rounded-2xl text-center shadow-2xs">
+            <div className="bg-amber-50 dark:bg-[#231707] border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs font-bold p-3 rounded-2xl text-center shadow-2xs">
               {pdfError}
             </div>
           )}

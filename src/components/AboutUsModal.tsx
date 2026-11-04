@@ -148,29 +148,29 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
           </div>
 
           {/* Contact Details Card */}
-          <div className="bg-gradient-to-br from-white to-[#f7f5ed] p-5 rounded-2xl border border-[#ecece0] shadow-xs space-y-4">
-            <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2">
-              <Phone className="w-5 h-5 text-emerald-600" />
-              <h3 className="font-serif font-bold text-base text-[#1e3a68]">
+          <div className="bg-gradient-to-br from-white to-[#f7f5ed] dark:from-[#1a1c22] dark:to-[#16181e] p-5 rounded-2xl border border-[#ecece0] dark:border-[#2d313b] shadow-xs space-y-4">
+            <div className="flex items-center gap-2 border-b border-[#ecece0] dark:border-[#2d313b] pb-2">
+              <Phone className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <h3 className="font-serif font-bold text-base text-[#1e3a68] dark:text-blue-200">
                 {lang === 'ur' ? 'رابطہ کی معلومات' : 'Contact Information'}
               </h3>
             </div>
 
-            <p className="text-xs text-[#7a7a60]">
+            <p className="text-xs text-[#7a7a60] dark:text-slate-300">
               {lang === 'ur' 
                 ? 'کسی بھی قسم کی بکنگ، معلومات یا رہنمائی کے لیے ہم سے رابطہ کریں:'
                 : 'For booking, inquiries, or support, please reach out directly:'}
             </p>
 
             <div className="space-y-3 text-xs sm:text-sm font-sans">
-              <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-[#ecece0]">
+              <div className="flex items-center justify-between p-3 bg-white dark:bg-[#16181e] rounded-xl border border-[#ecece0] dark:border-[#2d313b]">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-emerald-100 text-emerald-800 rounded-lg">
+                  <div className="p-2 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 rounded-lg">
                     <Phone className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-[11px] text-[#8e8e75] block">{lang === 'ur' ? 'فون / واٹس ایپ:' : 'Phone / WhatsApp:'}</span>
-                    <span className="font-bold text-[#1e3a68] dir-ltr text-sm">{phoneNum}</span>
+                    <span className="text-[11px] text-[#8e8e75] dark:text-slate-400 block">{lang === 'ur' ? 'فون / واٹس ایپ:' : 'Phone / WhatsApp:'}</span>
+                    <span className="font-bold text-[#1e3a68] dark:text-emerald-400 dir-ltr text-sm font-mono">{phoneNum}</span>
                   </div>
                 </div>
 

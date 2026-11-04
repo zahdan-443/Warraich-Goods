@@ -75,7 +75,7 @@ export const RouteHazardAdvisoryBanner: React.FC<RouteHazardAdvisoryBannerProps>
 
   return (
     <div 
-      className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 shadow-xs space-y-3"
+      className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-[#231707] dark:to-[#1a1205] border-2 border-amber-300 dark:border-amber-600/70 shadow-xs space-y-3"
       dir={isUrdu ? 'rtl' : 'ltr'}
     >
       {/* Header */}
@@ -86,14 +86,14 @@ export const RouteHazardAdvisoryBanner: React.FC<RouteHazardAdvisoryBannerProps>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-xs sm:text-sm text-amber-950">
+              <h3 className="font-bold text-xs sm:text-sm text-amber-950 dark:text-amber-100">
                 {isUrdu ? 'روٹ پر لائیو خطرات کی رپورٹس' : 'Active Road Hazard Alerts on Corridor'}
               </h3>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
                 {totalReportsCount} {isUrdu ? 'رپورٹس' : (totalReportsCount === 1 ? 'alert' : 'alerts')}
               </span>
             </div>
-            <p className="text-[11px] text-amber-800">
+            <p className="text-[11px] text-amber-800 dark:text-amber-300">
               {isUrdu 
                 ? 'ساتھی ٹرانسپورٹرز اور ڈرائیورز کی جانب سے درج کردہ تصدیقی معلومات' 
                 : 'Crowd-sourced reports submitted by fellow transporters and drivers'}
@@ -107,7 +107,7 @@ export const RouteHazardAdvisoryBanner: React.FC<RouteHazardAdvisoryBannerProps>
               type="button"
               onClick={onRefresh}
               disabled={isRefreshing}
-              className="p-2 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 transition-colors cursor-pointer"
+              className="p-2 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-950/70 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 transition-colors cursor-pointer border border-transparent dark:border-amber-800/50"
               title={isUrdu ? 'تازہ ترین رپورٹس لوڈ کریں' : 'Refresh hazard alerts'}
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -132,21 +132,21 @@ export const RouteHazardAdvisoryBanner: React.FC<RouteHazardAdvisoryBannerProps>
           return (
             <div
               key={`${summary.category}-${summary.cityNear}-${idx}`}
-              className="p-2.5 sm:p-3 rounded-xl bg-white/90 border border-amber-200/80 shadow-2xs flex items-center justify-between gap-3 text-xs"
+              className="p-2.5 sm:p-3 rounded-xl bg-white/90 dark:bg-[#16181e] border border-amber-200/80 dark:border-amber-900/50 shadow-2xs flex items-center justify-between gap-3 text-xs"
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className={`w-7 h-7 rounded-lg ${meta.badgeBg} flex items-center justify-center shrink-0 border ${meta.badgeBorder}`}>
                   {renderIcon(summary.category)}
                 </div>
                 <div className="min-w-0">
-                  <p className="font-bold text-gray-900 truncate">
+                  <p className="font-bold text-gray-900 dark:text-white truncate">
                     {formatHazardText(summary)}
                   </p>
-                  <p className="text-[11px] text-gray-500 flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-gray-400" />
+                  <p className="text-[11px] text-gray-500 dark:text-slate-400 flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-gray-400 dark:text-slate-500" />
                     <span>{formatTimeAgo(summary.latestTimestamp, lang)}</span>
                     {summary.count > 1 && (
-                      <span className="font-semibold text-amber-700 ml-1">
+                      <span className="font-semibold text-amber-700 dark:text-amber-400 ml-1">
                         • {summary.count} {isUrdu ? 'مختلف ڈرائیوروں کی تصدیق' : 'reports'}
                       </span>
                     )}

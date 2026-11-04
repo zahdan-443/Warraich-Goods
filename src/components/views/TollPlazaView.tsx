@@ -266,8 +266,8 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
 
         {/* Same-city Warning */}
         {fromCity === toCity && (
-          <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 flex items-center gap-2.5 text-amber-900">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+          <div className="p-3 bg-amber-50 dark:bg-[#231707] rounded-2xl border border-amber-200 dark:border-amber-800/60 flex items-center gap-2.5 text-amber-900 dark:text-amber-200">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <div className="text-xs sm:text-sm font-bold">
               {isUrdu ? 'روانگی اور منزل کا شہر ایک ہی منتخب ہے۔ برائے مہربانی مختلف شہر منتخب کریں۔' : 'Origin and destination cities are the same. Please select different cities.'}
             </div>

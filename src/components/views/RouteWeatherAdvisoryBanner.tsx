@@ -251,27 +251,27 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
     return (
       <div className={`flex items-center justify-between px-3 py-1.5 rounded-xl border text-xs transition-all ${
         hasRisk
-          ? 'bg-amber-50/70 border-amber-200 text-amber-900'
-          : 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+          ? 'bg-amber-50/70 dark:bg-[#231707] border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200'
+          : 'bg-emerald-50/70 dark:bg-[#0c2417] border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200'
       }`}>
         <div className="flex items-center gap-2">
           {hasRisk ? (
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
           ) : (
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
           )}
           <span className="font-bold text-[11px]">
             {isUrdu ? advisory.titleUr : advisory.titleEn}
           </span>
           {weatherFetchError && staleTimeLabel && (
-            <span className="text-[9px] text-amber-800 bg-amber-100/80 px-1 py-0.5 rounded">
+            <span className="text-[9px] text-amber-800 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-900/60 px-1 py-0.5 rounded">
               {staleTimeLabel}
             </span>
           )}
         </div>
         <button
           onClick={handleRestore}
-          className="text-[10px] font-bold underline hover:opacity-80 flex items-center gap-0.5 cursor-pointer"
+          className="text-[10px] font-bold underline hover:opacity-80 flex items-center gap-0.5 cursor-pointer text-slate-700 dark:text-slate-300"
         >
           <span>{isUrdu ? 'دوبارہ دیکھیں' : 'Show'}</span>
           <ChevronDown className="w-3 h-3" />
@@ -283,17 +283,17 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
   // 5. STALE DATA & COMPLETELY UNAVAILABLE STATE HANDLING
   if (isCompletelyUnavailable) {
     return (
-      <div className="bg-rose-50 border border-rose-200 rounded-2xl p-2.5 sm:p-3 text-rose-950 shadow-2xs relative overflow-hidden">
+      <div className="bg-rose-50 dark:bg-[#250d12] border border-rose-200 dark:border-rose-900/60 rounded-2xl p-2.5 sm:p-3 text-rose-950 dark:text-rose-200 shadow-2xs relative overflow-hidden">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-xl bg-rose-100 flex items-center justify-center shrink-0 text-rose-700">
+            <div className="w-7 h-7 rounded-xl bg-rose-100 dark:bg-rose-950/80 flex items-center justify-center shrink-0 text-rose-700 dark:text-rose-300">
               <WifiOff className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-serif font-bold text-xs text-rose-900">
+              <h3 className="font-serif font-bold text-xs text-rose-900 dark:text-rose-100">
                 {isUrdu ? 'موسمی ڈیٹا دستیاب نہیں' : 'Weather unavailable'}
               </h3>
-              <p className="text-[10px] text-rose-800">
+              <p className="text-[10px] text-rose-800 dark:text-rose-300">
                 {isUrdu
                   ? 'ہائی وے روٹ پر کنکشن کمزور ہونے کی وجہ سے ڈیٹا لوڈ نہیں ہوا۔'
                   : 'Weak connection along highway route.'}

@@ -187,11 +187,27 @@ body.urdu, [dir="rtl"] {
   font-family: "Noto Sans Arabic", sans-serif !important;
 }
 
-/* Headings in Urdu & Nastaleeq with proper line height to avoid clipping */
+/* Headings & Text in Urdu & Nastaleeq with proper line height to avoid glyph clipping & collision */
 body.urdu h1, body.urdu h2, body.urdu h3, body.urdu h4,
 [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4,
 .font-nastaliq, .font-jameel, .font-lahori, .font-akbar {
-  line-height: 1.7;
+  line-height: 1.8 !important;
+}
+
+body.urdu, [dir="rtl"] {
+  text-wrap: pretty;
+}
+
+/* BiDi Isolation: prevent numbers, phone numbers, and dates from scrambling or colliding with adjacent Urdu text */
+.dir-ltr, [dir="ltr"] {
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
+  text-align: left;
+}
+
+[dir="rtl"] .dir-ltr, [dir="rtl"] [dir="ltr"] {
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
 }
 
 /* Document & Scrolling Architecture - Native Mobile & Desktop Scroll */
@@ -358,12 +374,19 @@ html.dark .bg-gray-200 {
   color: #f8fafc !important;
 }
 
-/* Gradients that become silver glare in Dark Mode */
+/* Universal Glare Eliminator: Any light/silver gradients in Dark Mode */
 html.dark .bg-gradient-to-r.from-\[\#fbfbfa\],
 html.dark .bg-gradient-to-br.from-emerald-50\/80,
-html.dark .bg-gradient-to-br.from-amber-500\/15 {
+html.dark .bg-gradient-to-br.from-amber-500\/15,
+html.dark [class*="bg-gradient-"][class*="via-\[\#fdfbf7\]"],
+html.dark [class*="bg-gradient-"][class*="via-\[\#f8f9f5\]"],
+html.dark [class*="bg-gradient-"][class*="to-\[\#f7f5ed\]"],
+html.dark [class*="bg-gradient-"][class*="from-blue-50"],
+html.dark [class*="bg-gradient-"][class*="from-amber-50"],
+html.dark [class*="bg-gradient-"][class*="from-white"] {
   background-image: none !important;
   background-color: #16181e !important;
+  border-color: #2d313b !important;
 }
 
 /* High contrast text hierarchy in Dark Mode */

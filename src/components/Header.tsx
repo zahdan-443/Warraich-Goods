@@ -269,22 +269,22 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Top Left Menu Side Drawer (Triggered by clicking top-left menu icon) */}
       {isMenuOpen && (
-        <div onClick={handleCloseMenu} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-start justify-start animate-in fade-in duration-200">
-          <div onClick={(e) => e.stopPropagation()} className="bg-white w-full max-w-sm h-full shadow-2xl border-r border-[#ecece0] flex flex-col justify-between animate-in slide-in-from-left duration-300">
+        <div onClick={handleCloseMenu} className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-start animate-in fade-in duration-200">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-[#121316] w-full max-w-sm h-full shadow-2xl border-r border-[#ecece0] dark:border-[#2d313b] flex flex-col justify-between animate-in slide-in-from-left duration-300">
             {/* Scrollable Container for Desktop & Mobile */}
             <div className="flex-1 overflow-y-auto min-h-0">
               {/* Drawer Header */}
-              <div className="p-5 pt-[max(env(safe-area-inset-top,0px),1.25rem)] bg-[#fdfbf7] border-b border-[#ecece0] flex items-center justify-between sticky top-0 z-10">
+              <div className="p-5 pt-[max(env(safe-area-inset-top,0px),1.25rem)] bg-[#fdfbf7] dark:bg-[#16181e] border-b border-[#ecece0] dark:border-[#2d313b] flex items-center justify-between sticky top-0 z-10">
                 <div className="flex items-center gap-3">
                   <CompanyLogo className="w-10 h-10" />
                   <div>
-                    <div className="font-serif font-bold text-base text-[#4a4a35]">{t.appTitle}</div>
-                    <p className="text-[10px] text-[#8b9d77] font-sans uppercase tracking-wider">{lang === 'ur' ? 'سسٹم کنٹرول مینیو' : 'System Controls Menu'}</p>
+                    <div className="font-serif font-bold text-base text-[#4a4a35] dark:text-white">{t.appTitle}</div>
+                    <p className="text-[10px] text-[#8b9d77] dark:text-emerald-400 font-sans uppercase tracking-wider">{lang === 'ur' ? 'سسٹم کنٹرول مینیو' : 'System Controls Menu'}</p>
                   </div>
                 </div>
                 <button 
                   onClick={handleCloseMenu} 
-                  className="p-2 rounded-full bg-[#f0f0e4] hover:bg-[#e2e2d5] text-[#5a5a40] cursor-pointer"
+                  className="p-2 rounded-full bg-[#f0f0e4] dark:bg-[#22252c] hover:bg-[#e2e2d5] dark:hover:bg-[#2d313b] text-[#5a5a40] dark:text-slate-300 cursor-pointer"
                   aria-label={lang === 'ur' ? 'مینیو بند کریں' : 'Close System Menu'}
                 >
                   <X className="w-5 h-5" />
@@ -530,16 +530,16 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
 
                 {/* SECOND LAST ITEM: SHARE APP PROMINENT CARD */}
-                <div className="p-4 rounded-3xl bg-emerald-50/90 border border-emerald-200 space-y-2.5 shadow-2xs">
+                <div className="p-4 rounded-3xl bg-emerald-50/90 dark:bg-[#15231c] border border-emerald-200 dark:border-emerald-800/60 space-y-2.5 shadow-2xs">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-white border border-emerald-200 shadow-2xs text-emerald-700 shrink-0">
+                    <div className="p-2.5 rounded-2xl bg-white dark:bg-[#1a2e24] border border-emerald-200 dark:border-emerald-800/60 shadow-2xs text-emerald-700 dark:text-emerald-400 shrink-0">
                       <Share2 className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="font-serif font-bold text-sm text-emerald-950">
+                      <div className="font-serif font-bold text-sm text-emerald-950 dark:text-emerald-200">
                         {lang === 'ur' ? 'ایپ شیئر کریں' : 'Share Driver Dost App'}
                       </div>
-                      <div className="text-[11px] text-emerald-700">
+                      <div className="text-[11px] text-emerald-700 dark:text-emerald-400/90">
                         {lang === 'ur' ? 'اپنے دوستوں اور ڈرائیور بھائیوں کے ساتھ ایپ شیئر کریں' : 'Send app link to drivers & fellow transporters'}
                       </div>
                     </div>
@@ -558,32 +558,32 @@ export const Header: React.FC<HeaderProps> = ({
 
                 {/* NATIVE APP STATUS OR PWA INSTALL CARD */}
                 {isNativeApp() ? (
-                  <div className="p-4 rounded-3xl bg-emerald-50/90 border border-emerald-200 space-y-2 shadow-2xs">
+                  <div className="p-4 rounded-3xl bg-emerald-50/90 dark:bg-[#15231c] border border-emerald-200 dark:border-emerald-800/60 space-y-2 shadow-2xs">
                     <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-2xl bg-white border border-emerald-200 shadow-2xs text-emerald-800 shrink-0">
-                        <Shield className="w-5 h-5 text-emerald-600" />
+                      <div className="p-2.5 rounded-2xl bg-white dark:bg-[#1a2e24] border border-emerald-200 dark:border-emerald-800/60 shadow-2xs text-emerald-800 dark:text-emerald-400 shrink-0">
+                        <Shield className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                       </div>
                       <div>
-                        <div className="font-serif font-bold text-sm text-emerald-950">
+                        <div className="font-serif font-bold text-sm text-emerald-950 dark:text-emerald-200">
                           {lang === 'ur' ? 'ڈرائیور دوست (آفیشل اینڈرائیڈ ایپ)' : 'Driver Dost (Official App)'}
                         </div>
-                        <div className="text-[11px] text-emerald-700">
+                        <div className="text-[11px] text-emerald-700 dark:text-emerald-400/90">
                           {lang === 'ur' ? `ورژن ${APP_VERSION} • فعال و مستند` : `Version ${APP_VERSION} • Verified Native App`}
                         </div>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="p-4 rounded-3xl bg-blue-50/90 border border-blue-200 space-y-2.5 shadow-2xs">
+                  <div className="p-4 rounded-3xl bg-blue-50/90 dark:bg-[#141e2e] border border-blue-200 dark:border-blue-800/60 space-y-2.5 shadow-2xs">
                     <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-2xl bg-white border border-blue-200 shadow-2xs text-[#1e3a68] shrink-0">
+                      <div className="p-2.5 rounded-2xl bg-white dark:bg-[#19273d] border border-blue-200 dark:border-blue-800/60 shadow-2xs text-[#1e3a68] dark:text-blue-300 shrink-0">
                         <Download className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className="font-serif font-bold text-sm text-[#1e3a68]">
+                        <div className="font-serif font-bold text-sm text-[#1e3a68] dark:text-blue-200">
                           {lang === 'ur' ? 'ایپ انسٹال کریں (PWA)' : 'Install Official App'}
                         </div>
-                        <div className="text-[11px] text-blue-700">
+                        <div className="text-[11px] text-blue-700 dark:text-blue-300/90">
                           {lang === 'ur' ? 'ہوم اسکرین پر آف لائن استعمال کے لیے انسٹال کریں' : 'Install on mobile home screen for quick offline access'}
                         </div>
                       </div>
@@ -607,23 +607,23 @@ export const Header: React.FC<HeaderProps> = ({
                     handleCloseMenu();
                     setShowPrivacyPolicyModal(true);
                   }}
-                  className="w-full p-3.5 rounded-3xl bg-emerald-50/80 hover:bg-emerald-100/80 border border-emerald-200/80 shadow-2xs text-left cursor-pointer transition-all group active:scale-[0.98]"
+                  className="w-full p-3.5 rounded-3xl bg-emerald-50/80 dark:bg-[#15231c] hover:bg-emerald-100/80 dark:hover:bg-[#1b2f25] border border-emerald-200/80 dark:border-emerald-800/60 shadow-2xs text-left cursor-pointer transition-all group active:scale-[0.98]"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0 group-hover:scale-105 transition-transform">
-                        <Shield className="w-4 h-4 text-emerald-700" />
+                      <div className="p-2 rounded-xl bg-emerald-100 dark:bg-[#1a2e24] text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 shrink-0 group-hover:scale-105 transition-transform">
+                        <Shield className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
                       </div>
                       <div>
-                        <div className="font-serif font-bold text-xs text-emerald-950 group-hover:text-emerald-800 transition-colors">
+                        <div className="font-serif font-bold text-xs text-emerald-950 dark:text-emerald-200 group-hover:text-emerald-800 dark:group-hover:text-emerald-100 transition-colors">
                           {lang === 'ur' ? 'پرائیویسی پالیسی و ڈیٹا سیکیورٹی' : 'Privacy Policy & Data Security'}
                         </div>
-                        <p className="text-[10px] text-emerald-700 font-sans">
+                        <p className="text-[10px] text-emerald-700 dark:text-emerald-400/90 font-sans">
                           {lang === 'ur' ? 'ڈیٹا کے تحفظ اور استعمال کے اصول' : 'User data protection, encryption & compliance'}
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </button>
 
@@ -633,32 +633,32 @@ export const Header: React.FC<HeaderProps> = ({
                     handleCloseMenu();
                     setShowAboutModal(true);
                   }}
-                  className="w-full p-4 rounded-3xl bg-gradient-to-r from-blue-50/80 via-[#fdfbf7] to-[#f7f5ed] border border-blue-200/80 hover:border-blue-300 shadow-2xs text-left cursor-pointer transition-all group active:scale-[0.98]"
+                  className="w-full p-4 rounded-3xl bg-gradient-to-r from-blue-50/80 via-[#fdfbf7] to-[#f7f5ed] dark:from-[#131d2e] dark:via-[#16181e] dark:to-[#121316] border border-blue-200/80 dark:border-[#2d313b] hover:border-blue-300 dark:hover:border-blue-500/50 shadow-2xs text-left cursor-pointer transition-all group active:scale-[0.98]"
                 >
-                  <div className="flex items-center justify-between pb-2 border-b border-blue-100">
+                  <div className="flex items-center justify-between pb-2 border-b border-blue-100 dark:border-[#262a34]">
                     <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-xl bg-blue-100 text-blue-800 border border-blue-200 shrink-0 group-hover:scale-105 transition-transform">
+                      <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 shrink-0 group-hover:scale-105 transition-transform">
                         <Building2 className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="font-serif font-bold text-sm text-[#1e3a68] group-hover:text-blue-700 transition-colors">
+                        <div className="font-serif font-bold text-sm text-[#1e3a68] dark:text-blue-200 group-hover:text-blue-700 dark:group-hover:text-blue-100 transition-colors">
                           {lang === 'ur' ? 'ہمارے بارے میں اور رابطہ' : 'About Us & Contact Us'}
                         </div>
-                        <p className="text-[10px] text-[#8e8e75] font-sans">
+                        <p className="text-[10px] text-[#8e8e75] dark:text-slate-400 font-sans">
                           {lang === 'ur' ? 'مکمل تفصیلات اور دفتر کی معلومات' : 'Company profile, services & office address'}
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-blue-500 group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-4 h-4 text-blue-500 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform" />
                   </div>
 
-                  <div className="space-y-1.5 pt-2 text-xs text-[#5a5a40] font-sans">
-                    <div className="flex items-center gap-2 text-[11px] font-semibold text-[#1e3a68]">
-                      <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <div className="space-y-1.5 pt-2 text-xs text-[#5a5a40] dark:text-slate-300 font-sans">
+                    <div className="flex items-center gap-2 text-[11px] font-semibold text-[#1e3a68] dark:text-emerald-400">
+                      <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                       <span className="dir-ltr font-bold">0300-5370443</span>
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-[#6b6b55]">
-                      <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <div className="flex items-center gap-2 text-[11px] text-[#6b6b55] dark:text-slate-300">
+                      <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                       <span className="truncate">
                         {lang === 'ur' ? 'سمندری، فیصل آباد، پنجاب، پاکستان' : 'Samundri, Faisalabad, Punjab, Pakistan'}
                       </span>
@@ -670,7 +670,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Drawer Footer */}
-            <div className="p-4 bg-[#f0f0e4] border-t border-[#ecece0] text-center text-xs text-[#8e8e75]">
+            <div className="p-4 bg-[#f0f0e4] dark:bg-[#16181e] border-t border-[#ecece0] dark:border-[#2d313b] text-center text-xs text-[#8e8e75] dark:text-slate-400">
               Driver Dost · Pakistan Logistics & Transport Manager v{APP_VERSION}
             </div>
           </div>
@@ -711,16 +711,16 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Firebase Notifications Drawer / Modal */}
       {showNotifs && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-start justify-end p-4 sm:p-6 pt-[max(env(safe-area-inset-top,0px),5rem)] pb-[max(env(safe-area-inset-bottom,0px),1.5rem)]">
-          <div className="bg-white w-full max-w-sm rounded-[32px] shadow-2xl border border-[#ecece0] overflow-hidden animate-in fade-in slide-in-from-top-5">
-            <div className="p-5 bg-[#363626] text-white flex items-center justify-between">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-start justify-end p-4 sm:p-6 pt-[max(env(safe-area-inset-top,0px),5rem)] pb-[max(env(safe-area-inset-bottom,0px),1.5rem)]">
+          <div className="bg-white dark:bg-[#16181e] w-full max-w-sm rounded-[32px] shadow-2xl border border-[#ecece0] dark:border-[#2d313b] overflow-hidden animate-in fade-in slide-in-from-top-5">
+            <div className="p-5 bg-[#363626] dark:bg-[#1a1c22] text-white flex items-center justify-between border-b border-[#2d313b]/40">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-[#8b9d77] flex items-center justify-center text-xs">🔥</div>
+                <div className="w-7 h-7 rounded-full bg-[#8b9d77] dark:bg-emerald-700 flex items-center justify-center text-xs">🔥</div>
                 <div>
                   <div className="font-serif font-bold text-sm">
                     {lang === 'ur' ? 'نوٹیفیکیشن و الرٹس' : 'Push & System Feed'}
                   </div>
-                  <p className="text-[10px] text-[#c2c2a3] font-mono">
+                  <p className="text-[10px] text-[#c2c2a3] dark:text-slate-400 font-mono">
                     {lang === 'ur' ? 'کلاؤڈ و موبائل اسٹیٹس بار' : 'CLOUD & STATUS BAR ALERTS'}
                   </p>
                 </div>
@@ -732,7 +732,7 @@ export const Header: React.FC<HeaderProps> = ({
                     className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-mono flex items-center gap-1 cursor-pointer"
                     title="Mark all as read"
                   >
-                    <CheckCheck className="w-3 h-3 text-[#8b9d77]" />
+                    <CheckCheck className="w-3 h-3 text-[#8b9d77] dark:text-emerald-400" />
                     <span>{lang === 'ur' ? 'صاف کریں' : 'Clear'}</span>
                   </button>
                 )}
@@ -743,11 +743,11 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Mobile Status Bar Permission & Daily Digest Controls */}
-            <div className="p-3.5 bg-gradient-to-r from-amber-500/15 via-[#fdfbf7] to-amber-500/10 border-b border-amber-200 text-xs space-y-2.5">
+            <div className="p-3.5 bg-gradient-to-r from-amber-500/15 via-[#fdfbf7] to-amber-500/10 dark:from-amber-950/40 dark:via-[#1c1913] dark:to-amber-950/20 border-b border-amber-200 dark:border-amber-800/40 text-xs space-y-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-amber-700 shrink-0" />
-                  <span className="font-bold text-amber-950 text-[11px]">
+                  <Bell className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
+                  <span className="font-bold text-amber-950 dark:text-amber-200 text-[11px]">
                     {lang === 'ur' ? 'فون اسٹیٹس بار الرٹس' : 'Phone Status Bar Alerts'}
                   </span>
                 </div>
@@ -772,12 +772,12 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
 
               {/* Daily Morning Digest (Fuel, Weather, Roads) Toggle */}
-              <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between gap-2">
+              <div className="pt-2 border-t border-amber-200/60 dark:border-amber-900/50 flex items-center justify-between gap-2">
                 <div>
-                  <span className="font-semibold text-amber-950 text-[10.5px] block leading-tight">
+                  <span className="font-semibold text-amber-950 dark:text-amber-200 text-[10.5px] block leading-tight">
                     {lang === 'ur' ? 'روزانہ صبح فیول و موسم الرٹ' : 'Daily Fuel & Weather Alert'}
                   </span>
-                  <span className="text-[9.5px] text-amber-900/70 block">
+                  <span className="text-[9.5px] text-amber-900/70 dark:text-amber-400/80 block">
                     {lang === 'ur' 
                       ? (digestSettings.enabled ? 'فعال • 24 گھنٹے میں صرف 1 بار' : 'بند ہے • نوٹیفکیشن نہیں آئے گا')
                       : (digestSettings.enabled ? 'Enabled • 1x daily status bar' : 'Disabled')}
@@ -789,36 +789,36 @@ export const Header: React.FC<HeaderProps> = ({
                   className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer shrink-0 ${
                     digestSettings.enabled
                       ? 'bg-emerald-700 text-white border-emerald-800 shadow-2xs'
-                      : 'bg-white text-slate-600 border-[#d0d0be] hover:bg-slate-50'
+                      : 'bg-white dark:bg-[#22252c] text-slate-600 dark:text-slate-300 border-[#d0d0be] dark:border-[#373c48] hover:bg-slate-50 dark:hover:bg-[#2d313b]'
                   }`}
                 >
                   {digestSettings.enabled ? (lang === 'ur' ? 'آن (ON)' : 'ON') : (lang === 'ur' ? 'آف (OFF)' : 'OFF')}
                 </button>
               </div>
 
-              <p className="text-[9.5px] text-amber-900/80 leading-snug">
+              <p className="text-[9.5px] text-amber-900/80 dark:text-amber-300/80 leading-snug">
                 {notifPerm === 'granted'
                   ? (lang === 'ur' ? '✅ موبائل نوٹیفکیشن فعال ہے۔ ضروری آپریشنل الرٹس فون پر موصول ہوں گے۔' : '✅ Status bar notifications are enabled on this device.')
                   : (lang === 'ur' ? 'تمام نوٹسز موبائل کے اسٹیٹس بار پر پانے کے لیے اوپر بٹن سے منظوری دیں۔' : 'Allow notifications to receive transport updates in your device status bar.')}
               </p>
             </div>
 
-            <div className="max-h-[380px] overflow-y-auto p-4 space-y-3 bg-[#fdfbf7]">
+            <div className="max-h-[380px] overflow-y-auto p-4 space-y-3 bg-[#fdfbf7] dark:bg-[#121316]">
               {notifications.length === 0 ? (
-                <div className="py-8 text-center text-xs text-[#8e8e75]">No cloud alerts received.</div>
+                <div className="py-8 text-center text-xs text-[#8e8e75] dark:text-slate-400">No cloud alerts received.</div>
               ) : (
                 notifications.map((n) => (
                   <div
                     key={n.id}
-                    className={`p-3.5 rounded-2xl border transition-all text-left ${n.unread ? 'bg-white border-[#8b9d77]/40 shadow-xs ring-1 ring-[#8b9d77]/20' : 'bg-[#f0f0e4]/50 border-[#ecece0] opacity-75'}`}
+                    className={`p-3.5 rounded-2xl border transition-all text-left ${n.unread ? 'bg-white dark:bg-[#1a1c22] border-[#8b9d77]/40 dark:border-emerald-600/40 shadow-xs ring-1 ring-[#8b9d77]/20 dark:ring-emerald-600/20' : 'bg-[#f0f0e4]/50 dark:bg-[#18191e] border-[#ecece0] dark:border-[#2d313b] opacity-85'}`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <span className="font-serif font-bold text-xs text-[#4a4a35]">{n.title}</span>
-                      <span className="text-[9px] font-mono text-[#8e8e75] shrink-0">{n.time}</span>
+                      <span className="font-serif font-bold text-xs text-[#4a4a35] dark:text-white">{n.title}</span>
+                      <span className="text-[9px] font-mono text-[#8e8e75] dark:text-slate-400 shrink-0">{n.time}</span>
                     </div>
-                    <p className="text-xs text-[#6b6b55] font-sans leading-relaxed">{n.message}</p>
+                    <p className="text-xs text-[#6b6b55] dark:text-slate-300 font-sans leading-relaxed">{n.message}</p>
                     <div className="mt-2 flex items-center justify-between">
-                      <span className="px-2 py-0.5 rounded text-[9px] font-mono uppercase font-bold bg-[#8b9d77]/15 text-[#5a5a40]">
+                      <span className="px-2 py-0.5 rounded text-[9px] font-mono uppercase font-bold bg-[#8b9d77]/15 dark:bg-emerald-950/60 text-[#5a5a40] dark:text-emerald-300 border border-transparent dark:border-emerald-800/40">
                         {n.type} alert
                       </span>
                       {n.unread && <span className="w-2 h-2 rounded-full bg-[#EF4444]"></span>}

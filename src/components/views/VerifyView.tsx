@@ -1131,27 +1131,27 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
               </form>
 
               {/* Highway Penalty Tariffs Info Banner */}
-              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1 font-sans">
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-[#231707] border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200 space-y-1 font-sans">
                 <div className="font-bold flex items-center gap-1.5">
-                  <Info className="w-4 h-4 text-amber-700" />
+                  <Info className="w-4 h-4 text-amber-700 dark:text-amber-400" />
                   <span>{isUrdu ? 'کمرشل گاڑیوں کے اہم چالان ریٹس (موٹروے و ہائی وے):' : 'Commercial Highway Challan Tariffs:'}</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-[11px]">
-                  <div className="bg-white p-2 rounded-xl border border-amber-200">
-                    <span className="block text-gray-500 font-sans">{isUrdu ? 'اوور اسپیڈنگ:' : 'Over-speeding:'}</span>
-                    <span className="font-bold text-[#4a4a35]">Rs. 2,500</span>
+                  <div className="bg-white dark:bg-[#16181e] p-2 rounded-xl border border-amber-200 dark:border-amber-900/50">
+                    <span className="block text-gray-500 dark:text-slate-400 font-sans">{isUrdu ? 'اوور اسپیڈنگ:' : 'Over-speeding:'}</span>
+                    <span className="font-bold text-[#4a4a35] dark:text-white">Rs. 2,500</span>
                   </div>
-                  <div className="bg-white p-2 rounded-xl border border-amber-200">
-                    <span className="block text-gray-500 font-sans">{isUrdu ? 'اوور لوڈنگ ایکسل:' : 'Axle Overload:'}</span>
-                    <span className="font-bold text-[#4a4a35]">Rs. 5,000</span>
+                  <div className="bg-white dark:bg-[#16181e] p-2 rounded-xl border border-amber-200 dark:border-amber-900/50">
+                    <span className="block text-gray-500 dark:text-slate-400 font-sans">{isUrdu ? 'اوور لوڈنگ ایکسل:' : 'Axle Overload:'}</span>
+                    <span className="font-bold text-[#4a4a35] dark:text-white">Rs. 5,000</span>
                   </div>
-                  <div className="bg-white p-2 rounded-xl border border-amber-200">
-                    <span className="block text-gray-500 font-sans">{isUrdu ? 'لین کی خلاف ورزی:' : 'Lane Violation:'}</span>
-                    <span className="font-bold text-[#4a4a35]">Rs. 1,000</span>
+                  <div className="bg-white dark:bg-[#16181e] p-2 rounded-xl border border-amber-200 dark:border-amber-900/50">
+                    <span className="block text-gray-500 dark:text-slate-400 font-sans">{isUrdu ? 'لین کی خلاف ورزی:' : 'Lane Violation:'}</span>
+                    <span className="font-bold text-[#4a4a35] dark:text-white">Rs. 1,000</span>
                   </div>
-                  <div className="bg-white p-2 rounded-xl border border-amber-200">
-                    <span className="block text-gray-500 font-sans">{isUrdu ? 'بغیر M-Tag انٹری:' : 'No M-Tag Pass:'}</span>
-                    <span className="font-bold text-[#4a4a35]">Rs. 1,500</span>
+                  <div className="bg-white dark:bg-[#16181e] p-2 rounded-xl border border-amber-200 dark:border-amber-900/50">
+                    <span className="block text-gray-500 dark:text-slate-400 font-sans">{isUrdu ? 'بغیر M-Tag انٹری:' : 'No M-Tag Pass:'}</span>
+                    <span className="font-bold text-[#4a4a35] dark:text-white">Rs. 1,500</span>
                   </div>
                 </div>
               </div>
@@ -1190,12 +1190,12 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   </span>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200 text-xs text-blue-900 space-y-2">
+                <div className="p-4 rounded-2xl bg-blue-50/80 dark:bg-[#0f1d31] border border-blue-200 dark:border-blue-900/60 text-xs text-blue-900 dark:text-blue-200 space-y-2">
                   <div className="flex items-center gap-2 font-bold">
-                    <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                     <span>{isUrdu ? 'گاڑی نمبر کاپی ہو چکا ہے!' : 'Vehicle Identifier Copied!'}</span>
                   </div>
-                  <p className="text-[11px] leading-relaxed text-blue-800">
+                  <p className="text-[11px] leading-relaxed text-blue-800 dark:text-blue-300">
                     {isUrdu
                       ? 'پنجاب سیف سٹی اتھارٹی (PSCA) کے پورٹل پر لائیو ای چالان، جرمانے اور ویڈیو کیمرہ ریکارڈز چیک کرنے کے لیے نیچے بٹن دبائیں۔'
                       : 'To inspect live e-challans, traffic violations and speed camera penalties on the official PSCA portal, click the button below.'}
@@ -1423,16 +1423,16 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
                 {/* Search not found message */}
                 {!isBiltyLoading && biltySearchAttempted && !verifiedBilty && (
-                  <div className="p-5 sm:p-6 rounded-3xl bg-amber-50/80 border border-amber-200 text-amber-950 space-y-3 animate-in fade-in">
+                  <div className="p-5 sm:p-6 rounded-3xl bg-amber-50/80 dark:bg-[#231707] border border-amber-200 dark:border-amber-800/60 text-amber-950 dark:text-amber-100 space-y-3 animate-in fade-in">
                     <div className="flex items-start gap-3">
                       <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5">
                         <AlertTriangle className="w-5 h-5" />
                       </div>
                       <div className="space-y-1">
-                        <h4 className="font-serif font-bold text-sm text-amber-900">
+                        <h4 className="font-serif font-bold text-sm text-amber-900 dark:text-amber-200">
                           {isUrdu ? 'بلٹی نمبر رجسٹرڈ نہیں ملا' : 'Bilty Record Not Found'}
                         </h4>
-                        <p className="text-xs text-amber-800 leading-relaxed">
+                        <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
                           {isUrdu
                             ? `نمبر "${biltyQuery}" کے تحت کوئی بلٹی ریکارڈ نہیں ملا۔ براہ کرم بلٹی نمبر کی درستگی چیک کریں یا لوڈ ٹریکر شیٹ سے تصدیق کریں۔`
                             : `No local dispatch record matched "${biltyQuery}". Please double check the Bilty number or verify directly via Warraich Goods Google Sheets Load Tracker.`}
@@ -1440,8 +1440,8 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                       </div>
                     </div>
 
-                    <div className="p-3 bg-white/80 rounded-2xl border border-amber-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                      <span className="text-[#5a5a40]">
+                    <div className="p-3 bg-white/80 dark:bg-[#16181e] rounded-2xl border border-amber-200 dark:border-amber-900/50 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                      <span className="text-[#5a5a40] dark:text-slate-300">
                         {isUrdu ? 'ورائچ گڈز 24/7 ہیلپ لائن رابطہ:' : 'Warraich Goods 24/7 Helpline:'}
                       </span>
                       <div className="font-mono font-bold text-[#4a5e38] flex items-center gap-3">

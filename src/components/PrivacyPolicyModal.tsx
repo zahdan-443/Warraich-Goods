@@ -244,27 +244,27 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
           </div>
 
           {/* Section 9: Developer Contact & Links */}
-          <div className="bg-gradient-to-br from-[#f7f5ed] to-white p-4 sm:p-5 rounded-2xl border border-[#ecece0] space-y-3 shadow-2xs">
-            <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
-              <Building2 className="w-4 h-4 text-emerald-600" />
+          <div className="bg-gradient-to-br from-[#f7f5ed] to-white dark:from-[#1a1c22] dark:to-[#16181e] p-4 sm:p-5 rounded-2xl border border-[#ecece0] dark:border-[#2d313b] space-y-3 shadow-2xs">
+            <div className="flex items-center gap-2 border-b border-[#ecece0] dark:border-[#2d313b] pb-2 text-[#1e3a68] dark:text-blue-300">
+              <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <h3 className="font-serif font-bold text-sm">
                 {isUrdu ? '9. رابطہ برائے کمپنی و ڈویلپر (Contact & Support)' : '9. Contact & Support Details'}
               </h3>
             </div>
-            <div className="text-xs text-[#5a5a40] space-y-2">
+            <div className="text-xs text-[#5a5a40] dark:text-slate-300 space-y-2">
               <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-[#8b9d77] shrink-0" />
+                <Building2 className="w-4 h-4 text-[#8b9d77] dark:text-emerald-400 shrink-0" />
                 <span><strong>{isUrdu ? 'کمپنی:' : 'Entity:'}</strong> {isUrdu ? 'وڑائچ گڈز ٹرانسپورٹ کمپنی' : 'Warraich Goods Transport Company'}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-blue-600 shrink-0" />
-                <span><strong>{isUrdu ? 'آفیشل ای میل:' : 'Official Email:'}</strong> <span className="dir-ltr font-mono font-bold text-[#1e3a68]">warraichgoods43@gmail.com</span></span>
+                <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span><strong>{isUrdu ? 'آفیشل ای میل:' : 'Official Email:'}</strong> <span className="dir-ltr font-mono font-bold text-[#1e3a68] dark:text-blue-300">warraichgoods43@gmail.com</span></span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span><strong>{isUrdu ? 'ہیلپ لائن / فون:' : 'Phone / Contact:'}</strong> <span className="dir-ltr font-bold text-[#1e3a68]">+92 300 5370443</span></span>
+                <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span><strong>{isUrdu ? 'ہیلپ لائن / فون:' : 'Phone / Contact:'}</strong> <span className="dir-ltr font-bold text-[#1e3a68] dark:text-emerald-400 font-mono">+92 300 5370443</span></span>
               </div>
-              <div className="pt-2 border-t border-[#ecece0] flex items-center justify-between flex-wrap gap-2">
+              <div className="pt-2 border-t border-[#ecece0] dark:border-[#2d313b] flex items-center justify-between flex-wrap gap-2">
                 <a 
                   href="./privacy.html" 
                   target="_blank" 

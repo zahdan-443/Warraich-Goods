@@ -904,13 +904,13 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                           </div>
                         )}
 
-                        <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs flex items-start gap-2 leading-relaxed">
-                          <Info className="w-4 h-4 shrink-0 text-amber-700 mt-0.5" />
+                        <div className="p-3 rounded-xl bg-amber-50/80 dark:bg-[#231707] border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2 leading-relaxed">
+                          <Info className="w-4 h-4 shrink-0 text-amber-700 dark:text-amber-400 mt-0.5" />
                           <div>
                             <p className="font-semibold">
                               {isUrdu ? 'متبادل روٹ موازنہ نوٹس:' : 'Route Comparison Notice:'}
                             </p>
-                            <p className="text-xs text-amber-800 mt-0.5">
+                            <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
                               {isUrdu
                                 ? (comparisonResult?.informationalNoticeUr || 'اس شہر کے جوڑے کے لیے فی الوقت صرف ایک روٹ ڈیٹا دستیاب ہے۔ متبادل روٹ ڈیٹا کے بغیر موازنہ ممکن نہیں۔')
                                 : (comparisonResult?.informationalNoticeEn || 'Only one route currently exists in the dataset for this city pair. Alternate route comparison requires additional route data.')}

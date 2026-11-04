@@ -146,9 +146,9 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
         {/* Primary High-Impact Rates: High Speed Diesel & Super Petrol */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           {/* High Speed Diesel Card (Primary Freight Driver) */}
-          <div className="bg-gradient-to-br from-emerald-50/80 via-[#fdfbf7] to-emerald-50/40 p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/80 shadow-2xs space-y-1 relative overflow-hidden group">
+          <div className="bg-gradient-to-br from-emerald-50/80 via-[#fdfbf7] to-emerald-50/40 dark:from-[#0d281a] dark:via-[#16181e] dark:to-[#0d281a] p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/80 dark:border-emerald-600/70 shadow-2xs space-y-1 relative overflow-hidden group">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5 font-serif">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5 font-serif">
                 <span>🛢️</span>
                 <span>{lang === 'ur' ? 'ہائی اسپیڈ ڈیزل (HSD)' : 'High Speed Diesel (HSD)'}</span>
               </span>
@@ -158,14 +158,14 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
             </div>
             
             <div className="flex items-baseline gap-1.5 pt-1">
-              <span className="text-xs font-bold text-emerald-700 font-mono">Rs.</span>
-              <span className="text-3xl sm:text-4xl font-extrabold font-mono text-emerald-800 tracking-tight">
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 font-mono">Rs.</span>
+              <span className="text-3xl sm:text-4xl font-extrabold font-mono text-emerald-800 dark:text-emerald-200 tracking-tight">
                 {dieselPrice}
               </span>
-              <span className="text-xs font-medium text-emerald-700/80">/ {lang === 'ur' ? 'لیٹر' : 'Ltr'}</span>
+              <span className="text-xs font-medium text-emerald-700/80 dark:text-emerald-300">/ {lang === 'ur' ? 'لیٹر' : 'Ltr'}</span>
             </div>
             
-            <p className="text-[11px] text-emerald-800/80 pt-1">
+            <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/90 pt-1">
               {lang === 'ur' 
                 ? 'تمام ٹرپ کیلکولیشنز اور گاڑی حساب کے لیے نافذ العمل ریٹ' 
                 : 'Primary active benchmark for all trip calculations & vehicle ledger'}
@@ -173,26 +173,26 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
           </div>
 
           {/* Premier Petrol (PMG) */}
-          <div className="bg-[#fdfbf7] p-4 sm:p-5 rounded-2xl border border-[#ecece0] hover:border-[#8b9d77] transition-all shadow-2xs space-y-1">
+          <div className="bg-[#fdfbf7] dark:bg-[#1a1c22] p-4 sm:p-5 rounded-2xl border border-[#ecece0] dark:border-[#2d313b] hover:border-[#8b9d77] dark:hover:border-slate-500 transition-all shadow-2xs space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5 font-serif">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5 font-serif">
                 <span>⛽</span>
                 <span>{lang === 'ur' ? 'پریمیئر موٹر پٹرول (PMG)' : 'Premier Petrol (PMG)'}</span>
               </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                 Super Petrol
               </span>
             </div>
 
             <div className="flex items-baseline gap-1.5 pt-1">
-              <span className="text-xs font-bold text-slate-500 font-mono">Rs.</span>
-              <span className="text-3xl sm:text-4xl font-extrabold font-mono text-slate-800 tracking-tight">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 font-mono">Rs.</span>
+              <span className="text-3xl sm:text-4xl font-extrabold font-mono text-slate-800 dark:text-white tracking-tight">
                 {petrolPrice}
               </span>
-              <span className="text-xs font-medium text-slate-500">/ {lang === 'ur' ? 'لیٹر' : 'Ltr'}</span>
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">/ {lang === 'ur' ? 'لیٹر' : 'Ltr'}</span>
             </div>
 
-            <p className="text-[11px] text-slate-500 pt-1">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-1">
               {lang === 'ur' 
                 ? 'اوگرا کی جانب سے مقرر کردہ اوپن مارکیٹ فیول ریٹ' 
                 : 'Official retail rate notified by OGRA / Government of Pakistan'}

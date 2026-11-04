@@ -724,11 +724,12 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
                             </div>
                           </div>
 
-                          <div className="text-right shrink-0">
+                          <div className="text-end shrink-0">
                             <div
-                              className={`text-base font-black ${
+                              className={`text-base font-black font-mono whitespace-nowrap ${
                                 isGave ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
                               }`}
+                              dir="ltr"
                             >
                               {isGave ? '-' : '+'} PKR {entry.amount.toLocaleString('en-US')}
                             </div>
@@ -1088,41 +1089,49 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
                   setSelectedAccountId(account.id);
                   setEntriesLimit(50);
                 }}
-                className="min-h-[64px] bg-white dark:bg-slate-900 rounded-2xl p-3.5 sm:p-4 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3 group shadow-2xs"
+                className="min-h-[68px] bg-white dark:bg-slate-900 rounded-2xl p-3.5 sm:p-4 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3 sm:gap-4 group shadow-2xs"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="w-11 h-11 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-700 dark:text-slate-300 shrink-0 text-base shadow-inner">
                     {account.name.charAt(0).toUpperCase()}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <h4 className="text-sm font-extrabold text-slate-900 dark:text-white truncate">
+                      <h4 className="text-sm font-extrabold text-slate-900 dark:text-white truncate leading-relaxed">
                         {account.name}
                       </h4>
                       {dueDateBadge}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
-                      {cleanPhone && <span className="font-medium">📞 {cleanPhone}</span>}
-                      <span>•</span>
-                      <span>{account.updatedAt.split('T')[0]}</span>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
+                      {cleanPhone && (
+                        <span className="font-mono text-[11px] font-medium inline-flex items-center gap-1 dir-ltr shrink-0 text-slate-600 dark:text-slate-300" dir="ltr">
+                          <span>📞</span>
+                          <span>{cleanPhone}</span>
+                        </span>
+                      )}
+                      {cleanPhone && <span className="text-slate-400 shrink-0">•</span>}
+                      <span className="font-mono text-[11px] dir-ltr shrink-0 text-slate-500 dark:text-slate-400 whitespace-nowrap" dir="ltr">
+                        {account.updatedAt.split('T')[0]}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="text-right shrink-0 flex items-center gap-2.5">
-                  <div>
+                <div className="text-end shrink-0 flex items-center gap-2 sm:gap-2.5">
+                  <div className="text-end">
                     <div
-                      className={`text-sm sm:text-base font-black tracking-tight ${
+                      className={`text-sm sm:text-base font-black font-mono tracking-tight whitespace-nowrap ${
                         balance > 0
                           ? 'text-emerald-600 dark:text-emerald-400'
                           : balance < 0
                           ? 'text-rose-600 dark:text-rose-400'
                           : 'text-slate-400'
                       }`}
+                      dir="ltr"
                     >
                       PKR {Math.abs(balance).toLocaleString('en-US')}
                     </div>
-                    <span className="text-xs text-slate-400 block font-semibold">
+                    <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 block font-semibold whitespace-nowrap leading-tight">
                       {balance > 0
                         ? (isUrdu ? 'ملنا ہے (لینا)' : "You'll get")
                         : balance < 0

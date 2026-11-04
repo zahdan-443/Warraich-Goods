@@ -354,22 +354,22 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
 
         {/* Phase 2: Dual Camera Hardware Support Banner (Explaining why dual is or isn't supported) */}
         {!dualCapability.supported && !showDualNoticeDismissed && (
-          <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 shadow-sm text-amber-900 animate-in fade-in">
+          <div className="bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-800/60 rounded-2xl p-4 shadow-sm text-amber-900 dark:text-amber-200 animate-in fade-in">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3">
-                <span className="p-2 bg-amber-100 rounded-xl text-amber-700 shrink-0 mt-0.5">
+                <span className="p-2 bg-amber-100 dark:bg-amber-900/60 rounded-xl text-amber-700 dark:text-amber-300 shrink-0 mt-0.5">
                   <Info className="w-5 h-5" />
                 </span>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-amber-900">
+                    <h3 className="text-sm font-bold text-amber-900 dark:text-amber-100">
                       {isUrdu ? 'ڈوئل کیمرہ سپورٹ کی تفصیل (Dual-Camera Capability)' : 'Dual-Camera Hardware Capability Notice'}
                     </h3>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-800">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-900/70 text-amber-800 dark:text-amber-200">
                       {isUrdu ? 'سنگل کیمرہ فال بیک' : 'Single Road Fallback'}
                     </span>
                   </div>
-                  <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                  <p className="text-xs text-amber-800 dark:text-amber-300/90 mt-1 leading-relaxed">
                     {isUrdu
                       ? 'اس ڈیوائس کا ہارڈویئر بیک وقت ڈوئل کیمرہ (سامنے اور اندرون کیبن) سپورٹ نہیں کرتا۔ ایپ خودکار طور پر بغیر کسی رکاوٹ کے مرکزی روڈ کیمرہ استعمال کرے گی۔'
                       : 'Dual-camera simultaneous capture (front cabin + rear road) is not supported on this device hardware. Recording will reliably proceed using the primary Road camera.'}
@@ -378,17 +378,17 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                   {/* Toggle Hardware Details */}
                   <button
                     onClick={() => setShowHardwareDetails(!showHardwareDetails)}
-                    className="mt-2 text-xs font-semibold text-amber-900 flex items-center gap-1 hover:underline"
+                    className="mt-2 text-xs font-semibold text-amber-900 dark:text-amber-300 flex items-center gap-1 hover:underline"
                   >
                     <span>{isUrdu ? 'ہارڈویئر کی تفصیلات دیکھیں' : 'View Hardware Diagnostic Details'}</span>
                     {showHardwareDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                   </button>
 
                   {showHardwareDetails && (
-                    <div className="mt-2 p-2.5 bg-white/70 rounded-xl border border-amber-200 text-xs font-mono text-amber-950 space-y-1">
+                    <div className="mt-2 p-2.5 bg-white/70 dark:bg-[#16181e] rounded-xl border border-amber-200 dark:border-amber-800/60 text-xs font-mono text-amber-950 dark:text-amber-200 space-y-1">
                       <p>• API Check: {dualCapability.apiLevel ? `Android API ${dualCapability.apiLevel}` : 'CameraManager concurrent check'}</p>
                       <p>• Reason: {fallbackReason || dualCapability.reason || 'CameraManager.getConcurrentCameraIds() returned empty or single stream supported.'}</p>
-                      <p className="text-[11px] text-amber-800 font-sans">
+                      <p className="text-[11px] text-amber-800 dark:text-amber-300 font-sans">
                         {isUrdu
                           ? 'نوٹ: اینڈرائیڈ 11+ پر صرف مخصوص فلیگ شپ چپ سیٹس بیک وقت دو کیمرہ سینسرز پر انکوڈنگ کی اجازت دیتے ہیں۔'
                           : 'Note: On Android, concurrent camera streaming requires hardware ISP support reported by CameraManager.getConcurrentCameraIds().'}
@@ -400,7 +400,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
 
               <button
                 onClick={() => setShowDualNoticeDismissed(true)}
-                className="text-amber-500 hover:text-amber-700 p-1 rounded-lg hover:bg-amber-100/50"
+                className="text-amber-500 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-200 p-1 rounded-lg hover:bg-amber-100/50 dark:hover:bg-amber-900/40"
                 title={isUrdu ? 'بند کریں' : 'Dismiss'}
               >
                 <X className="w-4 h-4" />
@@ -411,21 +411,21 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
 
         {/* When Dual IS supported */}
         {dualCapability.supported && (
-          <div className="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-3.5 shadow-sm text-emerald-900 flex items-center justify-between gap-3 animate-in fade-in">
+          <div className="bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-3.5 shadow-sm text-emerald-900 dark:text-emerald-200 flex items-center justify-between gap-3 animate-in fade-in">
             <div className="flex items-center gap-2.5">
-              <span className="p-1.5 bg-emerald-100 rounded-lg text-emerald-700">
+              <span className="p-1.5 bg-emerald-100 dark:bg-emerald-900/60 rounded-lg text-emerald-700 dark:text-emerald-300">
                 <Sparkles className="w-4 h-4" />
               </span>
               <div>
-                <p className="text-xs font-bold text-emerald-950">
+                <p className="text-xs font-bold text-emerald-950 dark:text-emerald-100">
                   {isUrdu ? 'ڈوئل کیمرہ سینسرز فعال ہیں (Concurrent Dual Ready)' : 'Dual-Camera Hardware Supported'}
                 </p>
-                <p className="text-[11px] text-emerald-700">
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400/90">
                   {isUrdu ? 'روڈ اور کیبن دونوں کیمرے بیک وقت دو علیحدہ سنکڈ کلپس میں ریکارڈ ہو سکتے ہیں۔' : 'Simultaneous road and cabin recording is fully available.'}
                 </p>
               </div>
             </div>
-            <span className="text-[11px] font-semibold px-2.5 py-1 bg-emerald-200/70 text-emerald-800 rounded-full">
+            <span className="text-[11px] font-semibold px-2.5 py-1 bg-emerald-200/70 dark:bg-emerald-900/70 text-emerald-800 dark:text-emerald-200 rounded-full">
               {isUrdu ? 'سپورٹ موجود ہے' : 'Dual Ready'}
             </span>
           </div>
@@ -724,7 +724,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                 return (
                   <div
                     key={clip.id}
-                    className="p-4 rounded-2xl border border-gray-100 dark:border-[#2d313b] hover:border-gray-200 dark:hover:border-slate-600 bg-gray-50/70 dark:bg-[#16181e] hover:bg-white dark:hover:bg-[#1e222a] transition-all space-y-3 shadow-sm hover:shadow"
+                    className="p-4 rounded-2xl border border-gray-150 dark:border-[#2d313b] hover:border-gray-300 dark:hover:border-slate-500 bg-gray-50/80 dark:bg-[#16181e] hover:bg-white dark:hover:bg-[#1c1f26] transition-all space-y-3 shadow-sm hover:shadow"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="space-y-1">
@@ -759,18 +759,18 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                       </div>
 
                       {/* File Size */}
-                      <span className="text-[11px] font-mono text-gray-500 dark:text-slate-300 bg-white dark:bg-[#22252c] px-2 py-0.5 rounded-md border border-gray-150 dark:border-[#2d313b] shrink-0">
+                      <span className="text-[11px] font-mono text-gray-600 dark:text-emerald-400 bg-white dark:bg-[#121316] px-2 py-0.5 rounded-md border border-gray-200 dark:border-[#2d313b] shrink-0 font-bold">
                         {formatFileSize(clip.sizeBytes)}
                       </span>
                     </div>
 
                     {/* Metadata: Date & Duration */}
-                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 pt-1 border-t border-gray-100 dark:border-[#2d313b]">
+                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-300 pt-1 border-t border-gray-150 dark:border-[#2d313b]">
                       <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-gray-400 dark:text-slate-500" />
-                        <span>{clip.durationSeconds > 0 ? formatTime(clip.durationSeconds) : '< 1s'}</span>
+                        <Clock className="w-3.5 h-3.5 text-gray-400 dark:text-emerald-400" />
+                        <span className="font-mono">{clip.durationSeconds > 0 ? formatTime(clip.durationSeconds) : '< 1s'}</span>
                       </div>
-                      <span className="text-[11px] text-gray-400 dark:text-slate-500">{clip.dateFormatted}</span>
+                      <span className="text-[11px] font-mono text-gray-500 dark:text-slate-300" dir="ltr">{clip.dateFormatted}</span>
                     </div>
 
                     {/* Actions: Play, Share & Delete */}
@@ -788,11 +788,11 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                         type="button"
                         onClick={() => handleShareClip(clip)}
                         disabled={sharingClipId === clip.id}
-                        className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-colors flex items-center justify-center active:scale-95"
+                        className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 transition-colors flex items-center justify-center active:scale-95"
                         title={isUrdu ? 'ویڈیو شیئر کریں (WhatsApp/Email)' : 'Share Video'}
                       >
                         {sharingClipId === clip.id ? (
-                          <RefreshCw className="w-4 h-4 animate-spin text-emerald-700" />
+                          <RefreshCw className="w-4 h-4 animate-spin text-emerald-700 dark:text-emerald-300" />
                         ) : (
                           <Share2 className="w-4 h-4" />
                         )}
@@ -802,7 +802,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                         <a
                           href={clip.blobUrl}
                           download={clip.filename}
-                          className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                          className="p-2 rounded-xl bg-gray-100 dark:bg-[#22252c] hover:bg-gray-200 dark:hover:bg-[#2c313a] text-gray-700 dark:text-slate-200 border border-gray-200 dark:border-[#2d313b] transition-colors"
                           title={isUrdu ? 'ڈاؤن لوڈ' : 'Download'}
                         >
                           <Download className="w-4 h-4" />
@@ -811,7 +811,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
 
                       <button
                         onClick={() => setClipToDelete(clip)}
-                        className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+                        className="p-2 rounded-xl bg-red-50 dark:bg-red-950/60 hover:bg-red-100 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/60 transition-colors"
                         title={isUrdu ? 'ڈیلیٹ کریں' : 'Delete'}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -827,28 +827,28 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
 
       {/* Permissions Explanation Modal */}
       {showPermissionModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-[#16181e] border border-transparent dark:border-[#2d313b] rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5">
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-[#1b4332]/10 rounded-2xl text-[#1b4332] shrink-0">
+              <div className="p-3 bg-[#1b4332]/10 dark:bg-emerald-950/60 rounded-2xl text-[#1b4332] dark:text-emerald-400 shrink-0">
                 <ShieldCheck className="w-8 h-8" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-bold text-gray-900">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100">
                   {isUrdu ? 'کیمرہ اور مائیکروفون کی اجازت' : 'Camera & Microphone Access'}
                 </h3>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-slate-400">
                   {isUrdu ? 'ڈیش کیم ریکارڈنگ کے لیے ضروری منظوری' : 'Required for background vehicle recording'}
                 </p>
               </div>
             </div>
 
-            <div className="space-y-3 text-xs text-gray-600 bg-[#F4F6F0] p-4 rounded-2xl">
+            <div className="space-y-3 text-xs text-gray-600 dark:text-slate-300 bg-[#F4F6F0] dark:bg-[#1c1f26] border border-gray-100 dark:border-[#2d313b] p-4 rounded-2xl">
               <div className="flex items-start gap-2.5">
                 <span className="p-1 bg-[#1b4332] text-white rounded-md text-[10px]">1</span>
                 <div>
-                  <span className="font-bold text-gray-800">{isUrdu ? 'روڈ اور کیبن کیمرہ:' : 'Road & Cabin Cameras:'}</span>
-                  <p className="text-gray-500 mt-0.5">
+                  <span className="font-bold text-gray-800 dark:text-slate-200">{isUrdu ? 'روڈ اور کیبن کیمرہ:' : 'Road & Cabin Cameras:'}</span>
+                  <p className="text-gray-500 dark:text-slate-400 mt-0.5">
                     {isUrdu
                       ? 'سفر اور ڈرائیونگ کے دوران ثبوت کے لیے ایچ ڈی ویڈیو محفوظ کی جاتی ہے۔'
                       : 'Records video evidence during journeys.'}
@@ -859,8 +859,8 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
               <div className="flex items-start gap-2.5">
                 <span className="p-1 bg-[#1b4332] text-white rounded-md text-[10px]">2</span>
                 <div>
-                  <span className="font-bold text-gray-800">{isUrdu ? 'مائیکروفون (آڈیو):' : 'Microphone (Audio):'}</span>
-                  <p className="text-gray-500 mt-0.5">
+                  <span className="font-bold text-gray-800 dark:text-slate-200">{isUrdu ? 'مائیکروفون (آڈیو):' : 'Microphone (Audio):'}</span>
+                  <p className="text-gray-500 dark:text-slate-400 mt-0.5">
                     {isUrdu
                       ? 'ہارن اور گفتگو کا آڈیو ثبوت ویڈیو کے ساتھ ملایا جاتا ہے۔'
                       : 'Records audio synchronized with dashcam video.'}
@@ -871,8 +871,8 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
               <div className="flex items-start gap-2.5">
                 <span className="p-1 bg-[#1b4332] text-white rounded-md text-[10px]">3</span>
                 <div>
-                  <span className="font-bold text-gray-800">{isUrdu ? 'فار گراؤنڈ سروس:' : 'Foreground Service:'}</span>
-                  <p className="text-gray-500 mt-0.5">
+                  <span className="font-bold text-gray-800 dark:text-slate-200">{isUrdu ? 'فار گراؤنڈ سروس:' : 'Foreground Service:'}</span>
+                  <p className="text-gray-500 dark:text-slate-400 mt-0.5">
                     {isUrdu
                       ? 'اسکرین بند ہونے یا دوسری ایپ کھولنے پر بھی نوٹیفکیشن بار میں ریکارڈنگ برقرار رہتی ہے۔'
                       : 'Allows recording to persist safely while the device screen is off.'}
@@ -885,7 +885,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
               <button
                 type="button"
                 onClick={() => setShowPermissionModal(false)}
-                className="flex-1 py-3 px-4 rounded-xl border border-gray-200 text-gray-700 font-semibold text-xs hover:bg-gray-50 active:scale-95 transition-all"
+                className="flex-1 py-3 px-4 rounded-xl border border-gray-200 dark:border-[#2d313b] text-gray-700 dark:text-slate-300 font-semibold text-xs hover:bg-gray-50 dark:hover:bg-[#22252c] active:scale-95 transition-all"
               >
                 {isUrdu ? 'منسوخ کریں' : 'Cancel'}
               </button>
@@ -911,17 +911,17 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
 
       {/* Delete Confirmation Modal */}
       {clipToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-[#16181e] border border-transparent dark:border-[#2d313b] rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
             <div className="text-center space-y-1">
-              <h3 className="text-base font-bold text-gray-900">
+              <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">
                 {isUrdu ? 'کیا آپ یہ کلپ ڈیلیٹ کرنا چاہتے ہیں؟' : 'Delete Dashcam Clip?'}
               </h3>
-              <p className="text-xs text-gray-500 font-mono truncate px-4">{clipToDelete.filename}</p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-500 dark:text-slate-400 font-mono truncate px-4">{clipToDelete.filename}</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500">
                 {isUrdu ? 'یہ ویڈیو ڈیوائس اسٹوریج سے مستقل طور پر خارج ہو جائے گی۔' : 'This video will be permanently removed from device storage.'}
               </p>
             </div>
@@ -929,7 +929,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
             <div className="flex items-center gap-2 pt-2">
               <button
                 onClick={() => setClipToDelete(null)}
-                className="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-gray-700 font-semibold text-xs hover:bg-gray-50"
+                className="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 dark:border-[#2d313b] text-gray-700 dark:text-slate-300 font-semibold text-xs hover:bg-gray-50 dark:hover:bg-[#22252c]"
               >
                 {isUrdu ? 'منسوخ' : 'Cancel'}
               </button>
