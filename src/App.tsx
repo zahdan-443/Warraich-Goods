@@ -25,6 +25,7 @@ import {
   updateBiltyAccessInFirestore,
   saveUserProfileInFirestore,
   processOfflineQueue,
+  clearOfflineQueue,
   autoReconcileAllLocalToCloud,
   initAmbientSyncEngine,
   subscribeToSyncEvents,
@@ -481,10 +482,10 @@ export default function App() {
     try {
       const queueRes = await processOfflineQueue();
       const reconRes = await autoReconcileAllLocalToCloud(user.uid);
+      clearOfflineQueue();
       
       // Refresh local React state
-      const remaining = getStoredOfflineQueue();
-      setOfflineQueue(remaining);
+      setOfflineQueue([]);
       setTrips(getStoredTrips());
       setVehicles(getStoredVehicles());
       setDrivers(getStoredDrivers());
@@ -1314,7 +1315,6 @@ export default function App() {
                   onOpenBiltyAccess={() => setShowBiltyAccessModal(true)}
                   onSaveTrip={handleSaveTrip}
                   onLogFuelPrice={handleLogFuelPrice}
-                  onSync={handleSyncOffline}
                 />
               )}
 

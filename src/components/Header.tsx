@@ -237,16 +237,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Right: Sync Status, User Badge & Notification Bell */}
+          {/* Right: User Badge & Notification Bell */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Top Bar Quick Sync Pill */}
-            <SyncStatusBadge 
-              lang={lang} 
-              userEmail={userEmail} 
-              onSyncTrigger={onSyncOffline} 
-              onSignIn={onSignIn}
-            />
-
             {userEmail && (
               <button
                 onClick={handleOpenMenu}

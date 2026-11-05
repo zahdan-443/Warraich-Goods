@@ -239,7 +239,7 @@ export function enqueueOfflineAction(type: OfflineAction['type'], data: any) {
   try {
     const user = auth.currentUser;
     const isOwner = user?.email?.toLowerCase().trim() === 'warraichgoods43@gmail.com';
-    // Prevent poison pills: do not enqueue owner-only cloud writes for non-owner or guest users
+    // Prevent poison pills: do not enqueue owner-only cloud writes for non-owner users
     if ((type === 'bilty' || type === 'settings') && !isOwner) {
       return;
     }
@@ -414,6 +414,7 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
 export function clearOfflineQueue(): void {
   saveStoredOfflineQueue([]);
   safeStorage.removeItem('ah-last-sync-error');
+  notifySyncListeners();
 }
 
 /**
@@ -594,6 +595,7 @@ export async function autoReconcileAllLocalToCloud(targetUid?: string): Promise<
   safeStorage.setItem('ah-last-sync-time', new Date().toISOString());
   if (syncErrors === 0) {
     safeStorage.removeItem('ah-last-sync-error');
+    clearOfflineQueue();
   }
   notifySyncListeners();
 
@@ -1577,7 +1579,7 @@ export function getSyncStatus(): SyncStatusState {
   let status: SyncStatusState['status'] = 'synced';
   if (!isOnline) {
     status = 'offline';
-  } else if (isReconcilingAmbient || queue.length > 0) {
+  } else if (isReconcilingAmbient) {
     status = 'syncing';
   } else if (lastError) {
     status = 'error';

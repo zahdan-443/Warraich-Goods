@@ -9,8 +9,8 @@ import {
   AlertCircle,
   Database
 } from 'lucide-react';
-import { SyncStatusState, Language } from '../types';
-import { getSyncStatus, subscribeToSyncEvents } from '../utils/storage';
+import { getSyncStatus, subscribeToSyncEvents, clearOfflineQueue } from '../utils/storage';
+import type { Language, SyncStatusState } from '../types';
 
 interface SyncStatusBadgeProps {
   lang: Language;
@@ -58,7 +58,7 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
 
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
   const isOffline = syncState.status === 'offline' || !isOnline;
-  const isSyncing = isManualSyncing || syncState.status === 'syncing' || syncState.pendingCount > 0;
+  const isSyncing = isManualSyncing || syncState.status === 'syncing';
   const isGuest = !userEmail;
 
   // Format human-friendly time
@@ -90,6 +90,7 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
       if (onSyncTrigger) {
         await onSyncTrigger();
       }
+      clearOfflineQueue();
       setSyncFeedbackMsg(lang === 'ur' ? 'ڈیٹا کامیابی سے ہم آہنگ ہو گیا!' : 'Data synced successfully!');
       setTimeout(() => setSyncFeedbackMsg(null), 3000);
     } catch (err) {
@@ -253,7 +254,7 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
                   <span>
                     {isManualSyncing
                       ? (lang === 'ur' ? 'ہم آہنگ ہو رہا ہے...' : 'Syncing Data...')
-                      : (lang === 'ur' ? 'ابھی کلاؤڈ سنک کریں' : 'Sync Now')}
+                      : (lang === 'ur' ? 'ابھی سنک کریں' : 'Sync Now')}
                   </span>
                 </button>
               )}
