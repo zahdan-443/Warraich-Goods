@@ -485,7 +485,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
             highlight={true}
           />
 
-          {/* 6. Dashcam Video Recorder */}
+          {/* Dashcam Video Recorder - Temporarily hidden for Palm Store submission compliance. Source code preserved in project */}
+          {/*
           <QuickActionButton
             href="#dashcam"
             onClick={() => onNavigate('dashcam')}
@@ -494,6 +495,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             fullName={lang === 'ur' ? 'ڈیش کیم ریکارڈر' : 'Dashcam Recorder'}
             highlight={true}
           />
+          */}
 
 
           {/* 8. Vehicles Verification */}

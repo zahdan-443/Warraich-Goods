@@ -32,27 +32,40 @@ if (fs.existsSync(distDir)) {
         fs.rmSync(androidPublicDir, { recursive: true, force: true });
       }
       fs.mkdirSync(androidPublicDir, { recursive: true });
-      const webOnlyOrRedundant = [
+      const webOnlyOrRedundant = new Set([
         'server.cjs',
         'server.cjs.map',
         'robots.txt',
         'sitemap.xml',
         '404.html',
         '_headers',
+        '.nojekyll',
         'screenshot-desktop.png',
         'screenshot-mobile.png',
+        'dashcam-icon.png',
         'dashcam-icon.jpg'
-      ];
+      ]);
 
       fs.cpSync(distDir, androidPublicDir, { 
         recursive: true,
         filter: (src) => {
+          const rel = path.relative(distDir, src);
           const baseName = path.basename(src);
-          return !webOnlyOrRedundant.includes(baseName);
+          
+          // Exclude exact matches from web-only set
+          if (webOnlyOrRedundant.has(baseName)) return false;
+          // Exclude hidden web domain folders like .well-known
+          if (rel.startsWith('.well-known') || baseName === '.well-known') return false;
+          // Exclude internal AI Studio chat screenshots and attachments
+          if (rel.includes('aistudio') || baseName.startsWith('Screenshot_')) return false;
+          // Exclude sourcemaps from production APK package
+          if (baseName.endsWith('.map')) return false;
+          
+          return true;
         }
       });
 
-      console.log('✅ Synchronized client web assets to android/app/src/main/assets/public (excluding server files)');
+      console.log('✅ Synchronized client web assets to android/app/src/main/assets/public (excluding server, web-only, and diagnostic assets)');
 
       // Update capacitor.config.json
       const config = {

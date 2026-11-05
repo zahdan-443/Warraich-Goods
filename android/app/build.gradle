@@ -5,12 +5,12 @@ apply plugin: 'kotlin-android'
 
 def packageJsonFile = file('../../package.json')
 def packageJson = packageJsonFile.exists() ? new JsonSlurper().parseText(packageJsonFile.text) : null
-def appVersionName = packageJson?.version ?: "1.2.1"
+def appVersionName = packageJson?.version ?: "1.2.2"
 def versionParts = appVersionName.tokenize('.')
 def computedVersionCode = ((versionParts.size() > 0 ? versionParts[0].toInteger() : 0) * 10000) + 
                           ((versionParts.size() > 1 ? versionParts[1].toInteger() : 0) * 100) + 
                           (versionParts.size() > 2 ? versionParts[2].toInteger() : 0)
-def appVersionCode = Math.max(computedVersionCode, 6)
+def appVersionCode = Math.max(computedVersionCode, 7)
 
 android {
     namespace = "com.warraichgoods.driverdost"
@@ -64,14 +64,18 @@ android {
         sourceCompatibility JavaVersion.VERSION_21
         targetCompatibility JavaVersion.VERSION_21
     }
-    // Fix resource merging issues
+    // Exclude unwanted diagnostic files, sourcemaps and metadata from APK
     packagingOptions {
         resources {
             excludes += [
                 'META-INF/DEPENDENCIES',
                 'META-INF/LICENSE',
                 'META-INF/LICENSE.txt',
-                'META-INF/NOTICE'
+                'META-INF/NOTICE',
+                'META-INF/*.kotlin_module',
+                'META-INF/INDEX.LIST',
+                '**/aistudio/**',
+                '**/*.map'
             ]
         }
     }

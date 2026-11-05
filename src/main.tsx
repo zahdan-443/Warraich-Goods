@@ -29,7 +29,9 @@ if (typeof window !== 'undefined') {
       reason.includes('Database is closing') ||
       reason.includes('database is closing') ||
       reason.includes('Database is closing/hidden') ||
-      reason.includes('The database is closing')
+      reason.includes('The database is closing') ||
+      reason.includes('ResizeObserver') ||
+      reason.includes('Script error')
     ) {
       event.preventDefault();
       return;
@@ -38,8 +40,14 @@ if (typeof window !== 'undefined') {
   });
 
   window.addEventListener('error', (event) => {
-    if (event.message?.includes('ResizeObserver') || event.message?.includes('Script error')) {
-      // Ignore benign ResizeObserver loop limit errors
+    const msg = event.message || '';
+    if (
+      msg.includes('ResizeObserver') ||
+      msg.includes('Script error') ||
+      msg === 'Script error.' ||
+      (!event.filename && !event.lineno)
+    ) {
+      event.preventDefault();
       return;
     }
     console.warn('Driver Dost caught global window error:', event.error || event.message);

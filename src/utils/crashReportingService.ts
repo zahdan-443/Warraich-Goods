@@ -203,15 +203,25 @@ export function initCrashReporting(): void {
   isInitialized = true;
 
   window.addEventListener('error', (event) => {
-    // Ignore benign cross-origin script or browser extension errors
+    // Ignore benign cross-origin script, extension, or observer errors
     if (!event.error && !event.message) return;
-    if (event.message && /resizeobserver|websocket/i.test(event.message)) return;
+    const msg = event.message || '';
+    if (
+      /script error|resizeobserver|websocket|chrome-extension|moz-extension/i.test(msg) ||
+      (!event.filename && !event.lineno)
+    ) {
+      return;
+    }
 
     reportAppCrash(event.error || event.message);
   });
 
   window.addEventListener('unhandledrejection', (event) => {
     if (!event.reason) return;
+    const reasonStr = event.reason?.message || String(event.reason);
+    if (/script error|resizeobserver|database is closing/i.test(reasonStr)) {
+      return;
+    }
     reportAppCrash(event.reason);
   });
 }

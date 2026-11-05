@@ -32,11 +32,11 @@ public class MainActivity extends BridgeActivity {
         } catch (Exception e) {
             try {
                 FirebaseOptions options = new FirebaseOptions.Builder()
-                    .setApiKey("AIzaSyCxp0Q7e5hZPgLCjSa32iG5d05tyTsAASY")
-                    .setApplicationId("1:805249879186:android:341518d401d90735e5ea4b")
-                    .setProjectId("warraich-goods")
-                    .setGcmSenderId("805249879186")
-                    .setStorageBucket("warraich-goods.firebasestorage.app")
+                    .setApiKey(getString(R.string.google_api_key))
+                    .setApplicationId(getString(R.string.google_app_id))
+                    .setProjectId(getString(R.string.project_id))
+                    .setGcmSenderId(getString(R.string.gcm_defaultSenderId))
+                    .setStorageBucket(getString(R.string.google_storage_bucket))
                     .build();
                 FirebaseApp.initializeApp(this, options);
             } catch (Exception ignored) {
@@ -44,7 +44,8 @@ public class MainActivity extends BridgeActivity {
         }
 
         registerPlugin(FirebaseAuthenticationPlugin.class);
-        registerPlugin(DashcamPlugin.class);
+        // DashcamPlugin registration temporarily deferred for Palm Store release compliance
+        // registerPlugin(DashcamPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Guarantee Android system status bar and navigation bar remain visible throughout the app
