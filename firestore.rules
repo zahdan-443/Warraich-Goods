@@ -128,8 +128,8 @@ service cloud.firestore {
       allow write: if isBiltyAuthorized() &&
                    request.resource.data.keys().hasOnly(['currentValue', 'value', 'updatedAt']) &&
                    (
-                     ('currentValue' in request.resource.data && request.resource.data.currentValue is int && request.resource.data.currentValue >= 0) ||
-                     ('value' in request.resource.data && request.resource.data.value is int && request.resource.data.value >= 0)
+                     ('currentValue' in request.resource.data && (request.resource.data.currentValue is int || request.resource.data.currentValue is number) && request.resource.data.currentValue >= 0) ||
+                     ('value' in request.resource.data && (request.resource.data.value is int || request.resource.data.value is number) && request.resource.data.value >= 0)
                    );
     }
 

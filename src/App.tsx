@@ -19,6 +19,7 @@ import {
   saveStoredRole,
   getStoredBilties,
   saveStoredBilties,
+  getNextBiltyNo,
   loadFromFirestore,
   getBiltyAccessConfig,
   subscribeToBiltyAccess,
@@ -1110,19 +1111,31 @@ export default function App() {
 
   // Handlers for Bilty
   const handleAddBilty = (recordObj: Omit<BiltyRecord, 'id'>) => {
+    const current = getStoredBilties();
+    let finalBiltyNo = recordObj.biltyNo;
+
+    // Check if an existing record already has this exact biltyNo
+    const existingSameNo = current.find((b) => b.biltyNo === finalBiltyNo);
+    if (existingSameNo) {
+      // Re-allocate next available unique sequential bilty number so existing bilty is never overwritten
+      finalBiltyNo = getNextBiltyNo();
+    }
+
     const newRecord: BiltyRecord = {
       ...recordObj,
+      biltyNo: finalBiltyNo,
       id: Date.now()
     };
-    const current = getStoredBilties();
-    const filtered = current.filter((b) => b.biltyNo !== newRecord.biltyNo);
+
+    // Filter only if same record ID or colliding biltyNo
+    const filtered = current.filter((b) => b.id !== newRecord.id && b.biltyNo !== newRecord.biltyNo);
     const updated = [newRecord, ...filtered];
     setBilties(updated);
     saveStoredBilties(updated);
 
     pushAppNotification(
       lang === 'ur' ? 'نئی بلٹی تیار ہے' : 'Bilty Created',
-      lang === 'ur' ? `بلٹی نمبر ${newRecord.biltyNo} (${newRecord.senderName}) محفوظ ہو گئی۔` : `Bilty #${newRecord.biltyNo} saved.`,
+      lang === 'ur' ? `بلٹی نمبر ${newRecord.biltyNo} (${newRecord.senderName || ''}) محفوظ ہو گئی۔` : `Bilty #${newRecord.biltyNo} saved.`,
       'system'
     );
   };

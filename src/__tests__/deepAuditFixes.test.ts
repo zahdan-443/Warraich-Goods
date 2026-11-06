@@ -127,6 +127,38 @@ describe('Deep Audit Fixes Verification Suite', () => {
 
       const num2 = await allocateNextBiltyNumber();
       expect(num2).toBe('WG-1002');
+
+      const num3 = getNextBiltyNo();
+      expect(num3).toBe('WG-1003');
+    });
+
+    it('should disambiguate colliding duplicate WG-1001 records and preserve both', async () => {
+      const { getStoredBilties, safeStorage } = await import('../utils/storage');
+      const mockRecord1 = {
+        id: 1730000001,
+        biltyNo: 'WG-1001',
+        vehicleNo: 'LHR-1111',
+        senderName: 'Sender A',
+        receiverName: 'Receiver A',
+        itemDescription: 'Cotton Bales',
+        total: 50000
+      };
+      const mockRecord2 = {
+        id: 1730000002,
+        biltyNo: 'WG-1001', // Colliding number from previous bug
+        vehicleNo: 'FSD-2222',
+        senderName: 'Sender B',
+        receiverName: 'Receiver B',
+        itemDescription: 'Textile Yarn',
+        total: 75000
+      };
+
+      safeStorage.setItem('ah-bilties', JSON.stringify([mockRecord1, mockRecord2]));
+      const restored = getStoredBilties();
+      expect(restored.length).toBe(2);
+      const numbers = restored.map(b => b.biltyNo);
+      expect(numbers).toContain('WG-1001');
+      expect(numbers).toContain('WG-1002');
     });
   });
 

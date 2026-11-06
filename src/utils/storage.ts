@@ -240,7 +240,7 @@ export function enqueueOfflineAction(type: OfflineAction['type'], data: any) {
     const user = auth.currentUser;
     const isOwner = user?.email?.toLowerCase().trim() === 'warraichgoods43@gmail.com';
     // Prevent poison pills: do not enqueue owner-only cloud writes for non-owner users
-    if ((type === 'bilty' || type === 'settings') && !isOwner) {
+    if ((type === 'bilty' || type === 'bilties' || type === 'public_bilty' || type === 'settings') && !isOwner) {
       return;
     }
 
@@ -252,9 +252,19 @@ export function enqueueOfflineAction(type: OfflineAction['type'], data: any) {
       timestamp: new Date().toISOString(),
       retryCount: 0
     };
-    // Replace duplicate pending item of same type if present to avoid spamming
-    const filtered = queue.filter(item => !(item.type === type && JSON.stringify(item.data) === JSON.stringify(data)));
-    const updated = [newAction, ...filtered].slice(0, 50);
+    // Replace redundant duplicate items:
+    // Full collection syncs (bilties, trips, vehicles, drivers, fuel, routes) only need the newest snapshot
+    // Public bilty actions are deduplicated by biltyNo
+    const filtered = queue.filter(item => {
+      if (item.type !== type) return true;
+      if (type === 'bilties' || type === 'bilty') return false;
+      if (['trips', 'vehicles', 'drivers', 'fuel', 'routes', 'settings'].includes(type)) return false;
+      if (type === 'public_bilty' && item.data?.biltyNo && data?.biltyNo) {
+        return String(item.data.biltyNo).trim().toUpperCase() !== String(data.biltyNo).trim().toUpperCase();
+      }
+      return JSON.stringify(item.data) !== JSON.stringify(data);
+    });
+    const updated = [newAction, ...filtered].slice(0, 30);
     saveStoredOfflineQueue(updated);
     notifySyncListeners();
   } catch (e) {
@@ -569,9 +579,9 @@ export async function autoReconcileAllLocalToCloud(targetUid?: string): Promise<
           try {
             const counterRef = doc(db, 'counters', 'biltyCounter');
             const counterSnap = await withTimeout(getDoc(counterRef), 5000).catch(() => null);
-            const currentCloudVal = counterSnap && counterSnap.exists() ? (counterSnap.data()?.currentValue || 1000) : 1000;
+            const currentCloudVal = counterSnap && counterSnap.exists() ? (counterSnap.data()?.currentValue ?? counterSnap.data()?.value ?? 1000) : 1000;
             if (highestBiltySeq > currentCloudVal) {
-              await setDoc(counterRef, { currentValue: highestBiltySeq, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+              await setDoc(counterRef, { currentValue: highestBiltySeq, value: highestBiltySeq, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
             }
           } catch {}
         }
@@ -731,7 +741,7 @@ export function getStoredBilties(): BiltyRecord[] {
       } catch {}
     }
 
-    const mergedMap = new Map<string, BiltyRecord>();
+    const candidateRecords: BiltyRecord[] = [];
 
     for (const key of candidateKeys) {
       const raw = safeStorage.getItem(key);
@@ -741,12 +751,7 @@ export function getStoredBilties(): BiltyRecord[] {
           if (Array.isArray(parsed)) {
             for (const item of parsed) {
               if (item && (item.biltyNo || item.id)) {
-                const uniqueKey = item.biltyNo ? String(item.biltyNo).trim().toUpperCase() : String(item.id);
-                if (mergedMap.has(uniqueKey)) {
-                  mergedMap.set(uniqueKey, resolveEntityLWW(item, mergedMap.get(uniqueKey)));
-                } else {
-                  mergedMap.set(uniqueKey, item);
-                }
+                candidateRecords.push(item);
               }
             }
           }
@@ -754,20 +759,94 @@ export function getStoredBilties(): BiltyRecord[] {
       }
     }
 
-    const result = Array.from(mergedMap.values());
-    result.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+    // Also scan offline queue actions to recover any bilties that were queued
+    try {
+      const queueRaw = safeStorage.getItem('offline-queue') || safeStorage.getItem('ah-offline-queue') || safeStorage.getItem(getScopedStorageKey('offline-queue', activeScope));
+      if (queueRaw) {
+        const queueParsed = JSON.parse(queueRaw);
+        if (Array.isArray(queueParsed)) {
+          for (const qItem of queueParsed) {
+            if ((qItem?.type === 'bilty' || qItem?.type === 'bilties') && Array.isArray(qItem.data)) {
+              for (const item of qItem.data) {
+                if (item && (item.biltyNo || item.id)) {
+                  candidateRecords.push(item);
+                }
+              }
+            } else if ((qItem?.type === 'public_bilty' || qItem?.type === 'bilty') && qItem?.data) {
+              if (qItem.data.biltyNo || qItem.data.id) {
+                candidateRecords.push(qItem.data);
+              }
+            }
+          }
+        }
+      }
+    } catch {}
 
-    // If bilties were found in alternate or legacy keys, ensure active scoped key has the full count
-    if (result.length > 0) {
-      const activeScopedKey = getScopedStorageKey('bilties', activeScope);
-      const currentActiveRaw = safeStorage.getItem(activeScopedKey);
-      const currentActiveCount = currentActiveRaw ? (JSON.parse(currentActiveRaw)?.length || 0) : 0;
-      if (result.length > currentActiveCount) {
-        safeStorage.setItem(activeScopedKey, JSON.stringify(result));
+    // Deduplicate genuinely identical records (same id OR exact same cargo/parties/vehicle details)
+    const deduped: BiltyRecord[] = [];
+    for (const item of candidateRecords) {
+      const matchIndex = deduped.findIndex(existing => {
+        if (existing.id && item.id && String(existing.id) === String(item.id)) return true;
+        const sameVeh = (existing.vehicleNo || '').trim().toUpperCase() === (item.vehicleNo || '').trim().toUpperCase();
+        const sameDate = (existing.date || '').trim() === (item.date || '').trim();
+        const sameSender = (existing.senderName || '').trim().toLowerCase() === (item.senderName || '').trim().toLowerCase();
+        const sameReceiver = (existing.receiverName || '').trim().toLowerCase() === (item.receiverName || '').trim().toLowerCase();
+        const sameTotal = Number(existing.total || 0) === Number(item.total || 0);
+        const hasVeh = !!(existing.vehicleNo || '').trim();
+        return sameVeh && sameDate && sameSender && sameReceiver && sameTotal && hasVeh;
+      });
+
+      if (matchIndex >= 0) {
+        deduped[matchIndex] = resolveEntityLWW(item, deduped[matchIndex]);
+      } else {
+        deduped.push({ ...item });
       }
     }
 
-    return result;
+    // Sort chronologically oldest first for stable sequential numbering
+    deduped.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+
+    // Resolve duplicate biltyNo (fixes previous issue where multiple distinct creations got stuck on WG-1001)
+    const usedNumbers = new Set<string>();
+    let highestSequence = 1000;
+    const finalRecords: BiltyRecord[] = [];
+
+    for (const rec of deduped) {
+      let bNo = rec.biltyNo ? String(rec.biltyNo).trim().toUpperCase() : '';
+      if (!bNo || usedNumbers.has(bNo)) {
+        // Colliding biltyNo on distinct record! Assign next unique sequential number
+        highestSequence = Math.max(highestSequence, 1000) + 1;
+        bNo = `WG-${String(highestSequence).padStart(4, '0')}`;
+      } else {
+        const rawDigits = bNo.replace(/\D/g, '');
+        const numPart = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10);
+        if (!isNaN(numPart) && numPart >= 1000 && numPart <= 9999) {
+          highestSequence = Math.max(highestSequence, numPart);
+        }
+      }
+      usedNumbers.add(bNo);
+      finalRecords.push({ ...rec, biltyNo: bNo });
+    }
+
+    // Mirror highest sequence to all counter storage keys
+    if (highestSequence > 1000) {
+      persistBiltyCounterLocally(highestSequence);
+    }
+
+    // Sort newest first for presentation
+    finalRecords.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+
+    // Ensure active scoped key and primary backup keys are synchronized
+    if (finalRecords.length > 0) {
+      const activeScopedKey = getScopedStorageKey('bilties', activeScope);
+      const serialized = JSON.stringify(finalRecords);
+      safeStorage.setItem(activeScopedKey, serialized);
+      safeStorage.setItem('wg_v2_warraichgoods43_gmail_com_bilties', serialized);
+      safeStorage.setItem('ah-bilties', serialized);
+      safeStorage.setItem('ah-bilties-data', serialized);
+    }
+
+    return finalRecords;
   } catch {
     return [];
   }
@@ -1009,11 +1088,11 @@ export async function syncPublicBiltyVerification(bilty: BiltyRecord): Promise<b
 
   try {
     const docRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-    await withTimeout(setDoc(docRef, safeData, { merge: true }), 3000);
+    await withTimeout(setDoc(docRef, safeData, { merge: true }), 8000);
     const cleanId = normalizedNo.replace(/[^A-Z0-9]/g, '');
     if (cleanId && cleanId !== normalizedNo) {
       const docRef2 = doc(db, 'publicBiltyVerifications', cleanId);
-      await withTimeout(setDoc(docRef2, safeData, { merge: true }), 3000).catch(() => {});
+      await withTimeout(setDoc(docRef2, safeData, { merge: true }), 8000).catch(() => {});
     }
     return true;
   } catch {
@@ -1027,14 +1106,86 @@ export async function syncPublicBiltyVerification(bilty: BiltyRecord): Promise<b
 // ---------------------------------------------------------------------------
 
 /**
+ * Persists the latest Bilty counter across all candidate scopes, global keys, and legacy fallbacks.
+ */
+export function persistBiltyCounterLocally(seq: number): void {
+  const str = String(seq);
+  safeStorage.setItem('wg_bilty_counter', str);
+  safeStorage.setItem('ah-bilty-counter', str);
+  safeStorage.setItem('bilty-counter', str);
+  safeStorage.setItem('wg_v2_warraichgoods43_gmail_com_bilty-counter', str);
+  setScopedItem('bilty-counter', str);
+}
+
+/**
+ * Scans all persistent storage keys, active bilties, and offline queues to find the
+ * absolute highest allocated sequence number (guaranteeing monotonic increment from WG-1001).
+ */
+export function getStoredHighestBiltySeq(): number {
+  let highest = 1000;
+
+  // 1. Scan candidate counter storage keys
+  const activeScope = getActiveUserScope();
+  const counterKeys = [
+    'wg_bilty_counter',
+    'ah-bilty-counter',
+    'bilty-counter',
+    getScopedStorageKey('bilty-counter', activeScope),
+    'wg_v2_warraichgoods43_gmail_com_bilty-counter',
+    'wg_v2_guest_bilty-counter'
+  ];
+  for (const k of counterKeys) {
+    const val = safeStorage.getItem(k);
+    if (val) {
+      const parsed = parseInt(val, 10);
+      if (!isNaN(parsed) && parsed >= 1000 && parsed <= 9999 && parsed > highest) {
+        highest = parsed;
+      }
+    }
+  }
+
+  // 2. Scan all stored bilties directly
+  const rawCandidateKeys = [
+    getScopedStorageKey('bilties', activeScope),
+    'wg_v2_warraichgoods43_gmail_com_bilties',
+    'wg_v2_guest_bilties',
+    'ah-bilties',
+    'ah-bilties-data',
+    'bilties'
+  ];
+  for (const k of rawCandidateKeys) {
+    const raw = safeStorage.getItem(k);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            if (item?.biltyNo) {
+              const rawDigits = String(item.biltyNo).replace(/\D/g, '');
+              const numPart = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10);
+              if (!isNaN(numPart) && numPart >= 1000 && numPart <= 9999 && numPart > highest) {
+                highest = numPart;
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+  }
+
+  return highest;
+}
+
+/**
  * Transactionally increments and allocates the next sequential Bilty Number.
  * When online, runs an atomic Firestore transaction on the global counter document.
- * Monotonically sequence begins strictly at WG-1001.
+ * Monotonically sequence begins strictly at WG-1001 and increments sequentially.
  * When offline or on timeout, increments local counter from max existing / base 1000.
  */
 export async function allocateNextBiltyNumber(userUid?: string): Promise<string> {
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
   const user = auth.currentUser;
+  const baseline = getStoredHighestBiltySeq();
 
   if (isOnline && db && user) {
     try {
@@ -1042,17 +1193,23 @@ export async function allocateNextBiltyNumber(userUid?: string): Promise<string>
       const nextSeq = await withTimeout(
         runTransaction(db, async (transaction) => {
           const snap = await transaction.get(counterDocRef);
-          let current = 1000;
+          let cloudCurrent = 1000;
           if (snap.exists()) {
             const d = snap.data();
-            current = typeof d?.currentValue === 'number' && d.currentValue >= 1000 && d.currentValue < 9999 ? d.currentValue : 1000;
+            const rawVal = d?.currentValue ?? d?.value;
+            const parsed = typeof rawVal === 'number' ? rawVal : parseInt(String(rawVal || ''), 10);
+            if (!isNaN(parsed) && parsed >= 1000 && parsed <= 9999) {
+              cloudCurrent = parsed;
+            }
           }
-          let next = current + 1;
+          // Strictly greater than both cloudCurrent and local baseline
+          let next = Math.max(cloudCurrent, baseline) + 1;
           if (next > 9999) {
             next = 1001; // Wrap around safely to keep strictly 4 digits
           }
           transaction.set(counterDocRef, {
             currentValue: next,
+            value: next,
             updatedAt: new Date().toISOString()
           }, { merge: true });
           return next;
@@ -1060,55 +1217,29 @@ export async function allocateNextBiltyNumber(userUid?: string): Promise<string>
         8000
       );
 
-      // Keep local counter updated to the highest sequence
-      const formatted = `WG-${String(nextSeq).padStart(4, '0')}`;
-      setScopedItem('bilty-counter', String(nextSeq));
-      return formatted;
-    } catch {
-      // Fall through to atomic local increment on transaction timeout or offline
+      // Keep local counter updated to the highest sequence across all scopes
+      persistBiltyCounterLocally(nextSeq);
+      return `WG-${String(nextSeq).padStart(4, '0')}`;
+    } catch (err) {
+      console.warn('Firestore counter transaction error, falling back to local monotonic sequence:', err);
     }
   }
 
-  // Offline / Local Monotonic Fallback starting at 1001 (strictly 4 digits: 1001 - 9999)
-  const bilties = getStoredBilties();
-  let maxExisting = 1000;
-  bilties.forEach(b => {
-    const rawDigits = (b.biltyNo || '').replace(/\D/g, '');
-    const numPart = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10);
-    if (!isNaN(numPart) && numPart >= 1000 && numPart <= 9999 && numPart > maxExisting) {
-      maxExisting = numPart;
-    }
-  });
-
-  const storedCounterStr = getScopedItem('bilty-counter');
-  let currentCounter = storedCounterStr ? parseInt(storedCounterStr, 10) : 1000;
-  if (isNaN(currentCounter) || currentCounter < 1000 || currentCounter >= 9999) currentCounter = 1000;
-
-  let nextLocalSeq = Math.max(maxExisting, currentCounter) + 1;
+  // Offline / Local Monotonic Fallback starting strictly after baseline
+  let nextLocalSeq = baseline + 1;
   if (nextLocalSeq > 9999) {
     nextLocalSeq = 1001; // Strictly maintain 4-digit ceiling
   }
-  setScopedItem('bilty-counter', String(nextLocalSeq));
+  persistBiltyCounterLocally(nextLocalSeq);
 
   return `WG-${String(nextLocalSeq).padStart(4, '0')}`;
 }
 
 export function getNextBiltyNo(): string {
-  const bilties = getStoredBilties();
-  let maxExisting = 1000;
-  bilties.forEach(b => {
-    const rawDigits = (b.biltyNo || '').replace(/\D/g, '');
-    const numPart = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10);
-    if (!isNaN(numPart) && numPart >= 1000 && numPart <= 9999 && numPart > maxExisting) {
-      maxExisting = numPart;
-    }
-  });
-
-  let no = parseInt(getScopedItem('bilty-counter') || '1000', 10);
-  if (isNaN(no) || no < 1000 || no >= 9999) no = 1000;
-  let nextNo = Math.max(maxExisting, no) + 1;
+  const baseline = getStoredHighestBiltySeq();
+  let nextNo = baseline + 1;
   if (nextNo > 9999) nextNo = 1001;
-  setScopedItem('bilty-counter', String(nextNo));
+  persistBiltyCounterLocally(nextNo);
   return `WG-${String(nextNo).padStart(4, '0')}`;
 }
 
@@ -1121,14 +1252,42 @@ export function saveStoredRole(role: UserRole) {
 
 export function getStoredOfflineQueue(): OfflineAction[] {
   try {
-    const data = getScopedItem('offline-queue');
-    return data ? JSON.parse(data) : [];
+    const activeScope = getActiveUserScope();
+    const candidateKeys = [
+      getScopedStorageKey('offline-queue', activeScope),
+      'wg_v2_warraichgoods43_gmail_com_offline-queue',
+      'wg_v2_guest_offline-queue',
+      'ah-offline-queue',
+      'offline-queue'
+    ];
+    for (const k of candidateKeys) {
+      const data = safeStorage.getItem(k);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    }
+    return [];
   } catch {
     return [];
   }
 }
+
 export function saveStoredOfflineQueue(queue: OfflineAction[]) {
-  setScopedItem('offline-queue', JSON.stringify(queue));
+  const activeScope = getActiveUserScope();
+  const serialized = JSON.stringify(queue);
+  setScopedItem('offline-queue', serialized);
+  safeStorage.setItem('ah-offline-queue', serialized);
+  safeStorage.setItem('wg_v2_warraichgoods43_gmail_com_offline-queue', serialized);
+  if (queue.length === 0) {
+    safeStorage.removeItem('offline-queue');
+    safeStorage.removeItem('ah-offline-queue');
+    safeStorage.removeItem('wg_v2_warraichgoods43_gmail_com_offline-queue');
+    safeStorage.removeItem(getScopedStorageKey('offline-queue', activeScope));
+    safeStorage.removeItem(getScopedStorageKey('offline-queue', 'guest'));
+  }
 }
 
 export function getStoredNotifications(): AppNotification[] {
