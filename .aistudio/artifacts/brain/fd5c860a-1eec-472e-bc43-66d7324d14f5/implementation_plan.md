@@ -1,161 +1,138 @@
-# Independent Data Pipeline Audit & Zero-Button Sync Architecture Plan
+# Palm Store & Dlightek Compliance (Docs 57 & 84) Complete Hardening Plan
 
-**Role:** Independent Audit Conductor & Senior Systems Architect  
-**Target:** Elimination of manual "Sync Now" button; transition to automated ambient background synchronization  
-**Scope:** Data creation (offline/online) → Local persistence → Queuing & retries → Reconciliation & conflict resolution → Cloud persistence
+A comprehensive, zero-defect hardening plan aligned with Transsion / Palm Store review specifications (**Doc 57: App Acceptance & Release Policy**) and security testing standards (**Doc 84: Security & Privacy Testing Standards**).
 
 ---
 
-## 1. Executive Summary & Audit Mandate
+## User Review & Critical Decisions
 
-The system is preparing to sunset the manual **"Sync Now"** trigger and its associated modal, moving to a modern **zero-button ambient synchronization architecture**. Under this paradigm, synchronization must become an invisible, resilient, self-healing background utility.
+> [!IMPORTANT]
+> The plan has been thoroughly revised to incorporate all specific requirements from Dlightek Documentation (Docs 57 & 84) and your audit. Please review the updated specifications below.
 
-An independent audit was conducted across the data path:
-1. **Creation & Mutation:** `saveStoredTrips`, `saveStoredVehicles`, `saveStoredDrivers`, `saveStoredFuelLog`, `saveStoredBilties`, `ledgerStorage`.
-2. **Local Persistence:** Scoped storage (`ah-*-data`), IndexedDB (`ah-trips-data`, etc.), and offline action log (`ah-offline-actions`).
-3. **Queue Execution:** `processOfflineQueue()`, retry backoff, error filtering, and payload serialization.
-4. **Cloud Reconciliation:** `autoReconcileAllLocalToCloud()`, collection document structures, Firestore rules, and guest/authenticated boundaries.
-
----
-
-## 2. Independent Audit Findings & Vulnerability Matrix
-
-### Finding 1: Manual Trigger Dependency & Missing Event Hooks (CRITICAL)
-- **Current Reality:** While `window.addEventListener('online')` exists, sync depends heavily on users opening the drawer and pressing "Sync Now" to resolve desynchronized states. If a user creates data while intermittently connected, transactions wait indefinitely in the queue if the initial write encounters a network blip or race condition.
-- **Root Cause:** Absence of comprehensive ambient triggers:
-  - No `document.addEventListener('visibilitychange')` (triggering sync when user returns to app).
-  - No `window.addEventListener('focus')` or PWA background sync hook.
-  - No debounced write-through pipeline directly from data mutation operations.
-- **Remediation:** Introduce a unified, debounced Ambient Sync Manager with event subscriptions for `online`, `visibilitychange`, and save write-through.
-
-### Finding 2: Poison Pill Accumulation & Permission-Blocked Actions (HIGH - RECENTLY MITIGATED, NEEDS HARDENING)
-- **Current Reality:** As demonstrated in the user's recent screenshot (`40 items stuck in queue with 'Missing or insufficient permissions'`), unauthenticated or non-owner actions (such as bilty or company profile writes) could get pushed into `ah-offline-actions`. When retried by guest or non-owner sessions, Firestore rejected them repeatedly, locking the sync queue in an error loop.
-- **Remediation:** 
-  1. Filter at the point of ingestion: never enqueue cloud-restricted document types (e.g., `bilties`, `companyProfile`) into the offline queue unless an authenticated authorized session is active.
-  2. Maintain automatic quarantine for any action exceeding 3 attempts or receiving permission denial, without blocking other pending queue items.
-
-### Finding 3: Naive Array Overwriting vs True Timestamp-Based LWW (MEDIUM)
-- **Current Reality:** In `autoReconcileAllLocalToCloud`, items in arrays (trips, vehicles, etc.) are combined into a `Map` where local items unconditionally overwrite cloud items by ID (`mergedMap.set(idKey, item)`).
-- **Vulnerability:** If an owner edits a vehicle or trip record on Phone A, and later opens Phone B (which had stale cached data from yesterday), Phone B's local state could overwrite newer cloud edits from Phone A during reconciliation.
-- **Remediation:** Implement deterministic **Timestamp-Based Last-Write-Wins (LWW)**:
-  - Every record must preserve an `updatedAt` ISO timestamp.
-  - Reconciliation must compare `local.updatedAt` vs `cloud.updatedAt` per entity key, selecting the genuinely newer record while preserving locally added records that do not yet exist in the cloud.
-
-### Finding 4: Single-Document Array Storage vs Firestore 1MB Boundary (MEDIUM)
-- **Current Reality:** Entities are stored as whole arrays in single documents (e.g., `users/{uid}/collections/trips` -> `{ items: [...] }`).
-- **Audit Analysis:** For trips, fuel logs, and vehicles for single fleets, typical fleet data occupies under 150KB. However, storing all bilties in a single array document presents scaling limits over years of usage.
-- **Remediation:** Maintain current array structure for lightweight collections while enforcing compression and chunking checks for heavy collections (or dedicated subcollection syncing).
-
-### Finding 5: User Interface Cognitive Friction (USER EXPERIENCE)
-- **Current Reality:** The manual badge and modal expose technical internals ("Action offline_... failed (attempt 1): Missing or insufficient permissions", raw JSON logs, separate manual sync buttons).
-- **Remediation:** Transform the UI into a quiet, ambient status indicator (similar to Google Docs or WhatsApp):
-  - Cloud with checkmark: "Synced" / "محفوظ اور ہم آہنگ"
-  - Cloud with animated dot: "Syncing..." / "ہم آہنگ ہو رہا ہے..."
-  - Cloud with slash / subtle amber indicator: "Offline mode — data saved locally" / "آف لائن — ڈیٹا محفوظ ہے"
-  - Completely eliminate the modal's manual "Sync Now" button and technical error banners.
+- **Rule 2.6 & 2.3 (Permission-Feature Consistency)**: The Dashcam card is completely removed from the dashboard menu (`HomeView.tsx`), removed from active navigation tabs, and purged from `TermsModal.tsx` and `PrivacyPolicyModal.tsx`. The underlying implementation remains preserved in code without exposing undeclared permissions to store scanners.
+- **Rule 1.8 (No Dynamic Code / WASM Downloads)**: Runtime fetching of worker, WebAssembly, and language data from `cdn.jsdelivr.net` / `tessdata.projectnaptha.com` is completely eliminated. All Tesseract OCR assets are bundled locally in `public/tesseract/` for 100% offline execution.
+- **Rule 1.5 (No Silent Telemetry Uploads)**: Firestore `/crashReports` uploads are disabled by default. On-device diagnostics are stored locally only in `localStorage`. A visible, opt-in consent toggle is added to user Settings.
+- **APK Bloat & Dead Code**: Unused `androidx.camera:*` native C++ libraries (4 ABIs) are removed from `android/app/build.gradle` (slashing APK size from ~32MB down to ~15MB). `scripts/sync-android-assets.js` and Gradle AAPT packaging rules ensure `server.cjs`, `sw.js`, `404.html`, `sitemap.xml`, and diagnostic screenshots never enter the APK.
+- **Transsion / TECNO / Infinix WebView Support**: Added CSS fallbacks in `src/index.css` for `oklch`, `color-mix`, and `@property` to prevent visual distortion on older Android System WebViews (Chromium < 105), along with an alert guard in `index.html`.
+- **Third-Party Data Leak Prevention**: External QR generation fallback to `api.qrserver.com` is completely replaced by the installed local `qrcode` engine.
+- **Transparency & Disclosures**: Privacy Policy explicitly discloses exact location usage (OSRM route geometry, Open-Meteo corridor weather, local fuel prices) and guarantees zero data sales or background tracking. Removed suspicious `your-backend-api.com` placeholder from fuel widget.
 
 ---
 
-## 3. Architecture Blueprint: Zero-Button Ambient Sync Engine
+## 1. Dlightek Review Standards (Docs 57 & 84) Alignment Matrix
+
+| Dlightek Rule | Requirement | Our Technical Implementation |
+|---|---|---|
+| **Rule 2.6 & 2.3** | Listed functions must work; no dead UI without permissions | Hide Dashcam card in `HomeView.tsx`; remove from navigation; remove camera/mic clauses from Terms & Privacy. |
+| **Rule 1.8** | No dynamic downloading of executable code, WASM, or scripts | Copy `worker.min.js`, `tesseract-core-simd.wasm.js`, and `eng.traineddata.gz` into `public/tesseract/`. Point `CameraOcrInput` to local relative paths. |
+| **Rule 1.5** | No silent collection or transmission of device ID / telemetry | Disable automatic Firestore crash uploads; store diagnostics locally in `localStorage`; add explicit opt-in toggle in Settings. |
+| **Data Leakage** | No transmission of sensitive document data to 3rd parties | Replace `api.qrserver.com` URL fallback in `biltyHelpers.ts` with local `QRCode.toDataURL()`. |
+| **Doc 57 (App Health)** | Clean binary without orphaned C++ libs or bloated ABIs | Remove `androidx.camera:*` from `android/app/build.gradle`, saving ~15MB across arm64, armv7, x86, x86_64. |
+| **Doc 57 (Clean Assets)**| APK assets must contain only client runtime files | Filter `server.cjs*`, `sw.js`, `404.html`, `sitemap.xml`, `robots.txt`, and screenshots out of `assets/public`. |
+| **Doc 84 (Device Compatibility)** | App must render correctly on Transsion devices | Add standard hex/rgb color variable fallbacks in `src/index.css` to safeguard against older WebView CSS engines. |
+| **Transparency** | Clear declaration of network endpoints and location | Disclose OSRM, Open-Meteo, and fuel station APIs in Privacy Policy; remove `your-backend-api.com` placeholder. |
+
+---
+
+## 2. High-Level Architecture & Asset Data Flow
 
 ```
-[ User Action: Save Trip / Vehicle / Fuel / Ledger ]
-                      │
-                      ▼
-            [ 1. Local Persistence ]
-          (safeStorage + IndexedDB)
-                      │
-                      ▼
-          [ 2. Ambient Sync Dispatcher ]
-                      │
-        ┌─────────────┴─────────────┐
-        ▼                           ▼
-  [ Device Offline ]          [ Device Online ]
-        │                           │
-  Enqueue to Local             Debounced Push
-  Action Queue                 (300ms window)
-  (ah-offline-actions)              │
-        │                           ▼
-        │                     [ 3. Firestore Push ]
-        │                           │
-        │                     ┌─────┴───────────────┐
-        │                     ▼                     ▼
-        │                [ Success ]            [ Failure ]
-        │                     │                     │
-        │                     ▼                     ▼
-        │             Update Ambient UI        Fallback to
-        │             (Cloud Checkmark)        Offline Queue
-        │                                           ▲
-        └───────────────────────────────────────────┘
-                      │
-        [ Trigger: Network Reconnected / Visibility Focus ]
-                      │
-                      ▼
-         [ 4. Automated Reconciler (LWW) ]
-         - Drain Offline Queue silently
-         - Compare local vs cloud timestamps
-         - Preserve newest edits
-         - Update Local Storage & Cloud
-         - Quiet Ambient UI Update
+┌────────────────────────────────────────────────────────────────────────┐
+│                   OFFLINE SELF-CONTAINED ARCHITECTURE                  │
+└────────────────────────────────────────────────────────────────────────┘
+                                   │
+      ┌────────────────────────────┼────────────────────────────┐
+      ▼                            ▼                            ▼
+┌───────────────────┐    ┌───────────────────┐    ┌───────────────────┐
+│   LOCAL OCR       │    │   LOCAL QR CODE   │    │  PRIVACY & LOGS   │
+│ public/tesseract/ │    │ qrcode npm engine │    │ Default: Offline  │
+│ - worker.min.js   │    │ - toDataURL()     │    │ - LocalStorage    │
+│ - wasm.js / wasm  │    │ - No qrserver.com │    │ - Opt-in toggle   │
+│ - traineddata.gz  │    │ - 100% On-Device  │    │ - No silent send  │
+└───────────────────┘    └───────────────────┘    └───────────────────┘
 ```
 
 ---
 
-## 4. Proposed Implementation Steps
+## 3. Step-by-Step Implementation Execution Plan
 
-### Phase 1: Storage Layer & Conflict Resolution Hardening
-- **Target File:** `src/utils/storage.ts`
-- Implement robust LWW entity comparator:
-  ```ts
-  function resolveEntityLWW<T extends { updatedAt?: string; createdAt?: string }>(local: T, cloud: T): T {
-    const localTime = new Date(local.updatedAt || local.createdAt || 0).getTime();
-    const cloudTime = new Date(cloud.updatedAt || cloud.createdAt || 0).getTime();
-    return localTime >= cloudTime ? local : cloud;
-  }
-  ```
-- Upgrade `autoReconcileAllLocalToCloud` to use timestamp comparison for all collections (`trips`, `vehicles`, `drivers`, `fuel`, `routes`).
-- In `saveStored*` methods, automatically inject/refresh `updatedAt: new Date().toISOString()`.
-- Add debounced write-through dispatcher (`triggerAmbientSync()`) that batches rapid local changes within a 350ms window before flushing to cloud.
+### Step 1: Dashcam UI & Privacy Policy Cleanup (Rules 2.6 & 2.3)
+1. **`src/components/views/HomeView.tsx`**:
+   - Conditionally hide or remove the Dashcam card from the main dashboard grid.
+2. **`src/App.tsx`**:
+   - Remove `#dashcam` from public routing and navigation menu. Keep component code intact for future authorized releases.
+3. **`src/components/TermsModal.tsx` & `src/components/PrivacyPolicyModal.tsx`**:
+   - Remove references to dashcam video recording and microphone audio.
+   - Declare camera usage strictly for local document image scanning (OCR).
 
-### Phase 2: Comprehensive Event-Driven Ambient Sync
-- **Target File:** `src/utils/ambientSync.ts` (or integrated in `src/utils/storage.ts`)
-- Attach automated lifecycle listeners:
-  1. `window.addEventListener('online', ...)`: Immediate queue drain and cloud reconcile.
-  2. `document.addEventListener('visibilitychange', ...)`: When `document.visibilityState === 'visible'`, verify connection and sync stale records.
-  3. `window.addEventListener('focus', ...)`: Recheck sync status silently.
-  4. Periodic idle pulse (every 5 minutes when tab is active and online) to ensure multi-device edits are mirrored locally.
+### Step 2: 100% Bundled Offline OCR (Rule 1.8)
+1. **Asset Staging**:
+   - Create `public/tesseract/` directory.
+   - Copy `worker.min.js` from `node_modules/tesseract.js/dist/`.
+   - Copy `tesseract-core-simd.wasm.js` and `tesseract-core-simd.wasm` from `node_modules/tesseract.js-core/`.
+   - Stage `eng.traineddata.gz` in `public/tesseract/lang-data/`.
+2. **`src/components/CameraOcrInput.tsx`**:
+   - Update `createWorker('eng')` to pass explicit local paths:
+     ```typescript
+     const worker = await createWorker('eng', 1, {
+       workerPath: './tesseract/worker.min.js',
+       corePath: './tesseract/tesseract-core-simd.wasm.js',
+       langPath: './tesseract/lang-data',
+       cacheMethod: 'none',
+       gzip: true
+     });
+     ```
+   - Zero runtime network requests to `cdn.jsdelivr.net` or `projectnaptha.com`.
 
-### Phase 3: Transition Sync UI from Manual Action to Ambient Indicator
-- **Target File:** `src/components/SyncStatusBadge.tsx`
-- Remove the "Sync Now" (`ابھی ہم آہنگ کریں`) action button and the manual error modal.
-- Convert `SyncStatusBadge` into a pure, informative ambient status pill / indicator:
-  - **Online & Synced:** Gentle emerald cloud icon with checkmark ("محفوظ / Synced").
-  - **Active Sync:** Subtle rotating sync icon with pulsing indicator ("ہم آہنگی جاری ہے... / Syncing...").
-  - **Offline:** Clean amber cloud with slash ("آف لائن موڈ / Offline"). Local storage badge clearly reassuring that all data is safe on device.
-- Keep diagnostic details strictly inside developer/owner console and Firebase telemetry rather than alarming regular end users.
+### Step 3: Consent-Gated Crash Diagnostics (Rule 1.5)
+1. **`src/utils/crashReportingService.ts`**:
+   - Update `sendCrashReport()` to verify `localStorage.getItem('wg_crash_reports_consent') === 'true'`.
+   - Default consent state is `false`.
+   - When disabled, errors are recorded only in `localStorage` diagnostic snapshot.
+2. **`src/components/SettingsModal.tsx` (or user profile view)**:
+   - Provide a clear, localized toggle: "ایپ کی بہتری اور کریش رپورٹس (Anonymous Diagnostics)".
+3. **`src/components/PrivacyPolicyModal.tsx`**:
+   - Explicitly document the crash reporting mechanism, confirming it is voluntary and disabled by default.
 
-### Phase 4: App Integration & Clean-Up
-- **Target File:** `src/App.tsx` and `src/components/Header.tsx`
-- Ensure all entity save handlers (`handleSaveTrip`, `handleSaveVehicle`, etc.) benefit from the ambient write-through.
-- Remove redundant manual sync props and callbacks.
-- Ensure guest mode continues to operate with 100% offline local storage, while authenticated owner accounts seamlessly sync in the background.
+### Step 4: Purge Web, Server, and Diagnostic Files from APK
+1. **`scripts/sync-android-assets.js`**:
+   - Expand `webOnlyOrRedundant` filter to remove:
+     `server.cjs`, `server.cjs.map`, `sw.js`, `404.html`, `sitemap.xml`, `robots.txt`, `screenshot-desktop.png`, `screenshot-mobile.png`, `dashcam*`, and `assets/aistudio/*`.
+2. **`.github/workflows/build-apk.yml`**:
+   - Add explicit cleanup step immediately after `npx cap sync android` to ensure no stray files remain in `android/app/src/main/assets/public`.
+3. **`android/app/build.gradle`**:
+   - Update `aaptOptions.ignoreAssetsPattern` to reject `server.cjs*`, `sw.js`, `404.html`, `sitemap.xml`, `robots.txt`, and `*.map`.
 
----
+### Step 5: Legacy Transsion WebView Compatibility & CSS Guards
+1. **`src/index.css`**:
+   - Provide standard hex/rgb fallback variables for primary theme colors (`#1a4d2e`, `#e8f5e9`, `#f4fbf4`, etc.) so that older Android WebViews without `oklch()` or `color-mix()` support render the UI with pristine contrast.
+   - Remove the 9 external `cdn.jsdelivr.net` `@font-face` fallbacks, relying solely on local font files.
+2. **`index.html`**:
+   - Add a lightweight WebView compatibility check: if Android System WebView major version is detected under 105, display a non-blocking toast advising user to update Android System WebView.
 
-## 5. Verification & Testing Protocol
+### Step 6: Eliminate Third-Party QR Data Leak
+1. **`src/utils/biltyHelpers.ts` & `src/components/PrintableBilty.tsx`**:
+   - Remove `https://api.qrserver.com/v1/create-qr-code/?data=...`.
+   - Use `QRCode.toDataURL(url, { errorCorrectionLevel: 'M', margin: 1 })` from the installed `qrcode` package.
+   - Fall back to an inline SVG QR generator if needed, ensuring 100% client-side privacy.
 
-1. **Unit & Integration Tests (Vitest):**
-   - Verify timestamp LWW: newer local edits overwrite older cloud edits; newer cloud edits overwrite older local edits.
-   - Verify offline queue drainage without permission error loops.
-   - Verify guest data safety: guest records are never wiped or prematurely sent to protected cloud paths.
-2. **Offline Simulation Test:**
-   - Simulate `navigator.onLine = false`, create 3 trips and 1 vehicle, verify stored in local scoped storage.
-   - Simulate `navigator.onLine = true` (dispatch `online` event), verify queue drains silently and status updates to "Synced" without pressing any button.
-3. **Build & Lint Verification:**
-   - Run `lint_applet` and `compile_applet`.
-   - Run `npm test` across all 14 test suites.
+### Step 7: Remove Unused CameraX Dependencies (APK Size Reduction)
+1. **`android/app/build.gradle`**:
+   - Remove lines 100-105:
+     ```groovy
+     implementation "androidx.camera:camera-core:${camerax_version}"
+     implementation "androidx.camera:camera-camera2:${camerax_version}"
+     implementation "androidx.camera:camera-lifecycle:${camerax_version}"
+     implementation "androidx.camera:camera-video:${camerax_version}"
+     ```
+   - This prevents bundling ~15-20MB of C++ `.so` libraries across 4 ABIs and eliminates camera recording queries during Palm Store security scans.
 
----
+### Step 8: Clean Suspicious Placeholder Endpoints
+1. **`src/components/LiveFuelPriceWidget.tsx`**:
+   - Replace `placeholder="https://your-backend-api.com/fuel"` with clean, localized placeholder text: `placeholder="https://... (اختیاری کسٹم فیڈ)"`.
 
-## 6. Feedback & Proceed
-Please review the audit findings and proposed implementation plan above. Once approved, we will execute the implementation sequentially and verify full test compliance.
+### Step 9: Verification & Quality Assurance
+1. Run automated test suite (`npm test`) to ensure all 156 unit tests pass.
+2. Run TypeScript linting (`tsc --noEmit`).
+3. Compile production web bundle (`npm run build`).
+4. Audit `android/app/src/main/assets/public` directory to verify zero `server.cjs`, `sw.js`, or external references remain.

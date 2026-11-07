@@ -29,7 +29,13 @@ export const CameraOcrInput: React.FC<CameraOcrInputProps> = ({
     setIsProcessing(true);
     setScanError(null);
     try {
-      const worker = await createWorker('eng');
+      const worker = await createWorker('eng', 1, {
+        workerPath: './tesseract/worker.min.js',
+        corePath: './tesseract/tesseract-core.wasm.js',
+        langPath: './tesseract/lang-data',
+        cacheMethod: 'none',
+        gzip: true
+      });
       const ret = await worker.recognize(file);
       await worker.terminate();
 

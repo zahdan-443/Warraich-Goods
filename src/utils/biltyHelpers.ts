@@ -101,9 +101,12 @@ export async function generateBiltyVerificationQrDataUrl(biltyInput: string | Pa
       },
     });
   } catch (err) {
-    console.warn('QR DataURL generation fallback to API:', err);
-    // Reliable online fallback URL
-    return `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(url)}&size=200x200`;
+    console.warn('QR DataURL generation fallback:', err);
+    try {
+      return await QRCode.toDataURL(url, { margin: 1 });
+    } catch {
+      return '';
+    }
   }
 }
 

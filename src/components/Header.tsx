@@ -21,6 +21,7 @@ import {
   saveDailyDigestSettings, 
   DailyDigestSettings 
 } from '../utils/dailyDigestNotification';
+import { getCrashReportingConsent, setCrashReportingConsent } from '../utils/crashReportingService';
 import { APP_VERSION } from '../constants/version';
 
 interface HeaderProps {
@@ -105,10 +106,12 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const [digestSettings, setDigestSettings] = useState<DailyDigestSettings>(() => getDailyDigestSettings());
+  const [crashConsent, setCrashConsent] = useState<boolean>(() => getCrashReportingConsent());
 
   useEffect(() => {
     if (showNotifs) {
       setDigestSettings(getDailyDigestSettings());
+      setCrashConsent(getCrashReportingConsent());
     }
   }, [showNotifs]);
 
@@ -116,6 +119,12 @@ export const Header: React.FC<HeaderProps> = ({
     const nextState = !digestSettings.enabled;
     const updated = saveDailyDigestSettings({ enabled: nextState });
     setDigestSettings(updated);
+  };
+
+  const handleToggleCrashConsent = () => {
+    const nextState = !crashConsent;
+    setCrashReportingConsent(nextState);
+    setCrashConsent(nextState);
   };
 
   const handleSendTestNotification = async () => {
@@ -801,6 +810,31 @@ export const Header: React.FC<HeaderProps> = ({
                   }`}
                 >
                   {digestSettings.enabled ? (lang === 'ur' ? 'آن (ON)' : 'ON') : (lang === 'ur' ? 'آف (OFF)' : 'OFF')}
+                </button>
+              </div>
+
+              {/* Anonymous Diagnostics & Crash Reports Toggle (Rule 1.5 Compliance) */}
+              <div className="pt-2 border-t border-amber-200/60 dark:border-amber-900/50 flex items-center justify-between gap-2">
+                <div>
+                  <span className="font-semibold text-amber-950 dark:text-amber-200 text-[10.5px] block leading-tight">
+                    {lang === 'ur' ? 'ایپ کریش ڈائیگناسٹکس' : 'Anonymous Crash Reports'}
+                  </span>
+                  <span className="text-[9.5px] text-amber-900/70 dark:text-amber-400/80 block">
+                    {lang === 'ur' 
+                      ? (crashConsent ? 'فعال • غیر علانیہ کریش لاگ کلاؤڈ کو جائے گی' : 'بند ہے • ایررز صرف فون پر رہیں گے')
+                      : (crashConsent ? 'Enabled • Voluntary error reports' : 'Disabled • Local on-device only')}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleCrashConsent}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer shrink-0 ${
+                    crashConsent
+                      ? 'bg-emerald-700 text-white border-emerald-800 shadow-2xs'
+                      : 'bg-white dark:bg-[#22252c] text-slate-600 dark:text-slate-300 border-[#d0d0be] dark:border-[#373c48] hover:bg-slate-50 dark:hover:bg-[#2d313b]'
+                  }`}
+                >
+                  {crashConsent ? (lang === 'ur' ? 'آن (ON)' : 'ON') : (lang === 'ur' ? 'آف (OFF)' : 'OFF')}
                 </button>
               </div>
 

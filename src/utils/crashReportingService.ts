@@ -181,7 +181,12 @@ export async function reportAppCrash(
       // ignore
     }
 
-    if (db) {
+    // Dlightek & Palm Store Rule 1.5 Compliance:
+    // Never upload crash reports to Firestore without explicit user consent.
+    // Default is strictly offline on-device storage.
+    const hasConsent = typeof window !== 'undefined' && localStorage.getItem('wg_crash_reports_consent') === 'true';
+
+    if (db && hasConsent) {
       const docRef = doc(db, 'crashReports', reportId);
       await setDoc(docRef, payload);
       return true;
@@ -191,6 +196,23 @@ export async function reportAppCrash(
     console.warn('[CrashReportingService] Failed to upload crash report:', err);
   }
   return false;
+}
+
+/**
+ * Consent helpers for user control over anonymous diagnostics.
+ */
+export function getCrashReportingConsent(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('wg_crash_reports_consent') === 'true';
+}
+
+export function setCrashReportingConsent(enabled: boolean): void {
+  if (typeof window === 'undefined') return;
+  if (enabled) {
+    localStorage.setItem('wg_crash_reports_consent', 'true');
+  } else {
+    localStorage.removeItem('wg_crash_reports_consent');
+  }
 }
 
 /**

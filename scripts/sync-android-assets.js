@@ -35,6 +35,9 @@ if (fs.existsSync(distDir)) {
       const webOnlyOrRedundant = new Set([
         'server.cjs',
         'server.cjs.map',
+        'sw.js',
+        'sw.js.map',
+        'registerSW.js',
         'robots.txt',
         'sitemap.xml',
         '404.html',
@@ -60,12 +63,26 @@ if (fs.existsSync(distDir)) {
           if (rel.includes('aistudio') || baseName.startsWith('Screenshot_')) return false;
           // Exclude sourcemaps from production APK package
           if (baseName.endsWith('.map')) return false;
+          // Exclude service worker files from mobile APK assets
+          if (baseName.startsWith('sw.') || baseName.startsWith('workbox-')) return false;
           
           return true;
         }
       });
 
-      console.log('✅ Synchronized client web assets to android/app/src/main/assets/public (excluding server, web-only, and diagnostic assets)');
+      // Strict post-copy scrub of any web, server, or diagnostic files from Android assets
+      for (const redundantFile of webOnlyOrRedundant) {
+        const target = path.join(androidPublicDir, redundantFile);
+        if (fs.existsSync(target)) {
+          fs.rmSync(target, { recursive: true, force: true });
+        }
+      }
+      const aistudioAssets = path.join(androidPublicDir, 'assets/aistudio');
+      if (fs.existsSync(aistudioAssets)) {
+        fs.rmSync(aistudioAssets, { recursive: true, force: true });
+      }
+
+      console.log('✅ Synchronized client web assets to android/app/src/main/assets/public (scrubbed server, sw, screenshots, and web-only clutter)');
 
       // Update capacitor.config.json
       const config = {

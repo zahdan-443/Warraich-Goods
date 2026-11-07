@@ -294,7 +294,7 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
               id="custom-fuel-api-url"
               type="url"
               aria-label="Custom Backend API endpoint URL"
-              placeholder="https://your-backend-api.com/fuel"
+              placeholder="https://api.example.com/fuel"
               value={customApiUrl}
               onChange={(e) => setCustomApiUrl(e.target.value)}
               className="flex-1 px-3 py-1.5 text-xs font-mono bg-white border border-[#ecece0] rounded-xl focus:outline-none focus:border-[#8b9d77]"

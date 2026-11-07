@@ -41,6 +41,19 @@
             window.history.replaceState(null, '', '/Warraich-Goods/' + window.location.hash);
           }
         }
+
+        // Detect legacy Android System WebView (Chromium < 105) and display non-blocking advice
+        var match = navigator.userAgent.match(/Chrome\/(\d+)/);
+        if (match && parseInt(match[1], 10) < 105) {
+          window.addEventListener('DOMContentLoaded', function() {
+            var banner = document.createElement('div');
+            banner.style.cssText = 'background:#fff3cd;color:#856404;padding:6px 10px;font-size:10px;text-align:center;border-bottom:1px solid #ffeeba;position:sticky;top:0;z-index:99999;font-family:sans-serif;direction:ltr;';
+            banner.innerHTML = 'بہترین کارکردگی کے لیے <b>Android System WebView</b> اپ ڈیٹ کریں۔ Please update Android System WebView for optimal layout.';
+            if (document.body) {
+              document.body.insertBefore(banner, document.body.firstChild);
+            }
+          });
+        }
       })();
     </script>
     <meta name="theme-color" content="#fdfbf7" />

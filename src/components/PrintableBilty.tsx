@@ -99,8 +99,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
         .catch((err) => {
           console.error('QR generation error:', err);
           if (isMounted) {
-            const fallback = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(getBiltyVerificationUrl(record))}&size=200x200`;
-            setInternalQrUrl(fallback);
+            setInternalQrUrl('');
           }
         });
     }

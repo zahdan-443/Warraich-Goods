@@ -117,31 +117,31 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
               </li>
               <li>
                 <strong>{isUrdu ? 'لوکیشن (GPS):' : 'Location (GPS):'}</strong>{' '}
-                {isUrdu ? 'صرف آن ڈیمانڈ اور آپ کی واضح اجازت پر، نیویگیشن، قریبی موسم اور روڈ ہیزرڈ کے لیے۔ پس منظر میں کبھی ٹریک نہیں ہوتی۔' : 'Strictly on-demand with your explicit consent for navigation, nearby weather, and hazard reporting. Never tracked in background.'}
+                {isUrdu ? 'صرف آن ڈیمانڈ اور آپ کی واضح اجازت پر، روٹ کے فاصلے اور ایندھن کا تخمینہ (OSRM روٹنگ)، شاہراہوں پر موسم کی معلومات (Open-Meteo)، اور قریبی فیول اسٹیشنز تلاش کرنے کے لیے۔ یہ ڈیٹا پس منظر (بیک گراؤنڈ) میں کبھی ٹریک نہیں ہوتا، اور نہ ہی کسی تھرڈ پارٹی یا مشتہر کو فروخت کیا جاتا ہے۔' : 'Strictly on-demand with your explicit consent for route distance and fuel calculations (OSRM routing), highway weather forecasts (Open-Meteo), and nearby fuel station discovery. It is never tracked in the background and never sold or shared with advertisers.'}
               </li>
               <li>
                 <strong>{isUrdu ? 'پش نوٹیفکیشنز:' : 'Push Notifications:'}</strong>{' '}
                 {isUrdu ? 'آپ کی اجازت سے روزانہ ڈائجسٹ (ایندھن کے نرخ، موسم، سڑکوں کی صورتحال) اور آپ کی درج کردہ دستاویزات کی میعاد سے 30، 15 اور 7 دن پہلے یاد دہانی۔ کوئی اشتہاری نوٹیفکیشن نہیں۔' : 'With your permission, a daily digest (fuel rates, weather, road conditions) plus reminders for document expiry dates you entered (30, 15 and 7 days before). No marketing.'}
               </li>
               <li>
-                <strong>{isUrdu ? 'کیمرہ اور مائیکروفون:' : 'Camera & Microphone:'}</strong>{' '}
-                {isUrdu ? 'دستاویزات کی تصویر OCR (Document scanning) اور اختیاری ڈیش کیم ویڈیو و آڈیو ریکارڈنگ کے لیے۔' : 'For document scanning (OCR) and optional dashcam video/audio recording.'}
+                <strong>{isUrdu ? 'کیمرہ (OCR اسکیننگ):' : 'Camera (OCR Scanning):'}</strong>{' '}
+                {isUrdu ? 'صرف دستاویزات، گاڑی کے نمبر یا رسید کی تصویر سے تحریر پڑھنے (OCR) کے لیے جب آپ کیمرہ بٹن دبائیں۔ ایپ مائیکروفون کی اجازت بالکل طلب نہیں کرتی۔' : 'Strictly for on-demand optical character recognition (OCR) of documents, plates, or fuel receipts when you tap the scan button. The app does not request or access microphone audio.'}
               </li>
             </ul>
           </div>
 
-          {/* Section 3: Dashcam Disclosure */}
+          {/* Section 3: On-Device Processing & Privacy */}
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#ecece0] space-y-2.5 shadow-2xs">
             <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
-              <Video className="w-4 h-4 text-emerald-600" />
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <h3 className="font-serif font-bold text-sm">
-                {isUrdu ? '3. ڈیش کیم اور ریکارڈنگ (Dashcam & Media Recording)' : '3. Dashcam & Media Recording'}
+                {isUrdu ? '3. آن ڈیوائس پروسیسنگ اور پرائیویسی (On-Device Local Privacy)' : '3. On-Device Local Privacy'}
               </h3>
             </div>
             <p className="text-xs text-[#5a5a40] leading-relaxed">
               {isUrdu
-                ? 'ڈیش کیم اختیاری ہے اور صرف اس وقت شروع ہوتا ہے جب آپ Start دبائیں۔ ریکارڈنگ کے دوران ایک مستقل نوٹیفکیشن دکھائی دیتا ہے۔ ریکارڈنگز صرف آپ کی ڈیوائس پر محفوظ ہوتی ہیں؛ ایپ انہیں اپلوڈ نہیں کرتی اور ہم ان تک رسائی نہیں رکھتے۔ شیئرنگ اور حذف کرنے کا اختیار آپ کے پاس ہے۔ اگر آڈیو ریکارڈ ہو تو گاڑی میں موجود دیگر افراد کی رضامندی کی ذمہ داری ڈرائیور پر عائد ہوتی ہے۔'
-                : 'The dashcam is optional and starts only when you tap Start. A persistent notification is shown while recording. Recordings are saved only on your device; the App does not upload them and we cannot access them. You control sharing and deletion. If audio is recorded, you alone are responsible for informing occupants and following applicable consent laws.'}
+                ? 'ایپ میں دستاویزات کی تصویر اسکیننگ (OCR)، کیو آر کوڈ (QR Code) بنانا اور پی ڈی ایف محفوظ کرنا مکمل طور پر آپ کے فون کے اندر آف لائن ہوتا ہے۔ کوئی بھی تصویر یا تحریر بیرونی سرور پر نہیں بھیجی جاتی۔ کریش رپورٹس اور تشخیصی ڈیٹا ڈیفالٹ کے طور پر مکمل بند ہے اور صرف اس صورت میں بھیجا جاتا ہے جب صارف سیٹنگز سے خود رضامندی فراہم کرے۔'
+                : 'Document image scanning (OCR), QR code generation, and PDF exports are processed 100% locally and offline on your device. No images or scanned texts are transmitted to external servers. Diagnostic crash telemetry is disabled by default and operates strictly on-device unless voluntarily enabled in settings.'}
             </p>
           </div>
 

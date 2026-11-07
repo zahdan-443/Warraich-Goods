@@ -36,8 +36,8 @@ const SECTIONS: TermSection[] = [
     id: 3,
     titleEn: '3. What the App Offers',
     titleUr: '3. ایپ کی سہولیات',
-    contentEn: 'Trip fuel and cost calculation, motorway and highway toll estimates, route comparison, weather and fuel-rate information, navigation help using your location, road hazard alerts shared by drivers, fleet, vehicle, driver and expense records, document-expiry reminders, an optional dashcam, PDF export and WhatsApp sharing, and quick links to third-party government portals. Features may be added, changed or removed over time.',
-    contentUr: 'ٹرپ کے ایندھن اور اخراجات کا حساب، موٹروے اور ہائی وے ٹول کا تخمینہ، روٹ کا موازنہ، موسم اور ایندھن کے نرخوں کی معلومات، آپ کی لوکیشن کے ذریعے نیویگیشن میں مدد، ڈرائیورز کی طرف سے روڈ ہیزرڈ الرٹس، فلیٹ، گاڑی، ڈرائیور اور اخراجات کا ریکارڈ، دستاویزات کی میعاد کی یاد دہانی، اختیاری ڈیش کیم، پی ڈی ایف ایکسپورٹ اور واٹس ایپ شیئرنگ، اور تھرڈ پارٹی سرکاری پورٹلز کے فوری لنکس۔ فیچرز وقتاً فوقتاً شامل، تبدیل یا ختم کیے جا سکتے ہیں۔'
+    contentEn: 'Trip fuel and cost calculation, motorway and highway toll estimates, route comparison, weather and fuel-rate information, navigation help using your location, road hazard alerts shared by drivers, fleet, vehicle, driver and expense records, document-expiry reminders, local OCR document scanning, PDF export and WhatsApp sharing, and quick links to third-party government portals. Features may be added, changed or removed over time.',
+    contentUr: 'ٹرپ کے ایندھن اور اخراجات کا حساب، موٹروے اور ہائی وے ٹول کا تخمینہ، روٹ کا موازنہ، موسم اور ایندھن کے نرخوں کی معلومات، آپ کی لوکیشن کے ذریعے نیویگیشن میں مدد، ڈرائیورز کی طرف سے روڈ ہیزرڈ الرٹس، فلیٹ، گاڑی، ڈرائیور اور اخراجات کا ریکارڈ، دستاویزات کی میعاد کی یاد دہانی، لوکل او سی آر دستاویز اسکیننگ، پی ڈی ایف ایکسپورٹ اور واٹس ایپ شیئرنگ، اور تھرڈ پارٹی سرکاری پورٹلز کے فوری لنکس۔ فیچرز وقتاً فوقتاً شامل، تبدیل یا ختم کیے جا سکتے ہیں۔'
   },
   {
     id: 4,
@@ -62,10 +62,10 @@ const SECTIONS: TermSection[] = [
   },
   {
     id: 7,
-    titleEn: '7. Permissions: Location, Camera, Microphone, Notifications',
-    titleUr: '7. اجازتیں: لوکیشن، کیمرہ، مائیکروفون، نوٹیفکیشنز',
-    contentEn: 'Location is used only while the App is open and only after you allow it, for navigation, nearby weather and toll information and hazard reports. It is never tracked in the background, and you can use the App without location by choosing cities manually. The camera is used for document scanning (OCR) and the optional dashcam; the microphone is used only for dashcam audio. You can withdraw any permission at any time in your device settings.',
-    contentUr: 'لوکیشن صرف اس وقت استعمال ہوتی ہے جب ایپ کھلی ہو اور آپ نے اجازت دی ہو، نیویگیشن، قریبی موسم و ٹول کی معلومات اور ہیزرڈ رپورٹس کے لیے۔ پس منظر (بیک گراؤنڈ) میں لوکیشن کبھی ٹریک نہیں ہوتی، اور آپ شہر خود چن کر لوکیشن کے بغیر بھی ایپ استعمال کر سکتے ہیں۔ کیمرہ دستاویزات کی اسکیننگ (OCR) اور اختیاری ڈیش کیم کے لیے ہے؛ مائیکروفون صرف ڈیش کیم کی آواز کے لیے ہے۔ آپ کسی بھی وقت ڈیوائس سیٹنگز میں اجازت واپس لے سکتے ہیں۔'
+    titleEn: '7. Permissions: Location, Camera, Notifications',
+    titleUr: '7. اجازتیں: لوکیشن، کیمرہ، نوٹیفکیشنز',
+    contentEn: 'Location is used only while the App is open and only after you allow it, for route calculation, highway weather and nearby fuel rates. It is never tracked in the background, and you can use the App without location by choosing cities manually. The camera is used solely on-demand for local document and receipt scanning (OCR). The App does not require or access microphone audio. You can withdraw any permission at any time in device settings.',
+    contentUr: 'لوکیشن صرف اس وقت استعمال ہوتی ہے جب ایپ کھلی ہو اور آپ نے اجازت دی ہو، روٹ کے فاصلے، شاہراہوں کے موسم اور قریبی ایندھن کے نرخوں کے لیے۔ پس منظر (بیک گراؤنڈ) میں لوکیشن کبھی ٹریک نہیں ہوتی، اور آپ شہر خود چن کر لوکیشن کے بغیر بھی ایپ استعمال کر سکتے ہیں۔ کیمرہ صرف رسیدوں اور دستاویزات کی آن ڈیوائس اسکیننگ (OCR) کے لیے ہے۔ ایپ مائیکروفون کی اجازت طلب نہیں کرتی۔ آپ کسی بھی وقت ڈیوائس سیٹنگز میں اجازت واپس لے سکتے ہیں۔'
   },
   {
     id: 8,
@@ -76,10 +76,10 @@ const SECTIONS: TermSection[] = [
   },
   {
     id: 9,
-    titleEn: '9. Dashcam and Recording',
-    titleUr: '9. ڈیش کیم اور ریکارڈنگ',
-    contentEn: 'The dashcam is optional and starts only when you tap Start. A persistent notification is shown while recording. Recordings are saved only on your device; the App does not upload them and we cannot access them. You control sharing and deletion. If audio is recorded, other people in the vehicle may be recorded; you alone are responsible for informing them and following applicable laws. We do not guarantee that recordings will be accepted as evidence. Never handle the phone while driving.',
-    contentUr: 'ڈیش کیم اختیاری ہے اور صرف اس وقت شروع ہوتا ہے جب آپ Start دبائیں۔ ریکارڈنگ کے دوران ایک مستقل نوٹیفکیشن دکھائی دیتا ہے۔ ریکارڈنگز صرف آپ کی ڈیوائس پر محفوظ ہوتی ہیں؛ ایپ انہیں اپلوڈ نہیں کرتی اور ہم ان تک رسائی نہیں رکھتے۔ شیئرنگ اور حذف کرنے کا اختیار آپ کے پاس ہے۔ اگر آڈیو ریکارڈ ہو تو گاڑی میں موجود دیگر افراد بھی ریکارڈ ہو سکتے ہیں؛ انہیں آگاہ کرنے اور متعلقہ قوانین پر عمل کرنے کی ذمہ داری صرف آپ کی ہے۔ ہم اس بات کی ضمانت نہیں دیتے کہ ریکارڈنگ بطور ثبوت قبول ہوگی۔ ڈرائیونگ کے دوران فون ہاتھ میں نہ لیں۔'
+    titleEn: '9. Document Scanning and Local OCR',
+    titleUr: '9. دستاویزات اسکیننگ اور لوکل او سی آر',
+    contentEn: 'Document scanning is optional and initiates only when you tap the camera scan button. The recognition processing runs 100% locally on your device using bundled WebAssembly. Scanned images are not uploaded to external servers, and we cannot access your personal photos. You retain full control over adding, editing, and deleting records.',
+    contentUr: 'دستاویزات کی اسکیننگ اختیاری ہے اور صرف اس وقت شروع ہوتی ہے جب آپ کیمرہ اسکین بٹن دبائیں۔ تحریر پڑھنے کا عمل مکمل طور پر آپ کے فون کے اندر آف لائن ویب اسمبلی سے ہوتا ہے۔ اسکین شدہ تصاویر کسی بیرونی سرور پر اپلوڈ نہیں کی جاتیں اور ہم آپ کی تصاویر تک رسائی نہیں رکھتے۔ ریکارڈ میں ترمیم اور حذف کا مکمل اختیار آپ کے پاس ہے۔'
   },
   {
     id: 10,

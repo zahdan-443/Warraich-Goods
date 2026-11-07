@@ -71,6 +71,11 @@ jobs:
           find android/app/src/main/java -name "MainActivity.java" ! -path "*/com/warraichgoods/driverdost/*" -delete || true
           # Safety cleanup: remove any corrupt/non-standard land-hdpi splash that can fail aapt2 compilation
           rm -rf android/app/src/main/res/drawable-land-hdpi || true
+          # Asset Hygiene: Purge web-only server, service worker, 404, and screenshots from mobile APK assets
+          rm -f android/app/src/main/assets/public/server.cjs* android/app/src/main/assets/public/sw.js* android/app/src/main/assets/public/registerSW.js || true
+          rm -f android/app/src/main/assets/public/404.html android/app/src/main/assets/public/sitemap.xml android/app/src/main/assets/public/robots.txt || true
+          rm -f android/app/src/main/assets/public/screenshot*.png android/app/src/main/assets/public/dashcam* || true
+          rm -rf android/app/src/main/assets/public/assets/aistudio || true
 
       - name: Configure google-services.json
         env:
