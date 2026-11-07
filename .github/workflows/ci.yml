@@ -23,7 +23,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          npm ci || npm install --no-audit --no-fund
+          npm install --legacy-peer-deps --no-audit --no-fund
 
       - name: Code Quality & Type Check
         run: |

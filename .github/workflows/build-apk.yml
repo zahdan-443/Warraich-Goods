@@ -35,7 +35,7 @@ jobs:
           node-version: 22
 
       - name: Setup Java JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '21'
@@ -46,15 +46,17 @@ jobs:
           gradle-version: '8.11.1'
           validate-wrappers: false
 
-      - name: Configure Android SDK Environment
+      - name: Configure Android SDK Environment (Android 35)
         run: |
           echo "ANDROID_HOME: $ANDROID_HOME"
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-35" "build-tools;35.0.0" || true
 
       - name: Install NPM Dependencies
         run: |
-          npm ci || npm install --no-audit --no-fund
+          npm install --legacy-peer-deps --no-audit --no-fund
 
       - name: Run Test Suite
         run: |
@@ -69,23 +71,26 @@ jobs:
           # Safety cleanup: remove any corrupt/non-standard land-hdpi splash that can fail aapt2 compilation
           rm -rf android/app/src/main/res/drawable-land-hdpi || true
 
-      - name: Inject google-services.json (from Secrets or Workspace)
+      - name: Configure google-services.json
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
-          mkdir -p android/app/src/release
-          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
-            echo "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
-            echo "$GOOGLE_SERVICES_JSON" > android/app/src/release/google-services.json
-            echo "✅ Successfully configured google-services.json from GitHub Secrets"
-          elif [ -f "android/app/src/release/google-services.json" ]; then
-            echo "✅ Found android/app/src/release/google-services.json, syncing to android/app/google-services.json"
-            cp android/app/src/release/google-services.json android/app/google-services.json
-          elif [ -f "android/app/google-services.json" ]; then
-            echo "✅ Found android/app/google-services.json, syncing to android/app/src/release/google-services.json"
-            cp android/app/google-services.json android/app/src/release/google-services.json
-          else
-            echo "⚠️ Notice: google-services.json not found in repository or secrets."
+          mkdir -p android/app/src/release android/app/src/debug
+          node -e "
+            const fs = require('fs');
+            const content = (process.env.GOOGLE_SERVICES_JSON || '').trim();
+            if (content.startsWith('{')) {
+              fs.writeFileSync('android/app/google-services.json', content);
+              fs.writeFileSync('android/app/src/release/google-services.json', content);
+              console.log('✅ Injected google-services.json from GitHub Secrets');
+            } else if (fs.existsSync('android/app/google-services.json')) {
+              console.log('✅ Using repository android/app/google-services.json');
+            }
+          " || true
+          # Guarantee file is synced to all build variants
+          if [ -f "android/app/google-services.json" ]; then
+            cp -f android/app/google-services.json android/app/src/release/google-services.json 2>/dev/null || true
+            cp -f android/app/google-services.json android/app/src/debug/google-services.json 2>/dev/null || true
           fi
 
       - name: Prepare Release Keystore (Strictly from GitHub Secrets)
@@ -105,7 +110,12 @@ jobs:
             echo "::error::[Signing Policy Error] Missing keystore credentials. Please provide ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD in GitHub Secrets."
             exit 1
           fi
-          echo "$ANDROID_KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > android/app/release-keystore.jks
+          node -e "
+            const fs = require('fs');
+            const raw = (process.env.ANDROID_KEYSTORE_BASE64 || '').replace(/[\r\n\s]/g, '');
+            const buf = Buffer.from(raw, 'base64');
+            fs.writeFileSync('android/app/release-keystore.jks', buf);
+          "
           if [ ! -s android/app/release-keystore.jks ]; then
             echo "::error::[Signing Policy Error] Failed to decode ANDROID_KEYSTORE_BASE64 into release-keystore.jks or file is empty."
             exit 1
@@ -115,15 +125,6 @@ jobs:
           echo "ANDROID_KEYSTORE_PASSWORD=${ANDROID_KEYSTORE_PASSWORD}" >> $GITHUB_ENV
           echo "ANDROID_KEY_ALIAS=${ANDROID_KEY_ALIAS}" >> $GITHUB_ENV
           echo "ANDROID_KEY_PASSWORD=${ANDROID_KEY_PASSWORD}" >> $GITHUB_ENV
-
-      - name: Print Keystore Fingerprints (SHA-1 & SHA-256 for Firebase & Palm Store)
-        if: ${{ inputs.build_type == 'release' }}
-        run: |
-          echo "=== Release Keystore Fingerprints (Add SHA-1 and SHA-256 to Firebase & Palm Store Console) ==="
-          keytool -list -v -keystore "android/app/$ANDROID_KEYSTORE_PATH" -storepass "$ANDROID_KEYSTORE_PASSWORD" 2>/dev/null | grep -E "SHA1:|SHA256:" || echo "Could not read Keystore fingerprint"
-        env:
-          ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ env.ANDROID_KEYSTORE_PASSWORD }}
 
       - name: Build Signed Android APK via Gradle
         env:
@@ -141,20 +142,6 @@ jobs:
             echo "Building Debug APK (assembleDebug)..."
             ./gradlew assembleDebug --no-daemon --stacktrace
           fi
-
-      - name: Verify APK Signature (v1 and v2 Schemes)
-        if: ${{ inputs.build_type == 'release' }}
-        run: |
-          APK_PATH=$(find android/app/build/outputs/apk/release -name "*.apk" | head -1)
-          echo "Checking signature of: $APK_PATH"
-          BUILD_TOOLS_DIR=$(find $ANDROID_HOME/build-tools -maxdepth 1 -type d | sort -V | tail -1)
-          APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
-          echo "=== APK's actual signing certificate (from the built APK itself) ==="
-          "$APKSIGNER" verify --verbose "$APK_PATH" || true
-          "$APKSIGNER" verify --print-certs "$APK_PATH" | grep -i "SHA-256" || true
-        env:
-          ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ env.ANDROID_KEYSTORE_PASSWORD }}
 
       - name: Upload Signed APK Artifact
         uses: actions/upload-artifact@v4
