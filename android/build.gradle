@@ -30,6 +30,7 @@ subprojects {
         if (project.hasProperty('android')) {
             project.android {
                 compileSdkVersion rootProject.ext.compileSdkVersion
+                compileSdk rootProject.ext.compileSdkVersion
             }
         }
     }

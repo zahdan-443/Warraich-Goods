@@ -142,11 +142,11 @@ jobs:
           cd android
           chmod +x ./gradlew
           if [ "${{ inputs.build_type }}" = "release" ]; then
-            echo "Building officially signed Release APK (assembleRelease)..."
-            ./gradlew assembleRelease --no-daemon --stacktrace
+            echo "Building officially signed Store Release APK (assembleStoreRelease)..."
+            ./gradlew assembleStoreRelease --no-daemon --stacktrace
           else
-            echo "Building Debug APK (assembleDebug)..."
-            ./gradlew assembleDebug --no-daemon --stacktrace
+            echo "Building Store Debug APK (assembleStoreDebug)..."
+            ./gradlew assembleStoreDebug --no-daemon --stacktrace
           fi
 
       - name: Verify APK Asset Hygiene (Fail on Web Leaks or Forbidden Artifacts)

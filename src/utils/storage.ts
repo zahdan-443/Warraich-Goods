@@ -17,7 +17,7 @@ import {
   PodConfirmation
 } from '../types';
 import { auth, db } from './firebase';
-import { doc, getDoc, setDoc, collection, getDocs, addDoc, runTransaction, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, collection, getDocs, addDoc, runTransaction, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import {
   getStorageScope,
   getScopedStorageKey,
@@ -2263,6 +2263,8 @@ export async function requestAccountDeletion(
   const currentUser = auth.currentUser;
   if (db && userId && currentUser && currentUser.uid === userId) {
     try {
+      const delDocRef = doc(db, 'accountDeletionRequests', userId);
+      await withTimeout(setDoc(delDocRef, deletionData), 4000);
       const userDocRef = doc(db, 'usersData', userId);
       await withTimeout(setDoc(userDocRef, { accountDeletion: deletionData }, { merge: true }), 4000);
     } catch (err) {
@@ -2284,6 +2286,8 @@ export async function cancelAccountDeletion(userId: string): Promise<{ success: 
   const currentUser = auth.currentUser;
   if (db && userId && currentUser && currentUser.uid === userId) {
     try {
+      const delDocRef = doc(db, 'accountDeletionRequests', userId);
+      await withTimeout(deleteDoc(delDocRef), 4000);
       const userDocRef = doc(db, 'usersData', userId);
       await withTimeout(setDoc(userDocRef, { accountDeletion: null }, { merge: true }), 4000);
     } catch (err) {
@@ -2303,4 +2307,59 @@ export function getAccountDeletionStatus(userId: string): AccountDeletionRequest
     // ignore
   }
   return null;
+}
+
+/**
+ * Fetches account deletion status directly from Firestore accountDeletionRequests collection,
+ * reconciling local storage if the user previously initiated deletion on another device.
+ */
+export async function fetchAccountDeletionStatus(userId: string): Promise<AccountDeletionRequest | null> {
+  const currentUser = auth.currentUser;
+  if (db && userId && currentUser && currentUser.uid === userId) {
+    try {
+      const delDocRef = doc(db, 'accountDeletionRequests', userId);
+      const docSnap = await withTimeout(getDoc(delDocRef), 3500);
+      if (docSnap && docSnap.exists()) {
+        const data = docSnap.data() as AccountDeletionRequest;
+        safeStorage.setItem(`ah-deletion-${userId}`, JSON.stringify(data));
+        return data;
+      } else {
+        safeStorage.removeItem(`ah-deletion-${userId}`);
+        return null;
+      }
+    } catch (err) {
+      console.warn('Error fetching account deletion status from Firestore:', err);
+    }
+  }
+  return getAccountDeletionStatus(userId);
+}
+
+/**
+ * Permanently purges all user data if 30-day grace period has elapsed.
+ */
+export async function purgeExpiredAccountData(userId: string): Promise<boolean> {
+  try {
+    const status = await fetchAccountDeletionStatus(userId);
+    if (!status) return false;
+    const scheduled = new Date(status.scheduledFor).getTime();
+    if (Date.now() >= scheduled) {
+      const syncCollections = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel', 'routes'];
+      syncCollections.forEach(col => {
+        safeStorage.removeItem(getScopedStorageKey(col, userId));
+      });
+      safeStorage.removeItem(`ah-deletion-${userId}`);
+
+      const currentUser = auth.currentUser;
+      if (db && currentUser && currentUser.uid === userId) {
+        try {
+          const userDoc = doc(db, 'usersData', userId);
+          await withTimeout(deleteDoc(userDoc), 4000);
+          const delDoc = doc(db, 'accountDeletionRequests', userId);
+          await withTimeout(deleteDoc(delDoc), 4000);
+        } catch {}
+      }
+      return true;
+    }
+  } catch {}
+  return false;
 }

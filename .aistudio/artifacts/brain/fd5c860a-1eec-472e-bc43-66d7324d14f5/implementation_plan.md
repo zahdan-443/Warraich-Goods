@@ -1,209 +1,128 @@
-# Driver Dost Store & Full Distribution Compliance Plan (v1.2.3)
+# Production Hardening & Store Compliance Implementation Plan
 
-A comprehensive architectural overhaul incorporating Amendments A through G, introducing Gradle product flavors (`store` vs `full`), decoupling server compilation from APK asset sync, bundling all Tesseract WebAssembly core variants with `document.baseURI` resolution, transpiling modern CSS for legacy Android WebViews, sanitizing crash telemetry, and enforcing automated CI verification against unauthorized files and network endpoints.
+Driver Dost transport and logistics platform comprehensive hardening plan covering 30-day account deletion with sign-in restore banner, Firebase multi-tenant security rules audit, automatic background cloud synchronization, APK hygiene, and Android build stability.
 
 ---
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The following plan has been updated to incorporate Amendments A through G in full detail. Please review the architectural blueprint below before we commence execution.
-
-- **Amendment A (Product Flavors & CameraX)**: Instead of deleting CameraX globally, we introduce two product flavors in `android/app/build.gradle`: `full` and `store`.
-  - `full`: Retains real `DashcamService.kt`, `DashcamPlugin.kt`, and `fullImplementation "androidx.camera:*"`.
-  - `store`: Contains a lightweight no-op `DashcamPlugin.kt` stub in `src/store/java/...`, zero CameraX dependencies, zero camera native binaries (`.so`), and zero camera/mic/foreground-service permissions.
-  - `MainActivity.java` compiles without conditional code in both flavors.
-- **Amendment B (Build Decoupling & CI Guard)**:
-  - `"build"` in `package.json` generates purely client assets (`vite build && node scripts/sync-android-assets.js`), strictly excluding `dist/server.cjs`.
-  - A new `"build:web"` script handles full-stack server bundling (`npm run build && esbuild server.ts ...`).
-  - Added an automated CI step in `build-apk.yml` that inspects the built APK using `unzip -l` and fails the workflow if `server.cjs`, `sw.js`, `404.html`, `sitemap.xml`, `screenshot-*.png`, `*.map`, or references to `cdn.jsdelivr.net`, `qrserver.com`, or `your-backend-api.com` are present in web assets.
-  - Asset filtering is scoped to icons only (`dashcam-icon.png`), never touching `DashcamView-*.js` chunks.
-  - Replaced deprecated `aaptOptions` with modern `androidResources { ignoreAssetsPattern ... }`.
-- **Amendment C (All-Core Tesseract & baseURI)**:
-  - All Tesseract core variants (`tesseract-core.wasm.js`, `tesseract-core-simd.wasm.js`, `tesseract-core-lstm.wasm.js`, `tesseract-core-simd-lstm.wasm.js`, and `.wasm` binaries) are bundled locally in `public/tesseract/`.
-  - `CameraOcrInput.tsx` resolves URLs via `document.baseURI` (`new URL('tesseract/worker.min.js', document.baseURI).href`, etc.) with `gzip: true`, `cacheMethod: 'none'`, and `workerBlobURL: false` fallback.
-- **Amendment D (CSS Compatibility & WebView Guard)**:
-  - Added a post-build CSS processor that transpiles or provides RGB fallbacks for `oklch(` and `color-mix(` targeting Chrome 80+.
-  - Aligned WebView warning threshold in `index.html` to Chrome 111.
-- **Amendment E (Sanitized Crash Diagnostics)**:
-  - Removed `userUid` and `url` from the report payload in `crashReportingService.ts`.
-  - Renamed the UI toggle in System Menu to "Crash reports (optional)" / "کریش رپورٹس (اختیاری)" (default: OFF).
-- **Amendment F (Version 1.2.3 & Clean CHANGELOG)**:
-  - Bumped version to `1.2.3` (code: 8).
-  - Authored a compliant CHANGELOG adhering strictly to Public-Facing Terminology Policy (Rule 5: zero occurrences of forbidden terminology; using neutral terms like "transport documents" or "freight receipts").
+> The following decisions were clarified and confirmed with the user in Phase 1:
+> - **Account Deletion Handling**: When a user with a pending deletion signs in, display a top alert banner with a 1-click **"Cancel Deletion & Restore Account"** button rather than auto-canceling or hard locking.
+> - **Cloud Synchronization**: Operate as **automatic background synchronization only**, seamlessly syncing offline transactions to Firestore whenever connectivity is restored.
+> - **APK Build Variant**: Target **Store Release APK only** (`assembleStoreRelease`) in the GitHub Actions CI workflow to ensure a fast, lean, store-compliant release.
+> - **Feature Scope (User Note)**: Strictly do NOT add shipment tracking. Maintain and polish the **Digital Bilty Creation & Online Verification System**.
 
 ---
 
-## 1. High-Level Architecture & Flavor Strategy
+## 1. Overview & Core Concept
+
+Driver Dost is a bilingual (Urdu & English) transport operations, goods receipts, vehicle expense ledger, and toll calculation application tailored for Pakistani freight corridors and fleet operators. This iteration delivers complete operational compliance, robust data security, and APK build stability across all supported Android platforms.
+
+### Target Audience & Persona
+- **Transport Fleet Owners & Branch Managers**: Managing digital goods receipts, vehicle khata ledgers, and official verification links.
+- **Freight Truck Drivers**: Working offline on highways in guest mode or authenticated driver accounts with automatic background sync and zero blocking login modals.
+
+---
+
+## 2. Key Architecture & Workflows
+
+### System Architecture Diagram
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                   GRADLE MULTI-FLAVOR ARCHITECTURE                     │
+│                        DRIVER DOST CLIENT ENGINE                       │
+│                                                                        │
+│  ┌──────────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ Guest Mode / Offline │  │  Authenticated   │  │ Account Deletion │  │
+│  │ Local Storage & IDB  │  │ User State (Auth)│  │ Banner & Restore │  │
+│  └──────────┬───────────┘  └─────────┬────────┘  └────────┬─────────┘  │
+│             │                        │                    │            │
+│             ▼                        ▼                    ▼            │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │           Ambient Background Sync Queue (Auto-Sync)              │  │
+│  │     - Network state listener (online / offline transition)       │  │
+│  │     - Last-Write-Wins (LWW) conflict resolver                    │  │
+│  │     - Queue flusher: pending offline edits -> Firestore          │  │
+│  └───────────────────────────────────┬──────────────────────────────┘  │
+└──────────────────────────────────────┼─────────────────────────────────┘
+                                       │
+                                       ▼ (HTTPS / Firestore SDK)
+┌────────────────────────────────────────────────────────────────────────┐
+│                     FIRESTORE SECURITY & ISOLATION                     │
+│                                                                        │
+│  ┌──────────────────────────────┐    ┌──────────────────────────────┐  │
+│  │ usersData/{userId}           │    │ accountDeletionRequests/     │  │
+│  │  - Strict userId matching    │    │  {userId}                    │  │
+│  │  - Zero cross-tenant leakage │    │  - 30-day grace period track │  │
+│  └──────────────────────────────┘    └──────────────────────────────┘  │
+│  ┌──────────────────────────────┐    ┌──────────────────────────────┐  │
+│  │ publicBiltyVerifications/    │    │ access/biltyAccess & admins/ │  │
+│  │  - Whitelisted non-PII only  │    │  - Strictly Owner access only│  │
+│  │  - No CNICs, phones, charges │    │                               │  │
+│  └──────────────────────────────┘    └──────────────────────────────┘  │
 └────────────────────────────────────────────────────────────────────────┘
-                                   │
-      ┌────────────────────────────┴────────────────────────────┐
-      ▼                                                         ▼
-┌───────────────────────────────────────┐   ┌───────────────────────────────────────┐
-│             STORE FLAVOR              │   │              FULL FLAVOR              │
-│  android/app/src/store/java/          │   │  android/app/src/full/java/           │
-│  - No-op DashcamPlugin.kt stub        │   │  - Real DashcamPlugin.kt              │
-│  - Zero CameraX dependencies          │   │  - Real DashcamService.kt             │
-│  - Zero camera/mic permissions        │   │  - fullImplementation androidx.camera │
-│  - Minimal ~14MB APK download         │   │  - Full background video & HUD        │
-└───────────────────────────────────────┘   └───────────────────────────────────────┘
-                                   │
-                                   ▼
-┌───────────────────────────────────────────────────────────────────────┐
-│                              COMMON CORE                              │
-│  android/app/src/main/java/MainActivity.java                          │
-│  registerPlugin(DashcamPlugin.class); (Compiles cleanly in both)      │
-└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Technical Implementation Specifications
+## 3. Detailed Implementation Modules
 
-### Step 1: Product Flavors & CameraX Isolation (Amendment A)
-1. **Source Restructuring**:
-   - Create `android/app/src/full/java/com/warraichgoods/driverdost/dashcam/`.
-   - Move `DashcamService.kt` and `DashcamPlugin.kt` from `src/main/java/...` to `src/full/java/...`.
-   - Create `android/app/src/store/java/com/warraichgoods/driverdost/dashcam/`.
-   - Implement a clean, no-op `DashcamPlugin.kt` stub in `src/store/java/...` that safely handles plugin calls:
-     ```kotlin
-     package com.warraichgoods.driverdost.dashcam
+### Module 1: Complete Account Deletion System (30-Day Grace Period & Restore Banner)
+- **Request Flow**: User accesses Account Deletion in Settings -> Confirmation modal explains 30-day grace period -> Document created in Firestore `accountDeletionRequests/{userId}` with:
+  - `userId`: string
+  - `userEmail`: string
+  - `requestedAt`: timestamp
+  - `scheduledPurgeAt`: timestamp (+30 days)
+  - `status`: 'pending'
+- **Sign-In Banner & Restoration**:
+  - When user signs in, if a pending deletion request exists in `accountDeletionRequests/{userId}`, a prominent top alert banner appears:
+    - Urdu: *"آپ کے اکاؤنٹ کو ڈیلیٹ کرنے کی درخواست زیرِ عمل ہے۔ 30 دن کی مہلت کے بعد اکاؤنٹ مستقل حذف ہو جائے گا۔"*
+    - English: *"Your account is scheduled for deletion on [Date]. You can cancel this request anytime during the grace period."*
+    - Single-click action button: **"Cancel Deletion & Restore Account"** / **"درخواست منسوخ کریں اور اکاؤنٹ بحال رکھیں"**.
+  - Clicking the button deletes the document from `accountDeletionRequests/{userId}` and restores normal account status immediately.
+- **Permanent Purge Execution**:
+  - Verification logic to purge user-isolated subcollections (`users/{userId}` and `usersData/{userId}`) once `scheduledPurgeAt` has passed.
 
-     import com.getcapacitor.Plugin
-     import com.getcapacitor.PluginCall
-     import com.getcapacitor.PluginMethod
-     import com.getcapacitor.annotation.CapacitorPlugin
+### Module 2: Firebase Security Rules Audit & Multi-Tenant Data Protection
+- **User Isolation**:
+  - `usersData/{userId}` and `users/{userId}` strictly restricted to `request.auth.uid == userId`.
+  - Non-owner users cannot query or list other users' documents, trips, fuel entries, ledgers, or profile data.
+- **Master Authorization & Management**:
+  - Master access controls (`access/biltyAccess`, `admins/{adminId}`, `settings/{settingId}`) strictly restricted to the verified Fleet Owner (`warraichgoods43@gmail.com`).
+- **Public Verification Hardening**:
+  - `publicBiltyVerifications/{docId}`: Read allowed for QR code verification, but security rules strictly enforce a whitelist of non-sensitive fields (`biltyNo`, `date`, `senderName`, `receiverName`, `vehicleNo`, `driverName`, `itemDescription`, `weight`, `qty`, `branch`).
+  - Strictly **forbidden** fields (CNIC, phone numbers, freight price, advance, balance, charges, driver phone) are blocked by security rules from ever being written to public verification records.
 
-     @CapacitorPlugin(name = "Dashcam")
-     class DashcamPlugin : Plugin() {
-         @PluginMethod
-         fun startRecording(call: PluginCall) {
-             call.unavailable("Dashcam recording is not enabled in this store release.")
-         }
-         @PluginMethod
-         fun stopRecording(call: PluginCall) {
-             call.resolve()
-         }
-         @PluginMethod
-         fun getStatus(call: PluginCall) {
-             call.resolve()
-         }
-     }
-     ```
-   - In `android/app/src/full/AndroidManifest.xml`:
-     Declare `<service android:name=".dashcam.DashcamService" android:foregroundServiceType="camera|microphone" ... />` and camera permissions.
-   - In `android/app/src/main/AndroidManifest.xml`:
-     Ensure zero camera/mic permissions and zero service declarations.
-2. **`android/app/build.gradle` Configuration**:
-   - Add flavor dimension:
-     ```groovy
-     flavorDimensions "distribution"
-     productFlavors {
-         store {
-             dimension "distribution"
-         }
-         full {
-             dimension "distribution"
-         }
-     }
-     ```
-   - Configure dependencies:
-     ```groovy
-     def camerax_version = "1.4.1"
-     fullImplementation "androidx.camera:camera-core:${camerax_version}"
-     fullImplementation "androidx.camera:camera-camera2:${camerax_version}"
-     fullImplementation "androidx.camera:camera-lifecycle:${camerax_version}"
-     fullImplementation "androidx.camera:camera-video:${camerax_version}"
-     ```
+### Module 3: Automatic Background Cloud Synchronization
+- **Zero-Friction Ambient Sync**:
+  - Operates automatically in the background without requiring manual "Sync Now" clicks.
+  - Network listener detects when the device comes online and drains the offline queue automatically.
+  - Conflict resolution uses timestamp-based Last-Write-Wins (LWW) to merge offline edits with cloud records safely.
+  - Poison-pill protection: skips any unauthorized cloud writes for guest or non-owner restricted paths so the queue never gets stuck.
 
-### Step 2: Build Scripts, Decoupling & CI Guard (Amendment B)
-1. **`package.json` Updates**:
-   - `"build": "vite build && node scripts/sync-android-assets.js"` (purely mobile/client build).
-   - `"build:web": "npm run build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs"`.
-2. **`scripts/sync-android-assets.js`**:
-   - Ensure the asset sync never encounters `server.cjs`.
-   - Scope icon filtering strictly to `dashcam-icon.png` and `dashcam-icon.jpg`, ensuring `DashcamView-*.js` chunks are preserved.
-3. **`android/app/build.gradle`**:
-   - Use modern `androidResources { ignoreAssetsPattern = ... }` for AGP 8+:
-     ```groovy
-     androidResources {
-         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:server.cjs*:sw.js*:registerSW.js:404.html:sitemap.xml:robots.txt:screenshot*.png:*.map:aistudio*'
-     }
-     ```
-4. **`.github/workflows/build-apk.yml` CI Guard**:
-   - Add automated verification step after Gradle build:
-     ```bash
-     APK_FILE=$(find android/app/build/outputs/apk -name "*.apk" | head -1)
-     echo "Auditing $APK_FILE contents..."
-     unzip -l "$APK_FILE" > apk_contents.txt
-     if grep -E "server\.cjs|sw\.js|404\.html|sitemap\.xml|screenshot-.*\.png|\.map" apk_contents.txt; then
-       echo "::error::Prohibited files detected in APK package!"
-       exit 1
-     fi
-     # Decompress assets and verify no leaked URLs
-     mkdir -p /tmp/apk_assets && unzip -q "$APK_FILE" "assets/public/*" -d /tmp/apk_assets || true
-     if grep -rE "cdn\.jsdelivr\.net|qrserver\.com|your-backend-api\.com" /tmp/apk_assets/; then
-       echo "::error::Prohibited external endpoints detected in packaged web assets!"
-       exit 1
-     fi
-     echo "✅ APK asset audit passed: 100% clean."
-     ```
+### Module 4: Android Build & GitHub Actions CI Fixes
+- **Root Cause of Previous Failures**:
+  1. `setup-java v4` deprecation notice -> already resolved with `actions/setup-java@v5` in `.github/workflows/build-apk.yml`.
+  2. `npm ci` lockfile mismatch (`@types/jszip`, `jszip`, etc.) -> sync `package-lock.json` and use `npm install --legacy-peer-deps --no-audit --no-fund` in CI.
+  3. `checkReleaseAarMetadata` failed -> resolved by setting `compileSdkVersion = 35` and enforcing `subprojects { project.plugins.withId('com.android.library') { android { compileSdk = 35 } } }` so all Capacitor plugins compile against Android 35 SDK.
+  4. Building `assembleStoreRelease` specifically targets the lean `store` flavor, completely bypassing CameraX and camera dependencies.
+- **APK Asset Hygiene & CI Verification**:
+  - Decoupled `npm run build` keeps `server.cjs` out of the client assets.
+  - Automated CI step runs `unzip -l` on the APK to verify zero web server files (`server.cjs`, `sw.js`, `404.html`, `sitemap.xml`, screenshots, `.map` files) and zero third-party domain string leaks (`cdn.jsdelivr.net`, `api.qrserver.com`, `your-backend-api.com`).
 
-### Step 3: Tesseract 7 Comprehensive Bundling (Amendment C)
-1. **Stage All Core Variants**:
-   - Copy all 4 variants (`tesseract-core.wasm.js`, `tesseract-core-simd.wasm.js`, `tesseract-core-lstm.wasm.js`, `tesseract-core-simd-lstm.wasm.js` and their corresponding `.wasm` binaries) to `public/tesseract/`.
-   - Keep `worker.min.js` in `public/tesseract/`.
-   - Keep `eng.traineddata.gz` in `public/tesseract/lang-data/`.
-2. **`src/components/CameraOcrInput.tsx`**:
-   - Construct absolute URLs using `document.baseURI`:
-     ```typescript
-     const base = document.baseURI || window.location.href;
-     const workerUrl = new URL('tesseract/worker.min.js', base).href;
-     const coreUrl = new URL('tesseract/', base).href;
-     const langUrl = new URL('tesseract/lang-data', base).href;
-
-     const worker = await createWorker('eng', 1, {
-       workerPath: workerUrl,
-       corePath: coreUrl,
-       langPath: langUrl,
-       gzip: true,
-       cacheMethod: 'none',
-       workerBlobURL: false
-     });
-     ```
-
-### Step 4: CSS Compatibility & Legacy WebView Guard (Amendment D)
-1. **Post-Build CSS Transpiler (`scripts/transform-css-compat.js`)**:
-   - Create a script that scans `dist/assets/*.css` and transpiles `oklch(` and `color-mix(` into standard RGB/Hex values targeting Chrome 80+.
-   - Add to `package.json` build pipeline: `node scripts/transform-css-compat.js`.
-2. **`index.html`**:
-   - Update detection threshold from 105 to **111** (the exact Chromium release where `color-mix()` and `oklch()` became native).
-
-### Step 5: Crash Telemetry Sanitization & Toggle (Amendment E)
-1. **`src/utils/crashReportingService.ts`**:
-   - Strip `userUid` and `url` from the report payload entirely.
-   - Keep only sanitized error name, message, stack, and device platform.
-   - Retain consent check (`localStorage.getItem('wg_crash_reports_consent') === 'true'`).
-2. **`src/components/Header.tsx`**:
-   - Rename UI toggle to "Crash reports (optional)" / "کریش رپورٹس (اختیاری)" (default: OFF).
-
-### Step 6: Version 1.2.3 Bump & CHANGELOG (Amendment F)
-1. **Bump Version**:
-   - `package.json`: `"version": "1.2.3"`
-   - `android/app/build.gradle`: `versionName "1.2.3"`, `versionCode 8`
-   - `src/constants/version.ts`: `APP_VERSION = '1.2.3'`
-2. **`CHANGELOG.md`**:
-   - Create/update `CHANGELOG.md` adhering strictly to Rule 5: Zero occurrences of the word "Bilty" (and Urdu "بلٹی"). Use neutral terminology ("transport receipts", "freight documents", "consignment records").
+### Module 5: Transsion & Store Compatibility (No Shipment Tracking)
+- **Store Flavor Isolation**: Zero CAMERA, zero RECORD_AUDIO, and zero foreground service permissions in `store` flavor.
+- **Offline Tesseract 7**: Complete local WebAssembly core variants bundled with absolute URLs.
+- **CSS Transpilation**: Lightning CSS transforms `oklch(` to RGB fallbacks targeting Chrome 80+.
+- **Scope Compliance**: Strictly maintain the Digital Bilty Creation & Online Verification System with zero shipment tracking features.
 
 ---
 
-## 3. Verification & Validation Steps
+## 4. Verification & Testing Strategy
 
-1. **Unit Testing**: Run `npm test` (all 156 unit tests passing).
-2. **Linting**: Run `npm run lint` (`tsc --noEmit`).
-3. **Build Execution**: Run `npm run build` and verify that `dist/server.cjs` is NOT created during standard mobile build.
-4. **Asset Audit**: Verify that `unzip -l` or directory checks confirm zero `server.cjs`, zero `sw.js`, zero `404.html`, and zero forbidden CDN URLs.
+1. **Unit Testing**: Run `vitest` covering all 15 test suites (account deletion, ambient sync, Firestore rules, navigation, error boundary).
+2. **Account Deletion Flow Test**: Test scheduling a deletion request, verifying the 30-day grace period timestamp, and testing the single-click cancellation banner upon sign-in.
+3. **Security Rules Test**: Verify Firestore rules structure ensuring tenant isolation and forbidden field blocking.
+4. **Asset Hygiene Test**: Validate packaged assets have 0 forbidden files and 0 third-party string leaks.
+5. **Compilation & Linting**: Run `compile_applet` and `lint_applet` to ensure error-free builds.

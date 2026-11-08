@@ -31,7 +31,9 @@ import {
   initAmbientSyncEngine,
   subscribeToSyncEvents,
   getAccountDeletionStatus,
+  fetchAccountDeletionStatus,
   cancelAccountDeletion,
+  purgeExpiredAccountData,
   type AccountDeletionRequest
 } from './utils/storage';
 import { fetchLiveFuelPrices } from './utils/fuelPrice';
@@ -171,12 +173,29 @@ export default function App() {
   const [showFloatingBack, setShowFloatingBack] = useState(false);
   const [pendingDeletion, setPendingDeletion] = useState<AccountDeletionRequest | null>(null);
 
-  // Check account deletion status on user or auth change
+  // Check account deletion status on user or auth change (local + Firestore)
   useEffect(() => {
     const target = currentUid || userEmail;
     if (target) {
-      const status = getAccountDeletionStatus(target);
-      setPendingDeletion(status);
+      // 1. Immediate local status display
+      const localStatus = getAccountDeletionStatus(target);
+      setPendingDeletion(localStatus);
+
+      // 2. Asynchronous Firestore reconciliation & 30-day expiration check
+      fetchAccountDeletionStatus(target).then((cloudStatus) => {
+        if (cloudStatus) {
+          const scheduled = new Date(cloudStatus.scheduledFor).getTime();
+          if (Date.now() >= scheduled) {
+            // 30 days have elapsed -> execute permanent purge and sign out
+            purgeExpiredAccountData(target).then(() => {
+              setPendingDeletion(null);
+              handleSignOut();
+            });
+            return;
+          }
+        }
+        setPendingDeletion(cloudStatus);
+      }).catch(() => {});
     } else {
       setPendingDeletion(null);
     }
@@ -1295,7 +1314,7 @@ export default function App() {
                 onClick={handleCancelDeletion}
                 className="px-3 py-1 bg-white hover:bg-amber-50 text-amber-950 font-bold rounded-lg border border-amber-300 cursor-pointer text-[11px] transition-all shadow-xs"
               >
-                {lang === 'ur' ? 'درخواست منسوخ کریں' : 'Cancel Deletion'}
+                {lang === 'ur' ? 'درخواست منسوخ کریں اور اکاؤنٹ بحال رکھیں' : 'Cancel Deletion & Restore Account'}
               </button>
             </div>
           )}

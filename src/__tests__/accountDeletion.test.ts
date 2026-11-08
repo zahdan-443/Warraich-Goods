@@ -47,4 +47,29 @@ describe('Account Deletion & 30-Day Grace Period Tests', () => {
     const status = getAccountDeletionStatus(userId);
     expect(status).toBeNull();
   });
+
+  it('correctly detects whether account deletion is still in grace period or expired for purge', async () => {
+    const userId = 'test-user-123';
+    const userEmail = 'transporter@example.com';
+
+    // 1. Fresh request scheduled 30 days ahead -> should NOT purge
+    await requestAccountDeletion(userId, userEmail);
+    const { purgeExpiredAccountData } = await import('../utils/storage');
+    const didPurgeFresh = await purgeExpiredAccountData(userId);
+    expect(didPurgeFresh).toBe(false);
+
+    // 2. Simulated expired request (scheduled in the past) -> should execute purge
+    const expiredData = {
+      userId,
+      userEmail,
+      requestedAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString(),
+      scheduledFor: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      status: 'pending_deletion' as const
+    };
+    safeStorage.setItem(`ah-deletion-${userId}`, JSON.stringify(expiredData));
+
+    const didPurgeExpired = await purgeExpiredAccountData(userId);
+    expect(didPurgeExpired).toBe(true);
+    expect(getAccountDeletionStatus(userId)).toBeNull();
+  });
 });
