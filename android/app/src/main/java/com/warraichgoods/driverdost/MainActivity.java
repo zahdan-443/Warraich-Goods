@@ -44,8 +44,7 @@ public class MainActivity extends BridgeActivity {
         }
 
         registerPlugin(FirebaseAuthenticationPlugin.class);
-        // DashcamPlugin registration temporarily deferred for Palm Store release compliance
-        // registerPlugin(DashcamPlugin.class);
+        registerPlugin(DashcamPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Guarantee Android system status bar and navigation bar remain visible throughout the app

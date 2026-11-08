@@ -813,16 +813,16 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               </div>
 
-              {/* Anonymous Diagnostics & Crash Reports Toggle (Rule 1.5 Compliance) */}
+              {/* Crash Reports (Optional) Toggle (Rule 1.5 Compliance) */}
               <div className="pt-2 border-t border-amber-200/60 dark:border-amber-900/50 flex items-center justify-between gap-2">
                 <div>
                   <span className="font-semibold text-amber-950 dark:text-amber-200 text-[10.5px] block leading-tight">
-                    {lang === 'ur' ? 'ایپ کریش ڈائیگناسٹکس' : 'Anonymous Crash Reports'}
+                    {lang === 'ur' ? 'کریش رپورٹس (اختیاری)' : 'Crash reports (optional)'}
                   </span>
                   <span className="text-[9.5px] text-amber-900/70 dark:text-amber-400/80 block">
                     {lang === 'ur' 
-                      ? (crashConsent ? 'فعال • غیر علانیہ کریش لاگ کلاؤڈ کو جائے گی' : 'بند ہے • ایررز صرف فون پر رہیں گے')
-                      : (crashConsent ? 'Enabled • Voluntary error reports' : 'Disabled • Local on-device only')}
+                      ? (crashConsent ? 'فعال • غیر علانیہ رپورٹ کلاؤڈ کو جائے گی' : 'بند ہے • ایررز صرف فون پر رہیں گے')
+                      : (crashConsent ? 'Enabled • Voluntary reports' : 'Disabled • Local on-device only')}
                   </span>
                 </div>
                 <button

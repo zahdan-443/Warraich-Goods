@@ -29,13 +29,24 @@ export const CameraOcrInput: React.FC<CameraOcrInputProps> = ({
     setIsProcessing(true);
     setScanError(null);
     try {
-      const worker = await createWorker('eng', 1, {
-        workerPath: './tesseract/worker.min.js',
-        corePath: './tesseract/tesseract-core.wasm.js',
-        langPath: './tesseract/lang-data',
-        cacheMethod: 'none',
-        gzip: true
-      });
+      const baseUri = (typeof document !== 'undefined' && document.baseURI) ? document.baseURI : (typeof window !== 'undefined' ? window.location.href : '/');
+      const workerOptions = {
+        workerPath: new URL('tesseract/worker.min.js', baseUri).href,
+        corePath: new URL('tesseract/', baseUri).href,
+        langPath: new URL('tesseract/lang-data', baseUri).href,
+        gzip: true,
+        cacheMethod: 'none' as const,
+        workerBlobURL: false
+      };
+
+      let worker;
+      try {
+        worker = await createWorker('eng', 1, workerOptions);
+      } catch {
+        // Fallback if workerBlobURL: false encounters platform restrictions
+        worker = await createWorker('eng', 1, { ...workerOptions, workerBlobURL: true });
+      }
+
       const ret = await worker.recognize(file);
       await worker.terminate();
 

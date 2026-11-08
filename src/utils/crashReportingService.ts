@@ -4,7 +4,7 @@
  * Transmits diagnostic telemetry directly to Firestore (/crashReports) with loop throttling.
  */
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from './firebase';
+import { db } from './firebase';
 import { APP_VERSION } from '../constants/version';
 import { Capacitor } from '@capacitor/core';
 
@@ -26,8 +26,6 @@ export interface CrashReportPayload {
   deviceModel: string;
   platform: string;
   appVersion: string;
-  url: string;
-  userUid?: string;
   createdAt?: any;
 }
 
@@ -145,9 +143,6 @@ export async function reportAppCrash(
     reportedErrorSignatures.set(signature, now);
 
     const diagnostics = getDeviceDiagnostics();
-    const url = typeof window !== 'undefined' ? (window.location.href || '').slice(0, 200) : '';
-    const rawUid = auth?.currentUser?.uid;
-    const userUid = rawUid ? rawUid.slice(0, 128) : undefined;
 
     // Truncate fields strictly to satisfy Firestore security rules (<= 500 / <= 1000)
     const safeErrorName = (errorName || 'Error').slice(0, 100);
@@ -166,8 +161,6 @@ export async function reportAppCrash(
       deviceModel: safeDeviceModel,
       platform: diagnostics.platform.slice(0, 50),
       appVersion: APP_VERSION.slice(0, 50),
-      url,
-      ...(userUid ? { userUid } : {}),
       createdAt: serverTimestamp()
     };
 

@@ -2,6 +2,18 @@
 
 All notable changes to the "Driver Dost" transport & logistics application will be documented in this file.
 
+## [1.2.3] - 2026-11-07
+### Added
+- **Product Flavors Architecture**: Introduced dual build flavors (`store` and `full`). The `store` distribution completely omits camera and microphone permissions, native CameraX dependencies, and background recording services for strict store catalog compliance.
+- **Offline OCR Engine**: Bundled complete local WebAssembly core variants (standard, SIMD, LSTM) and language data for offline transport document and receipt scanning with zero external network calls.
+- **CSS Compatibility Post-Processing**: Integrated automated Lightning CSS transformation targeting Chrome 80+ to eliminate modern CSS color syntax discrepancies on older Android System WebViews.
+
+### Changed
+- **Asset Hygiene & Decoupled Builds**: Separated mobile client asset builds from server runtime compilation, strictly purging server files, sourcemaps, and web-only scripts from mobile APK packages.
+- **Privacy Hardening**: Enhanced anonymous crash diagnostics with voluntary user consent toggle (default OFF) and purged user IDs and URLs from error telemetry.
+- **Third-Party Sanitization**: Completely eliminated third-party fallback dependencies in favor of native offline QR generation and local asset hosting.
+- **Version Bump**: Bumped app version to `1.2.3` (`versionCode 8`).
+
 ## [1.2.1] - 2026-10-24
 ### Fixed
 - **Google Sign-In**: Google Sign-In on Android now uses the native flow.

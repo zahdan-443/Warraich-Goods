@@ -1,138 +1,209 @@
-# Palm Store & Dlightek Compliance (Docs 57 & 84) Complete Hardening Plan
+# Driver Dost Store & Full Distribution Compliance Plan (v1.2.3)
 
-A comprehensive, zero-defect hardening plan aligned with Transsion / Palm Store review specifications (**Doc 57: App Acceptance & Release Policy**) and security testing standards (**Doc 84: Security & Privacy Testing Standards**).
+A comprehensive architectural overhaul incorporating Amendments A through G, introducing Gradle product flavors (`store` vs `full`), decoupling server compilation from APK asset sync, bundling all Tesseract WebAssembly core variants with `document.baseURI` resolution, transpiling modern CSS for legacy Android WebViews, sanitizing crash telemetry, and enforcing automated CI verification against unauthorized files and network endpoints.
 
 ---
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The plan has been thoroughly revised to incorporate all specific requirements from Dlightek Documentation (Docs 57 & 84) and your audit. Please review the updated specifications below.
+> The following plan has been updated to incorporate Amendments A through G in full detail. Please review the architectural blueprint below before we commence execution.
 
-- **Rule 2.6 & 2.3 (Permission-Feature Consistency)**: The Dashcam card is completely removed from the dashboard menu (`HomeView.tsx`), removed from active navigation tabs, and purged from `TermsModal.tsx` and `PrivacyPolicyModal.tsx`. The underlying implementation remains preserved in code without exposing undeclared permissions to store scanners.
-- **Rule 1.8 (No Dynamic Code / WASM Downloads)**: Runtime fetching of worker, WebAssembly, and language data from `cdn.jsdelivr.net` / `tessdata.projectnaptha.com` is completely eliminated. All Tesseract OCR assets are bundled locally in `public/tesseract/` for 100% offline execution.
-- **Rule 1.5 (No Silent Telemetry Uploads)**: Firestore `/crashReports` uploads are disabled by default. On-device diagnostics are stored locally only in `localStorage`. A visible, opt-in consent toggle is added to user Settings.
-- **APK Bloat & Dead Code**: Unused `androidx.camera:*` native C++ libraries (4 ABIs) are removed from `android/app/build.gradle` (slashing APK size from ~32MB down to ~15MB). `scripts/sync-android-assets.js` and Gradle AAPT packaging rules ensure `server.cjs`, `sw.js`, `404.html`, `sitemap.xml`, and diagnostic screenshots never enter the APK.
-- **Transsion / TECNO / Infinix WebView Support**: Added CSS fallbacks in `src/index.css` for `oklch`, `color-mix`, and `@property` to prevent visual distortion on older Android System WebViews (Chromium < 105), along with an alert guard in `index.html`.
-- **Third-Party Data Leak Prevention**: External QR generation fallback to `api.qrserver.com` is completely replaced by the installed local `qrcode` engine.
-- **Transparency & Disclosures**: Privacy Policy explicitly discloses exact location usage (OSRM route geometry, Open-Meteo corridor weather, local fuel prices) and guarantees zero data sales or background tracking. Removed suspicious `your-backend-api.com` placeholder from fuel widget.
+- **Amendment A (Product Flavors & CameraX)**: Instead of deleting CameraX globally, we introduce two product flavors in `android/app/build.gradle`: `full` and `store`.
+  - `full`: Retains real `DashcamService.kt`, `DashcamPlugin.kt`, and `fullImplementation "androidx.camera:*"`.
+  - `store`: Contains a lightweight no-op `DashcamPlugin.kt` stub in `src/store/java/...`, zero CameraX dependencies, zero camera native binaries (`.so`), and zero camera/mic/foreground-service permissions.
+  - `MainActivity.java` compiles without conditional code in both flavors.
+- **Amendment B (Build Decoupling & CI Guard)**:
+  - `"build"` in `package.json` generates purely client assets (`vite build && node scripts/sync-android-assets.js`), strictly excluding `dist/server.cjs`.
+  - A new `"build:web"` script handles full-stack server bundling (`npm run build && esbuild server.ts ...`).
+  - Added an automated CI step in `build-apk.yml` that inspects the built APK using `unzip -l` and fails the workflow if `server.cjs`, `sw.js`, `404.html`, `sitemap.xml`, `screenshot-*.png`, `*.map`, or references to `cdn.jsdelivr.net`, `qrserver.com`, or `your-backend-api.com` are present in web assets.
+  - Asset filtering is scoped to icons only (`dashcam-icon.png`), never touching `DashcamView-*.js` chunks.
+  - Replaced deprecated `aaptOptions` with modern `androidResources { ignoreAssetsPattern ... }`.
+- **Amendment C (All-Core Tesseract & baseURI)**:
+  - All Tesseract core variants (`tesseract-core.wasm.js`, `tesseract-core-simd.wasm.js`, `tesseract-core-lstm.wasm.js`, `tesseract-core-simd-lstm.wasm.js`, and `.wasm` binaries) are bundled locally in `public/tesseract/`.
+  - `CameraOcrInput.tsx` resolves URLs via `document.baseURI` (`new URL('tesseract/worker.min.js', document.baseURI).href`, etc.) with `gzip: true`, `cacheMethod: 'none'`, and `workerBlobURL: false` fallback.
+- **Amendment D (CSS Compatibility & WebView Guard)**:
+  - Added a post-build CSS processor that transpiles or provides RGB fallbacks for `oklch(` and `color-mix(` targeting Chrome 80+.
+  - Aligned WebView warning threshold in `index.html` to Chrome 111.
+- **Amendment E (Sanitized Crash Diagnostics)**:
+  - Removed `userUid` and `url` from the report payload in `crashReportingService.ts`.
+  - Renamed the UI toggle in System Menu to "Crash reports (optional)" / "کریش رپورٹس (اختیاری)" (default: OFF).
+- **Amendment F (Version 1.2.3 & Clean CHANGELOG)**:
+  - Bumped version to `1.2.3` (code: 8).
+  - Authored a compliant CHANGELOG adhering strictly to Public-Facing Terminology Policy (Rule 5: zero occurrences of forbidden terminology; using neutral terms like "transport documents" or "freight receipts").
 
 ---
 
-## 1. Dlightek Review Standards (Docs 57 & 84) Alignment Matrix
-
-| Dlightek Rule | Requirement | Our Technical Implementation |
-|---|---|---|
-| **Rule 2.6 & 2.3** | Listed functions must work; no dead UI without permissions | Hide Dashcam card in `HomeView.tsx`; remove from navigation; remove camera/mic clauses from Terms & Privacy. |
-| **Rule 1.8** | No dynamic downloading of executable code, WASM, or scripts | Copy `worker.min.js`, `tesseract-core-simd.wasm.js`, and `eng.traineddata.gz` into `public/tesseract/`. Point `CameraOcrInput` to local relative paths. |
-| **Rule 1.5** | No silent collection or transmission of device ID / telemetry | Disable automatic Firestore crash uploads; store diagnostics locally in `localStorage`; add explicit opt-in toggle in Settings. |
-| **Data Leakage** | No transmission of sensitive document data to 3rd parties | Replace `api.qrserver.com` URL fallback in `biltyHelpers.ts` with local `QRCode.toDataURL()`. |
-| **Doc 57 (App Health)** | Clean binary without orphaned C++ libs or bloated ABIs | Remove `androidx.camera:*` from `android/app/build.gradle`, saving ~15MB across arm64, armv7, x86, x86_64. |
-| **Doc 57 (Clean Assets)**| APK assets must contain only client runtime files | Filter `server.cjs*`, `sw.js`, `404.html`, `sitemap.xml`, `robots.txt`, and screenshots out of `assets/public`. |
-| **Doc 84 (Device Compatibility)** | App must render correctly on Transsion devices | Add standard hex/rgb color variable fallbacks in `src/index.css` to safeguard against older WebView CSS engines. |
-| **Transparency** | Clear declaration of network endpoints and location | Disclose OSRM, Open-Meteo, and fuel station APIs in Privacy Policy; remove `your-backend-api.com` placeholder. |
-
----
-
-## 2. High-Level Architecture & Asset Data Flow
+## 1. High-Level Architecture & Flavor Strategy
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                   OFFLINE SELF-CONTAINED ARCHITECTURE                  │
+│                   GRADLE MULTI-FLAVOR ARCHITECTURE                     │
 └────────────────────────────────────────────────────────────────────────┘
                                    │
-      ┌────────────────────────────┼────────────────────────────┐
-      ▼                            ▼                            ▼
-┌───────────────────┐    ┌───────────────────┐    ┌───────────────────┐
-│   LOCAL OCR       │    │   LOCAL QR CODE   │    │  PRIVACY & LOGS   │
-│ public/tesseract/ │    │ qrcode npm engine │    │ Default: Offline  │
-│ - worker.min.js   │    │ - toDataURL()     │    │ - LocalStorage    │
-│ - wasm.js / wasm  │    │ - No qrserver.com │    │ - Opt-in toggle   │
-│ - traineddata.gz  │    │ - 100% On-Device  │    │ - No silent send  │
-└───────────────────┘    └───────────────────┘    └───────────────────┘
+      ┌────────────────────────────┴────────────────────────────┐
+      ▼                                                         ▼
+┌───────────────────────────────────────┐   ┌───────────────────────────────────────┐
+│             STORE FLAVOR              │   │              FULL FLAVOR              │
+│  android/app/src/store/java/          │   │  android/app/src/full/java/           │
+│  - No-op DashcamPlugin.kt stub        │   │  - Real DashcamPlugin.kt              │
+│  - Zero CameraX dependencies          │   │  - Real DashcamService.kt             │
+│  - Zero camera/mic permissions        │   │  - fullImplementation androidx.camera │
+│  - Minimal ~14MB APK download         │   │  - Full background video & HUD        │
+└───────────────────────────────────────┘   └───────────────────────────────────────┘
+                                   │
+                                   ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│                              COMMON CORE                              │
+│  android/app/src/main/java/MainActivity.java                          │
+│  registerPlugin(DashcamPlugin.class); (Compiles cleanly in both)      │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Step-by-Step Implementation Execution Plan
+## 2. Technical Implementation Specifications
 
-### Step 1: Dashcam UI & Privacy Policy Cleanup (Rules 2.6 & 2.3)
-1. **`src/components/views/HomeView.tsx`**:
-   - Conditionally hide or remove the Dashcam card from the main dashboard grid.
-2. **`src/App.tsx`**:
-   - Remove `#dashcam` from public routing and navigation menu. Keep component code intact for future authorized releases.
-3. **`src/components/TermsModal.tsx` & `src/components/PrivacyPolicyModal.tsx`**:
-   - Remove references to dashcam video recording and microphone audio.
-   - Declare camera usage strictly for local document image scanning (OCR).
+### Step 1: Product Flavors & CameraX Isolation (Amendment A)
+1. **Source Restructuring**:
+   - Create `android/app/src/full/java/com/warraichgoods/driverdost/dashcam/`.
+   - Move `DashcamService.kt` and `DashcamPlugin.kt` from `src/main/java/...` to `src/full/java/...`.
+   - Create `android/app/src/store/java/com/warraichgoods/driverdost/dashcam/`.
+   - Implement a clean, no-op `DashcamPlugin.kt` stub in `src/store/java/...` that safely handles plugin calls:
+     ```kotlin
+     package com.warraichgoods.driverdost.dashcam
 
-### Step 2: 100% Bundled Offline OCR (Rule 1.8)
-1. **Asset Staging**:
-   - Create `public/tesseract/` directory.
-   - Copy `worker.min.js` from `node_modules/tesseract.js/dist/`.
-   - Copy `tesseract-core-simd.wasm.js` and `tesseract-core-simd.wasm` from `node_modules/tesseract.js-core/`.
-   - Stage `eng.traineddata.gz` in `public/tesseract/lang-data/`.
+     import com.getcapacitor.Plugin
+     import com.getcapacitor.PluginCall
+     import com.getcapacitor.PluginMethod
+     import com.getcapacitor.annotation.CapacitorPlugin
+
+     @CapacitorPlugin(name = "Dashcam")
+     class DashcamPlugin : Plugin() {
+         @PluginMethod
+         fun startRecording(call: PluginCall) {
+             call.unavailable("Dashcam recording is not enabled in this store release.")
+         }
+         @PluginMethod
+         fun stopRecording(call: PluginCall) {
+             call.resolve()
+         }
+         @PluginMethod
+         fun getStatus(call: PluginCall) {
+             call.resolve()
+         }
+     }
+     ```
+   - In `android/app/src/full/AndroidManifest.xml`:
+     Declare `<service android:name=".dashcam.DashcamService" android:foregroundServiceType="camera|microphone" ... />` and camera permissions.
+   - In `android/app/src/main/AndroidManifest.xml`:
+     Ensure zero camera/mic permissions and zero service declarations.
+2. **`android/app/build.gradle` Configuration**:
+   - Add flavor dimension:
+     ```groovy
+     flavorDimensions "distribution"
+     productFlavors {
+         store {
+             dimension "distribution"
+         }
+         full {
+             dimension "distribution"
+         }
+     }
+     ```
+   - Configure dependencies:
+     ```groovy
+     def camerax_version = "1.4.1"
+     fullImplementation "androidx.camera:camera-core:${camerax_version}"
+     fullImplementation "androidx.camera:camera-camera2:${camerax_version}"
+     fullImplementation "androidx.camera:camera-lifecycle:${camerax_version}"
+     fullImplementation "androidx.camera:camera-video:${camerax_version}"
+     ```
+
+### Step 2: Build Scripts, Decoupling & CI Guard (Amendment B)
+1. **`package.json` Updates**:
+   - `"build": "vite build && node scripts/sync-android-assets.js"` (purely mobile/client build).
+   - `"build:web": "npm run build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs"`.
+2. **`scripts/sync-android-assets.js`**:
+   - Ensure the asset sync never encounters `server.cjs`.
+   - Scope icon filtering strictly to `dashcam-icon.png` and `dashcam-icon.jpg`, ensuring `DashcamView-*.js` chunks are preserved.
+3. **`android/app/build.gradle`**:
+   - Use modern `androidResources { ignoreAssetsPattern = ... }` for AGP 8+:
+     ```groovy
+     androidResources {
+         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:server.cjs*:sw.js*:registerSW.js:404.html:sitemap.xml:robots.txt:screenshot*.png:*.map:aistudio*'
+     }
+     ```
+4. **`.github/workflows/build-apk.yml` CI Guard**:
+   - Add automated verification step after Gradle build:
+     ```bash
+     APK_FILE=$(find android/app/build/outputs/apk -name "*.apk" | head -1)
+     echo "Auditing $APK_FILE contents..."
+     unzip -l "$APK_FILE" > apk_contents.txt
+     if grep -E "server\.cjs|sw\.js|404\.html|sitemap\.xml|screenshot-.*\.png|\.map" apk_contents.txt; then
+       echo "::error::Prohibited files detected in APK package!"
+       exit 1
+     fi
+     # Decompress assets and verify no leaked URLs
+     mkdir -p /tmp/apk_assets && unzip -q "$APK_FILE" "assets/public/*" -d /tmp/apk_assets || true
+     if grep -rE "cdn\.jsdelivr\.net|qrserver\.com|your-backend-api\.com" /tmp/apk_assets/; then
+       echo "::error::Prohibited external endpoints detected in packaged web assets!"
+       exit 1
+     fi
+     echo "✅ APK asset audit passed: 100% clean."
+     ```
+
+### Step 3: Tesseract 7 Comprehensive Bundling (Amendment C)
+1. **Stage All Core Variants**:
+   - Copy all 4 variants (`tesseract-core.wasm.js`, `tesseract-core-simd.wasm.js`, `tesseract-core-lstm.wasm.js`, `tesseract-core-simd-lstm.wasm.js` and their corresponding `.wasm` binaries) to `public/tesseract/`.
+   - Keep `worker.min.js` in `public/tesseract/`.
+   - Keep `eng.traineddata.gz` in `public/tesseract/lang-data/`.
 2. **`src/components/CameraOcrInput.tsx`**:
-   - Update `createWorker('eng')` to pass explicit local paths:
+   - Construct absolute URLs using `document.baseURI`:
      ```typescript
+     const base = document.baseURI || window.location.href;
+     const workerUrl = new URL('tesseract/worker.min.js', base).href;
+     const coreUrl = new URL('tesseract/', base).href;
+     const langUrl = new URL('tesseract/lang-data', base).href;
+
      const worker = await createWorker('eng', 1, {
-       workerPath: './tesseract/worker.min.js',
-       corePath: './tesseract/tesseract-core-simd.wasm.js',
-       langPath: './tesseract/lang-data',
+       workerPath: workerUrl,
+       corePath: coreUrl,
+       langPath: langUrl,
+       gzip: true,
        cacheMethod: 'none',
-       gzip: true
+       workerBlobURL: false
      });
      ```
-   - Zero runtime network requests to `cdn.jsdelivr.net` or `projectnaptha.com`.
 
-### Step 3: Consent-Gated Crash Diagnostics (Rule 1.5)
-1. **`src/utils/crashReportingService.ts`**:
-   - Update `sendCrashReport()` to verify `localStorage.getItem('wg_crash_reports_consent') === 'true'`.
-   - Default consent state is `false`.
-   - When disabled, errors are recorded only in `localStorage` diagnostic snapshot.
-2. **`src/components/SettingsModal.tsx` (or user profile view)**:
-   - Provide a clear, localized toggle: "ایپ کی بہتری اور کریش رپورٹس (Anonymous Diagnostics)".
-3. **`src/components/PrivacyPolicyModal.tsx`**:
-   - Explicitly document the crash reporting mechanism, confirming it is voluntary and disabled by default.
-
-### Step 4: Purge Web, Server, and Diagnostic Files from APK
-1. **`scripts/sync-android-assets.js`**:
-   - Expand `webOnlyOrRedundant` filter to remove:
-     `server.cjs`, `server.cjs.map`, `sw.js`, `404.html`, `sitemap.xml`, `robots.txt`, `screenshot-desktop.png`, `screenshot-mobile.png`, `dashcam*`, and `assets/aistudio/*`.
-2. **`.github/workflows/build-apk.yml`**:
-   - Add explicit cleanup step immediately after `npx cap sync android` to ensure no stray files remain in `android/app/src/main/assets/public`.
-3. **`android/app/build.gradle`**:
-   - Update `aaptOptions.ignoreAssetsPattern` to reject `server.cjs*`, `sw.js`, `404.html`, `sitemap.xml`, `robots.txt`, and `*.map`.
-
-### Step 5: Legacy Transsion WebView Compatibility & CSS Guards
-1. **`src/index.css`**:
-   - Provide standard hex/rgb fallback variables for primary theme colors (`#1a4d2e`, `#e8f5e9`, `#f4fbf4`, etc.) so that older Android WebViews without `oklch()` or `color-mix()` support render the UI with pristine contrast.
-   - Remove the 9 external `cdn.jsdelivr.net` `@font-face` fallbacks, relying solely on local font files.
+### Step 4: CSS Compatibility & Legacy WebView Guard (Amendment D)
+1. **Post-Build CSS Transpiler (`scripts/transform-css-compat.js`)**:
+   - Create a script that scans `dist/assets/*.css` and transpiles `oklch(` and `color-mix(` into standard RGB/Hex values targeting Chrome 80+.
+   - Add to `package.json` build pipeline: `node scripts/transform-css-compat.js`.
 2. **`index.html`**:
-   - Add a lightweight WebView compatibility check: if Android System WebView major version is detected under 105, display a non-blocking toast advising user to update Android System WebView.
+   - Update detection threshold from 105 to **111** (the exact Chromium release where `color-mix()` and `oklch()` became native).
 
-### Step 6: Eliminate Third-Party QR Data Leak
-1. **`src/utils/biltyHelpers.ts` & `src/components/PrintableBilty.tsx`**:
-   - Remove `https://api.qrserver.com/v1/create-qr-code/?data=...`.
-   - Use `QRCode.toDataURL(url, { errorCorrectionLevel: 'M', margin: 1 })` from the installed `qrcode` package.
-   - Fall back to an inline SVG QR generator if needed, ensuring 100% client-side privacy.
+### Step 5: Crash Telemetry Sanitization & Toggle (Amendment E)
+1. **`src/utils/crashReportingService.ts`**:
+   - Strip `userUid` and `url` from the report payload entirely.
+   - Keep only sanitized error name, message, stack, and device platform.
+   - Retain consent check (`localStorage.getItem('wg_crash_reports_consent') === 'true'`).
+2. **`src/components/Header.tsx`**:
+   - Rename UI toggle to "Crash reports (optional)" / "کریش رپورٹس (اختیاری)" (default: OFF).
 
-### Step 7: Remove Unused CameraX Dependencies (APK Size Reduction)
-1. **`android/app/build.gradle`**:
-   - Remove lines 100-105:
-     ```groovy
-     implementation "androidx.camera:camera-core:${camerax_version}"
-     implementation "androidx.camera:camera-camera2:${camerax_version}"
-     implementation "androidx.camera:camera-lifecycle:${camerax_version}"
-     implementation "androidx.camera:camera-video:${camerax_version}"
-     ```
-   - This prevents bundling ~15-20MB of C++ `.so` libraries across 4 ABIs and eliminates camera recording queries during Palm Store security scans.
+### Step 6: Version 1.2.3 Bump & CHANGELOG (Amendment F)
+1. **Bump Version**:
+   - `package.json`: `"version": "1.2.3"`
+   - `android/app/build.gradle`: `versionName "1.2.3"`, `versionCode 8`
+   - `src/constants/version.ts`: `APP_VERSION = '1.2.3'`
+2. **`CHANGELOG.md`**:
+   - Create/update `CHANGELOG.md` adhering strictly to Rule 5: Zero occurrences of the word "Bilty" (and Urdu "بلٹی"). Use neutral terminology ("transport receipts", "freight documents", "consignment records").
 
-### Step 8: Clean Suspicious Placeholder Endpoints
-1. **`src/components/LiveFuelPriceWidget.tsx`**:
-   - Replace `placeholder="https://your-backend-api.com/fuel"` with clean, localized placeholder text: `placeholder="https://... (اختیاری کسٹم فیڈ)"`.
+---
 
-### Step 9: Verification & Quality Assurance
-1. Run automated test suite (`npm test`) to ensure all 156 unit tests pass.
-2. Run TypeScript linting (`tsc --noEmit`).
-3. Compile production web bundle (`npm run build`).
-4. Audit `android/app/src/main/assets/public` directory to verify zero `server.cjs`, `sw.js`, or external references remain.
+## 3. Verification & Validation Steps
+
+1. **Unit Testing**: Run `npm test` (all 156 unit tests passing).
+2. **Linting**: Run `npm run lint` (`tsc --noEmit`).
+3. **Build Execution**: Run `npm run build` and verify that `dist/server.cjs` is NOT created during standard mobile build.
+4. **Asset Audit**: Verify that `unzip -l` or directory checks confirm zero `server.cjs`, zero `sw.js`, zero `404.html`, and zero forbidden CDN URLs.

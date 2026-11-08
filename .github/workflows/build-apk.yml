@@ -74,7 +74,7 @@ jobs:
           # Asset Hygiene: Purge web-only server, service worker, 404, and screenshots from mobile APK assets
           rm -f android/app/src/main/assets/public/server.cjs* android/app/src/main/assets/public/sw.js* android/app/src/main/assets/public/registerSW.js || true
           rm -f android/app/src/main/assets/public/404.html android/app/src/main/assets/public/sitemap.xml android/app/src/main/assets/public/robots.txt || true
-          rm -f android/app/src/main/assets/public/screenshot*.png android/app/src/main/assets/public/dashcam* || true
+          rm -f android/app/src/main/assets/public/screenshot*.png android/app/src/main/assets/public/dashcam-icon.png android/app/src/main/assets/public/dashcam-icon.jpg || true
           rm -rf android/app/src/main/assets/public/assets/aistudio || true
 
       - name: Configure google-services.json
@@ -149,11 +149,51 @@ jobs:
             ./gradlew assembleDebug --no-daemon --stacktrace
           fi
 
+      - name: Verify APK Asset Hygiene (Fail on Web Leaks or Forbidden Artifacts)
+        run: |
+          APK_FILES=$(find android/app/build/outputs/apk -name "*.apk" 2>/dev/null || true)
+          if [ -z "$APK_FILES" ]; then
+            echo "::error::No APK files found to verify!"
+            exit 1
+          fi
+
+          for apk in $APK_FILES; do
+            echo "Verifying asset hygiene for: $apk"
+            LISTING=$(unzip -l "$apk")
+
+            # Check forbidden files
+            FORBIDDEN_FILES="server.cjs sw.js 404.html sitemap.xml screenshot-"
+            for pattern in $FORBIDDEN_FILES; do
+              if echo "$LISTING" | grep -E "assets/public/.*$pattern"; then
+                echo "::error::[Asset Hygiene Failure] Found forbidden asset ($pattern) inside $apk"
+                exit 1
+              fi
+            done
+
+            # Check forbidden sourcemap files
+            if echo "$LISTING" | grep -E "assets/public/.*\.map"; then
+              echo "::error::[Asset Hygiene Failure] Found forbidden .map file inside $apk"
+              exit 1
+            fi
+
+            # Check forbidden strings in web assets
+            TMP_DIR=$(mktemp -d)
+            unzip -q "$apk" "assets/public/*" -d "$TMP_DIR" 2>/dev/null || true
+            if [ -d "$TMP_DIR/assets/public" ]; then
+              if grep -rnE "cdn\.jsdelivr\.net|api\.qrserver\.com|your-backend-api\.com" "$TMP_DIR/assets/public"; then
+                echo "::error::[Asset Hygiene Failure] Found forbidden third-party domain in web assets inside $apk"
+                rm -rf "$TMP_DIR"
+                exit 1
+              fi
+            fi
+            rm -rf "$TMP_DIR"
+            echo "✅ Asset hygiene check passed for $apk"
+          done
+
       - name: Upload Signed APK Artifact
         uses: actions/upload-artifact@v6
         with:
           name: warraich-goods-driver-dost-signed-apk-${{ inputs.build_type }}
           path: |
-            android/app/build/outputs/apk/release/*.apk
-            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/**/*.apk
           retention-days: 30

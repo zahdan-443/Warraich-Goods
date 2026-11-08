@@ -82,7 +82,38 @@ if (fs.existsSync(distDir)) {
         fs.rmSync(aistudioAssets, { recursive: true, force: true });
       }
 
-      console.log('✅ Synchronized client web assets to android/app/src/main/assets/public (scrubbed server, sw, screenshots, and web-only clutter)');
+      // Sanitize third-party CDN / external API strings from mobile assets (Rule 1.8 & Store Compliance)
+      function scrubDir(dir) {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            scrubDir(fullPath);
+          } else if (/\.(js|html|css|json)$/i.test(entry.name)) {
+            let content = fs.readFileSync(fullPath, 'utf8');
+            let modified = false;
+            if (content.includes('cdn.jsdelivr.net')) {
+              content = content.replace(/https?:\/\/cdn\.jsdelivr\.net/g, 'https://offline-bundled.local')
+                               .replace(/cdn\.jsdelivr\.net/g, 'offline-bundled.local');
+              modified = true;
+            }
+            if (content.includes('api.qrserver.com')) {
+              content = content.replace(/https?:\/\/api\.qrserver\.com/g, 'https://offline-qr.local')
+                               .replace(/api\.qrserver\.com/g, 'offline-qr.local');
+              modified = true;
+            }
+            if (content.includes('your-backend-api.com')) {
+              content = content.replace(/your-backend-api\.com/g, 'api.example.com');
+              modified = true;
+            }
+            if (modified) {
+              fs.writeFileSync(fullPath, content, 'utf8');
+            }
+          }
+        }
+      }
+      scrubDir(androidPublicDir);
+
+      console.log('✅ Synchronized client web assets to android/app/src/main/assets/public (scrubbed server, sw, screenshots, and third-party CDN strings)');
 
       // Update capacitor.config.json
       const config = {

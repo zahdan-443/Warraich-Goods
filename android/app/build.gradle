@@ -5,12 +5,12 @@ apply plugin: 'kotlin-android'
 
 def packageJsonFile = file('../../package.json')
 def packageJson = packageJsonFile.exists() ? new JsonSlurper().parseText(packageJsonFile.text) : null
-def appVersionName = packageJson?.version ?: "1.2.2"
+def appVersionName = packageJson?.version ?: "1.2.3"
 def versionParts = appVersionName.tokenize('.')
 def computedVersionCode = ((versionParts.size() > 0 ? versionParts[0].toInteger() : 0) * 10000) + 
                           ((versionParts.size() > 1 ? versionParts[1].toInteger() : 0) * 100) + 
                           (versionParts.size() > 2 ? versionParts[2].toInteger() : 0)
-def appVersionCode = Math.max(computedVersionCode, 7)
+def appVersionCode = Math.max(computedVersionCode, 8)
 
 android {
     namespace = "com.warraichgoods.driverdost"
@@ -22,10 +22,19 @@ android {
         versionCode appVersionCode
         versionName appVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
-            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:server.cjs*:sw.js*:registerSW.js:404.html:sitemap.xml:robots.txt:screenshot*.png:*.map:aistudio*'
+    }
+
+    androidResources {
+        ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:server.cjs*:sw.js*:registerSW.js:404.html:sitemap.xml:robots.txt:screenshot*.png:*.map:aistudio*'
+    }
+
+    flavorDimensions = ["distribution"]
+    productFlavors {
+        store {
+            dimension "distribution"
+        }
+        full {
+            dimension "distribution"
         }
     }
 
@@ -100,6 +109,13 @@ dependencies {
     implementation "androidx.credentials:credentials:1.2.0-rc01"
     implementation "androidx.credentials:credentials-play-services-auth:1.2.0-rc01"
     implementation "com.google.android.libraries.identity.googleid:googleid:1.1.0"
+
+    // Full flavor exclusive: CameraX continuous road video recording (Zero impact on store flavor)
+    def cameraXVersion = "1.4.1"
+    fullImplementation "androidx.camera:camera-core:${cameraXVersion}"
+    fullImplementation "androidx.camera:camera-camera2:${cameraXVersion}"
+    fullImplementation "androidx.camera:camera-lifecycle:${cameraXVersion}"
+    fullImplementation "androidx.camera:camera-video:${cameraXVersion}"
 }
 
 apply from: 'capacitor.build.gradle'
