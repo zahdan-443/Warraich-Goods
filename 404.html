@@ -42,9 +42,9 @@
           }
         }
 
-        // Detect legacy Android System WebView (Chromium < 105) and display non-blocking advice
+        // Detect legacy Android System WebView (Chromium < 111) and display non-blocking advice
         var match = navigator.userAgent.match(/Chrome\/(\d+)/);
-        if (match && parseInt(match[1], 10) < 105) {
+        if (match && parseInt(match[1], 10) < 111) {
           window.addEventListener('DOMContentLoaded', function() {
             var banner = document.createElement('div');
             banner.style.cssText = 'background:#fff3cd;color:#856404;padding:6px 10px;font-size:10px;text-align:center;border-bottom:1px solid #ffeeba;position:sticky;top:0;z-index:99999;font-family:sans-serif;direction:ltr;';
@@ -170,7 +170,7 @@
         });
       })();
     </script>
-    <script type="module" crossorigin src="./assets/index-Cd5p79Uq.js"></script>
+    <script type="module" crossorigin src="./assets/index-CuVnA54w.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/vendor-react-DADMVrBR.js">
     <link rel="modulepreload" crossorigin href="./assets/vendor-firebase-C9coPRQw.js">
     <link rel="stylesheet" crossorigin href="./assets/index-B11HW5Wk.css">
