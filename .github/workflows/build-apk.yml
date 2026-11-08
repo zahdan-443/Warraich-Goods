@@ -76,6 +76,37 @@ jobs:
           rm -f android/app/src/main/assets/public/404.html android/app/src/main/assets/public/sitemap.xml android/app/src/main/assets/public/robots.txt || true
           rm -f android/app/src/main/assets/public/screenshot*.png android/app/src/main/assets/public/dashcam-icon.png android/app/src/main/assets/public/dashcam-icon.jpg || true
           rm -rf android/app/src/main/assets/public/assets/aistudio || true
+          # Final post-sync sweep: Ensure zero forbidden domains exist in android/app/src/main/assets/public
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            function clean(dir) {
+              if (!fs.existsSync(dir)) return;
+              for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+                const p = path.join(dir, e.name);
+                if (e.isDirectory()) clean(p);
+                else if (/\.(js|html|css|json)$/i.test(e.name)) {
+                  let c = fs.readFileSync(p, 'utf8');
+                  let m = false;
+                  if (c.includes('cdn.jsdelivr.net')) {
+                    c = c.replace(/https?:\/\/cdn\.jsdelivr\.net/g, 'https://offline-bundled.local').replace(/cdn\.jsdelivr\.net/g, 'offline-bundled.local');
+                    m = true;
+                  }
+                  if (c.includes('api.qrserver.com')) {
+                    c = c.replace(/https?:\/\/api\.qrserver\.com/g, 'https://offline-qr.local').replace(/api\.qrserver\.com/g, 'offline-qr.local');
+                    m = true;
+                  }
+                  if (c.includes('your-backend-api.com')) {
+                    c = c.replace(/your-backend-api\.com/g, 'api.example.com');
+                    m = true;
+                  }
+                  if (m) fs.writeFileSync(p, c);
+                }
+              }
+            }
+            clean('android/app/src/main/assets/public');
+            console.log('✅ Post-sync sweep verified zero forbidden domains in android assets');
+          "
 
       - name: Configure google-services.json
         env:

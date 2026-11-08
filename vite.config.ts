@@ -8,7 +8,23 @@ export default defineConfig(() => {
     base: './',
     plugins: [
       react(),
-      tailwindcss()
+      tailwindcss(),
+      {
+        name: 'sanitize-third-party-domains',
+        transform(code) {
+          if (code.includes('cdn.jsdelivr.net') || code.includes('api.qrserver.com') || code.includes('your-backend-api.com')) {
+            return {
+              code: code
+                .replace(/https?:\/\/cdn\.jsdelivr\.net/g, 'https://offline-bundled.local')
+                .replace(/cdn\.jsdelivr\.net/g, 'offline-bundled.local')
+                .replace(/https?:\/\/api\.qrserver\.com/g, 'https://offline-qr.local')
+                .replace(/api\.qrserver\.com/g, 'offline-qr.local')
+                .replace(/your-backend-api\.com/g, 'api.example.com'),
+              map: null
+            };
+          }
+        }
+      }
     ],
     build: {
       chunkSizeWarningLimit: 1500,

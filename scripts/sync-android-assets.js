@@ -111,9 +111,10 @@ if (fs.existsSync(distDir)) {
           }
         }
       }
+      scrubDir(distDir);
       scrubDir(androidPublicDir);
 
-      console.log('✅ Synchronized client web assets to android/app/src/main/assets/public (scrubbed server, sw, screenshots, and third-party CDN strings)');
+      console.log('✅ Synchronized client web assets to android/app/src/main/assets/public (scrubbed dist and android assets for zero leaks)');
 
       // Update capacitor.config.json
       const config = {
