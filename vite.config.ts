@@ -57,9 +57,21 @@ export default defineConfig(() => {
       },
     },
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
+      alias: [
+        { find: '@', replacement: path.resolve(__dirname, '.') },
+        ...(process.env.VITE_STORE_BUILD === 'true'
+          ? [
+              {
+                find: /.*\/components\/views\/DashcamView(\.tsx)?$/,
+                replacement: path.resolve(__dirname, 'src/components/views/DashcamViewStub.tsx')
+              },
+              {
+                find: /.*\/utils\/dashcamService(\.ts)?$/,
+                replacement: path.resolve(__dirname, 'src/utils/dashcamServiceStub.ts')
+              }
+            ]
+          : [])
+      ],
       dedupe: ['react', 'react-dom', 'lucide-react'],
     },
     optimizeDeps: {

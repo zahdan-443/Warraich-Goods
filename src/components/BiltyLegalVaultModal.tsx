@@ -124,7 +124,7 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
 
       const newRec: LegalRecordingItem = {
         id: `rec_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        name: file.name || `Call_Recording_${(vault.recordings?.length || 0) + 1}`,
+        name: file.name || `Voice_Note_${(vault.recordings?.length || 0) + 1}`,
         dataUrl,
         createdAt: new Date().toISOString(),
       };
@@ -138,8 +138,14 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
     reader.readAsDataURL(file);
   };
 
-  // Start in-browser voice note / call recording
+  // Start in-browser voice note recording (guarded for non-store environments)
+  const isStoreBuild = import.meta.env.VITE_STORE_BUILD === 'true';
+
   const startRecording = async () => {
+    if (isStoreBuild) {
+      alert('اس بلڈ میں براہ راست صوتی ریکارڈنگ دستیاب نہیں ہے۔ برائے مہربانی آڈیو فائل اپلوڈ کریں۔');
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
@@ -278,13 +284,13 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-black text-base sm:text-lg">قانونی دستاویزات و ریکارڈنگز والٹ</h3>
+                <h3 className="font-black text-base sm:text-lg">قانونی دستاویزات و صوتی والٹ</h3>
                 <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30 font-bold">
                   {bilty.biltyNo}
                 </span>
               </div>
               <p className="text-[11px] text-slate-300 font-medium">
-                Legal Evidence Vault & Call Recordings (Secure Legal Storage)
+                Legal Evidence Vault & Voice Notes (Secure Legal Storage)
               </p>
             </div>
           </div>
@@ -405,34 +411,36 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
             </div>
           </div>
 
-          {/* Section 2: Audio & Call Recordings */}
+          {/* Section 2: Audio & Voice Notes */}
           <div className="pt-2 border-t border-slate-200">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                 <PhoneCall className="w-4 h-4 text-emerald-600" />
-                <span>فون کال ریکارڈنگز و صوتی نوٹس (Call Recordings & Voice Notes)</span>
+                <span>صوتی نوٹس و ہدایات آڈیو (Voice Notes & Audio Instructions)</span>
               </h4>
 
               <div className="flex items-center gap-2">
-                {/* Voice Note Record Button */}
-                {isRecording ? (
-                  <button
-                    type="button"
-                    onClick={stopRecording}
-                    className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer animate-pulse"
-                  >
-                    <Square className="w-3.5 h-3.5 fill-current" />
-                    <span>ریکارڈنگ روکیں ({recordingSeconds}s)</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={startRecording}
-                    className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <Mic className="w-3.5 h-3.5 text-amber-400" />
-                    <span>آواز ریکارڈ کریں</span>
-                  </button>
+                {/* Voice Note Record Button - Only in non-store builds */}
+                {!isStoreBuild && (
+                  isRecording ? (
+                    <button
+                      type="button"
+                      onClick={stopRecording}
+                      className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer animate-pulse"
+                    >
+                      <Square className="w-3.5 h-3.5 fill-current" />
+                      <span>ریکارڈنگ روکیں ({recordingSeconds}s)</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={startRecording}
+                      className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Mic className="w-3.5 h-3.5 text-amber-400" />
+                      <span>آواز ریکارڈ کریں</span>
+                    </button>
+                  )
                 )}
 
                 {/* Upload Audio File */}
@@ -488,7 +496,7 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
               </div>
             ) : (
               <div className="p-5 rounded-2xl bg-slate-50 border border-dashed border-slate-300 text-center text-slate-500 text-xs">
-                ابھی تک کوئی کال ریکارڈنگ شامل نہیں کی گئی۔ آپ اوپر دیے گئے بٹن سے کال ریکارڈنگ فائل اپلوڈ کر سکتے ہیں۔
+                ابھی تک کوئی آڈیو یا صوتی نوٹ شامل نہیں کیا گیا۔ آپ اوپر دیے گئے بٹن سے آڈیو فائل اپلوڈ کر سکتے ہیں۔
               </div>
             )}
           </div>

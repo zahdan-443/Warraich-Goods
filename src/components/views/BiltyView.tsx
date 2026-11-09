@@ -620,7 +620,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             onClick={() => handleDownloadZip(record)}
             disabled={isDownloadingZip || isGeneratingPdf}
             className="w-full py-3 bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs active:scale-98"
-            title="بلٹی پی ڈی ایف، تصاویر اور کال ریکارڈنگز کی مکمل ZIP فائل ڈاؤن لوڈ کریں"
+            title="بلٹی پی ڈی ایف، تصاویر اور صوتی فائلوں کی مکمل ZIP فائل ڈاؤن لوڈ کریں"
           >
             {isDownloadingZip ? <Loader2 className="w-4 h-4 animate-spin text-slate-950" /> : <FileArchive className="w-4 h-4" />}
             <span>{isDownloadingZip ? (previewLang === 'en' ? 'Packaging ZIP...' : 'ZIP پیک ہو رہی ہے...') : (previewLang === 'en' ? 'Download ZIP Vault' : 'ڈاؤن لوڈ ZIP والٹ')}</span>
@@ -633,8 +633,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
               {previewLang === 'en'
-                ? 'Legal Evidence Vault (Driver/Vehicle/Party IDs & Call Recordings)'
-                : 'قانونی دستاویزات و کال ریکارڈنگز والٹ (محفوظ کلاؤڈ اسٹوریج)'}
+                ? 'Legal Evidence Vault (Driver/Vehicle/Party IDs & Voice Notes)'
+                : 'قانونی دستاویزات و صوتی والٹ (محفوظ کلاؤڈ اسٹوریج)'}
             </span>
           </div>
           <button
@@ -2025,12 +2025,12 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                     <div>
                       <div className="text-xs font-black text-slate-900">
-                        {isEnForm ? 'Legal Documents & Call Recordings (Optional)' : 'قانونی دستاویزات و کال ریکارڈنگز والٹ (اختیاری)'}
+                        {isEnForm ? 'Legal Documents & Voice Notes (Optional)' : 'قانونی دستاویزات و صوتی نوٹس والٹ (اختیاری)'}
                       </div>
                       <div className="text-[10px] text-slate-500">
                         {isEnForm
                           ? 'Driver, vehicle, party photos, CNIC & audio records for legal archive'
-                          : 'ڈرائیور، گاڑی، کسٹمر تصاویر، شناختی کارڈ اور آڈیو ریکارڈنگز'}
+                          : 'ڈرائیور، گاڑی، کسٹمر تصاویر، شناختی کارڈ اور صوتی ریکارڈز'}
                       </div>
                     </div>
                   </div>
@@ -2115,11 +2115,11 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                       })}
                     </div>
 
-                    {/* Call recording input */}
+                    {/* Audio note input */}
                     <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                         <PhoneCall className="w-3.5 h-3.5 text-blue-600" />
-                        <span>{isEnForm ? 'Call Recording File' : 'کال ریکارڈنگ فائل (Audio)'}</span>
+                        <span>{isEnForm ? 'Voice Note File (Audio)' : 'صوتی ہدایات فائل (Audio Note)'}</span>
                       </span>
                       <label className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-xs font-bold text-slate-700 cursor-pointer flex items-center gap-1.5">
                         <Upload className="w-3.5 h-3.5" />
@@ -2137,7 +2137,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                                 if (res) {
                                   const newRec: LegalRecordingItem = {
                                     id: `rec_${Date.now()}`,
-                                    name: f.name || 'Call_Recording',
+                                    name: f.name || 'Voice_Note',
                                     dataUrl: res,
                                     createdAt: new Date().toISOString()
                                   };

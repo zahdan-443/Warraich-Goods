@@ -64,6 +64,8 @@ jobs:
           npm run test
 
       - name: Build Web Assets & Sync Capacitor
+        env:
+          VITE_STORE_BUILD: 'true'
         run: |
           npm run build
           npx cap sync android

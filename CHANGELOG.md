@@ -2,6 +2,18 @@
 
 All notable changes to the "Driver Dost" transport & logistics application will be documented in this file.
 
+## [1.2.4] - 2026-11-09
+### Added
+- **Optimized Font Bundle**: Streamlined typography bundle to ultra-compact native fonts, reducing package size well below 25MB while preserving full bilingual calligraphy support.
+- **Enhanced WebView Color Fallbacks**: Added solid `rgba()` fallbacks for translucent UI overlays across all components for seamless rendering on Chromium 100-110 WebViews.
+- **Explicit Boot & Reminder Disclosure**: Added specific Privacy Policy disclosures clarifying that `RECEIVE_BOOT_COMPLETED` and `WAKE_LOCK` are used exclusively to restore local reminders after device reboot.
+
+### Changed
+- **Store Audio Policy Compliance**: Gated voice recording in store distribution to file-upload-only mode, eliminating microphone access requirements and completely purging deprecated recording terminology.
+- **Store Dashcam Isolation**: Fully decoupled dashcam modules and routes from store distribution bundles via build-time tree-shaking and dynamic import gating.
+- **Tesseract Storage Optimization**: Pruned redundant raw WebAssembly and non-LSTM binary cores from offline OCR assets, reducing engine footprint by over 30MB.
+- **Version Bump**: Bumped app version to `1.2.4` (`versionCode 9`).
+
 ## [1.2.3] - 2026-11-07
 ### Added
 - **Product Flavors Architecture**: Introduced dual build flavors (`store` and `full`). The `store` distribution completely omits camera and microphone permissions, native CameraX dependencies, and background recording services for strict store catalog compliance.

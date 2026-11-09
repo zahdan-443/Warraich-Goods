@@ -6,10 +6,10 @@
    Local Authentic Pakistani Nastaleeq Typography (100% Bundled & Offline)
    ========================================================================== */
 
-/* 1. Jameel Noori Nastaleeq - The quintessential Pakistani Urdu calligraphy font */
+/* 1. Jameel Noori Nastaleeq - Aliased to fast bundled Nastaleeq (PDMS) */
 @font-face {
   font-family: 'Jameel Noori Nastaleeq';
-  src: url('/fonts/JameelNooriNastaleeq.woff') format('woff');
+  src: url('/fonts/PDMS_NastaliqNafees.ttf') format('truetype');
   font-weight: 400 700;
   font-style: normal;
   font-display: swap;
@@ -17,16 +17,16 @@
 
 @font-face {
   font-family: 'jameel-noori-nastaleeq';
-  src: url('/fonts/JameelNooriNastaleeq.woff') format('woff');
+  src: url('/fonts/PDMS_NastaliqNafees.ttf') format('truetype');
   font-weight: 400 700;
   font-style: normal;
   font-display: swap;
 }
 
-/* 2. Alvi Lahori Nastaleeq - Elegant Lahori Nastaleeq Script */
+/* 2. Alvi Lahori Nastaleeq - Aliased to fast bundled Nastaleeq (PDMS) */
 @font-face {
   font-family: 'Alvi Lahori Nastaleeq';
-  src: url('/fonts/AlviLahoriNastaleeq.woff2') format('woff2');
+  src: url('/fonts/PDMS_NastaliqNafees.ttf') format('truetype');
   font-weight: 400 700;
   font-style: normal;
   font-display: swap;
@@ -34,7 +34,7 @@
 
 @font-face {
   font-family: 'lahori-nastaleeq';
-  src: url('/fonts/AlviLahoriNastaleeq.woff2') format('woff2');
+  src: url('/fonts/PDMS_NastaliqNafees.ttf') format('truetype');
   font-weight: 400 700;
   font-style: normal;
   font-display: swap;

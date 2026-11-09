@@ -120,8 +120,8 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
                 {isUrdu ? 'صرف آن ڈیمانڈ اور آپ کی واضح اجازت پر، روٹ کے فاصلے اور ایندھن کا تخمینہ (OSRM روٹنگ)، شاہراہوں پر موسم کی معلومات (Open-Meteo)، اور قریبی فیول اسٹیشنز تلاش کرنے کے لیے۔ یہ ڈیٹا پس منظر (بیک گراؤنڈ) میں کبھی ٹریک نہیں ہوتا، اور نہ ہی کسی تھرڈ پارٹی یا مشتہر کو فروخت کیا جاتا ہے۔' : 'Strictly on-demand with your explicit consent for route distance and fuel calculations (OSRM routing), highway weather forecasts (Open-Meteo), and nearby fuel station discovery. It is never tracked in the background and never sold or shared with advertisers.'}
               </li>
               <li>
-                <strong>{isUrdu ? 'پش نوٹیفکیشنز:' : 'Push Notifications:'}</strong>{' '}
-                {isUrdu ? 'آپ کی اجازت سے روزانہ ڈائجسٹ (ایندھن کے نرخ، موسم، سڑکوں کی صورتحال) اور آپ کی درج کردہ دستاویزات کی میعاد سے 30، 15 اور 7 دن پہلے یاد دہانی۔ کوئی اشتہاری نوٹیفکیشن نہیں۔' : 'With your permission, a daily digest (fuel rates, weather, road conditions) plus reminders for document expiry dates you entered (30, 15 and 7 days before). No marketing.'}
+                <strong>{isUrdu ? 'پش نوٹیفکیشنز و لوکل یاد دہانیاں:' : 'Push Notifications & Local Reminders:'}</strong>{' '}
+                {isUrdu ? 'آپ کی اجازت سے روزانہ ڈائجسٹ (ایندھن کے نرخ، موسم، سڑکوں کی صورتحال) اور آپ کی درج کردہ دستاویزات کی میعاد سے 30، 15 اور 7 دن پہلے یاد دہانی۔ کوئی اشتہاری نوٹیفکیشن نہیں۔ RECEIVE_BOOT_COMPLETED اور WAKE_LOCK کا استعمال صرف فون ریبوٹ کے بعد مقامی یاد دہانیوں کو دوبارہ فعال کرنے کے لیے کیا جاتا ہے۔' : 'With your permission, a daily digest (fuel rates, weather, road conditions) plus reminders for document expiry dates you entered (30, 15 and 7 days before). No marketing. RECEIVE_BOOT_COMPLETED and WAKE_LOCK are used only to restore local reminders after reboot.'}
               </li>
               <li>
                 <strong>{isUrdu ? 'کیمرہ (OCR اسکیننگ):' : 'Camera (OCR Scanning):'}</strong>{' '}

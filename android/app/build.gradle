@@ -5,12 +5,12 @@ apply plugin: 'kotlin-android'
 
 def packageJsonFile = file('../../package.json')
 def packageJson = packageJsonFile.exists() ? new JsonSlurper().parseText(packageJsonFile.text) : null
-def appVersionName = packageJson?.version ?: "1.2.3"
+def appVersionName = packageJson?.version ?: "1.2.4"
 def versionParts = appVersionName.tokenize('.')
 def computedVersionCode = ((versionParts.size() > 0 ? versionParts[0].toInteger() : 0) * 10000) + 
                           ((versionParts.size() > 1 ? versionParts[1].toInteger() : 0) * 100) + 
                           (versionParts.size() > 2 ? versionParts[2].toInteger() : 0)
-def appVersionCode = Math.max(computedVersionCode, 8)
+def appVersionCode = Math.max(computedVersionCode, 9)
 
 android {
     namespace = "com.warraichgoods.driverdost"

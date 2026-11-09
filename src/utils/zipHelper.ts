@@ -113,9 +113,9 @@ export async function generateBiltyLegalZip(options: {
       }
     }
 
-    // 4. Add call recordings
+    // 4. Add audio / voice notes
     if (vault.recordings && vault.recordings.length > 0) {
-      const audioFolder = zip.folder('call_recordings');
+      const audioFolder = zip.folder('audio_notes');
       if (audioFolder) {
         vault.recordings.forEach((rec, idx) => {
           if (rec?.dataUrl && rec.dataUrl.startsWith('data:')) {

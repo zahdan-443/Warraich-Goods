@@ -63,7 +63,9 @@ const VehicleAccountView = React.lazy(() => import('./components/views/VehicleAc
 const MapView = React.lazy(() => import('./components/views/MapView').then(m => ({ default: m.MapView })));
 const TollPlazaView = React.lazy(() => import('./components/views/TollPlazaView').then(m => ({ default: m.TollPlazaView })));
 const NavigationView = React.lazy(() => import('./components/views/NavigationView').then(m => ({ default: m.NavigationView })));
-const DashcamView = React.lazy(() => import('./components/views/DashcamView').then(m => ({ default: m.DashcamView })));
+const DashcamView = import.meta.env.VITE_STORE_BUILD === 'true'
+  ? null
+  : React.lazy(() => import('./components/views/DashcamView').then(m => ({ default: m.DashcamView })));
 const LedgerView = React.lazy(() => import('./components/views/LedgerView').then(m => ({ default: m.LedgerView })));
 import { ViewHeader } from './components/ViewHeader';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
@@ -75,6 +77,7 @@ import { dispatchDailyDigestNotification } from './utils/dailyDigestNotification
 import { initKhataDueDateScheduler } from './utils/khataNotifications';
 
 export default function App() {
+  const isStoreBuild = import.meta.env.VITE_STORE_BUILD === 'true';
   const OWNER_EMAIL = 'warraichgoods43@gmail.com';
   const MASTER_EMAILS = ['warraichgoods43@gmail.com'];
 
@@ -308,6 +311,11 @@ export default function App() {
 
   const handleNavigate = (newTab: ActiveTab | string, subSection?: string) => {
     const target = (newTab === 'vehicles' ? 'vehicle' : newTab) as ActiveTab;
+    if (isStoreBuild && target === 'dashcam') {
+      setActiveTab('home');
+      window.history.pushState({ tab: 'home' }, '', '#home');
+      return;
+    }
     if (subSection && ['vehicle', 'license', 'challan', 'history', 'bilty'].includes(subSection)) {
       setVerifySubSection(subSection as any);
     }
@@ -1467,7 +1475,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'dashcam' && (
+          {!isStoreBuild && activeTab === 'dashcam' && DashcamView && (
             <DashcamView
               lang={lang}
               onNavigate={handleNavigate}
