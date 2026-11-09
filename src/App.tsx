@@ -1489,6 +1489,8 @@ export default function App() {
               trips={trips}
               isBiltyAuthorized={isBiltyAuthorized}
               onNavigate={handleNavigate}
+              userEmail={userEmail}
+              currentUserUid={currentUid}
             />
           )}
         </React.Suspense>

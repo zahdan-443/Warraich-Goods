@@ -86,9 +86,19 @@ service cloud.firestore {
       }
     }
 
-    // Play Store account deletion requests (30-day grace period tracking)
-    match /accountDeletionRequests/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    // Play Store account deletion requests (30-day grace period tracking & external web form submission)
+    match /accountDeletionRequests/{requestId} {
+      // Allow signed-in users to manage their own deletion request; owner can view
+      allow read: if (isSignedIn() && (request.auth.uid == requestId || (resource != null && resource.data.userId == request.auth.uid) || isOwner())) ||
+                     (resource != null && resource.data.referenceId != null);
+      allow update, delete: if isSignedIn() && (request.auth.uid == requestId || (resource != null && resource.data.userId == request.auth.uid) || isOwner());
+
+      // Allow creation by authenticated users (via in-app modal) OR unauthenticated users (via external deletion web form)
+      allow create: if request.resource.data.keys().hasAll(['userEmail', 'requestedAt', 'scheduledFor', 'status', 'referenceId']) &&
+                    request.resource.data.keys().hasOnly(['userId', 'userEmail', 'requestedAt', 'scheduledFor', 'status', 'referenceId', 'reason', 'source']) &&
+                    request.resource.data.userEmail is string && request.resource.data.userEmail.size() <= 100 &&
+                    request.resource.data.status in ['pending_deletion', 'deleted'] &&
+                    request.resource.data.referenceId is string && request.resource.data.referenceId.size() <= 64;
     }
 
     // User profile entries and user-isolated nested collections

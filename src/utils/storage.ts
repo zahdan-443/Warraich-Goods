@@ -16,7 +16,7 @@ import {
   SyncStatusState,
   PodConfirmation
 } from '../types';
-import { auth, db } from './firebase';
+import { auth, db, deleteFirebaseUserAccount } from './firebase';
 import { doc, getDoc, setDoc, deleteDoc, collection, getDocs, addDoc, runTransaction, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import {
   getStorageScope,
@@ -2240,24 +2240,31 @@ export interface AccountDeletionRequest {
   userEmail: string;
   requestedAt: string;
   scheduledFor: string;
-  status: 'pending_deletion';
+  status: 'pending_deletion' | 'deleted';
+  referenceId: string;
   reason?: string;
+  source?: string;
 }
 
 export async function requestAccountDeletion(
   userId: string,
   userEmail: string,
   reason?: string
-): Promise<{ success: boolean; scheduledFor: string; message: string }> {
+): Promise<{ success: boolean; scheduledFor: string; referenceId: string; message: string }> {
   const requestedAt = new Date().toISOString();
   const scheduledFor = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
+  const referenceId = `DEL-${Date.now().toString(36).toUpperCase()}-${randomSuffix}`;
+
   const deletionData: AccountDeletionRequest = {
     userId,
     userEmail,
     requestedAt,
     scheduledFor,
     status: 'pending_deletion',
-    reason: reason || 'User requested via Driver Dost app'
+    referenceId,
+    reason: reason || 'User requested via Driver Dost app',
+    source: 'in_app'
   };
 
   const currentUser = auth.currentUser;
@@ -2273,11 +2280,12 @@ export async function requestAccountDeletion(
   }
 
   safeStorage.setItem(`ah-deletion-${userId}`, JSON.stringify(deletionData));
-  logActivity('Account Deletion Requested', `Scheduled for purge on ${scheduledFor.slice(0, 10)} (30-day grace period)`, 'settings');
+  logActivity('Account Deletion Requested', `Scheduled for purge on ${scheduledFor.slice(0, 10)} (Ref: ${referenceId})`, 'settings');
 
   return {
     success: true,
     scheduledFor,
+    referenceId,
     message: 'Account deletion scheduled with a 30-day grace period.'
   };
 }
@@ -2335,6 +2343,48 @@ export async function fetchAccountDeletionStatus(userId: string): Promise<Accoun
 }
 
 /**
+ * Executes immediate permanent account deletion:
+ * 1. Permanently purges user data documents and subcollections from Firestore.
+ * 2. Clears user scoped local storage, offline queue, and cached records.
+ * 3. Permanently deletes the Firebase Auth user account via deleteFirebaseUserAccount.
+ */
+export async function executeImmediateAccountDeletion(userId: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const syncCollections = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel', 'routes', 'khata'];
+    syncCollections.forEach(col => {
+      safeStorage.removeItem(getScopedStorageKey(col, userId));
+    });
+    safeStorage.removeItem(`ah-deletion-${userId}`);
+    safeStorage.removeItem('ah-gmail-user');
+    safeStorage.removeItem('ah-gmail-user-uid');
+    safeStorage.removeItem('ah-gmail-user-photo');
+    safeStorage.removeItem('ah-auth-state');
+
+    const currentUser = auth.currentUser;
+    if (db && currentUser && currentUser.uid === userId) {
+      try {
+        const userDoc = doc(db, 'usersData', userId);
+        await withTimeout(deleteDoc(userDoc), 4000);
+        const delDoc = doc(db, 'accountDeletionRequests', userId);
+        await withTimeout(deleteDoc(delDoc), 4000);
+      } catch (err) {
+        console.warn('Notice while deleting Firestore docs during immediate purge:', err);
+      }
+    }
+
+    // Call Firebase Auth user deletion
+    await deleteFirebaseUserAccount(currentUser);
+
+    return { success: true, message: 'Account permanently deleted from Firebase Auth and cloud storage.' };
+  } catch (err: any) {
+    if (err?.message === 'AUTH_REQUIRES_RECENT_LOGIN') {
+      return { success: false, message: 'AUTH_REQUIRES_RECENT_LOGIN' };
+    }
+    return { success: false, message: err?.message || 'Failed to delete account' };
+  }
+}
+
+/**
  * Permanently purges all user data if 30-day grace period has elapsed.
  */
 export async function purgeExpiredAccountData(userId: string): Promise<boolean> {
@@ -2343,7 +2393,7 @@ export async function purgeExpiredAccountData(userId: string): Promise<boolean> 
     if (!status) return false;
     const scheduled = new Date(status.scheduledFor).getTime();
     if (Date.now() >= scheduled) {
-      const syncCollections = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel', 'routes'];
+      const syncCollections = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel', 'routes', 'khata'];
       syncCollections.forEach(col => {
         safeStorage.removeItem(getScopedStorageKey(col, userId));
       });
@@ -2356,6 +2406,9 @@ export async function purgeExpiredAccountData(userId: string): Promise<boolean> 
           await withTimeout(deleteDoc(userDoc), 4000);
           const delDoc = doc(db, 'accountDeletionRequests', userId);
           await withTimeout(deleteDoc(delDoc), 4000);
+        } catch {}
+        try {
+          await deleteFirebaseUserAccount(currentUser);
         } catch {}
       }
       return true;

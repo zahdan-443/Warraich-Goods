@@ -75,6 +75,8 @@ interface LedgerViewProps {
   trips?: Trip[];
   isBiltyAuthorized?: boolean;
   onNavigate?: (tab: string) => void;
+  userEmail?: string | null;
+  currentUserUid?: string | null;
 }
 
 export const LedgerView: React.FC<LedgerViewProps> = ({
@@ -82,7 +84,9 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
   vehicles = [],
   trips = [],
   isBiltyAuthorized = false,
-  onNavigate
+  onNavigate,
+  userEmail = null,
+  currentUserUid = null
 }) => {
   const isUrdu = lang === 'ur';
 
@@ -91,14 +95,23 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
   const [pendingGuestSaveAction, setPendingGuestSaveAction] = useState<(() => void) | null>(null);
   const [guestSaveDescription, setGuestSaveDescription] = useState<string>('');
 
+  // Single Sign-In Check: If the user is authenticated in the main app, via props, or via session, honor it globally
+  const isUserAuthenticated = Boolean(
+    auth.currentUser ||
+    userEmail ||
+    currentUserUid ||
+    (typeof window !== 'undefined' && localStorage.getItem('ah-gmail-user'))
+  );
+
   const triggerGuestSaveCheck = (action: () => void, description?: string) => {
-    if (!auth.currentUser) {
-      setPendingGuestSaveAction(() => action);
-      if (description) setGuestSaveDescription(description);
-      setShowGuestSaveModal(true);
+    // If user is already signed in to the main app, do NOT prompt to sign in again!
+    if (isUserAuthenticated || auth.currentUser) {
+      action();
       return;
     }
-    action();
+    setPendingGuestSaveAction(() => action);
+    if (description) setGuestSaveDescription(description);
+    setShowGuestSaveModal(true);
   };
 
   // Accounts & Entries State

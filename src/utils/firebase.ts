@@ -8,6 +8,7 @@ import {
   signInWithCredential,
   signOut,
   onAuthStateChanged,
+  deleteUser,
   User,
   setPersistence,
   browserLocalPersistence
@@ -189,6 +190,34 @@ export const logoutUser = async (): Promise<void> => {
   }
 };
 
+/**
+ * Permanently deletes the authenticated user from Firebase Authentication
+ * Handles both Capacitor native FirebaseAuthentication and Web Firebase Auth SDK.
+ */
+export const deleteFirebaseUserAccount = async (targetUser?: User | null): Promise<void> => {
+  const userToDelete = targetUser || auth.currentUser;
+
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await FirebaseAuthentication.deleteUser();
+    } catch (nativeErr) {
+      console.warn('Native deleteUser error, falling back to web SDK:', nativeErr);
+    }
+  }
+
+  if (userToDelete) {
+    try {
+      await deleteUser(userToDelete);
+    } catch (err: any) {
+      if (err?.code === 'auth/requires-recent-login') {
+        throw new Error('AUTH_REQUIRES_RECENT_LOGIN');
+      }
+      throw err;
+    }
+  }
+};
+
 export { onAuthStateChanged };
 export type { User };
+
 

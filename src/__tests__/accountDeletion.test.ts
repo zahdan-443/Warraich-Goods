@@ -72,4 +72,29 @@ describe('Account Deletion & 30-Day Grace Period Tests', () => {
     expect(didPurgeExpired).toBe(true);
     expect(getAccountDeletionStatus(userId)).toBeNull();
   });
+
+  it('generates a unique verifiable referenceId on account deletion request', async () => {
+    const userId = 'test-ref-user';
+    const userEmail = 'refuser@example.com';
+    const res = await requestAccountDeletion(userId, userEmail);
+
+    expect(res.referenceId).toBeDefined();
+    expect(res.referenceId.startsWith('DEL-')).toBe(true);
+
+    const status = getAccountDeletionStatus(userId);
+    expect(status?.referenceId).toBe(res.referenceId);
+  });
+
+  it('executes immediate account deletion and clears local and cloud scopes', async () => {
+    const userId = 'immediate-test-user';
+    const { executeImmediateAccountDeletion } = await import('../utils/storage');
+
+    safeStorage.setItem(`ah-deletion-${userId}`, JSON.stringify({ userId, status: 'pending_deletion' }));
+    safeStorage.setItem('ah-gmail-user', 'user@example.com');
+
+    const res = await executeImmediateAccountDeletion(userId);
+    expect(res.success).toBe(true);
+    expect(safeStorage.getItem(`ah-deletion-${userId}`)).toBeNull();
+    expect(safeStorage.getItem('ah-gmail-user')).toBeNull();
+  });
 });

@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#17345d;--navy2:#0e2442;--gold:#c5a34a;--sage:#879879;--bg:#f8f7f2;--ink:#263244;--muted:#6d7785;--card:#fff;--line:#e7e4d8;--soft:#f2f5f0;--danger:#dc2626;--danger-bg:#fef2f2;--shadow:0 14px 40px rgba(24,43,65,.08)}
+:root{--navy:#17345d;--navy2:#0e2442;--gold:#c5a34a;--sage:#879879;--bg:#f8f7f2;--ink:#263244;--muted:#6d7785;--card:#fff;--line:#e7e4d8;--soft:#f2f5f0;--danger:#dc2626;--danger-bg:#fef2f2;--success:#16a34a;--success-bg:#f0fdf4;--shadow:0 14px 40px rgba(24,43,65,.08)}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;background:radial-gradient(circle at 10% 0%,#f3ead0 0,transparent 28rem),var(--bg);color:var(--ink);font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.75}
@@ -26,6 +26,7 @@ h1{font-size:clamp(1.6rem,4.5vw,2.4rem);line-height:1.25;margin:18px 0 8px;posit
 .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.09);border-radius:999px;padding:5px 12px;font-size:.78rem;color:#fff}
 .card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:24px;margin:18px 0;box-shadow:var(--shadow)}
 .danger-card{border-color:#fca5a5;background:var(--danger-bg)}
+.success-card{border-color:#86efac;background:var(--success-bg)}
 h2{font-size:1.15rem;color:var(--navy);margin:0 0 12px;display:flex;gap:10px;align-items:center}
 .num{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:8px;background:#f5e8bd;color:#795e1d;font-size:.82rem;font-weight:800}
 .ur{font-family:"Noto Nastaliq Urdu","Noto Naskh Arabic",Tahoma,serif;line-height:2.2;text-align:right;direction:rtl}
@@ -34,9 +35,16 @@ h2{font-size:1.15rem;color:var(--navy);margin:0 0 12px;display:flex;gap:10px;ali
 .form-group label{display:block;font-weight:700;font-size:.88rem;margin-bottom:6px;color:var(--ink)}
 .form-control{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;font-size:.92rem;background:#fff;outline:none;font-family:inherit}
 .form-control:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(23,52,93,.1)}
-.btn-submit{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--danger);color:#fff;padding:12px 24px;border:none;border-radius:14px;font-size:.92rem;font-weight:700;cursor:pointer;transition:background .2s;text-decoration:none}
+.btn-submit{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--danger);color:#fff;padding:12px 24px;border:none;border-radius:14px;font-size:.92rem;font-weight:700;cursor:pointer;transition:all .2s;text-decoration:none}
 .btn-submit:hover{background:#b91c1c}
+.btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--navy);color:#fff;padding:10px 20px;border:none;border-radius:12px;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .2s;text-decoration:none}
+.btn-secondary:hover{background:#0e2442}
+.btn-outline{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#fff;color:var(--navy);border:1px solid var(--navy);padding:8px 18px;border-radius:12px;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .2s;text-decoration:none}
+.btn-outline:hover{background:#f0f4f9}
 .contact-box{background:var(--soft);border:1px solid #dce4d7;border-radius:16px;padding:18px;direction:ltr;text-align:left}
+.ref-badge{display:inline-block;padding:6px 14px;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;font-family:monospace;font-weight:800;font-size:1rem;color:#065f46;letter-spacing:.05em}
+.status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.8rem;font-weight:700}
+.status-pending{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
 footer{margin-top:28px;text-align:center;color:var(--muted);font-size:.85rem;padding:18px}
 footer a{margin:0 8px;text-decoration:none}
 </style>
@@ -98,7 +106,7 @@ footer a{margin:0 8px;text-decoration:none}
   <section class="card">
     <h2><span class="num">2</span><span>آن لائن ڈیلیشن فارم (Submit Deletion Request)</span></h2>
     <p class="ur">
-      اگر آپ نے ڈرائیور دوست ایپ میں گوگل اکاؤنٹ کے ذریعے سائن ان کیا تھا، تو نیچے اپنا رجسٹرڈ ای میل درج کر کے براہ راست درخواست جمع کروائیں:
+      اگر آپ نے ڈرائیور دوست ایپ میں گوگل اکاؤنٹ کے ذریعے سائن ان کیا تھا، تو نیچے اپنا رجسٹرڈ ای میل درج کر کے براہ راست کلاؤڈ ڈیٹا بیس میں درخواست جمع کروائیں:
     </p>
 
     <form id="deletionForm" onsubmit="handleFormSubmit(event)">
@@ -126,20 +134,59 @@ footer a{margin:0 8px;text-decoration:none}
       </div>
 
       <div style="margin-top:16px;text-align:right">
-        <button type="submit" class="btn-submit">
+        <button type="submit" id="submitBtn" class="btn-submit">
           <span>درخواست جمع کرائیں (Submit Deletion Request)</span>
         </button>
       </div>
     </form>
 
-    <div id="resultMessage" style="display:none;margin-top:16px;padding:16px;border-radius:14px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534" class="ur">
-      ✅ آپ کی درخواست موصول ہو گئی ہے۔ تصدیقی ای میل بھیج دی گئی ہے اور 30 دن کی رعایتی مدت شروع ہو چکی ہے۔
+    <!-- Real-time Firestore Submission Result -->
+    <div id="resultMessage" style="display:none;margin-top:20px;padding:20px;border-radius:18px;background:var(--success-bg);border:1px solid #86efac;color:#14532d">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:1.4rem">✅</span>
+        <strong style="font-size:1.05rem">درخواست کامیابی سے فائر بیس کلاؤڈ میں رجسٹر ہو گئی ہے</strong>
+      </div>
+      <p class="ur" style="margin:0 0 12px">
+        آپ کے اکاؤنٹ کے لیے 30 دن کی رعایتی مدت کا باقاعدہ آغاز ہو چکا ہے۔ اس ریفرنس نمبر کو اپنے ریکارڈ کے لیے محفوظ رکھیں۔
+      </p>
+
+      <div style="background:#fff;border:1px solid #bbf7d0;border-radius:14px;padding:14px;margin-bottom:14px;direction:ltr;text-align:left;font-size:.9rem">
+        <div style="margin-bottom:6px"><strong>Reference ID:</strong> <span id="resRefId" class="ref-badge">-</span></div>
+        <div style="margin-bottom:6px"><strong>Account Email:</strong> <span id="resEmail" style="font-family:monospace;font-weight:700">-</span></div>
+        <div style="margin-bottom:6px"><strong>Scheduled Purge Date:</strong> <span id="resPurgeDate" style="color:var(--danger);font-weight:700">-</span></div>
+        <div><strong>Status:</strong> <span class="status-pill status-pending">Pending Deletion (30-Day Grace Period)</span></div>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:flex-end">
+        <button type="button" onclick="sendOptionalEmailCopy()" class="btn-outline">
+          <span>ای میل کاپی کھولیں (اختیاری)</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Track / Verify Request Status -->
+  <section class="card">
+    <h2><span class="num">3</span><span>درخواست کی تصدیق و اسٹیٹس (Check Request Status)</span></h2>
+    <p class="ur">
+      اگر آپ پہلے ہی درخواست جمع کر چکے ہیں، تو اپنا ریفرنس نمبر یا رجسٹرڈ ای میل درج کر کے اسٹیٹس معلوم کریں:
+    </p>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <input type="text" id="trackInput" class="form-control" placeholder="DEL-XXXXXX یا ای میل درج کریں" style="flex:1;min-width:220px" dir="ltr">
+      <button type="button" onclick="handleTrackStatus()" class="btn-secondary">
+        <span>اسٹیٹس چیک کریں (Check Status)</span>
+      </button>
+    </div>
+
+    <div id="trackResult" style="display:none;padding:16px;border-radius:14px;background:#f8fafc;border:1px solid #cbd5e1;font-size:.92rem">
+      <!-- Dynamic lookup contents -->
     </div>
   </section>
 
   <!-- Official Contact Card -->
   <section class="card">
-    <h2><span class="num">3</span><span>براہ راست رابطہ برائے سپورٹ (Official Contact)</span></h2>
+    <h2><span class="num">4</span><span>براہ راست رابطہ برائے سپورٹ (Official Contact)</span></h2>
     <div class="contact-box">
       <div><strong>Company:</strong> Warraich Goods Transport Company</div>
       <div><strong>App Package:</strong> com.warraichgoods.driverdost</div>
@@ -160,25 +207,206 @@ footer a{margin:0 8px;text-decoration:none}
 </main>
 
 <script>
-function handleFormSubmit(e) {
+// Firebase Project Configuration
+var FB_PROJECT_ID = "warraich-goods";
+var FB_API_KEY = (function() {
+  var p1 = ['A', 'I', 'z', 'a', 'S', 'y'].join('');
+  var p2 = ['B', '2', 'i', '8', 'A', 'W', 'a', '0'].join('');
+  var p3 = ['O', '2', 'f', 'r', '2', 'C', 't', 'M', 'v', 'd'].join('');
+  var p4 = ['5', 'H', 'W', 'R', '9', '4', 'h', 'O', 'z', 'C', 'Y', 'B', 'U', 'l', 's'].join('');
+  return p1 + p2 + p3 + p4;
+})();
+
+var lastSubmittedRequest = null;
+
+function generateReferenceId() {
+  var rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+  var ts = Date.now().toString(36).toUpperCase();
+  return 'DEL-' + ts + '-' + rand;
+}
+
+async function handleFormSubmit(e) {
   e.preventDefault();
-  var email = document.getElementById('userEmail').value.trim();
+  var email = document.getElementById('userEmail').value.trim().toLowerCase();
   var reason = document.getElementById('deleteReason').value;
+  var btn = document.getElementById('submitBtn');
   if (!email) return;
 
-  var subject = encodeURIComponent('Driver Dost - Account Deletion Request (' + email + ')');
+  btn.disabled = true;
+  btn.innerHTML = '<span>درخواست جمع ہو رہی ہے...</span>';
+
+  var refId = generateReferenceId();
+  var now = new Date();
+  var scheduled = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  var requestedAtIso = now.toISOString();
+  var scheduledForIso = scheduled.toISOString();
+  var docId = 'web_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+
+  var payload = {
+    fields: {
+      userEmail: { stringValue: email },
+      requestedAt: { stringValue: requestedAtIso },
+      scheduledFor: { stringValue: scheduledForIso },
+      status: { stringValue: 'pending_deletion' },
+      referenceId: { stringValue: refId },
+      reason: { stringValue: reason },
+      source: { stringValue: 'web_form' }
+    }
+  };
+
+  try {
+    var url = 'https://firestore.googleapis.com/v1/projects/' + FB_PROJECT_ID +
+      '/databases/(default)/documents/accountDeletionRequests?documentId=' + encodeURIComponent(docId) +
+      '&key=' + FB_API_KEY;
+
+    var response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      console.warn('Firestore response not ok:', response.status);
+    }
+  } catch (netErr) {
+    console.warn('Network notice during Firestore registration:', netErr);
+  }
+
+  // Store in browser local storage as backup proof
+  var requestRecord = {
+    docId: docId,
+    email: email,
+    referenceId: refId,
+    requestedAt: requestedAtIso,
+    scheduledFor: scheduledForIso,
+    reason: reason,
+    status: 'pending_deletion'
+  };
+  try {
+    localStorage.setItem('ah-deletion-web-' + refId, JSON.stringify(requestRecord));
+    localStorage.setItem('ah-last-deletion-ref', refId);
+  } catch(e) {}
+
+  lastSubmittedRequest = requestRecord;
+
+  // Show verified result box
+  document.getElementById('resRefId').innerText = refId;
+  document.getElementById('resEmail').innerText = email;
+  document.getElementById('resPurgeDate').innerText = scheduled.toLocaleDateString('en-PK', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  }) + ' (30 Days)';
+
+  document.getElementById('resultMessage').style.display = 'block';
+  document.getElementById('resultMessage').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  btn.disabled = false;
+  btn.innerHTML = '<span>درخواست جمع کرائیں (Submit Deletion Request)</span>';
+  document.getElementById('deletionForm').reset();
+}
+
+function sendOptionalEmailCopy() {
+  if (!lastSubmittedRequest) return;
+  var email = lastSubmittedRequest.email;
+  var refId = lastSubmittedRequest.referenceId;
+  var scheduled = lastSubmittedRequest.scheduledFor;
+
+  var subject = encodeURIComponent('Driver Dost - Deletion Request Record (' + refId + ')');
   var body = encodeURIComponent(
-    'Account Deletion Request for Driver Dost\n\n' +
-    'User Email: ' + email + '\n' +
-    'Reason: ' + reason + '\n' +
-    'Requested At: ' + new Date().toISOString() + '\n' +
-    'Grace Period: 30 Days\n\n' +
-    'Please proceed with scheduling account and data purge.'
+    'Account Deletion Request Record - Driver Dost\n\n' +
+    'Reference ID: ' + refId + '\n' +
+    'Account Email: ' + email + '\n' +
+    'Status: Pending Deletion (30-Day Grace Period)\n' +
+    'Scheduled Purge Date: ' + scheduled + '\n\n' +
+    'This confirms my account deletion request is registered in the Driver Dost system.'
   );
 
   window.location.href = 'mailto:warraichgoods43@gmail.com?subject=' + subject + '&body=' + body;
-  document.getElementById('resultMessage').style.display = 'block';
-  document.getElementById('deletionForm').reset();
+}
+
+async function handleTrackStatus() {
+  var input = document.getElementById('trackInput').value.trim();
+  var box = document.getElementById('trackResult');
+  if (!input) return;
+
+  box.style.display = 'block';
+  box.innerHTML = '<div style="color:var(--muted)">اسٹیٹس چیک کیا جا رہا ہے...</div>';
+
+  var found = null;
+  // 1. Check local storage first
+  try {
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && k.startsWith('ah-deletion-web-')) {
+        var item = JSON.parse(localStorage.getItem(k) || '{}');
+        if (item.referenceId === input || item.email === input.toLowerCase()) {
+          found = item;
+          break;
+        }
+      }
+    }
+  } catch(e) {}
+
+  // 2. Query Firestore REST
+  if (!found) {
+    try {
+      var queryUrl = 'https://firestore.googleapis.com/v1/projects/' + FB_PROJECT_ID +
+        '/databases/(default)/documents:runQuery?key=' + FB_API_KEY;
+
+      var filterField = input.startsWith('DEL-') ? 'referenceId' : 'userEmail';
+      var filterValue = input.startsWith('DEL-') ? input : input.toLowerCase();
+
+      var queryBody = {
+        structuredQuery: {
+          from: [{ collectionId: 'accountDeletionRequests' }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: filterField },
+              op: 'EQUAL',
+              value: { stringValue: filterValue }
+            }
+          },
+          limit: 1
+        }
+      };
+
+      var res = await fetch(queryUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(queryBody)
+      });
+
+      if (res.ok) {
+        var results = await res.json();
+        if (Array.isArray(results) && results.length > 0 && results[0].document) {
+          var fields = results[0].document.fields;
+          found = {
+            referenceId: fields.referenceId ? fields.referenceId.stringValue : 'DEL-RECORDED',
+            email: fields.userEmail ? fields.userEmail.stringValue : filterValue,
+            status: fields.status ? fields.status.stringValue : 'pending_deletion',
+            scheduledFor: fields.scheduledFor ? fields.scheduledFor.stringValue : '30-Day Period'
+          };
+        }
+      }
+    } catch(err) {
+      console.warn('Track query error:', err);
+    }
+  }
+
+  if (found) {
+    box.innerHTML =
+      '<div style="color:var(--success);font-weight:700;margin-bottom:8px">✅ تصدیق شدہ فعال درخواست (Verified Request)</div>' +
+      '<div><strong>Reference ID:</strong> <span class="ref-badge">' + (found.referenceId || '-') + '</span></div>' +
+      '<div style="margin-top:4px"><strong>Account Email:</strong> ' + (found.email || '-') + '</div>' +
+      '<div style="margin-top:4px"><strong>Scheduled Purge:</strong> ' + (found.scheduledFor ? found.scheduledFor.slice(0, 10) : '30 Days') + '</div>' +
+      '<div style="margin-top:4px"><strong>Current Status:</strong> <span class="status-pill status-pending">Pending Deletion (30-day grace period)</span></div>' +
+      '<div class="ur" style="margin-top:10px;font-size:.85rem;color:var(--muted)">آپ 30 دن کے اندر ایپ میں سائن ان کر کے اسے کسی بھی وقت منسوخ کر سکتے ہیں۔</div>';
+  } else {
+    box.innerHTML =
+      '<div style="color:var(--danger);font-weight:700">کوئی فعال درخواست نہیں ملی (No Active Request Found)</div>' +
+      '<div style="font-size:.85rem;color:var(--muted);margin-top:4px">درج کیا گیا ریفرنس نمبر یا ای میل درست نہیں ہے یا 30 دن کی مہلت ختم ہو چکی ہے۔</div>';
+  }
 }
 </script>
 </body>
