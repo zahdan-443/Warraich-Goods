@@ -99,7 +99,7 @@ describe('Public Bilty Verification Lifecycle (Create, Update, Delete)', () => {
       goodsDescription: 'Cotton Bales',
       weightOrQty: '40 Bales / 8000 kg',
       vehicleNo: 'LES-20-4124',
-      status: 'In Transit'
+      status: 'Verified'
     });
     expect(Object.keys(writtenPayload).sort()).toEqual([
       'biltyDate',
@@ -146,7 +146,7 @@ describe('Public Bilty Verification Lifecycle (Create, Update, Delete)', () => {
       expect.objectContaining({
         biltyNo: 'WGT-99214',
         destination: 'Multan',
-        status: 'In Transit'
+        status: 'Verified'
       })
     );
 
@@ -154,8 +154,7 @@ describe('Public Bilty Verification Lifecycle (Create, Update, Delete)', () => {
 
     const edited: BiltyRecord = {
       ...initial,
-      receivingCity: 'Islamabad',
-      isDelivered: true
+      receivingCity: 'Islamabad'
     };
     saveStoredBilties([edited]);
     await new Promise((r) => setTimeout(r, 10));
@@ -165,7 +164,7 @@ describe('Public Bilty Verification Lifecycle (Create, Update, Delete)', () => {
       expect.objectContaining({
         biltyNo: 'WGT-99214',
         destination: 'Islamabad',
-        status: 'Delivered'
+        status: 'Verified'
       })
     );
 
@@ -190,7 +189,7 @@ describe('Public Bilty Verification Lifecycle (Create, Update, Delete)', () => {
       goodsDescription: 'Rice',
       weightOrQty: '100 Bags',
       vehicleNo: 'LES-1234',
-      status: 'In Transit'
+      status: 'Verified'
     });
     expect(getStoredOfflineQueue().some((q) => q.data?.biltyNo === 'WGT-99214')).toBe(true);
 

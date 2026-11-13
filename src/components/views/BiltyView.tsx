@@ -1385,7 +1385,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     }`}
                   >
                     <Clock className="w-3 h-3" />
-                    <span>{isUrdu ? 'راستے میں' : 'In Transit'}</span>
+                    <span>{isUrdu ? 'وصولی باقی' : 'Pending POD'}</span>
                   </button>
                 </div>
 
@@ -1579,7 +1579,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                                 ) : (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
                                     <Clock className="w-3 h-3 text-slate-500" />
-                                    <span>{isUrdu ? 'راستے میں' : 'In Transit'}</span>
+                                    <span>{isUrdu ? 'جاری شدہ' : 'Issued'}</span>
                                   </span>
                                 )}
                               </div>
@@ -1715,7 +1715,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                             ) : (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-[#22252c] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#2d313b] flex items-center gap-1">
                                 <Clock className="w-3 h-3 text-slate-500 dark:text-slate-400" />
-                                <span>{isUrdu ? 'راستے میں' : 'In Transit'}</span>
+                                <span>{isUrdu ? 'جاری شدہ' : 'Issued'}</span>
                               </span>
                             )}
                           </div>
@@ -1881,14 +1881,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <select
-                      value={editIsDelivered ? 'Delivered' : 'In Transit'}
-                      onChange={(e) => setEditIsDelivered(e.target.value === 'Delivered')}
-                      className="px-2.5 py-1.5 rounded-xl bg-white border border-indigo-300 text-xs font-bold text-indigo-950 outline-none"
-                    >
-                      <option value="In Transit">{isEnForm ? 'In Transit' : 'راستے میں (In Transit)'}</option>
-                      <option value="Delivered">{isEnForm ? 'Delivered' : 'پہنچ گیا (Delivered)'}</option>
-                    </select>
                     <button
                       type="button"
                       onClick={resetFormFields}

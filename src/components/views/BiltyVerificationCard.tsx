@@ -11,8 +11,7 @@ import {
   Phone,
   Copy,
   Check,
-  Share2,
-  Clock
+  Share2
 } from 'lucide-react';
 import { getBiltyVerificationUrl } from '../../utils/biltyHelpers';
 
@@ -43,10 +42,6 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
     .join(' / ');
   const weightOrQty = String(bilty.weightOrQty || combinedWeightOrQty || '').trim() || '-';
   const vehicleNo = String(bilty.vehicleNo || '').trim() || '-';
-  const status =
-    String(bilty.status || '').trim() ||
-    (bilty.isDelivered || bilty.podConfirmation?.status === 'delivered' ? 'Delivered' : 'In Transit');
-  const isDelivered = status.toLowerCase() === 'delivered';
 
   const verificationUrl = getBiltyVerificationUrl(biltyNo);
 
@@ -58,8 +53,8 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
 
   const handleWhatsAppShare = () => {
     const text = isUrdu
-      ? `ورائچ گڈز ٹرانسپورٹ کمپنی - تصدیق شدہ بلٹی نمبر ${biltyNo}\nتاریخ: ${biltyDate}\nگاڑی نمبر: ${vehicleNo}\nروٹ: ${origin} تا ${destination}\nمال: ${goodsDescription} (${weightOrQty})\nاسٹیٹس: ${status}\nتصدیقی لنک:\n${verificationUrl}`
-      : `Warraich Goods Transport Co. - Verified Bilty #${biltyNo}\nDate: ${biltyDate}\nVehicle: ${vehicleNo}\nRoute: ${origin} to ${destination}\nGoods: ${goodsDescription} (${weightOrQty})\nStatus: ${status}\nVerification Link:\n${verificationUrl}`;
+      ? `ورائچ گڈز ٹرانسپورٹ کمپنی - تصدیق شدہ بلٹی نمبر ${biltyNo}\nتاریخ: ${biltyDate}\nگاڑی نمبر: ${vehicleNo}\nروٹ: ${origin} تا ${destination}\nمال: ${goodsDescription} (${weightOrQty})\nتصدیقی لنک:\n${verificationUrl}`
+      : `Warraich Goods Transport Co. - Verified Bilty #${biltyNo}\nDate: ${biltyDate}\nVehicle: ${vehicleNo}\nRoute: ${origin} to ${destination}\nGoods: ${goodsDescription} (${weightOrQty})\nVerification Link:\n${verificationUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -111,7 +106,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
               </h3>
             </div>
             <p className="text-xs text-[#8e8e75]">
-              {isUrdu ? 'رجسٹرڈ بلٹی تصدیق پورٹل' : 'Registered Consignment Verification Portal'}
+              {isUrdu ? 'رجسٹرڈ بلٹی تصدیق پورٹل' : 'Registered Bilty Verification Portal'}
             </p>
           </div>
 
@@ -125,7 +120,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
           </div>
         </div>
 
-        {/* Dispatch & Route Information */}
+        {/* Route & Vehicle Information */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0]">
             <span className="text-[11px] font-bold text-[#8e8e75] flex items-center gap-1 mb-1">
@@ -168,37 +163,12 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
           </div>
         </div>
 
-        {/* Cargo & Status Specifications */}
+        {/* Cargo Specifications */}
         <div className="p-4 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-3">
-          <div className="flex items-center justify-between gap-2 border-b border-[#ecece0] pb-2">
-            <div className="flex items-center gap-2">
-              <Package className="w-4 h-4 text-[#8b9d77]" />
-              <span className="text-xs font-bold text-[#4a4a35]">
-                {isUrdu ? 'تفصیل سامان و کیفیت' : 'Goods & Status Details'}
-              </span>
-            </div>
-
-            <span
-              className={`px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 border ${
-                isDelivered
-                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                  : 'bg-amber-100 text-amber-900 border-amber-300'
-              }`}
-            >
-              {isDelivered ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              ) : (
-                <Clock className="w-3.5 h-3.5 text-amber-600" />
-              )}
-              <span>
-                {isUrdu
-                  ? isDelivered
-                    ? 'پہنچ گیا (Delivered)'
-                    : status === 'In Transit'
-                    ? 'روانہ / راستے میں (In Transit)'
-                    : status
-                  : status}
-              </span>
+          <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2">
+            <Package className="w-4 h-4 text-[#8b9d77]" />
+            <span className="text-xs font-bold text-[#4a4a35]">
+              {isUrdu ? 'تفصیل سامان' : 'Cargo & Goods Details'}
             </span>
           </div>
 

@@ -501,7 +501,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
               }`}
             >
               <QrCode className="w-4 h-4" />
-              <span>{isUrdu ? 'بلٹی تصدیق (QR و لوڈ ٹریکر)' : 'Bilty Verification (QR & Load)'}</span>
+              <span>{isUrdu ? 'بلٹی تصدیق (QR و نمبر)' : 'Bilty Verification (QR & No)'}</span>
             </button>
           </div>
         )}
@@ -1282,12 +1282,12 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     <div>
                       <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35] flex items-center gap-2">
                         <QrCode className="w-5 h-5 text-[#8b9d77]" />
-                        <span>{isUrdu ? 'آفیشل بلٹی تصدیق و لوڈ ٹریکر' : 'Official Bilty & Consignment Verification'}</span>
+                        <span>{isUrdu ? 'آفیشل آن لائن بلٹی تصدیق' : 'Official Online Bilty Verification'}</span>
                       </h2>
                       <p className="text-xs text-[#8e8e75] mt-1">
                         {isUrdu
-                          ? 'بلٹی پر موجود کیو آر کوڈ اسکین کریں یا بلٹی نمبر درج کر کے سامان، تاریخ، گاڑی اور روٹ کی فوری آفیشل تصدیق حاصل کریں۔'
-                          : 'Verify genuine consignments, cargo description, weight/quantity, origin/destination, and vehicle dispatch status in real-time.'}
+                          ? 'بلٹی پر موجود کیو آر کوڈ اسکین کریں یا بلٹی نمبر درج کر کے اصل بلٹی کی تفصیلات (سامان، تاریخ، گاڑی اور روٹ) کی فوری تصدیق کریں۔'
+                          : 'Verify authentic Bilty records, cargo description, weight/quantity, origin/destination, and vehicle details.'}
                       </p>
                     </div>
 
@@ -1374,7 +1374,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   <div className="p-6 rounded-3xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 flex items-center justify-center gap-3 animate-in fade-in">
                     <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
                     <span className="text-xs sm:text-sm font-bold text-emerald-900">
-                      {isUrdu ? 'کلاؤڈ ریکارڈ سے بلٹی کی تصدیق جاری ہے...' : 'Checking verified cloud dispatch records...'}
+                      {isUrdu ? 'آفیشل بلٹی ریکارڈز سے تصدیق جاری ہے...' : 'Checking verified bilty records...'}
                     </span>
                   </div>
                 )}
@@ -1392,8 +1392,8 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                         </h4>
                         <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
                           {isUrdu
-                            ? `نمبر "${biltyQuery}" کے تحت کوئی بلٹی ریکارڈ نہیں ملا۔ براہ کرم بلٹی نمبر کی درستگی چیک کریں یا لوڈ ٹریکر شیٹ سے تصدیق کریں۔`
-                            : `No local dispatch record matched "${biltyQuery}". Please double check the Bilty number or verify directly via Warraich Goods Google Sheets Load Tracker.`}
+                            ? `نمبر "${biltyQuery}" کے تحت کوئی تصدیق شدہ بلٹی ریکارڈ نہیں ملا۔ براہ کرم بلٹی نمبر کی درستگی چیک کریں یا ہیلپ لائن سے رابطہ کریں۔`
+                            : `No verified bilty record matched "${biltyQuery}". Please double-check the Bilty number or contact our helpline.`}
                         </p>
                       </div>
                     </div>
@@ -1456,18 +1456,18 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   );
                 })()}
 
-                {/* Google Sheets Load Tracker & Apps Script Banner */}
+                {/* Online QR Bilty Verification Banner */}
                 <div className="p-4 sm:p-5 rounded-3xl bg-white border border-[#ecece0] space-y-2">
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-[#8b9d77]" />
                     <h4 className="font-serif font-bold text-xs sm:text-sm text-[#4a4a35]">
-                      {isUrdu ? 'گوگل شیٹس لوڈ ٹریکر سسٹم انٹیگریشن' : 'Google Sheets Load Tracker Integration'}
+                      {isUrdu ? 'آن لائن کیو آر بلٹی تصدیق سسٹم' : 'Online QR Bilty Verification System'}
                     </h4>
                   </div>
                   <p className="text-xs text-[#5a5a40] leading-relaxed">
                     {isUrdu
-                      ? 'تمام تیار کردہ بلٹیوں پر متحرک کیو آر کوڈ پرنٹ ہوتا ہے جو براہ راست ورائچ گڈز کے لوڈ ٹریکر سسٹم اور آن لائن تصدیق سے منسلک ہے۔ کسی بھی کیمرہ یا اسکینر سے فوری طور پر مالکانہ تفصیلات کی تصدیق کی جا سکتی ہے۔'
-                      : 'Every generated Bilty carries an official dynamic QR code linked to Warraich Goods online verification portal and Load Tracker. Consignors, drivers, and consignees can verify cargo authenticity from any smartphone.'}
+                      ? 'ہر جاری کردہ بلٹی پر ایک آفیشل کیو آر کوڈ پرنٹ ہوتا ہے جو ورائچ گڈز کے آن لائن تصدیقی ریکارڈ سے منسلک ہے۔ کسی بھی اسمارٹ فون یا کیمرہ سے بلٹی کی اصلیت کی فوری تصدیق کی جا سکتی ہے۔'
+                      : 'Every generated Bilty carries an official QR code linked to Warraich Goods online verification records so consignors and consignees can verify document authenticity from any smartphone.'}
                   </p>
                 </div>
               </div>

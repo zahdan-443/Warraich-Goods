@@ -991,12 +991,8 @@ export function extractPublicBiltyVerification(
 
   const vehicleNo = String(bilty.vehicleNo || '').trim();
 
-  let status = 'In Transit';
-  if (bilty.isDelivered || bilty.podConfirmation?.status === 'delivered') {
-    status = 'Delivered';
-  } else if (typeof bilty.status === 'string' && bilty.status.trim()) {
-    status = bilty.status.trim();
-  }
+  const rawStatus = typeof bilty.status === 'string' ? bilty.status.trim() : '';
+  const status = rawStatus && rawStatus.toLowerCase() !== 'in transit' ? rawStatus : 'Verified';
 
   return {
     biltyNo: normalizedNo,

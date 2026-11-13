@@ -67,13 +67,13 @@ describe('Deep Audit Fixes Verification Suite', () => {
       expect(publicVerification.goodsDescription).toBe('Rice');
       expect(publicVerification.weightOrQty).toBe('100 Bags / 5000 kg');
       expect(publicVerification.vehicleNo).toBe('LES-1234');
-      expect(publicVerification.status).toBe('In Transit');
+      expect(publicVerification.status).toBe('Verified');
 
       const deliveredVerification = extractPublicBiltyVerification({
         ...fullBilty,
         isDelivered: true
       });
-      expect(deliveredVerification.status).toBe('Delivered');
+      expect(deliveredVerification.status).toBe('Verified');
 
       // Verify that CNICs, phone numbers, freight amounts, payment, driver details, and party names DO NOT exist
       expect((publicVerification as any).total).toBeUndefined();
