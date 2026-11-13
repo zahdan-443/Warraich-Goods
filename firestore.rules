@@ -51,25 +51,33 @@ service cloud.firestore {
       );
     }
 
-    // Helper function to enforce non-sensitive, non-financial fields in public verifications
-    // Allowed: biltyNo, date, senderName, receiverName, senderAddress, receiverAddress, sendingCity,
-    // receivingCity, vehicleNo, driverName, itemDescription, weight, qty, paymentStatus, branch, verifiedPublicly, isDelivered, receivedBy, createdAt, updatedAt, ownerUid
-    // Strictly FORBIDDEN: CNICs, phone numbers, freight price, advance, payable, charges, totals, or delivery tracking status
+    // Helper function to enforce strictly sanitized non-PII, non-financial fields in public verifications
+    // Allowed ONLY: biltyNo, biltyDate, origin, destination, goodsDescription, weightOrQty, vehicleNo, status
+    // Strictly FORBIDDEN: CNICs, phone numbers, freight amounts, payment, driver details, or party names
     function hasOnlyPublicBiltyFields() {
       let allowedKeys = [
-        'biltyNo', 'date', 'senderName', 'receiverName',
-        'senderAddress', 'receiverAddress', 'sendingCity', 'receivingCity',
-        'vehicleNo', 'driverName', 'itemDescription', 'weight', 'qty',
-        'paymentStatus', 'branch', 'verifiedPublicly', 'isDelivered', 'receivedBy', 'createdAt', 'updatedAt', 'ownerUid'
+        'biltyNo', 'biltyDate', 'origin', 'destination',
+        'goodsDescription', 'weightOrQty', 'vehicleNo', 'status'
       ];
       let forbiddenKeys = [
-        'senderCnic', 'receiverCnic', 'cnic', 'senderMobile', 'receiverMobile',
-        'mobileNo', 'phone', 'senderPhone', 'receiverPhone',
-        'total', 'advance', 'payable', 'freight', 'price', 'charges', 'commission',
-        'podConfirmation', 'status'
+        'senderCnic', 'receiverCnic', 'driverCnic', 'cnic',
+        'senderMobile', 'receiverMobile', 'mobileNo', 'phone', 'senderPhone', 'receiverPhone',
+        'total', 'advance', 'payable', 'freight', 'price', 'charges', 'commission', 'paymentStatus',
+        'driverName', 'driverLicense', 'senderName', 'receiverName', 'senderAddress', 'receiverAddress',
+        'podConfirmation', 'receivedBy', 'ownerUid'
       ];
-      return request.resource.data.keys().hasOnly(allowedKeys) &&
-             !request.resource.data.keys().hasAny(forbiddenKeys);
+      let d = request.resource.data;
+      return d.keys().hasAll(allowedKeys) &&
+             d.keys().hasOnly(allowedKeys) &&
+             !d.keys().hasAny(forbiddenKeys) &&
+             d.biltyNo is string && d.biltyNo.size() >= 1 && d.biltyNo.size() <= 64 &&
+             d.biltyDate is string && d.biltyDate.size() <= 64 &&
+             d.origin is string && d.origin.size() <= 120 &&
+             d.destination is string && d.destination.size() <= 120 &&
+             d.goodsDescription is string && d.goodsDescription.size() <= 300 &&
+             d.weightOrQty is string && d.weightOrQty.size() <= 120 &&
+             d.vehicleNo is string && d.vehicleNo.size() <= 64 &&
+             d.status is string && d.status.size() >= 1 && d.status.size() <= 64;
     }
 
     // Global default deny catch-all
@@ -121,14 +129,17 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Public bilty verification records (read allowed for anyone for QR verification; create/update restricted to ownerUid or authorized bilty accounts)
+    // Public bilty verification records (doc ID = uppercase biltyNo, read allowed for anyone for QR verification; create/update/delete restricted to authorized bilty accounts)
     match /publicBiltyVerifications/{docId} {
       allow read: if true;
-      allow create: if isSignedIn() && hasOnlyPublicBiltyFields() &&
-                    (isOwner() || isBiltyAuthorized() || request.resource.data.ownerUid == request.auth.uid);
-      allow update: if isSignedIn() && hasOnlyPublicBiltyFields() &&
-                    (isOwner() || isBiltyAuthorized() || resource.data.ownerUid == request.auth.uid);
-      allow delete: if isOwner() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+      allow create, update: if isBiltyAuthorized() &&
+                               docId is string &&
+                               docId.size() >= 1 &&
+                               docId.size() <= 64 &&
+                               docId == docId.upper() &&
+                               request.resource.data.biltyNo == docId &&
+                               hasOnlyPublicBiltyFields();
+      allow delete: if isBiltyAuthorized();
     }
 
     // Counters collection for transaction-based sequential Bilty allocation

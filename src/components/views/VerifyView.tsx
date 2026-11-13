@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { BiltyVerificationCard } from './BiltyVerificationCard';
 import { PublicImage } from '../PublicImage';
-import { getStoredBilties } from '../../utils/storage';
+import { getStoredBilties, extractPublicBiltyVerification, PublicBiltyVerification } from '../../utils/storage';
 import { getBiltyVerificationUrl } from '../../utils/biltyHelpers';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
@@ -73,7 +73,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
   // Bilty Verification State
   const [biltyQuery, setBiltyQuery] = useState(initialBiltyNo || '');
-  const [verifiedBilty, setVerifiedBilty] = useState<BiltyRecord | null>(null);
+  const [verifiedBilty, setVerifiedBilty] = useState<PublicBiltyVerification | null>(null);
   const [biltySearchAttempted, setBiltySearchAttempted] = useState(false);
   const [isBiltyLoading, setIsBiltyLoading] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -110,27 +110,12 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
     });
 
     if (localMatch) {
-      const publicBilty: any = {
-        ...localMatch,
-        senderCnic: '',
-        senderMobile: '',
-        receiverMobile: '',
-        mobileNo: '',
-        total: 0,
-        advance: 0,
-        payable: 0,
-        paymentStatus: (localMatch.payable !== undefined && Number(localMatch.payable) <= 0 && Number(localMatch.total) > 0)
-          ? 'paid'
-          : (Number(localMatch.payable) > 0 ? 'topay' : undefined),
-        isDelivered: undefined,
-        podConfirmation: undefined
-      };
-      setVerifiedBilty(publicBilty);
+      setVerifiedBilty(extractPublicBiltyVerification(localMatch));
       setIsBiltyLoading(false);
       return;
     }
 
-    // 3. Fallback to top-level public Firestore document: bilties/{biltyNo}
+    // 3. Fallback to public Firestore collection: publicBiltyVerifications/{BILTY_NO_UPPERCASE}
     try {
       if (db) {
         const upper = rawTerm.toUpperCase().trim();
@@ -166,37 +151,10 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
         }
 
         if (remoteDocData) {
-          const publicBilty: any = {
-            id: typeof remoteDocData.id === 'number' ? remoteDocData.id : Date.now(),
-            biltyNo: remoteDocData.biltyNo || rawTerm.toUpperCase(),
-            vehicleNo: remoteDocData.vehicleNo || '',
-            date: remoteDocData.date || '',
-            branch: remoteDocData.branch || 'samundri',
-            driverName: remoteDocData.driverName || '',
-            mobileNo: '',
-            sendingCity: remoteDocData.sendingCity || '',
-            receivingCity: remoteDocData.receivingCity || '',
-            senderName: remoteDocData.senderName || '',
-            senderMobile: '',
-            receiverName: remoteDocData.receiverName || '',
-            receiverMobile: '',
-            senderAddress: remoteDocData.senderAddress || '',
-            receiverAddress: remoteDocData.receiverAddress || '',
-            senderCnic: '',
-            qty: remoteDocData.qty || '',
-            itemDescription: remoteDocData.itemDescription || '',
-            weight: remoteDocData.weight || '',
-            paymentStatus: remoteDocData.paymentStatus || undefined,
-            total: 0,
-            advance: 0,
-            payable: 0,
-            consignor: remoteDocData.senderName || '',
-            consignee: remoteDocData.receiverName || '',
-            receivedBy: '',
-            podConfirmation: undefined,
-            isDelivered: undefined
-          };
-          setVerifiedBilty(publicBilty);
+          setVerifiedBilty(extractPublicBiltyVerification({
+            biltyNo: remoteDocData.biltyNo || upper,
+            ...remoteDocData
+          }));
           setIsBiltyLoading(false);
           return;
         }
@@ -1328,8 +1286,8 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                       </h2>
                       <p className="text-xs text-[#8e8e75] mt-1">
                         {isUrdu
-                          ? 'بلٹی پر موجود کیو آر کوڈ اسکین کریں یا بلٹی نمبر درج کر کے سامان، کرایہ و روٹ کی فوری آفیشل تصدیق حاصل کریں۔'
-                          : 'Verify genuine consignments, freight balance, consignor/consignee, and vehicle dispatch details in real-time.'}
+                          ? 'بلٹی پر موجود کیو آر کوڈ اسکین کریں یا بلٹی نمبر درج کر کے سامان، تاریخ، گاڑی اور روٹ کی فوری آفیشل تصدیق حاصل کریں۔'
+                          : 'Verify genuine consignments, cargo description, weight/quantity, origin/destination, and vehicle dispatch status in real-time.'}
                       </p>
                     </div>
 

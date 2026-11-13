@@ -27,23 +27,23 @@ describe('Firestore Rules Security Audit & Structure', () => {
     expect(rulesContent).toMatch(/match \/bilties\/\{biltyId\} \{\s*allow read, write: if false;\s*\}/);
   });
 
-  it('should restrict publicBiltyVerifications writes with non-PII, non-financial whitelist and ownerUid check', () => {
+  it('should restrict publicBiltyVerifications writes to authorized accounts with strict 8-field whitelist and uppercase docId check', () => {
     expect(rulesContent).toContain('match /publicBiltyVerifications/{docId}');
     expect(rulesContent).toContain('allow read: if true;');
-    expect(rulesContent).toContain('request.resource.data.ownerUid == request.auth.uid');
-    expect(rulesContent).toContain('resource.data.ownerUid == request.auth.uid');
-    expect(rulesContent).toContain('allow delete: if isOwner() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);');
-    
-    // Explicit allowed non-sensitive fields
-    expect(rulesContent).toContain('senderName');
-    expect(rulesContent).toContain('receiverName');
-    expect(rulesContent).toContain('driverName');
-    expect(rulesContent).toContain('paymentStatus');
-    expect(rulesContent).toContain('ownerUid');
+    expect(rulesContent).toContain('allow create, update: if isBiltyAuthorized()');
+    expect(rulesContent).toContain('docId == docId.upper()');
+    expect(rulesContent).toContain('request.resource.data.biltyNo == docId');
+    expect(rulesContent).toContain('allow delete: if isBiltyAuthorized();');
+
+    // Explicit 8 allowed sanitized fields
+    expect(rulesContent).toContain("'biltyNo', 'biltyDate', 'origin', 'destination'");
+    expect(rulesContent).toContain("'goodsDescription', 'weightOrQty', 'vehicleNo', 'status'");
 
     // Explicit forbidden keys in defense-in-depth guard
     expect(rulesContent).toContain('senderCnic');
     expect(rulesContent).toContain('senderMobile');
+    expect(rulesContent).toContain('driverName');
+    expect(rulesContent).toContain('paymentStatus');
     expect(rulesContent).toContain('total');
     expect(rulesContent).toContain('payable');
     expect(rulesContent).toContain('freight');

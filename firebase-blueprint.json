@@ -157,30 +157,19 @@
     },
     "PublicBiltyVerification": {
       "title": "PublicBiltyVerification",
-      "description": "Public bilty verification document containing non-sensitive, non-financial fields for public verification",
+      "description": "Sanitized public bilty verification document containing ONLY biltyNo, biltyDate, origin, destination, goodsDescription, weightOrQty, vehicleNo, and status",
       "type": "object",
       "properties": {
         "biltyNo": { "type": "string" },
-        "date": { "type": "string" },
-        "senderName": { "type": "string" },
-        "receiverName": { "type": "string" },
-        "senderAddress": { "type": "string" },
-        "receiverAddress": { "type": "string" },
-        "sendingCity": { "type": "string" },
-        "receivingCity": { "type": "string" },
+        "biltyDate": { "type": "string" },
+        "origin": { "type": "string" },
+        "destination": { "type": "string" },
+        "goodsDescription": { "type": "string" },
+        "weightOrQty": { "type": "string" },
         "vehicleNo": { "type": "string" },
-        "driverName": { "type": "string" },
-        "itemDescription": { "type": "string" },
-        "weight": { "type": "string" },
-        "qty": { "type": "string" },
-        "paymentStatus": { "type": "string" },
-        "branch": { "type": "string" },
-        "verifiedPublicly": { "type": "boolean" },
-        "ownerUid": { "type": "string" },
-        "createdAt": { "type": "string" },
-        "updatedAt": { "type": "string" }
+        "status": { "type": "string" }
       },
-      "required": ["biltyNo", "verifiedPublicly"]
+      "required": ["biltyNo", "biltyDate", "origin", "destination", "goodsDescription", "weightOrQty", "vehicleNo", "status"]
     }
   },
   "firestore": {

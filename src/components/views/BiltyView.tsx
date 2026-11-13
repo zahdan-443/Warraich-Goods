@@ -39,7 +39,8 @@ import {
   ChevronUp,
   Camera,
   Upload,
-  PhoneCall
+  PhoneCall,
+  Pencil
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
@@ -96,6 +97,7 @@ interface BiltyViewProps {
   bilties: BiltyRecord[];
   initialSubTab?: 'all' | 'create' | 'search';
   onAddBilty: (record: Omit<BiltyRecord, 'id'>) => void;
+  onUpdateBilty?: (record: BiltyRecord) => void;
   onDeleteBilty?: (id: number) => void;
   onNavigate?: (tab: string, subSection?: string) => void;
 }
@@ -105,6 +107,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   bilties,
   initialSubTab,
   onAddBilty,
+  onUpdateBilty,
   onDeleteBilty,
   onNavigate
 }) => {
@@ -129,9 +132,11 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'delivered' | 'pending'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'total_desc' | 'payable_desc'>('newest');
 
-  // Modal states
+  // Modal & Edit states
   const [selectedModalBilty, setSelectedModalBilty] = useState<BiltyRecord | null>(null);
   const [biltyToDelete, setBiltyToDelete] = useState<BiltyRecord | null>(null);
+  const [editingBilty, setEditingBilty] = useState<BiltyRecord | null>(null);
+  const [editIsDelivered, setEditIsDelivered] = useState<boolean>(false);
 
   // Branch and Language Selection State
   const [selectedBranch, setSelectedBranch] = useState<BiltyBranch>(() => {
@@ -190,6 +195,59 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
   const [contactsList, setContactsList] = useState<ContactItem[]>(() => getContactList());
+
+  const resetFormFields = () => {
+    setVehicleNo('');
+    setDate(getTodayFormatted());
+    setDriverName('');
+    setMobileNo('');
+    setSendingCity('');
+    setReceivingCity('');
+    setSenderName('');
+    setSenderMobile('');
+    setReceiverName('');
+    setReceiverMobile('');
+    setSenderCnic('');
+    setQty('');
+    setItemDescription('');
+    setWeight('');
+    setTotal('');
+    setAdvance('');
+    setCreationLegalVault({});
+    setIsLegalVaultExpanded(false);
+    setEditingBilty(null);
+    setEditIsDelivered(false);
+    setFormError(null);
+  };
+
+  const handleStartEditBilty = (record: BiltyRecord) => {
+    setEditingBilty(record);
+    setEditIsDelivered(Boolean(record.isDelivered || record.podConfirmation?.status === 'delivered'));
+    setVehicleNo(record.vehicleNo || '');
+    setDate(record.date || getTodayFormatted());
+    setDriverName(record.driverName || '');
+    setMobileNo(record.mobileNo || '');
+    setSendingCity(record.sendingCity || '');
+    setReceivingCity(record.receivingCity || '');
+    setSenderName(record.senderName || record.consignor || '');
+    setSenderMobile(record.senderMobile || '');
+    setReceiverName(record.receiverName || record.consignee || '');
+    setReceiverMobile(record.receiverMobile || '');
+    setSenderCnic(record.senderCnic || '');
+    setQty(record.qty || '');
+    setItemDescription(record.itemDescription || '');
+    setWeight(record.weight || '');
+    setTotal(record.total !== undefined ? String(record.total) : '');
+    setAdvance(record.advance !== undefined ? String(record.advance) : '');
+    setCreationLegalVault(record.legalVault || {});
+    if (record.branch) setSelectedBranch(record.branch);
+    if (record.language) setSelectedLanguage(record.language);
+    setIsConfigModalOpen(false);
+    setSelectedModalBilty(null);
+    setLastBilty(record);
+    setFormError(null);
+    setSubTab('create');
+  };
 
   const handleSaveVault = (biltyId: number, updatedVault: BiltyLegalVault) => {
     const updated = bilties.map((b) => {
@@ -343,6 +401,51 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       return;
     }
 
+    if (editingBilty) {
+      const updatedRecord: BiltyRecord = {
+        ...editingBilty,
+        branch: selectedBranch,
+        language: selectedLanguage,
+        vehicleNo: vehicleNo.trim(),
+        date: date.trim() || getTodayFormatted(),
+        driverName: driverName.trim(),
+        mobileNo: mobileNo.trim(),
+        sendingCity: sendingCity.trim(),
+        receivingCity: receivingCity.trim(),
+        senderName: senderName.trim(),
+        senderMobile: senderMobile.trim(),
+        receiverName: receiverName.trim(),
+        receiverMobile: receiverMobile.trim(),
+        senderCnic: senderCnic.trim(),
+        qty: qty.trim(),
+        itemDescription: itemDescription.trim(),
+        weight: weight.trim(),
+        total: validation.total,
+        advance: validation.advance,
+        payable: validation.payable,
+        isDelivered: editIsDelivered,
+        podConfirmation: editIsDelivered
+          ? (editingBilty.podConfirmation || {
+              receiverName: receiverName.trim() || editingBilty.receiverName || 'Consignee',
+              confirmedAt: new Date().toISOString(),
+              status: 'delivered'
+            })
+          : undefined,
+        legalVault: Object.keys(creationLegalVault).length > 0 ? creationLegalVault : undefined,
+        updatedAt: new Date().toISOString()
+      };
+
+      if (onUpdateBilty) {
+        onUpdateBilty(updatedRecord);
+      } else {
+        const nextList = bilties.map(b => (b.id === updatedRecord.id ? updatedRecord : b));
+        saveStoredBilties(nextList);
+      }
+      setLastBilty(updatedRecord);
+      resetFormFields();
+      return;
+    }
+
     // Allocate sequential unique Bilty Number via Transaction / Monotonic counter
     const allocatedBiltyNo = await allocateNextBiltyNumber();
     const isPendingOnline = allocatedBiltyNo.includes('-OFF-');
@@ -376,24 +479,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setLastBilty({ ...record, id: Date.now() });
 
     // Reset fields
-    setVehicleNo('');
-    setDate(getTodayFormatted());
-    setDriverName('');
-    setMobileNo('');
-    setSendingCity('');
-    setReceivingCity('');
-    setSenderName('');
-    setSenderMobile('');
-    setReceiverName('');
-    setReceiverMobile('');
-    setSenderCnic('');
-    setQty('');
-    setItemDescription('');
-    setWeight('');
-    setTotal('');
-    setAdvance('');
-    setCreationLegalVault({});
-    setIsLegalVaultExpanded(false);
+    resetFormFields();
   };
 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -1552,6 +1638,14 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                                 </button>
                                 <button
                                   type="button"
+                                  onClick={() => handleStartEditBilty(b)}
+                                  className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors cursor-pointer"
+                                  title={isUrdu ? 'بلٹی ترمیم کریں' : 'Edit Bilty'}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
                                   onClick={() => handleDownloadZip(b)}
                                   className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 transition-colors cursor-pointer"
                                   title={isUrdu ? 'ZIP والٹ ڈاؤن لوڈ کریں' : 'Download ZIP Vault'}
@@ -1709,17 +1803,25 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                             </button>
                           </div>
 
-                          <div className="grid grid-cols-3 gap-1.5">
+                          <div className="grid grid-cols-4 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditBilty(b)}
+                              className="py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors border border-indigo-200 dark:border-indigo-800"
+                            >
+                              <Pencil className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                              <span>{isUrdu ? 'ترمیم' : 'Edit'}</span>
+                            </button>
                             <button
                               type="button"
                               onClick={() => {
                                 setVaultModalBilty(b);
                                 setIsVaultModalOpen(true);
                               }}
-                              className="py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-800 dark:text-blue-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1.5 cursor-pointer transition-colors relative border border-blue-200 dark:border-blue-800"
+                              className="py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-800 dark:text-blue-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors relative border border-blue-200 dark:border-blue-800"
                             >
                               <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                              <span>قانونی والٹ</span>
+                              <span>والٹ</span>
                               {b.legalVault && (
                                 <span className="bg-blue-600 text-white text-[9px] px-1 rounded-full font-bold">
                                   {Object.keys(b.legalVault).filter((k) => k !== 'updatedAt' && k !== 'recordings' && Boolean((b.legalVault as any)[k])).length + (b.legalVault.recordings?.length || 0)}
@@ -1729,10 +1831,10 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                             <button
                               type="button"
                               onClick={() => handleDownloadZip(b)}
-                              className="py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1.5 cursor-pointer transition-colors border border-amber-200 dark:border-amber-800"
+                              className="py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors border border-amber-200 dark:border-amber-800"
                             >
                               <FileArchive className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                              <span>ZIP والٹ</span>
+                              <span>ZIP</span>
                             </button>
                             {onDeleteBilty ? (
                               <button
@@ -1768,6 +1870,35 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
             {/* FORM */}
             <form onSubmit={handleGenerate} className="space-y-4">
+              {editingBilty && (
+                <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-lg bg-indigo-700 text-white font-mono text-xs font-bold">
+                      {editingBilty.biltyNo}
+                    </span>
+                    <span className="text-xs font-bold text-indigo-950">
+                      {isEnForm ? 'Editing Bilty' : 'بلٹی میں ترمیم جاری ہے'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={editIsDelivered ? 'Delivered' : 'In Transit'}
+                      onChange={(e) => setEditIsDelivered(e.target.value === 'Delivered')}
+                      className="px-2.5 py-1.5 rounded-xl bg-white border border-indigo-300 text-xs font-bold text-indigo-950 outline-none"
+                    >
+                      <option value="In Transit">{isEnForm ? 'In Transit' : 'راستے میں (In Transit)'}</option>
+                      <option value="Delivered">{isEnForm ? 'Delivered' : 'پہنچ گیا (Delivered)'}</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={resetFormFields}
+                      className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 text-xs font-bold text-slate-700 cursor-pointer"
+                    >
+                      {isEnForm ? 'Cancel' : 'منسوخ'}
+                    </button>
+                  </div>
+                </div>
+              )}
               <div>
                 <div className="flex justify-between items-center mb-1.5">
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75]">
@@ -2167,7 +2298,11 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 className="w-full py-3.5 min-h-[48px] bg-[#5a5a40] text-white rounded-full font-medium text-xs sm:text-sm uppercase tracking-widest hover:bg-[#4a4a35] shadow-xs transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-2"
               >
                 <Receipt className="w-4 h-4 text-[#8b9d77]" />
-                <span>{isEnForm ? 'Generate Bilty' : t.generateBtn}</span>
+                <span>
+                  {editingBilty
+                    ? (isEnForm ? 'Save Changes' : 'تبدیلیاں محفوظ کریں')
+                    : (isEnForm ? 'Generate Bilty' : t.generateBtn)}
+                </span>
               </button>
             </form>
 

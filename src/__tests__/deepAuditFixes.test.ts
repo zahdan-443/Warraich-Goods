@@ -24,10 +24,10 @@ describe('Deep Audit Fixes Verification Suite', () => {
   });
 
   describe('Public Bilty Verification Privacy & QR URL', () => {
-    it('should extract public bilty verification without PII, party names, or financial amounts', () => {
+    it('should extract public bilty verification with ONLY the 8 sanitized fields and uppercase biltyNo', () => {
       const fullBilty: BiltyRecord = {
         id: 12345,
-        biltyNo: 'AH-2026-0001',
+        biltyNo: 'wgt-99214',
         vehicleNo: 'LES-1234',
         driverName: 'Muhammad Ali',
         mobileNo: '03001234567',
@@ -49,29 +49,45 @@ describe('Deep Audit Fixes Verification Suite', () => {
 
       const publicVerification = extractPublicBiltyVerification(fullBilty);
 
-      // Verify necessary fields for public verification are present
-      expect(publicVerification.biltyNo).toBe('AH-2026-0001');
-      expect(publicVerification.vehicleNo).toBe('LES-1234');
-      expect(publicVerification.driverName).toBe('Muhammad Ali');
-      expect(publicVerification.senderName).toBe('Warraich Traders');
-      expect(publicVerification.receiverName).toBe('Karachi Wholesale');
-      expect(publicVerification.sendingCity).toBe('Lahore');
-      expect(publicVerification.receivingCity).toBe('Karachi');
-      expect(publicVerification.itemDescription).toBe('Rice');
-      expect(publicVerification.qty).toBe('100 Bags');
-      expect(publicVerification.weight).toBe('5000 kg');
-      expect(publicVerification.paymentStatus).toBe('topay');
-      expect(publicVerification.verifiedPublicly).toBe(true);
+      expect(Object.keys(publicVerification).sort()).toEqual([
+        'biltyDate',
+        'biltyNo',
+        'destination',
+        'goodsDescription',
+        'origin',
+        'status',
+        'vehicleNo',
+        'weightOrQty'
+      ]);
 
-      // Verify that CNICs, phone numbers, and financial rupee amounts DO NOT exist on public verification payload
+      expect(publicVerification.biltyNo).toBe('WGT-99214');
+      expect(publicVerification.biltyDate).toBe('2026-03-30');
+      expect(publicVerification.origin).toBe('Lahore');
+      expect(publicVerification.destination).toBe('Karachi');
+      expect(publicVerification.goodsDescription).toBe('Rice');
+      expect(publicVerification.weightOrQty).toBe('100 Bags / 5000 kg');
+      expect(publicVerification.vehicleNo).toBe('LES-1234');
+      expect(publicVerification.status).toBe('In Transit');
+
+      const deliveredVerification = extractPublicBiltyVerification({
+        ...fullBilty,
+        isDelivered: true
+      });
+      expect(deliveredVerification.status).toBe('Delivered');
+
+      // Verify that CNICs, phone numbers, freight amounts, payment, driver details, and party names DO NOT exist
       expect((publicVerification as any).total).toBeUndefined();
       expect((publicVerification as any).advance).toBeUndefined();
       expect((publicVerification as any).payable).toBeUndefined();
       expect((publicVerification as any).freight).toBeUndefined();
+      expect((publicVerification as any).paymentStatus).toBeUndefined();
       expect((publicVerification as any).senderCnic).toBeUndefined();
       expect((publicVerification as any).senderMobile).toBeUndefined();
       expect((publicVerification as any).receiverMobile).toBeUndefined();
       expect((publicVerification as any).mobileNo).toBeUndefined();
+      expect((publicVerification as any).driverName).toBeUndefined();
+      expect((publicVerification as any).senderName).toBeUndefined();
+      expect((publicVerification as any).receiverName).toBeUndefined();
     });
 
     it('should generate official verification QR URL without vdata or financial tokens', () => {

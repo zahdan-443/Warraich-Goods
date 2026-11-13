@@ -235,12 +235,33 @@ export function resolveEntityLWW<T extends Record<string, any>>(local: T, cloud:
   return localTime >= cloudTime ? local : cloud;
 }
 
+function isCurrentUserBiltyAuthorizedForSync(): boolean {
+  const user = auth.currentUser;
+  if (!user) return false;
+  const email = user.email?.toLowerCase().trim() || '';
+  if (email === 'warraichgoods43@gmail.com') return true;
+  try {
+    const rawUids = safeStorage.getItem('wg_global_bilty_allowed_uids');
+    const rawEmails = safeStorage.getItem('wg_global_bilty_allowed_emails');
+    const uids: string[] = rawUids ? JSON.parse(rawUids) : [];
+    const emails: string[] = rawEmails ? JSON.parse(rawEmails) : [];
+    if (Array.isArray(uids) && uids.includes(user.uid)) return true;
+    if (Array.isArray(emails) && emails.map(e => String(e).toLowerCase().trim()).includes(email)) return true;
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
 export function enqueueOfflineAction(type: OfflineAction['type'], data: any) {
   try {
     const user = auth.currentUser;
     const isOwner = user?.email?.toLowerCase().trim() === 'warraichgoods43@gmail.com';
-    // Prevent poison pills: do not enqueue owner-only cloud writes for non-owner users
-    if ((type === 'bilty' || type === 'bilties' || type === 'public_bilty' || type === 'settings') && !isOwner) {
+    // Prevent poison pills: do not enqueue owner/authorized-only cloud writes for unauthorized users
+    if (type === 'settings' && !isOwner) {
+      return;
+    }
+    if ((type === 'bilty' || type === 'bilties' || type === 'public_bilty' || type === 'delete_public_bilty') && !isCurrentUserBiltyAuthorizedForSync()) {
       return;
     }
 
@@ -252,16 +273,20 @@ export function enqueueOfflineAction(type: OfflineAction['type'], data: any) {
       timestamp: new Date().toISOString(),
       retryCount: 0
     };
+    const targetBiltyNo = data?.biltyNo ? String(data.biltyNo).trim().toUpperCase() : '';
     // Replace redundant duplicate items:
     // Full collection syncs (bilties, trips, vehicles, drivers, fuel, routes) only need the newest snapshot
-    // Public bilty actions are deduplicated by biltyNo
+    // Public bilty upserts and deletes are deduplicated against each other by uppercase biltyNo
     const filtered = queue.filter(item => {
+      if ((type === 'public_bilty' || type === 'delete_public_bilty') && (item.type === 'public_bilty' || item.type === 'delete_public_bilty')) {
+        const itemNo = item.data?.biltyNo ? String(item.data.biltyNo).trim().toUpperCase() : '';
+        if (itemNo && targetBiltyNo) {
+          return itemNo !== targetBiltyNo;
+        }
+      }
       if (item.type !== type) return true;
       if (type === 'bilties' || type === 'bilty') return false;
       if (['trips', 'vehicles', 'drivers', 'fuel', 'routes', 'settings'].includes(type)) return false;
-      if (type === 'public_bilty' && item.data?.biltyNo && data?.biltyNo) {
-        return String(item.data.biltyNo).trim().toUpperCase() !== String(data.biltyNo).trim().toUpperCase();
-      }
       return JSON.stringify(item.data) !== JSON.stringify(data);
     });
     const updated = [newAction, ...filtered].slice(0, 30);
@@ -333,9 +358,9 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
             if (b?.biltyNo) {
               try {
                 const safeData = extractPublicBiltyVerification(b);
-                const normalizedNo = String(b.biltyNo).trim().toUpperCase();
+                const normalizedNo = safeData.biltyNo;
                 const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-                await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000);
+                await withTimeout(setDoc(pubRef, safeData), 8000);
               } catch (pubErr) {
                 console.warn('Public bilty verification update note:', pubErr);
               }
@@ -345,11 +370,22 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
         } else if (action.type === 'public_bilty' && action.data?.biltyNo) {
           try {
             const safeData = extractPublicBiltyVerification(action.data);
-            const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
+            const normalizedNo = safeData.biltyNo;
             const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-            await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000);
+            await withTimeout(setDoc(pubRef, safeData), 8000);
           } catch (pubErr) {
             console.warn('Public bilty direct write note:', pubErr);
+          }
+          processedCount++;
+        } else if (action.type === 'delete_public_bilty' && action.data?.biltyNo) {
+          try {
+            const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
+            if (normalizedNo) {
+              const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
+              await withTimeout(deleteDoc(pubRef), 8000);
+            }
+          } catch (delErr) {
+            console.warn('Public bilty delete note:', delErr);
           }
           processedCount++;
         } else if ((action.type === 'bilty' || action.type === 'bilties') && !Array.isArray(action.data)) {
@@ -357,9 +393,9 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
           if (action.data?.biltyNo) {
             try {
               const safeData = extractPublicBiltyVerification(action.data);
-              const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
+              const normalizedNo = safeData.biltyNo;
               const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-              await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000);
+              await withTimeout(setDoc(pubRef, safeData), 8000);
             } catch (pubErr) {
               console.warn('Single public bilty write note:', pubErr);
             }
@@ -380,13 +416,13 @@ export async function processOfflineQueue(): Promise<{ processed: number; remain
           processedCount++;
         } else if (action.type === 'pod_confirmation' && action.data?.biltyNo) {
           try {
-            const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
-            const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-            const safeData = extractPublicBiltyVerification(action.data);
-            if (action.data.isDelivered) {
-              (safeData as any).isDelivered = true;
-            }
-            await withTimeout(setDoc(pubRef, safeData, { merge: true }), 8000);
+            const safeData = extractPublicBiltyVerification({
+              ...action.data,
+              isDelivered: true,
+              status: 'Delivered'
+            });
+            const pubRef = doc(db, 'publicBiltyVerifications', safeData.biltyNo);
+            await withTimeout(setDoc(pubRef, safeData), 8000);
           } catch (pubErr) {
             console.warn('POD public confirmation write note:', pubErr);
           }
@@ -772,7 +808,7 @@ export function getStoredBilties(): BiltyRecord[] {
                   candidateRecords.push(item);
                 }
               }
-            } else if ((qItem?.type === 'public_bilty' || qItem?.type === 'bilty') && qItem?.data) {
+            } else if (qItem?.type === 'bilty' && qItem?.data) {
               if (qItem.data.biltyNo || qItem.data.id) {
                 candidateRecords.push(qItem.data);
               }
@@ -853,6 +889,18 @@ export function getStoredBilties(): BiltyRecord[] {
 }
 
 export function saveStoredBilties(bilties: BiltyRecord[]) {
+  // Capture previous stored bilties before saving to detect additions, edits, and deletions
+  let previousBilties: BiltyRecord[] = [];
+  try {
+    const prevRaw = getScopedItem('bilties') || safeStorage.getItem('ah-bilties');
+    if (prevRaw) {
+      const parsed = JSON.parse(prevRaw);
+      if (Array.isArray(parsed)) previousBilties = parsed;
+    }
+  } catch {
+    previousBilties = [];
+  }
+
   const stamped = bilties.map(b => ({
     ...b,
     updatedAt: b.updatedAt || new Date().toISOString()
@@ -869,10 +917,37 @@ export function saveStoredBilties(bilties: BiltyRecord[]) {
   syncToFirestore('bilties', stamped);
   scheduleAmbientSync();
 
-  // Also sync public verification copies for all bilties
-  stamped.forEach((b) => {
-    syncPublicBiltyVerification(b).catch(() => {});
-  });
+  // Build map of previous sanitized copies by uppercase biltyNo
+  const prevPublicMap = new Map<string, string>();
+  for (const prev of previousBilties) {
+    if (prev?.biltyNo) {
+      const safePrev = extractPublicBiltyVerification(prev);
+      if (safePrev.biltyNo) {
+        prevPublicMap.set(safePrev.biltyNo, JSON.stringify(safePrev));
+      }
+    }
+  }
+
+  const currentBiltyNos = new Set<string>();
+  for (const b of stamped) {
+    if (!b?.biltyNo) continue;
+    const safeCurr = extractPublicBiltyVerification(b);
+    if (!safeCurr.biltyNo) continue;
+    currentBiltyNos.add(safeCurr.biltyNo);
+
+    const prevJson = prevPublicMap.get(safeCurr.biltyNo);
+    const currJson = JSON.stringify(safeCurr);
+    if (prevJson !== currJson) {
+      syncPublicBiltyVerification(b).catch(() => {});
+    }
+  }
+
+  // Delete public verification copies for any bilties removed from the list
+  for (const prevNo of prevPublicMap.keys()) {
+    if (!currentBiltyNos.has(prevNo)) {
+      deletePublicBiltyVerification(prevNo).catch(() => {});
+    }
+  }
 
   // Notify active components immediately
   if (typeof window !== 'undefined') {
@@ -882,95 +957,62 @@ export function saveStoredBilties(bilties: BiltyRecord[]) {
 
 /**
  * Public Verification Safe Document
- * Includes: biltyNo, date, senderName, receiverName, sendingCity, receivingCity, vehicleNo, driverName, itemDescription, weight, qty, paymentStatus, branch.
- * Strictly EXCLUDES: CNICs, phone numbers, freight total, advance, payable, delivery tracking status.
+ * Includes ONLY: biltyNo, biltyDate, origin, destination, goodsDescription, weightOrQty, vehicleNo, status.
+ * Strictly EXCLUDES: CNICs, phone numbers, freight amounts, payment, or driver details.
  */
 export interface PublicBiltyVerification {
   biltyNo: string;
-  date: string;
-  sendingCity: string;
-  receivingCity: string;
-  senderName?: string;
-  receiverName?: string;
-  senderAddress?: string;
-  receiverAddress?: string;
-  vehicleNo?: string;
-  driverName?: string;
-  itemDescription: string;
-  weight?: string;
-  qty?: string;
-  paymentStatus?: 'paid' | 'topay';
-  branch?: 'samundri' | 'kamalia';
-  verifiedPublicly: true;
-  ownerUid?: string;
-  createdAt: string;
-  updatedAt?: string;
+  biltyDate: string;
+  origin: string;
+  destination: string;
+  goodsDescription: string;
+  weightOrQty: string;
+  vehicleNo: string;
+  status: string;
 }
 
 /**
- * Extracts only safe, non-PII, non-financial fields from a Bilty record for public verification
+ * Extracts only the allowed 8 non-PII, non-financial fields from a Bilty record for public verification.
+ * Never includes CNIC, phone numbers, freight amounts, payment, or driver details.
  */
-export function extractPublicBiltyVerification(bilty: Partial<BiltyRecord>): PublicBiltyVerification {
+export function extractPublicBiltyVerification(
+  bilty: Partial<BiltyRecord> & Record<string, any>
+): PublicBiltyVerification {
   const normalizedNo = bilty.biltyNo ? String(bilty.biltyNo).trim().toUpperCase() : '';
+  const biltyDate = String(bilty.date || bilty.biltyDate || '').trim();
+  const origin = String(bilty.sendingCity || bilty.origin || '').trim();
+  const destination = String(bilty.receivingCity || bilty.destination || '').trim();
+  const goodsDescription = String(bilty.itemDescription || bilty.goodsDescription || '').trim();
 
-  let paymentStatus: 'paid' | 'topay' | undefined = undefined;
-  if (bilty.payable !== undefined || bilty.total !== undefined) {
-    const payNum = Number(bilty.payable) || 0;
-    const totNum = Number(bilty.total) || 0;
-    if (payNum <= 0 && totNum > 0) {
-      paymentStatus = 'paid';
-    } else if (payNum > 0) {
-      paymentStatus = 'topay';
-    }
+  const qtyStr = bilty.qty !== undefined && bilty.qty !== null ? String(bilty.qty).trim() : '';
+  const weightStr = bilty.weight !== undefined && bilty.weight !== null ? String(bilty.weight).trim() : '';
+  const combinedWeightOrQty = [qtyStr, weightStr].filter(Boolean).join(' / ');
+  const weightOrQty = combinedWeightOrQty || String(bilty.weightOrQty || '').trim();
+
+  const vehicleNo = String(bilty.vehicleNo || '').trim();
+
+  let status = 'In Transit';
+  if (bilty.isDelivered || bilty.podConfirmation?.status === 'delivered') {
+    status = 'Delivered';
+  } else if (typeof bilty.status === 'string' && bilty.status.trim()) {
+    status = bilty.status.trim();
   }
 
-  const result: PublicBiltyVerification = {
+  return {
     biltyNo: normalizedNo,
-    date: bilty.date || '',
-    sendingCity: bilty.sendingCity || '',
-    receivingCity: bilty.receivingCity || '',
-    itemDescription: bilty.itemDescription || '',
-    verifiedPublicly: true,
-    createdAt: new Date().toISOString()
+    biltyDate,
+    origin,
+    destination,
+    goodsDescription,
+    weightOrQty,
+    vehicleNo,
+    status
   };
-
-  if (auth.currentUser?.uid) {
-    result.ownerUid = auth.currentUser.uid;
-  } else if ((bilty as any)?.ownerUid) {
-    result.ownerUid = (bilty as any).ownerUid;
-  }
-
-  const sName = (bilty.senderName || bilty.consignor || '').trim();
-  if (sName) result.senderName = sName;
-
-  const rName = (bilty.receiverName || bilty.consignee || '').trim();
-  if (rName) result.receiverName = rName;
-
-  if (bilty.vehicleNo && bilty.vehicleNo.trim()) {
-    result.vehicleNo = bilty.vehicleNo.trim();
-  }
-  if (bilty.driverName && bilty.driverName.trim()) {
-    result.driverName = bilty.driverName.trim();
-  }
-  if (bilty.weight && String(bilty.weight).trim()) {
-    result.weight = String(bilty.weight).trim();
-  }
-  if (bilty.qty && String(bilty.qty).trim()) {
-    result.qty = String(bilty.qty).trim();
-  }
-  if (bilty.branch === 'samundri' || bilty.branch === 'kamalia') {
-    result.branch = bilty.branch;
-  }
-  if (paymentStatus) {
-    result.paymentStatus = paymentStatus;
-  }
-
-  return result;
 }
 
 /**
  * Confirms Digital Proof of Delivery (POD) for a Bilty.
- * Writes podConfirmation to Firestore (both public verification and private copy)
+ * Writes updated sanitized copy to Firestore publicBiltyVerifications and private copy
  * and updates local device cache. If offline, safely enqueues the action.
  */
 export async function confirmBiltyDelivery(
@@ -987,6 +1029,14 @@ export async function confirmBiltyDelivery(
     status: 'delivered'
   };
 
+  const updatedBilty: BiltyRecord = {
+    ...bilty,
+    podConfirmation,
+    isDelivered: true,
+    receivedBy: trimmedName,
+    updatedAt: confirmedAt
+  };
+
   // 1. Update local storage if present on this device
   try {
     const stored = getStoredBilties();
@@ -997,42 +1047,40 @@ export async function confirmBiltyDelivery(
           ...b,
           podConfirmation,
           isDelivered: true,
-          receivedBy: trimmedName
+          receivedBy: trimmedName,
+          updatedAt: confirmedAt
         };
       }
       return b;
     });
     if (stored.some(b => String(b.biltyNo).trim().toUpperCase() === cleanBiltyNo || String(b.id) === String(bilty.id))) {
       setScopedItem('bilties', JSON.stringify(updated));
+      safeStorage.setItem('wg_v2_warraichgoods43_gmail_com_bilties', JSON.stringify(updated));
+      safeStorage.setItem('ah-bilties', JSON.stringify(updated));
+      safeStorage.setItem('ah-bilties-data', JSON.stringify(updated));
       syncToFirestore('bilties', updated).catch(() => {});
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('driverdost:bilties_updated', { detail: updated }));
+      }
     }
   } catch (err) {
     console.warn('Local bilty POD update notice:', err);
   }
 
-  // 2. Prepare payload for public & cloud sync
+  // 2. Prepare sanitized 8-field payload for public verification
+  const safeData = extractPublicBiltyVerification(updatedBilty);
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
-  const publicPayload = {
-    biltyNo: bilty.biltyNo,
-    isDelivered: true,
-    verifiedPublicly: true,
-    updatedAt: confirmedAt
-  };
 
   if (!isOnline || !db) {
-    enqueueOfflineAction('pod_confirmation', publicPayload);
+    enqueueOfflineAction('pod_confirmation', safeData);
     return { success: true, offlineQueued: true, podConfirmation };
   }
 
   try {
-    const normalizedNo = String(bilty.biltyNo).trim().toUpperCase();
-    const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-    await withTimeout(setDoc(pubRef, publicPayload, { merge: true }), 4000);
-
-    const cleanAlpha = normalizedNo.replace(/[^A-Z0-9]/g, '');
-    if (cleanAlpha && cleanAlpha !== normalizedNo) {
-      const pubRef2 = doc(db, 'publicBiltyVerifications', cleanAlpha);
-      await withTimeout(setDoc(pubRef2, publicPayload, { merge: true }), 4000).catch(() => {});
+    const normalizedNo = safeData.biltyNo;
+    if (normalizedNo) {
+      const pubRef = doc(db, 'publicBiltyVerifications', normalizedNo);
+      await withTimeout(setDoc(pubRef, safeData), 4000);
     }
 
     // If current signed-in user has this in their private collection, update that too
@@ -1049,7 +1097,8 @@ export async function confirmBiltyDelivery(
                 ...item,
                 podConfirmation,
                 isDelivered: true,
-                receivedBy: trimmedName
+                receivedBy: trimmedName,
+                updatedAt: confirmedAt
               };
             }
             return item;
@@ -1062,23 +1111,25 @@ export async function confirmBiltyDelivery(
     return { success: true, offlineQueued: false, podConfirmation };
   } catch (err) {
     console.warn('POD direct write timed out or failed, enqueuing offline action:', err);
-    enqueueOfflineAction('pod_confirmation', publicPayload);
+    enqueueOfflineAction('pod_confirmation', safeData);
     return { success: true, offlineQueued: true, podConfirmation };
   }
 }
 
 /**
- * Writes a public verification copy to Firestore at top-level publicBiltyVerifications/{biltyNo}
+ * Writes a sanitized public verification copy to Firestore at publicBiltyVerifications/{BILTY_NO_UPPERCASE}.
+ * Includes ONLY: biltyNo, biltyDate, origin, destination, goodsDescription, weightOrQty, vehicleNo, status.
  * Online: writes directly with timeout. Offline: enqueues action for retry.
  */
-export async function syncPublicBiltyVerification(bilty: BiltyRecord): Promise<boolean> {
-  if (!bilty.biltyNo) return false;
+export async function syncPublicBiltyVerification(bilty: Partial<BiltyRecord>): Promise<boolean> {
+  if (!bilty?.biltyNo) return false;
   const user = auth.currentUser;
   // Public verification records in Firestore require an authenticated user
   if (!user) return false;
 
   const safeData = extractPublicBiltyVerification(bilty);
-  const normalizedNo = bilty.biltyNo.trim().toUpperCase();
+  const normalizedNo = safeData.biltyNo;
+  if (!normalizedNo) return false;
 
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
   if (!isOnline || !db) {
@@ -1088,15 +1139,57 @@ export async function syncPublicBiltyVerification(bilty: BiltyRecord): Promise<b
 
   try {
     const docRef = doc(db, 'publicBiltyVerifications', normalizedNo);
-    await withTimeout(setDoc(docRef, safeData, { merge: true }), 8000);
-    const cleanId = normalizedNo.replace(/[^A-Z0-9]/g, '');
-    if (cleanId && cleanId !== normalizedNo) {
-      const docRef2 = doc(db, 'publicBiltyVerifications', cleanId);
-      await withTimeout(setDoc(docRef2, safeData, { merge: true }), 8000).catch(() => {});
-    }
+    await withTimeout(setDoc(docRef, safeData), 8000);
     return true;
   } catch {
     enqueueOfflineAction('public_bilty', safeData);
+    return false;
+  }
+}
+
+/**
+ * Deletes the public verification document at publicBiltyVerifications/{BILTY_NO_UPPERCASE}
+ * when a bilty is deleted (or renamed). If offline or on transient error, enqueues deletion for retry.
+ */
+export async function deletePublicBiltyVerification(biltyNo: string): Promise<boolean> {
+  const normalizedNo = String(biltyNo || '').trim().toUpperCase();
+  if (!normalizedNo) return false;
+
+  // Remove any pending upsert for this biltyNo from the offline queue
+  try {
+    const queue = getStoredOfflineQueue();
+    const cleaned = queue.filter(item => {
+      if (item.type === 'public_bilty' || item.type === 'pod_confirmation') {
+        const itemNo = item.data?.biltyNo ? String(item.data.biltyNo).trim().toUpperCase() : '';
+        return itemNo !== normalizedNo;
+      }
+      return true;
+    });
+    if (cleaned.length !== queue.length) {
+      saveStoredOfflineQueue(cleaned);
+    }
+  } catch {}
+
+  const user = auth.currentUser;
+  if (!user) return false;
+
+  const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+  if (!isOnline || !db) {
+    enqueueOfflineAction('delete_public_bilty', { biltyNo: normalizedNo });
+    return false;
+  }
+
+  try {
+    const docRef = doc(db, 'publicBiltyVerifications', normalizedNo);
+    await withTimeout(deleteDoc(docRef), 8000);
+    // Clean up any legacy unhyphenated verification document if it existed
+    const cleanId = normalizedNo.replace(/[^A-Z0-9]/g, '');
+    if (cleanId && cleanId !== normalizedNo) {
+      await withTimeout(deleteDoc(doc(db, 'publicBiltyVerifications', cleanId)), 4000).catch(() => {});
+    }
+    return true;
+  } catch {
+    enqueueOfflineAction('delete_public_bilty', { biltyNo: normalizedNo });
     return false;
   }
 }

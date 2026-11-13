@@ -344,7 +344,7 @@ export interface ContactItem {
 
 export interface OfflineAction {
   id: number | string;
-  type: 'trip' | 'trips' | 'vehicle' | 'vehicles' | 'driver' | 'drivers' | 'fuel' | 'bilty' | 'bilties' | 'settings' | 'routes' | 'public_bilty' | 'pod_confirmation';
+  type: 'trip' | 'trips' | 'vehicle' | 'vehicles' | 'driver' | 'drivers' | 'fuel' | 'bilty' | 'bilties' | 'settings' | 'routes' | 'public_bilty' | 'delete_public_bilty' | 'pod_confirmation';
   data: any;
   timestamp: string;
   retryCount?: number;

@@ -19,6 +19,8 @@ import {
   saveStoredRole,
   getStoredBilties,
   saveStoredBilties,
+  syncPublicBiltyVerification,
+  deletePublicBiltyVerification,
   getNextBiltyNo,
   loadFromFirestore,
   getBiltyAccessConfig,
@@ -1159,10 +1161,38 @@ export default function App() {
     const updated = [newRecord, ...filtered];
     setBilties(updated);
     saveStoredBilties(updated);
+    syncPublicBiltyVerification(newRecord).catch(() => {});
 
     pushAppNotification(
       lang === 'ur' ? 'نئی بلٹی تیار ہے' : 'Bilty Created',
       lang === 'ur' ? `بلٹی نمبر ${newRecord.biltyNo} (${newRecord.senderName || ''}) محفوظ ہو گئی۔` : `Bilty #${newRecord.biltyNo} saved.`,
+      'system'
+    );
+  };
+
+  const handleUpdateBilty = (updatedRecord: BiltyRecord) => {
+    const current = getStoredBilties();
+    const existing = current.find((b) => b.id === updatedRecord.id);
+    const stampedRecord: BiltyRecord = {
+      ...updatedRecord,
+      updatedAt: new Date().toISOString()
+    };
+
+    const updated = current.map((b) => (b.id === stampedRecord.id ? stampedRecord : b));
+    setBilties(updated);
+    saveStoredBilties(updated);
+
+    if (
+      existing?.biltyNo &&
+      existing.biltyNo.trim().toUpperCase() !== stampedRecord.biltyNo.trim().toUpperCase()
+    ) {
+      deletePublicBiltyVerification(existing.biltyNo).catch(() => {});
+    }
+    syncPublicBiltyVerification(stampedRecord).catch(() => {});
+
+    pushAppNotification(
+      lang === 'ur' ? 'بلٹی اپڈیٹ ہو گئی' : 'Bilty Updated',
+      lang === 'ur' ? `بلٹی نمبر ${stampedRecord.biltyNo} کی تفصیلات اپڈیٹ کر دی گئیں۔` : `Bilty #${stampedRecord.biltyNo} updated.`,
       'system'
     );
   };
@@ -1173,6 +1203,10 @@ export default function App() {
     const updated = current.filter((b) => b.id !== id);
     setBilties(updated);
     saveStoredBilties(updated);
+
+    if (target?.biltyNo) {
+      deletePublicBiltyVerification(target.biltyNo).catch(() => {});
+    }
 
     pushAppNotification(
       lang === 'ur' ? 'بلٹی حذف کر دی گئی' : 'Bilty Deleted',
@@ -1439,6 +1473,7 @@ export default function App() {
               bilties={bilties}
               initialSubTab={biltySubTab}
               onAddBilty={handleAddBilty}
+              onUpdateBilty={handleUpdateBilty}
               onDeleteBilty={handleDeleteBilty}
               onNavigate={handleNavigate}
             />

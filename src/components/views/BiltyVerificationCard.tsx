@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { BiltyRecord, Language } from '../../types';
+import { PublicBiltyVerification } from '../../utils/storage';
 import {
-  ShieldCheck,
   Building2,
   Calendar,
   Truck,
-  User,
   MapPin,
   Package,
   CheckCircle2,
@@ -13,16 +12,12 @@ import {
   Copy,
   Check,
   Share2,
-  AlertCircle
+  Clock
 } from 'lucide-react';
-import { getBiltyVerificationUrl, BILTY_BRANCHES } from '../../utils/biltyHelpers';
+import { getBiltyVerificationUrl } from '../../utils/biltyHelpers';
 
 interface BiltyVerificationCardProps {
-  bilty: Partial<BiltyRecord> & {
-    paymentStatus?: 'paid' | 'topay';
-    senderAddress?: string;
-    receiverAddress?: string;
-  };
+  bilty: Partial<PublicBiltyVerification> & Partial<BiltyRecord>;
   lang: Language;
   onBack?: () => void;
 }
@@ -35,19 +30,25 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
   const isUrdu = lang === 'ur';
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // Branch info
-  const branchKey = bilty.branch === 'kamalia' ? 'kamalia' : 'samundri';
-  const branchInfo = BILTY_BRANCHES[branchKey];
+  const biltyNo = String(bilty.biltyNo || '').trim().toUpperCase();
+  const biltyDate = String(bilty.biltyDate || bilty.date || '').trim() || '-';
+  const origin = String(bilty.origin || bilty.sendingCity || '').trim() || '-';
+  const destination = String(bilty.destination || bilty.receivingCity || '').trim() || '-';
+  const goodsDescription =
+    String(bilty.goodsDescription || bilty.itemDescription || '').trim() ||
+    (isUrdu ? 'جنرل کارگو' : 'General Cargo');
+  const combinedWeightOrQty = [bilty.qty, bilty.weight]
+    .map((v) => (v !== undefined && v !== null ? String(v).trim() : ''))
+    .filter(Boolean)
+    .join(' / ');
+  const weightOrQty = String(bilty.weightOrQty || combinedWeightOrQty || '').trim() || '-';
+  const vehicleNo = String(bilty.vehicleNo || '').trim() || '-';
+  const status =
+    String(bilty.status || '').trim() ||
+    (bilty.isDelivered || bilty.podConfirmation?.status === 'delivered' ? 'Delivered' : 'In Transit');
+  const isDelivered = status.toLowerCase() === 'delivered';
 
-  // Derive payment status without showing rupee amounts
-  const isPaid = bilty.paymentStatus === 'paid' ||
-    (bilty.payable !== undefined && Number(bilty.payable) <= 0 && Number(bilty.total || 0) > 0);
-  const isToPay = bilty.paymentStatus === 'topay' || (Number(bilty.payable || 0) > 0);
-
-  const senderName = (bilty.senderName || bilty.consignor || '').trim() || (isUrdu ? 'بھیجنے والی پارٹی' : 'Consignor');
-  const receiverName = (bilty.receiverName || bilty.consignee || '').trim() || (isUrdu ? 'وصول کنندہ پارٹی' : 'Consignee');
-
-  const verificationUrl = getBiltyVerificationUrl(bilty.biltyNo || '');
+  const verificationUrl = getBiltyVerificationUrl(biltyNo);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(verificationUrl);
@@ -57,8 +58,8 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
 
   const handleWhatsAppShare = () => {
     const text = isUrdu
-      ? `ورائچ گڈز ٹرانسپورٹ کمپنی - تصدیق شدہ بلٹی نمبر ${bilty.biltyNo || ''}\nتاریخ: ${bilty.date || '-'}\nگاڑی نمبر: ${bilty.vehicleNo || '-'}\nروٹ: ${bilty.sendingCity || '-'} تا ${bilty.receivingCity || '-'}\nمال: ${bilty.itemDescription || '-'}\nتصدیقی لنک:\n${verificationUrl}`
-      : `Warraich Goods Transport Co. - Verified Bilty #${bilty.biltyNo || ''}\nDate: ${bilty.date || '-'}\nVehicle: ${bilty.vehicleNo || '-'}\nRoute: ${bilty.sendingCity || '-'} to ${bilty.receivingCity || '-'}\nCargo: ${bilty.itemDescription || '-'}\nVerification Link:\n${verificationUrl}`;
+      ? `ورائچ گڈز ٹرانسپورٹ کمپنی - تصدیق شدہ بلٹی نمبر ${biltyNo}\nتاریخ: ${biltyDate}\nگاڑی نمبر: ${vehicleNo}\nروٹ: ${origin} تا ${destination}\nمال: ${goodsDescription} (${weightOrQty})\nاسٹیٹس: ${status}\nتصدیقی لنک:\n${verificationUrl}`
+      : `Warraich Goods Transport Co. - Verified Bilty #${biltyNo}\nDate: ${biltyDate}\nVehicle: ${vehicleNo}\nRoute: ${origin} to ${destination}\nGoods: ${goodsDescription} (${weightOrQty})\nStatus: ${status}\nVerification Link:\n${verificationUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -71,12 +72,12 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-700 text-white font-mono">
                 {isUrdu ? 'تصدیق شدہ آفیشل بلٹی' : 'VERIFIED OFFICIAL BILTY'}
               </span>
               <span className="text-xs text-emerald-900 font-mono font-bold">
-                {bilty.biltyNo}
+                {biltyNo}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-emerald-950 font-medium mt-0.5">
@@ -111,17 +112,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
             </div>
             <p className="text-xs text-[#8e8e75]">
               {isUrdu ? 'رجسٹرڈ بلٹی تصدیق پورٹل' : 'Registered Consignment Verification Portal'}
-              {bilty.branch && (
-                <span className="inline-flex items-center gap-1 mx-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#0f2942] text-white">
-                  📍 {bilty.branch === 'kamalia' ? (isUrdu ? 'برانچ: کمالیہ' : 'Branch: Kamalia') : (isUrdu ? 'برانچ: سمندری' : 'Branch: Samundri')}
-                </span>
-              )}
             </p>
-            {branchInfo && (
-              <p className="text-[11px] text-[#5a5a40]">
-                {isUrdu ? branchInfo.addressUr : branchInfo.addressEn}
-              </p>
-            )}
           </div>
 
           <div className="text-right shrink-0">
@@ -129,20 +120,20 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
               {isUrdu ? 'بلٹی نمبر' : 'Bilty No'}
             </span>
             <span className="text-base sm:text-lg font-mono font-bold text-[#4a5e38] bg-[#4a5e38]/10 px-2.5 py-1 rounded-xl inline-block">
-              {bilty.biltyNo}
+              {biltyNo}
             </span>
           </div>
         </div>
 
         {/* Dispatch & Route Information */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0]">
             <span className="text-[11px] font-bold text-[#8e8e75] flex items-center gap-1 mb-1">
               <Calendar className="w-3.5 h-3.5 text-[#8b9d77]" />
               {isUrdu ? 'تاریخ بلٹی' : 'Bilty Date'}
             </span>
             <p className="font-mono text-xs sm:text-sm font-bold text-[#4a4a35]">
-              {bilty.date || '-'}
+              {biltyDate}
             </p>
           </div>
 
@@ -152,144 +143,85 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
               {isUrdu ? 'گاڑی نمبر' : 'Vehicle No'}
             </span>
             <p className="font-mono text-xs sm:text-sm font-bold text-[#4a4a35]">
-              {bilty.vehicleNo || '-'}
+              {vehicleNo}
             </p>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0]">
             <span className="text-[11px] font-bold text-[#8e8e75] flex items-center gap-1 mb-1">
               <MapPin className="w-3.5 h-3.5 text-[#8b9d77]" />
-              {isUrdu ? 'روٹ (شہر تا شہر)' : 'Route'}
+              {isUrdu ? 'مقام روانگی (Origin)' : 'Origin'}
             </span>
             <p className="text-xs sm:text-sm font-bold text-[#4a4a35]">
-              {bilty.sendingCity || '-'} {isUrdu ? 'تا' : 'to'} {bilty.receivingCity || '-'}
+              {origin}
+            </p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0]">
+            <span className="text-[11px] font-bold text-[#8e8e75] flex items-center gap-1 mb-1">
+              <MapPin className="w-3.5 h-3.5 text-[#8b9d77]" />
+              {isUrdu ? 'منزل مقصود (Destination)' : 'Destination'}
+            </span>
+            <p className="text-xs sm:text-sm font-bold text-[#4a4a35]">
+              {destination}
             </p>
           </div>
         </div>
 
-        {/* Sender & Receiver Parties (Strictly excludes CNIC & Phone Numbers) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Sender */}
-          <div className="p-4 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-2">
-            <span className="text-[11px] font-bold text-[#8b9d77] uppercase tracking-wider flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5" />
-              {isUrdu ? 'مال بھیجنے والا (Consignor)' : 'Consignor (Sender)'}
-            </span>
-            <h4 className="font-serif font-bold text-sm text-[#4a4a35]">
-              {senderName}
-            </h4>
-            <div className="text-xs text-[#5a5a40] flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-[#8e8e75]" />
-              <span>{isUrdu ? 'مقام روانگی: ' : 'Origin: '}<b>{bilty.sendingCity || '-'}</b></span>
-            </div>
-            {bilty.senderAddress && (
-              <p className="text-[11px] text-[#8e8e75]">{bilty.senderAddress}</p>
-            )}
-          </div>
-
-          {/* Receiver */}
-          <div className="p-4 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-2">
-            <span className="text-[11px] font-bold text-[#8b9d77] uppercase tracking-wider flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5" />
-              {isUrdu ? 'مال وصول کرنے والا (Consignee)' : 'Consignee (Receiver)'}
-            </span>
-            <h4 className="font-serif font-bold text-sm text-[#4a4a35]">
-              {receiverName}
-            </h4>
-            <div className="text-xs text-[#5a5a40] flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-[#8e8e75]" />
-              <span>{isUrdu ? 'منزل وصولی: ' : 'Destination: '}<b>{bilty.receivingCity || '-'}</b></span>
-            </div>
-            {bilty.receiverAddress && (
-              <p className="text-[11px] text-[#8e8e75]">{bilty.receiverAddress}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Cargo & Shipment Specifications */}
+        {/* Cargo & Status Specifications */}
         <div className="p-4 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] space-y-3">
-          <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2">
-            <Package className="w-4 h-4 text-[#8b9d77]" />
-            <span className="text-xs font-bold text-[#4a4a35]">
-              {isUrdu ? 'تفصیل سامان و کھیپ' : 'Cargo & Consignment Details'}
+          <div className="flex items-center justify-between gap-2 border-b border-[#ecece0] pb-2">
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-[#8b9d77]" />
+              <span className="text-xs font-bold text-[#4a4a35]">
+                {isUrdu ? 'تفصیل سامان و کیفیت' : 'Goods & Status Details'}
+              </span>
+            </div>
+
+            <span
+              className={`px-3 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 border ${
+                isDelivered
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  : 'bg-amber-100 text-amber-900 border-amber-300'
+              }`}
+            >
+              {isDelivered ? (
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              ) : (
+                <Clock className="w-3.5 h-3.5 text-amber-600" />
+              )}
+              <span>
+                {isUrdu
+                  ? isDelivered
+                    ? 'پہنچ گیا (Delivered)'
+                    : status === 'In Transit'
+                    ? 'روانہ / راستے میں (In Transit)'
+                    : status
+                  : status}
+              </span>
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
-            <div className="p-2.5 rounded-xl bg-white border border-[#ecece0]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-center">
+            <div className="p-3 rounded-xl bg-white border border-[#ecece0]">
               <span className="text-[10px] text-[#8e8e75] block mb-0.5">
-                {isUrdu ? 'تفصیل مال' : 'Cargo Description'}
+                {isUrdu ? 'تفصیل مال' : 'Goods Description'}
               </span>
               <span className="text-xs font-bold text-[#4a4a35]">
-                {bilty.itemDescription || (isUrdu ? 'جنرل کارگو' : 'General Cargo')}
+                {goodsDescription}
               </span>
             </div>
 
-            <div className="p-2.5 rounded-xl bg-white border border-[#ecece0]">
+            <div className="p-3 rounded-xl bg-white border border-[#ecece0]">
               <span className="text-[10px] text-[#8e8e75] block mb-0.5">
-                {isUrdu ? 'تعداد نگ / کارٹن' : 'Quantity / Packages'}
+                {isUrdu ? 'وزن / تعداد' : 'Weight / Qty'}
               </span>
               <span className="text-xs font-bold text-[#4a4a35] font-mono">
-                {bilty.qty || '-'}
-              </span>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-white border border-[#ecece0]">
-              <span className="text-[10px] text-[#8e8e75] block mb-0.5">
-                {isUrdu ? 'وزن (کلوگرام / من)' : 'Weight'}
-              </span>
-              <span className="text-xs font-bold text-[#4a4a35] font-mono">
-                {bilty.weight || '-'}
+                {weightOrQty}
               </span>
             </div>
           </div>
         </div>
-
-        {/* Payment Status (Strictly non-financial: NO rupee amounts, only Paid / To-Pay) */}
-        <div className="p-4 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] flex items-center justify-between gap-3">
-          <div>
-            <span className="text-[11px] font-bold text-[#8e8e75] block mb-0.5">
-              {isUrdu ? 'کرایہ ادائیگی کی کیفیت (Payment Status)' : 'Payment Status'}
-            </span>
-            <span className="text-xs text-[#5a5a40]">
-              {isPaid
-                ? (isUrdu ? 'کرایہ بھیجنے والی پارٹی کی طرف سے ادا شدہ ہے' : 'Freight fully paid at dispatch')
-                : isToPay
-                ? (isUrdu ? 'کرایہ منزل پر مال وصولی کے وقت وصول کنندہ کے ذمہ ہے' : 'Freight payable by consignee on delivery')
-                : (isUrdu ? 'باقاعدہ رجسٹرڈ تصدیق' : 'Regular registered consignment')}
-            </span>
-          </div>
-
-          <div>
-            {isPaid ? (
-              <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{isUrdu ? 'اداشدہ (Paid)' : 'PAID'}</span>
-              </span>
-            ) : isToPay ? (
-              <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                <span>{isUrdu ? 'وصولی پر واجب الادا (To Pay)' : 'TO PAY'}</span>
-              </span>
-            ) : (
-              <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300 flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-slate-600" />
-                <span>{isUrdu ? 'رجسٹرڈ بلٹی' : 'REGISTERED'}</span>
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Driver Details (Strictly Name only, NO phone number) */}
-        {bilty.driverName && (
-          <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] flex items-center justify-between text-xs text-[#5a5a40]">
-            <span className="font-bold flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-[#8b9d77]" />
-              <span>{isUrdu ? 'ڈرائیور نام:' : 'Driver Name:'}</span>
-            </span>
-            <span className="font-bold text-[#4a4a35]">{bilty.driverName}</span>
-          </div>
-        )}
 
         {/* Official 24/7 Helpline and Call Buttons */}
         <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
