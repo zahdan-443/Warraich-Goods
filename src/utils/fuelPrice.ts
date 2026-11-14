@@ -9,24 +9,31 @@ export interface FuelPricesData {
   hiOctane: string;     // Altron X 97 / Octane Plus
   ldo: string;          // Light Diesel Oil (LDO/LSD)
   kerosene: string;     // Kerosene Oil (SKO)
-  effectiveDate: string;// Notification date e.g. "04-September-2026"
+  effectiveDate: string;// Notification date e.g. "14-November-2026"
   lastUpdated: string;
   source: string;
+  isFallback?: boolean;
 }
 
 export const CURRENT_OFFICIAL_BENCHMARK: FuelPricesData = {
-  diesel: '374.31',
-  petrol: '349.00',
+  diesel: '360.00',
+  petrol: '330.00',
   hiOctane: '375.00',
-  ldo: '199.98',
-  kerosene: '289.95',
-  effectiveDate: '04-September-2026',
+  ldo: '231.72',
+  kerosene: '283.64',
+  effectiveDate: '14-November-2026',
   lastUpdated: 'Official PSO / OGRA Notification',
   source: 'OGRA / PSO'
 };
 
 export const FUEL_CACHE_KEY = 'ah_fuel_prices_cache';
+const FUEL_CACHE_VERSION = 2;
 const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 /**
  * Checks if a fuel rate falls within realistic Pakistan economic bounds (100 - 1000 PKR).
@@ -34,6 +41,169 @@ const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours
  */
 export function isSaneFuelPrice(n: number): boolean {
   return typeof n === 'number' && !isNaN(n) && n >= 100 && n <= 1000;
+}
+
+function formatPrice(val: unknown): string {
+  const num = Number(val);
+  if (!isSaneFuelPrice(num)) return '';
+  return num.toFixed(2);
+}
+
+/**
+ * Normalizes ISO date "2026-11-14" or "November 14, 2026" -> "14-November-2026"
+ */
+export function formatEffectiveDate(raw: unknown): string {
+  if (!raw || typeof raw !== 'string') return '';
+  const trimmed = raw.trim();
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const year = isoMatch[1];
+    const monthIdx = parseInt(isoMatch[2], 10) - 1;
+    const day = isoMatch[3];
+    const monthName = MONTH_NAMES[monthIdx];
+    if (monthName) {
+      return `${day}-${monthName}-${year}`;
+    }
+  }
+  const parsed = new Date(trimmed);
+  if (!isNaN(parsed.getTime())) {
+    const d = String(parsed.getDate()).padStart(2, '0');
+    const m = MONTH_NAMES[parsed.getMonth()];
+    const y = parsed.getFullYear();
+    if (m) return `${d}-${m}-${y}`;
+  }
+  return trimmed;
+}
+
+function parseSortableDate(raw: unknown): number {
+  if (!raw || typeof raw !== 'string') return 0;
+  const isoMatch = raw.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    return Date.UTC(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
+  }
+  const d = new Date(raw.trim());
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
+interface ParsedProviderResult {
+  diesel?: string;
+  petrol?: string;
+  hiOctane?: string;
+  ldo?: string;
+  kerosene?: string;
+  effectiveDateRaw?: string;
+  effectiveDateFormatted?: string;
+  effectiveTimeMs: number;
+  source: string;
+}
+
+async function fetchJsonWithTimeout(url: string, timeoutMs = 8000): Promise<any> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, {
+      signal: controller.signal,
+      cache: 'no-store'
+    });
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`);
+    }
+    const contentType = resp.headers?.get?.('content-type') || '';
+    if (contentType && !contentType.toLowerCase().includes('json')) {
+      throw new Error(`Unexpected content-type: ${contentType}`);
+    }
+    return await resp.json();
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+export function parseEklitrePayload(data: any): ParsedProviderResult | null {
+  const day = data?.day;
+  const products = day?.products;
+  if (!products || typeof products !== 'object') return null;
+
+  const diesel = formatPrice(products.diesel?.pump_price);
+  const petrol = formatPrice(products.petrol?.pump_price);
+  const kerosene = formatPrice(products.kerosene?.pump_price);
+  const ldo = formatPrice(products.light_diesel?.pump_price);
+  const hiOctane = formatPrice(products.hi_octane?.pump_price || products.octane_plus?.pump_price);
+
+  if (!diesel && !petrol) return null;
+
+  const rawDate = String(day?.effective_date || '');
+  return {
+    diesel: diesel || undefined,
+    petrol: petrol || undefined,
+    hiOctane: hiOctane || undefined,
+    ldo: ldo || undefined,
+    kerosene: kerosene || undefined,
+    effectiveDateRaw: rawDate,
+    effectiveDateFormatted: formatEffectiveDate(rawDate),
+    effectiveTimeMs: parseSortableDate(rawDate),
+    source: 'OGRA / PSO (eklitre.pk)'
+  };
+}
+
+export function parseAutoonesPayload(data: any): ParsedProviderResult | null {
+  const prices = data?.prices;
+  if (!Array.isArray(prices)) return null;
+
+  const findPrice = (slugs: string[]) =>
+    prices.find((p: any) => slugs.includes(String(p?.slug || p?.product || '').toLowerCase()));
+
+  const dieselObj = findPrice(['diesel', 'hsd']);
+  const petrolObj = findPrice(['petrol', 'pmg']);
+  const octaneObj = findPrice(['octane_plus', 'hi_octane', 'hobc']);
+  const keroObj = findPrice(['kerosene', 'sko']);
+  const ldoObj = findPrice(['ldo', 'lsd', 'light_diesel']);
+
+  const diesel = formatPrice(dieselObj?.price_pkr);
+  const petrol = formatPrice(petrolObj?.price_pkr);
+  const hiOctane = formatPrice(octaneObj?.price_pkr);
+  const kerosene = formatPrice(keroObj?.price_pkr);
+  const ldo = formatPrice(ldoObj?.price_pkr);
+
+  if (!diesel && !petrol) return null;
+
+  const rawDate = String(dieselObj?.effective_date || petrolObj?.effective_date || '');
+  return {
+    diesel: diesel || undefined,
+    petrol: petrol || undefined,
+    hiOctane: hiOctane || undefined,
+    ldo: ldo || undefined,
+    kerosene: kerosene || undefined,
+    effectiveDateRaw: rawDate,
+    effectiveDateFormatted: formatEffectiveDate(rawDate),
+    effectiveTimeMs: parseSortableDate(rawDate),
+    source: 'OGRA (api2.autoones.com)'
+  };
+}
+
+function parseGenericOrCustomPayload(data: any, customUrl: string): ParsedProviderResult | null {
+  if (!data || typeof data !== 'object') return null;
+  if (data.day?.products) return parseEklitrePayload(data);
+  if (Array.isArray(data.prices)) return parseAutoonesPayload(data);
+
+  const diesel = formatPrice(data.diesel);
+  const petrol = formatPrice(data.petrol);
+  const hiOctane = formatPrice(data.hiOctane);
+  const ldo = formatPrice(data.ldo);
+  const kerosene = formatPrice(data.kerosene);
+
+  if (!diesel && !petrol) return null;
+  const rawDate = String(data.effectiveDate || data.effective_date || '');
+  return {
+    diesel: diesel || undefined,
+    petrol: petrol || undefined,
+    hiOctane: hiOctane || undefined,
+    ldo: ldo || undefined,
+    kerosene: kerosene || undefined,
+    effectiveDateRaw: rawDate,
+    effectiveDateFormatted: formatEffectiveDate(rawDate),
+    effectiveTimeMs: parseSortableDate(rawDate),
+    source: data.source || customUrl
+  };
 }
 
 /**
@@ -73,17 +243,41 @@ export function getStoredFuelPrices(): FuelPricesData {
   return CURRENT_OFFICIAL_BENCHMARK;
 }
 
+function isCapacitorNativeRuntime(): boolean {
+  if (typeof window === 'undefined') return false;
+  return Boolean(
+    (window as any).Capacitor ||
+    window.location?.protocol === 'capacitor:' ||
+    /;\s*wv|capacitor/i.test(navigator?.userAgent || '')
+  );
+}
+
 /**
- * Fetch live prices from public API and update cache & components.
+ * Fetch live prices from verified CORS-enabled Pakistan OGRA/PSO JSON APIs
+ * (and optional custom URL / server proxy on web) and update cache & components.
  */
-export async function fetchLiveFuelPrices(force = false): Promise<FuelPricesData> {
-  if (!force) {
+export async function fetchLiveFuelPrices(
+  force = false,
+  customApiUrl?: string
+): Promise<FuelPricesData> {
+  if (!force && !customApiUrl) {
     try {
       const cachedStr = localStorage.getItem(FUEL_CACHE_KEY);
       if (cachedStr) {
         const cached = JSON.parse(cachedStr);
         const dNum = parseFloat(cached.diesel);
-        if (dNum && isSaneFuelPrice(dNum) && cached.timestamp && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+        const isLegacyCache =
+          !cached.cacheVersion ||
+          cached.cacheVersion < FUEL_CACHE_VERSION ||
+          String(cached.source || '').toLowerCase().includes('trackmate');
+
+        if (
+          !isLegacyCache &&
+          dNum &&
+          isSaneFuelPrice(dNum) &&
+          cached.timestamp &&
+          Date.now() - cached.timestamp < CACHE_TTL_MS
+        ) {
           return getStoredFuelPrices();
         }
       }
@@ -92,84 +286,84 @@ export async function fetchLiveFuelPrices(force = false): Promise<FuelPricesData
     }
   }
 
-  const tryFetch = async (attempt: number): Promise<Response> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-    try {
-      const resp = await fetch('https://fuel.trackmate.page/api/prices', {
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      return resp;
-    } catch (err) {
-      clearTimeout(timeoutId);
-      if (attempt === 1) {
-        // Quick 500ms delay before retry
-        await new Promise(r => setTimeout(r, 500));
-        return tryFetch(2);
-      }
-      throw err;
-    }
-  };
-
   try {
-    const response = await tryFetch(1);
+    const candidates: ParsedProviderResult[] = [];
 
-    if (!response.ok) {
-      throw new Error(`HTTP error ${response.status}`);
+    if (customApiUrl && customApiUrl.trim().startsWith('https://')) {
+      try {
+        const customData = await fetchJsonWithTimeout(customApiUrl.trim(), 8000);
+        const parsedCustom = parseGenericOrCustomPayload(customData, customApiUrl.trim());
+        if (parsedCustom) candidates.push(parsedCustom);
+      } catch (err) {
+        console.warn('Custom fuel API fetch error:', err);
+      }
     }
 
-    const data = await response.json();
+    if (candidates.length === 0) {
+      const requests: Array<Promise<ParsedProviderResult | null>> = [
+        fetchJsonWithTimeout('https://eklitre.pk/v1/latest', 8000)
+          .then(parseEklitrePayload)
+          .catch(() => null),
+        fetchJsonWithTimeout('https://api2.autoones.com/api/fuel-prices', 8000)
+          .then(parseAutoonesPayload)
+          .catch(() => null)
+      ];
 
-    let fetchedDiesel = '';
-    let fetchedPetrol = '';
-    let fetchedOctane = '';
-    let fetchedKerosene = '';
-    let fetchedLdo = '';
-    let effectiveDate = '';
-
-    if (Array.isArray(data.prices)) {
-      const hsdObj = data.prices.find((p: any) => p.product === 'hsd' || p.product === 'diesel');
-      const petrolObj = data.prices.find((p: any) => p.product === 'petrol');
-      const octaneObj = data.prices.find((p: any) => p.product === 'octane_plus' || p.product === 'hi_octane');
-      const keroObj = data.prices.find((p: any) => p.product === 'kerosene');
-      const lsdObj = data.prices.find((p: any) => p.product === 'lsd' || p.product === 'ldo');
-
-      if (hsdObj?.price_pkr && isSaneFuelPrice(Number(hsdObj.price_pkr))) {
-        fetchedDiesel = String(hsdObj.price_pkr);
-      }
-      if (petrolObj?.price_pkr && isSaneFuelPrice(Number(petrolObj.price_pkr))) {
-        fetchedPetrol = String(petrolObj.price_pkr);
-      }
-      if (octaneObj?.price_pkr && isSaneFuelPrice(Number(octaneObj.price_pkr))) {
-        fetchedOctane = String(octaneObj.price_pkr);
-      }
-      if (keroObj?.price_pkr && isSaneFuelPrice(Number(keroObj.price_pkr))) {
-        fetchedKerosene = String(keroObj.price_pkr);
-      }
-      if (lsdObj?.price_pkr && isSaneFuelPrice(Number(lsdObj.price_pkr))) {
-        fetchedLdo = String(lsdObj.price_pkr);
+      if (!isCapacitorNativeRuntime() && typeof window !== 'undefined' && window.location?.origin?.startsWith('http')) {
+        requests.push(
+          fetchJsonWithTimeout(`${window.location.origin}/api/fuel-prices`, 6000)
+            .then((d) => parseGenericOrCustomPayload(d, 'PSO POL Archives'))
+            .catch(() => null)
+        );
       }
 
-      if (hsdObj?.effective_date) effectiveDate = String(hsdObj.effective_date);
+      const settled = await Promise.all(requests);
+      for (const item of settled) {
+        if (item) candidates.push(item);
+      }
     }
+
+    if (candidates.length === 0) {
+      throw new Error('All live fuel price providers unavailable');
+    }
+
+    // Sort candidates so the newest effective date comes first, preferring richer 4-product sources on ties
+    candidates.sort((a, b) => {
+      if (b.effectiveTimeMs !== a.effectiveTimeMs) {
+        return b.effectiveTimeMs - a.effectiveTimeMs;
+      }
+      const score = (x: ParsedProviderResult) =>
+        [x.diesel, x.petrol, x.ldo, x.kerosene, x.hiOctane].filter(Boolean).length;
+      return score(b) - score(a);
+    });
+
+    const primary = candidates[0];
+    const secondary = candidates[1];
 
     const result: FuelPricesData = {
-      diesel: fetchedDiesel || CURRENT_OFFICIAL_BENCHMARK.diesel,
-      petrol: fetchedPetrol || CURRENT_OFFICIAL_BENCHMARK.petrol,
-      hiOctane: fetchedOctane || CURRENT_OFFICIAL_BENCHMARK.hiOctane,
-      ldo: fetchedLdo || CURRENT_OFFICIAL_BENCHMARK.ldo,
-      kerosene: fetchedKerosene || CURRENT_OFFICIAL_BENCHMARK.kerosene,
-      effectiveDate: effectiveDate || CURRENT_OFFICIAL_BENCHMARK.effectiveDate,
+      diesel: primary.diesel || secondary?.diesel || CURRENT_OFFICIAL_BENCHMARK.diesel,
+      petrol: primary.petrol || secondary?.petrol || CURRENT_OFFICIAL_BENCHMARK.petrol,
+      hiOctane: primary.hiOctane || secondary?.hiOctane || CURRENT_OFFICIAL_BENCHMARK.hiOctane,
+      ldo: primary.ldo || secondary?.ldo || CURRENT_OFFICIAL_BENCHMARK.ldo,
+      kerosene: primary.kerosene || secondary?.kerosene || CURRENT_OFFICIAL_BENCHMARK.kerosene,
+      effectiveDate:
+        primary.effectiveDateFormatted ||
+        secondary?.effectiveDateFormatted ||
+        CURRENT_OFFICIAL_BENCHMARK.effectiveDate,
       lastUpdated: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      source: 'fuel.trackmate.page (PSO/OGRA Rates)'
+      source: primary.source,
+      isFallback: false
     };
 
     try {
-      localStorage.setItem(FUEL_CACHE_KEY, JSON.stringify({
-        ...result,
-        timestamp: Date.now()
-      }));
+      localStorage.setItem(
+        FUEL_CACHE_KEY,
+        JSON.stringify({
+          ...result,
+          cacheVersion: FUEL_CACHE_VERSION,
+          timestamp: Date.now()
+        })
+      );
       window.dispatchEvent(new CustomEvent('fuelPricesUpdated', { detail: result }));
     } catch {
       // ignore storage issues
@@ -177,10 +371,14 @@ export async function fetchLiveFuelPrices(force = false): Promise<FuelPricesData
 
     return result;
   } catch (error) {
-    console.warn('Live fuel prices fetch error, using latest official benchmark:', error);
-    const fallback = getStoredFuelPrices();
-    // Do NOT re-stamp fallback with a new fresh timestamp on fetch failure; preserve fallback state
-    window.dispatchEvent(new CustomEvent('fuelPricesUpdated', { detail: fallback }));
+    console.warn('Live fuel prices fetch error, using stored/benchmark fallback:', error);
+    const fallback: FuelPricesData = {
+      ...getStoredFuelPrices(),
+      isFallback: true
+    };
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('fuelPricesUpdated', { detail: fallback }));
+    }
     return fallback;
   }
 }

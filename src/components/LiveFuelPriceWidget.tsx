@@ -37,7 +37,8 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
     setStatusMsg(null);
 
     try {
-      const data: FuelPricesData = await fetchLiveFuelPrices(forceRefresh);
+      const customUrl = customApiUrl.trim() || undefined;
+      const data: FuelPricesData = await fetchLiveFuelPrices(forceRefresh, customUrl);
       setDieselPrice(data.diesel);
       setPetrolPrice(data.petrol);
       setHiOctanePrice(data.hiOctane);
@@ -48,9 +49,13 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
 
       setStatusMsg({
         type: 'success',
-        text: lang === 'ur'
-          ? `لائیو ریٹس ہم آہنگ ہو گئے (نوٹیفکیشن: ${data.effectiveDate})`
-          : `Live fuel prices synced (Effective: ${data.effectiveDate})`
+        text: data.isFallback
+          ? (lang === 'ur'
+              ? `محفوظ / سرکاری ریٹس فعال ہیں (${data.effectiveDate})`
+              : `Cached / Official benchmark active (${data.effectiveDate})`)
+          : (lang === 'ur'
+              ? `لائیو ریٹس ہم آہنگ ہو گئے (نوٹیفکیشن: ${data.effectiveDate})`
+              : `Live fuel prices synced (Effective: ${data.effectiveDate})`)
       });
 
       if (onApplyRates) {
@@ -72,7 +77,7 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [lang, onApplyRates]);
+  }, [lang, onApplyRates, customApiUrl]);
 
   useEffect(() => {
     fetchLivePrices(false);

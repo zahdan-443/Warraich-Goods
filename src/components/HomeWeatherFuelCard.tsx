@@ -376,7 +376,9 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
       if (force) {
         setFuelStatusMsg({
           type: 'success',
-          text: isUrdu ? 'سرکاری ریٹس کامیابی سے ہم آہنگ ہو گئے' : 'Official rates synced'
+          text: data.isFallback
+            ? (isUrdu ? `آف لائن / محفوظ ریٹس فعال ہیں (${data.effectiveDate})` : `Cached / Official rates active (${data.effectiveDate})`)
+            : (isUrdu ? `سرکاری ریٹس کامیابی سے ہم آہنگ ہو گئے (${data.effectiveDate})` : `Official rates synced (${data.effectiveDate})`)
         });
       }
     } catch {
@@ -388,7 +390,7 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
     }
   }, [isUrdu, onApplyRates]);
 
-  // Initial load
+  // Initial load & live fuel update subscription
   useEffect(() => {
     fetchFuel(false);
     if (selectedCity) {
@@ -400,6 +402,20 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
         selectedCity.id
       );
     }
+
+    const handleGlobalFuelUpdate = (e: any) => {
+      if (e?.detail) {
+        const d: FuelPricesData = e.detail;
+        setDieselPrice(d.diesel);
+        setPetrolPrice(d.petrol);
+        setHiOctanePrice(d.hiOctane);
+        setLdoPrice(d.ldo);
+        setSkoPrice(d.kerosene);
+        setEffectiveDate(d.effectiveDate);
+      }
+    };
+    window.addEventListener('fuelPricesUpdated', handleGlobalFuelUpdate);
+    return () => window.removeEventListener('fuelPricesUpdated', handleGlobalFuelUpdate);
   }, []);
 
   const handleCityChange = (cityId: string) => {

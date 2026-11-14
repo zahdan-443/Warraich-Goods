@@ -13,5 +13,8 @@
         <domain includeSubdomains="true">google.com</domain>
         <domain includeSubdomains="true">open-meteo.com</domain>
         <domain includeSubdomains="true">openstreetmap.org</domain>
+        <domain includeSubdomains="true">eklitre.pk</domain>
+        <domain includeSubdomains="true">autoones.com</domain>
+        <domain includeSubdomains="true">psopk.com</domain>
     </domain-config>
 </network-security-config>

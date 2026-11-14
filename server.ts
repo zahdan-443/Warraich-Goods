@@ -119,6 +119,61 @@ app.get('/api/weather', async (req, res) => {
   }
 });
 
+// Pakistan Fuel Prices Proxy Endpoint (Official PSO POL Archives with 30-min cache)
+let fuelProxyCache: { timestamp: number; data: any } | null = null;
+const FUEL_PROXY_TTL = 30 * 60 * 1000;
+
+app.get('/api/fuel-prices', async (_req, res) => {
+  if (fuelProxyCache && Date.now() - fuelProxyCache.timestamp < FUEL_PROXY_TTL) {
+    return res.json(fuelProxyCache.data);
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const psoRes = await fetch('https://psopk.com/fuel-prices/pol/archives', {
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if (psoRes.ok) {
+      const html = await psoRes.text();
+      const firstBlockMatch = html.match(/Effective From:\s*([^<\n]+)[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i);
+      if (firstBlockMatch) {
+        const effectiveDate = firstBlockMatch[1].trim();
+        const tbody = firstBlockMatch[2];
+        const extractRate = (pattern: RegExp) => {
+          const m = tbody.match(pattern);
+          return m ? Number(m[1]).toFixed(2) : '';
+        };
+        const petrol = extractRate(/PREMIER EURO 5[\s\S]*?Rs\.([0-9.]+)/i);
+        const diesel = extractRate(/HI-CETANE DIESEL EURO 5[\s\S]*?Rs\.([0-9.]+)/i);
+        const ldo = extractRate(/<td>\s*LDO\s*<\/td>[\s\S]*?Rs\.([0-9.]+)/i);
+        const kerosene = extractRate(/<td>\s*SKO\s*<\/td>[\s\S]*?Rs\.([0-9.]+)/i);
+        if (diesel && petrol) {
+          const payload = {
+            diesel,
+            petrol,
+            ldo: ldo || undefined,
+            kerosene: kerosene || undefined,
+            effectiveDate,
+            source: 'PSO POL Archives (psopk.com)'
+          };
+          fuelProxyCache = { timestamp: Date.now(), data: payload };
+          return res.json(payload);
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn('PSO archive proxy notice:', err.message);
+  }
+
+  if (fuelProxyCache) {
+    return res.json(fuelProxyCache.data);
+  }
+  return res.status(502).json({ error: 'PSO upstream unavailable' });
+});
+
 // Vite & Static Asset Handling
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
