@@ -44,32 +44,32 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/BiltyView-cwg_s68q.js',
+    './assets/BiltyView-C7LFYtoU.js',
   './assets/DashcamView-Cu1gBuzh.js',
-  './assets/DriversView-Dha-cZeT.js',
-  './assets/FuelLogView-BNNBQ_cF.js',
-  './assets/LedgerView-Duq87Ok1.js',
-  './assets/MapView-C4han91N.js',
+  './assets/DriversView-CUPdIHKQ.js',
+  './assets/FuelLogView-NLOR6Pf0.js',
+  './assets/LedgerView-BC2Xbsob.js',
   './assets/MapView-CIGW-MKW.css',
-  './assets/NavigationView-CPDcuqfm.js',
-  './assets/RoutesView-CbDbHKmn.js',
-  './assets/TollPlazaView-DVC58RMY.js',
-  './assets/TripCostView-BGpiclEV.js',
-  './assets/VehicleAccountView-BitWQ_Dg.js',
-  './assets/VehiclesView-ie0guRUP.js',
-  './assets/VerifyView-DevKh6te.js',
+  './assets/MapView-pXQdJuYV.js',
+  './assets/NavigationView-Bx_pEnCH.js',
+  './assets/RoutesView-DuI9v8RM.js',
+  './assets/TollPlazaView-CZi5S2G7.js',
+  './assets/TripCostView-C3c57XxN.js',
+  './assets/VehicleAccountView-HXIGGnVQ.js',
+  './assets/VehiclesView-BGimm48Y.js',
+  './assets/VerifyView-3mnkUggA.js',
   './assets/biltyHelpers-B5NwMF71.js',
   './assets/index-B6GYrXj8.css',
   './assets/index-CLkxFdwt.js',
-  './assets/index-CZhv2pZK.js',
-  './assets/pdfHelper-D4_--_9E.js',
+  './assets/index-DZ0t4Rgi.js',
+  './assets/pdfHelper-BWJftpUr.js',
   './assets/vendor-firebase-wjY2zNzF.js',
   './assets/vendor-pdf-B6PrAKtR.js',
   './assets/vendor-react-Ct3L92vV.js',
-  './assets/web-CEdqOFx5.js',
   './assets/web-CSsjyOF0.js',
   './assets/web-D-UF4VBT.js',
-  './assets/web-Dfcihrvp.js'
+  './assets/web-Dfcihrvp.js',
+  './assets/web-DwT9MK2b.js'
 ];
 
 // 1. Install Event: Precache All Shell Assets + Parse HTML for Vite Bundles
