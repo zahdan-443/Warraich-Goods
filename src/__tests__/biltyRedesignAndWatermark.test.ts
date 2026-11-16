@@ -87,7 +87,7 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(rowBPos).toBeGreaterThan(rowAPos);
     expect(rowCPos).toBeGreaterThan(rowBPos);
 
-    // Pure crisp white canvas with Double Outer Frame, Navy/Gold/Emerald accents, Soft Pastel Row Tints, and Scoped 6% Cargo Watermark
+    // Pure crisp white canvas with Double Outer Frame, Pakistani Header Frame, Navy/Gold/Emerald accents, Soft Pastel Row Tints, and Scoped 6% Cargo Watermark
     expect(printableSrc).toContain("const cellBg = '#ffffff'");
     expect(printableSrc).toContain("const pastelSlate = '#f1f5f9'");
     expect(printableSrc).toContain("const pastelMint = '#ecfdf5'");
@@ -95,10 +95,20 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(printableSrc).toContain("const emeraldAccent = '#065f46'");
     expect(printableSrc).toContain("const goldAccent = '#d97706'");
     expect(printableSrc).toContain('bilty-double-inner-frame');
+    expect(printableSrc).toContain('pakistani-header-frame');
     expect(printableSrc).toContain('cargo-box-watermark');
     expect(printableSrc).toContain('opacity: 0.06');
     expect(printableSrc).toContain("backgroundColor: '#ffffff'");
     expect(printableSrc).not.toContain('printable-bilty-watermark');
+    expect(printableSrc).not.toContain('نگ / بوریاں');
+    expect(printableSrc).not.toContain('Pkgs / Bags');
+    expect(printableSrc).toContain('freight-top-line');
+    expect(printableSrc).toContain("isEn ? 'Freight' : 'کرایہ'");
+    expect(printableSrc).toContain("fontSize: isEn ? '16px' : '18.5px'");
+    expect(printableSrc).toContain("backgroundColor: '#fef3c7'");
+    expect(printableSrc).toContain('qr-purpose-caption');
+    expect(printableSrc).toContain('Scan to verify Bilty');
+    expect(printableSrc).toContain('تصدیقِ بلٹی کیلئے اسکین کریں');
     expect(printableSrc).toContain('print-color-adjust: exact !important');
   });
 

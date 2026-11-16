@@ -209,29 +209,6 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             gap: '8px'
           }}
         >
-          {/* NTN Corner Stamp restored in top-right corner */}
-          <div
-            dir={isEn ? 'ltr' : 'rtl'}
-            style={{
-              position: 'absolute',
-              top: '7px',
-              right: '0px',
-              border: `1.5px solid ${navyPrimary}`,
-              borderBottom: `2.5px solid ${goldAccent}`,
-              borderRadius: '3px',
-              padding: '2px 10px',
-              fontSize: '9.5px',
-              fontWeight: 800,
-              fontFamily: isEn ? monoFont : urBodyFont,
-              color: navyPrimary,
-              backgroundColor: pastelIvory,
-              letterSpacing: isEn ? '0.04em' : '0',
-              zIndex: 2
-            }}
-          >
-            {isEn ? 'NTN: 7779394-1' : 'این ٹی این: 7779394-1'}
-          </div>
-
           {/* Enlarged Logo flush to Top Edge, Left Side Edge, and Bottom Date-Box Border Line */}
           <div
             style={{
@@ -292,126 +269,216 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             )}
           </div>
 
-          {/* Centered Masthead Title, Proprietor Strip & Samundri Address */}
+          {/* Centered Masthead inside Ornamental Pakistani-Style Certificate Frame */}
           <div
             dir={isEn ? 'ltr' : 'rtl'}
+            data-testid="pakistani-header-frame"
             style={{
               flex: '1 1 0%',
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingTop: '16px',
-              paddingBottom: '6px'
+              margin: '5px 0 5px 0',
+              border: `1.5px solid ${navyPrimary}`,
+              borderRadius: '4px',
+              padding: '3px',
+              backgroundColor: '#fffdf7',
+              position: 'relative',
+              display: 'flex'
             }}
           >
-            {isEn ? (
-              <h1
-                style={{
-                  fontFamily: "'Libre Baskerville', Georgia, 'Times New Roman', serif",
-                  fontSize: '20px',
-                  fontWeight: 700,
-                  letterSpacing: '0.015em',
-                  color: '#0f2942',
-                  margin: '0 0 5px 0',
-                  lineHeight: '1.15',
-                  textTransform: 'uppercase'
-                }}
-              >
-                WARRAICH GOODS TRANSPORT COMPANY
-                <sup
-                  style={{
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    verticalAlign: 'super',
-                    marginLeft: '2px',
-                    fontFamily: enBodyFont
-                  }}
-                >
-                  ®
-                </sup>
-              </h1>
-            ) : (
-              <h1
-                style={{
-                  fontFamily: urTitleFont,
-                  fontSize: '24px',
-                  fontWeight: 700,
-                  color: '#0f2942',
-                  margin: '0 0 6px 0',
-                  lineHeight: '1.85'
-                }}
-              >
-                {cleanUrduCompanyName}
-                <sup
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    verticalAlign: 'super',
-                    marginRight: '3px',
-                    fontFamily: enBodyFont
-                  }}
-                >
-                  ®
-                </sup>
-              </h1>
-            )}
-
-            {/* Solid Navy Proprietor Ribbon Strip with Gold Accent Trim */}
             <div
               style={{
-                backgroundColor: navyPrimary,
-                color: '#ffffff',
-                borderTop: `2px solid ${goldAccent}`,
-                borderBottom: `2px solid ${goldAccent}`,
-                padding: isEn ? '4px 20px' : '2px 20px',
-                fontSize: isEn ? '11.5px' : '13px',
-                fontWeight: 700,
-                fontFamily: isEn ? enBodyFont : urBodyFont,
-                letterSpacing: isEn ? '0.07em' : '0',
-                textTransform: isEn ? 'uppercase' : 'none',
+                flex: '1 1 0%',
+                border: `1px solid ${goldAccent}`,
                 borderRadius: '2px',
-                width: '94%',
-                maxWidth: '520px',
-                lineHeight: isEn ? '1.3' : '1.6'
+                backgroundColor: '#ffffff',
+                padding: '18px 14px 7px 14px',
+                position: 'relative',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}
             >
-              {isEn
-                ? 'PROPRIETOR: ZAHDAN NASAR WARRAICH'
-                : 'پروپرائیٹر: زاہدان نصر وڑائچ'}
-            </div>
+              {/* Top-Center Pakistani Geometric Crest Divider */}
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  top: '-7px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  backgroundColor: '#ffffff',
+                  padding: '0 6px',
+                  lineHeight: 0,
+                  zIndex: 2
+                }}
+              >
+                <svg width="76" height="14" viewBox="0 0 76 14" fill="none">
+                  <path d="M2 7H25" stroke={navyPrimary} strokeWidth="1.4" />
+                  <path d="M51 7H74" stroke={navyPrimary} strokeWidth="1.4" />
+                  <polygon points="38,1 44,7 38,13 32,7" fill={goldAccent} stroke={navyPrimary} strokeWidth="1.2" />
+                  <polygon points="28,3 31,7 28,11 25,7" fill={emeraldAccent} />
+                  <polygon points="48,3 51,7 48,11 45,7" fill={emeraldAccent} />
+                  <circle cx="38" cy="7" r="1.8" fill="#ffffff" />
+                </svg>
+              </div>
 
-            {/* Single Samundri Office Address & Phone Numbers */}
-            <div
-              style={{
-                marginTop: '4px',
-                fontSize: isEn ? '10.5px' : '11.5px',
-                fontWeight: 700,
-                fontFamily: isEn ? enBodyFont : urBodyFont,
-                color: navyPrimary,
-                lineHeight: isEn ? '1.35' : '1.55'
-              }}
-            >
-              <div>{isEn ? branchInfo.addressEn : branchInfo.addressUr}</div>
+              {/* 4 Corner Pakistani Architectural Step-Brackets */}
+              {[
+                { top: '2px', left: '2px', transform: 'none' },
+                { top: '2px', right: '2px', transform: 'scaleX(-1)' },
+                { bottom: '2px', left: '2px', transform: 'scaleY(-1)' },
+                { bottom: '2px', right: '2px', transform: 'scale(-1, -1)' }
+              ].map((cornerPos, idx) => (
+                <svg
+                  key={idx}
+                  aria-hidden="true"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 18 18"
+                  fill="none"
+                  style={{
+                    position: 'absolute',
+                    ...cornerPos,
+                    pointerEvents: 'none'
+                  }}
+                >
+                  <path d="M1 15V4C1 2.34315 2.34315 1 4 1H15" stroke={navyPrimary} strokeWidth="1.5" />
+                  <path d="M4 13V5.5C4 4.67157 4.67157 4 5.5 4H13" stroke={goldAccent} strokeWidth="1.1" />
+                  <polygon points="7,7 9.5,4.5 12,7 9.5,9.5" fill={emeraldAccent} />
+                </svg>
+              ))}
+
+              {/* NTN Corner Stamp integrated neatly at top-right inside frame */}
               <div
                 dir={isEn ? 'ltr' : 'rtl'}
                 style={{
+                  position: 'absolute',
+                  top: '5px',
+                  right: '22px',
+                  border: `1.5px solid ${navyPrimary}`,
+                  borderBottom: `2px solid ${goldAccent}`,
+                  borderRadius: '3px',
+                  padding: '1px 9px',
+                  fontSize: '9px',
+                  fontWeight: 800,
                   fontFamily: isEn ? monoFont : urBodyFont,
-                  fontSize: isEn ? '10.5px' : '11px',
-                  marginTop: '1px',
-                  color: emeraldAccent,
-                  fontWeight: 700,
-                  fontVariantNumeric: 'tabular-nums'
+                  color: navyPrimary,
+                  backgroundColor: pastelIvory,
+                  letterSpacing: isEn ? '0.04em' : '0',
+                  zIndex: 2
                 }}
               >
-                {isEn ? (
-                  <span>Mobile: {branchInfo.phone}</span>
-                ) : (
-                  <span>
-                    فون نمبر: <span dir="ltr" style={{ fontFamily: monoFont, fontSize: '10px', color: navyPrimary }}>{branchInfo.phone}</span>
-                  </span>
-                )}
+                {isEn ? 'NTN: 7779394-1' : 'این ٹی این: 7779394-1'}
+              </div>
+
+              {isEn ? (
+                <h1
+                  style={{
+                    fontFamily: "'Libre Baskerville', Georgia, 'Times New Roman', serif",
+                    fontSize: '19.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.015em',
+                    color: '#0f2942',
+                    margin: '0 0 5px 0',
+                    lineHeight: '1.15',
+                    textTransform: 'uppercase'
+                  }}
+                >
+                  WARRAICH GOODS TRANSPORT COMPANY
+                  <sup
+                    style={{
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      verticalAlign: 'super',
+                      marginLeft: '2px',
+                      fontFamily: enBodyFont
+                    }}
+                  >
+                    ®
+                  </sup>
+                </h1>
+              ) : (
+                <h1
+                  style={{
+                    fontFamily: urTitleFont,
+                    fontSize: '23.5px',
+                    fontWeight: 700,
+                    color: '#0f2942',
+                    margin: '0 0 6px 0',
+                    lineHeight: '1.85'
+                  }}
+                >
+                  {cleanUrduCompanyName}
+                  <sup
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      verticalAlign: 'super',
+                      marginRight: '3px',
+                      fontFamily: enBodyFont
+                    }}
+                  >
+                    ®
+                  </sup>
+                </h1>
+              )}
+
+              {/* Solid Navy Proprietor Ribbon Strip with Gold Accent Trim */}
+              <div
+                style={{
+                  backgroundColor: navyPrimary,
+                  color: '#ffffff',
+                  borderTop: `2px solid ${goldAccent}`,
+                  borderBottom: `2px solid ${goldAccent}`,
+                  padding: isEn ? '4px 20px' : '2px 20px',
+                  fontSize: isEn ? '11.5px' : '13px',
+                  fontWeight: 700,
+                  fontFamily: isEn ? enBodyFont : urBodyFont,
+                  letterSpacing: isEn ? '0.07em' : '0',
+                  textTransform: isEn ? 'uppercase' : 'none',
+                  borderRadius: '2px',
+                  width: '94%',
+                  maxWidth: '520px',
+                  lineHeight: isEn ? '1.3' : '1.6'
+                }}
+              >
+                {isEn
+                  ? 'PROPRIETOR: ZAHDAN NASAR WARRAICH'
+                  : 'پروپرائیٹر: زاہدان نصر وڑائچ'}
+              </div>
+
+              {/* Single Samundri Office Address & Phone Numbers */}
+              <div
+                style={{
+                  marginTop: '4px',
+                  fontSize: isEn ? '10.5px' : '11.5px',
+                  fontWeight: 700,
+                  fontFamily: isEn ? enBodyFont : urBodyFont,
+                  color: navyPrimary,
+                  lineHeight: isEn ? '1.35' : '1.55'
+                }}
+              >
+                <div>{isEn ? branchInfo.addressEn : branchInfo.addressUr}</div>
+                <div
+                  dir={isEn ? 'ltr' : 'rtl'}
+                  style={{
+                    fontFamily: isEn ? monoFont : urBodyFont,
+                    fontSize: isEn ? '10.5px' : '11px',
+                    marginTop: '1px',
+                    color: emeraldAccent,
+                    fontWeight: 700,
+                    fontVariantNumeric: 'tabular-nums'
+                  }}
+                >
+                  {isEn ? (
+                    <span>Mobile: {branchInfo.phone}</span>
+                  ) : (
+                    <span>
+                      فون نمبر: <span dir="ltr" style={{ fontFamily: monoFont, fontSize: '10px', color: navyPrimary }}>{branchInfo.phone}</span>
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -668,25 +735,12 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   textAlign: 'center',
                   fontFamily: monoFont,
                   fontWeight: 900,
-                  fontSize: '13px',
+                  fontSize: '14px',
                   color: '#0f172a',
                   flex: '1 1 0%'
                 }}
               >
                 {record.qty || emptyVal}
-                {record.qty ? (
-                  <div
-                    style={{
-                      fontSize: isEn ? '10px' : '11px',
-                      fontWeight: 700,
-                      color: '#475569',
-                      marginTop: '3px',
-                      fontFamily: isEn ? enBodyFont : urBodyFont
-                    }}
-                  >
-                    {isEn ? 'Pkgs / Bags' : 'نگ / بوریاں'}
-                  </div>
-                ) : null}
               </div>
             </div>
 
@@ -707,7 +761,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               </div>
               <div
                 style={{
-                  padding: '14px 12px',
+                  padding: '12px 14px',
                   flex: '1 1 0%',
                   position: 'relative',
                   overflow: 'hidden',
@@ -716,9 +770,10 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   justifyContent: 'flex-start',
                   gap: '6px',
                   backgroundColor: cellBg,
-                  fontSize: isEn ? '12.5px' : '13px',
-                  fontWeight: 700,
-                  color: '#0f172a'
+                  fontSize: isEn ? '16px' : '18.5px',
+                  lineHeight: isEn ? '1.45' : '1.78',
+                  fontWeight: 800,
+                  color: '#020617'
                 }}
               >
                 {/* Scoped 6% Opacity Company Logo Watermark exclusively inside Nature of Goods cell */}
@@ -803,7 +858,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               </div>
             </div>
 
-            {/* Col 4: Freight Summary (Emerald Header + Gold Rule + Mint Advance / Ivory Pending) */}
+            {/* Col 4: Freight Summary (Top Freight beside Line 1 of Cargo + Bottom Conditional Total/Advance/Pending) */}
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div
                 style={{
@@ -819,120 +874,150 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 {isEn ? 'Freight Summary' : 'تفصیلِ کرایہ'}
               </div>
 
-              <div style={{ flex: '1 1 0%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', fontSize: isEn ? '11px' : '12px' }}>
-                {hasAdvance ? (
-                  <>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '6px 10px',
-                        borderTop: borderLight,
-                        borderBottom: borderLight,
-                        backgroundColor: cellBg
-                      }}
-                    >
-                      <span style={{ fontWeight: 700, color: '#334155' }}>
-                        {isEn ? 'Total Freight' : 'کل کرایہ'}
-                      </span>
-                      <span
-                        dir={isEn ? 'ltr' : 'rtl'}
-                        style={{ fontFamily: isEn ? monoFont : urBodyFont, fontWeight: 700, color: '#0f172a' }}
+              <div style={{ flex: '1 1 0%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: isEn ? '11px' : '12px' }}>
+                {/* Top Freight Line aligned opposite first line of Nature of Goods */}
+                <div
+                  data-testid="freight-top-line"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 10px 8px 10px',
+                    borderBottom: borderLight,
+                    backgroundColor: cellBg,
+                    fontSize: isEn ? '12px' : '13px',
+                    fontWeight: 800,
+                    color: '#0f172a'
+                  }}
+                >
+                  <span style={{ fontWeight: 700, color: '#334155' }}>
+                    {isEn ? 'Freight' : 'کرایہ'}
+                  </span>
+                  <span
+                    dir={isEn ? 'ltr' : 'rtl'}
+                    style={{ fontFamily: isEn ? monoFont : urBodyFont, fontWeight: 800, color: navyPrimary }}
+                  >
+                    {totalAmt > 0 ? formatAmount(totalAmt) : emptyVal}
+                  </span>
+                </div>
+
+                {/* Bottom Conditional Summary */}
+                <div>
+                  {hasAdvance ? (
+                    <>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '6px 10px',
+                          borderTop: borderLight,
+                          borderBottom: borderLight,
+                          backgroundColor: cellBg
+                        }}
                       >
-                        {totalAmt > 0 ? formatAmount(totalAmt) : emptyVal}
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '6px 10px',
-                        borderBottom: borderLight,
-                        backgroundColor: pastelMint
-                      }}
-                    >
-                      <span style={{ fontWeight: 700, color: emeraldAccent }}>
-                        {isEn ? 'Advance Paid' : 'پیشگی وصول'}
-                      </span>
-                      <span
-                        dir={isEn ? 'ltr' : 'rtl'}
-                        style={{ fontFamily: isEn ? monoFont : urBodyFont, fontWeight: 700, color: emeraldHighlight }}
+                        <span style={{ fontWeight: 700, color: '#334155' }}>
+                          {isEn ? 'Total Freight' : 'کل کرایہ'}
+                        </span>
+                        <span
+                          dir={isEn ? 'ltr' : 'rtl'}
+                          style={{ fontFamily: isEn ? monoFont : urBodyFont, fontWeight: 700, color: '#0f172a' }}
+                        >
+                          {totalAmt > 0 ? formatAmount(totalAmt) : emptyVal}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '6px 10px',
+                          borderBottom: borderLight,
+                          backgroundColor: pastelMint
+                        }}
                       >
-                        {formatAmount(advanceAmt)}
-                      </span>
-                    </div>
+                        <span style={{ fontWeight: 700, color: emeraldAccent }}>
+                          {isEn ? 'Advance Paid' : 'پیشگی وصول'}
+                        </span>
+                        <span
+                          dir={isEn ? 'ltr' : 'rtl'}
+                          style={{ fontFamily: isEn ? monoFont : urBodyFont, fontWeight: 700, color: emeraldHighlight }}
+                        >
+                          {formatAmount(advanceAmt)}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '7px 10px',
+                          backgroundColor: pastelIvory,
+                          borderTop: `1.5px solid ${goldAccent}`,
+                          fontWeight: 700,
+                          fontSize: isEn ? '11.5px' : '12.5px',
+                          color: navyPrimary
+                        }}
+                      >
+                        <span>{isEn ? 'Pending Amount' : 'بقایا رقم'}</span>
+                        <span
+                          dir={isEn ? 'ltr' : 'rtl'}
+                          style={{ fontFamily: isEn ? monoFont : urBodyFont, fontWeight: 700 }}
+                        >
+                          {formatAmount(pendingAmt)}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
                     <div
                       style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        padding: '7px 10px',
-                        backgroundColor: pastelIvory,
+                        padding: '8px 10px',
                         borderTop: `1.5px solid ${goldAccent}`,
+                        backgroundColor: pastelIvory,
                         fontWeight: 700,
                         fontSize: isEn ? '11.5px' : '12.5px',
                         color: navyPrimary
                       }}
                     >
-                      <span>{isEn ? 'Pending Amount' : 'بقایا رقم'}</span>
+                      <span>{isEn ? 'TOTAL FREIGHT' : 'کل کرایہ'}</span>
                       <span
                         dir={isEn ? 'ltr' : 'rtl'}
                         style={{ fontFamily: isEn ? monoFont : urBodyFont, fontWeight: 700 }}
                       >
-                        {formatAmount(pendingAmt)}
+                        {totalAmt > 0 ? formatAmount(totalAmt) : emptyVal}
                       </span>
                     </div>
-                  </>
-                ) : (
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '8px 10px',
-                      borderTop: `1.5px solid ${goldAccent}`,
-                      backgroundColor: pastelIvory,
-                      fontWeight: 700,
-                      fontSize: isEn ? '11.5px' : '12.5px',
-                      color: navyPrimary
-                    }}
-                  >
-                    <span>{isEn ? 'TOTAL FREIGHT' : 'کل کرایہ'}</span>
-                    <span
-                      dir={isEn ? 'ltr' : 'rtl'}
-                      style={{ fontFamily: isEn ? monoFont : urBodyFont, fontWeight: 700 }}
-                    >
-                      {totalAmt > 0 ? formatAmount(totalAmt) : emptyVal}
-                    </span>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Row F: Full-Width Remarks Row (Soft Ivory Pastel Tint) */}
+          {/* Row F: Highlighted Bold Legal Remarks Row */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              padding: '6px 10px',
+              padding: '7px 12px',
+              borderTop: `1.5px solid ${goldAccent}`,
               borderBottom: borderNavy,
-              backgroundColor: pastelIvory,
-              fontSize: isEn ? '11px' : '11.5px'
+              backgroundColor: '#fef3c7',
+              fontSize: isEn ? '12px' : '13px'
             }}
           >
-            <span style={{ fontWeight: 700, color: navyPrimary, whiteSpace: 'nowrap' }}>
+            <span style={{ fontWeight: 900, color: navyPrimary, whiteSpace: 'nowrap' }}>
               {isEn ? 'Remarks :' : 'ریمارکس :'}
             </span>
-            <span style={{ fontWeight: 700, color: '#0f172a', flex: '1 1 0%' }}>
+            <span style={{ fontWeight: 800, color: '#020617', flex: '1 1 0%' }}>
               {record.remarks || emptyVal}
             </span>
           </div>
 
-          {/* Row G: BOLD NOORI NASTALEEQ TERMS & CONDITIONS + EDGE-TO-EDGE QR & 3-PARTY SIGNATURE GRID */}
+          {/* Row G: BOLD LEGAL TERMS & CONDITIONS + SIGNATURE-ALIGNED QR WITH PURPOSE CAPTION & 3-PARTY SIGNATURES */}
           <div
             style={{
               display: 'grid',
@@ -941,16 +1026,16 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               alignItems: 'stretch'
             }}
           >
-            {/* Left/Main: Terms & Conditions (Bold Jameel Noori Nastaleeq in Urdu / Bold IBM Plex in English) */}
-            <div style={{ padding: '7px 11px', borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            {/* Left/Main: Bold Highlighted Legal Terms & Conditions */}
+            <div style={{ padding: '7px 11px', borderInlineEnd: borderNavy, backgroundColor: '#fffdf5', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
                 <div
                   style={{
                     fontFamily: isEn
                       ? "'Libre Baskerville', Georgia, serif"
                       : urBodyFont,
-                    fontWeight: 700,
-                    fontSize: isEn ? '11.5px' : '14px',
+                    fontWeight: 900,
+                    fontSize: isEn ? '12px' : '14.5px',
                     color: navyPrimary,
                     borderBottom: `2px solid ${goldAccent}`,
                     paddingBottom: '3px',
@@ -971,21 +1056,21 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     flexDirection: 'column',
                     gap: isEn ? '3px' : '3px',
                     fontFamily: isEn ? enBodyFont : urBodyFont,
-                    fontSize: isEn ? '9px' : '10.2px',
-                    lineHeight: isEn ? '1.36' : '1.62',
-                    fontWeight: 700,
-                    color: '#0f172a',
+                    fontSize: isEn ? '9.4px' : '10.6px',
+                    lineHeight: isEn ? '1.38' : '1.64',
+                    fontWeight: 800,
+                    color: '#020617',
                     textAlign: isEn ? 'left' : 'justify'
                   }}
                 >
                   {termsList.map((term, idx) => (
-                    <li key={idx} style={{ fontWeight: 700 }}>{term}</li>
+                    <li key={idx} style={{ fontWeight: 800 }}>{term}</li>
                   ))}
                 </ol>
               </div>
             </div>
 
-            {/* Right: 4 Verification Boxes in 2x2 Grid (1: Edge-to-Edge QR Code, 2: Driver Sig, 3: Sender Sig, 4: Receiver Sig) */}
+            {/* Right: 4 Verification Boxes in 2x2 Grid (1: QR Code aligned to opposite Driver Signature line + Caption, 2: Driver Sig, 3: Sender Sig, 4: Receiver Sig) */}
             <div
               style={{
                 display: 'grid',
@@ -994,52 +1079,82 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 backgroundColor: '#ffffff'
               }}
             >
-              {/* Box 1: Edge-to-Edge QR Code filling entire box */}
+              {/* Box 1: QR Code resized cleanly to match opposite signature line level + QR purpose caption at bottom */}
               <div
                 style={{
                   borderInlineEnd: borderLight,
                   borderBottom: borderLight,
-                  padding: '0',
+                  padding: '8px 8px',
                   margin: '0',
                   display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
                   alignItems: 'center',
-                  justifyContent: 'center',
                   backgroundColor: '#ffffff',
                   overflow: 'hidden'
                 }}
               >
-                {activeQrUrl ? (
-                  <img
-                    src={activeQrUrl}
-                    alt={isEn ? 'Bilty Verification QR Code' : 'بلٹی تصدیقی کیو آر کوڈ'}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain',
-                      imageRendering: 'pixelated',
-                      display: 'block',
-                      padding: '0',
-                      border: 'none',
-                      backgroundColor: '#ffffff'
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      backgroundColor: '#ffffff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '12px',
-                      fontWeight: 800,
-                      fontFamily: isEn ? monoFont : urBodyFont
-                    }}
-                  >
-                    {isEn ? 'QR' : 'کوڈ'}
-                  </div>
-                )}
+                <div
+                  style={{
+                    flex: '1 1 0%',
+                    minHeight: 0,
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingBottom: '4px'
+                  }}
+                >
+                  {activeQrUrl ? (
+                    <img
+                      src={activeQrUrl}
+                      alt={isEn ? 'Bilty Verification QR Code' : 'بلٹی تصدیقی کیو آر کوڈ'}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        maxWidth: '88px',
+                        maxHeight: '88px',
+                        objectFit: 'contain',
+                        imageRendering: 'pixelated',
+                        display: 'block',
+                        padding: '0',
+                        border: 'none',
+                        backgroundColor: '#ffffff'
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        backgroundColor: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontWeight: 800,
+                        fontFamily: isEn ? monoFont : urBodyFont
+                      }}
+                    >
+                      {isEn ? 'QR' : 'کوڈ'}
+                    </div>
+                  )}
+                </div>
+                <div
+                  data-testid="qr-purpose-caption"
+                  style={{
+                    width: '100%',
+                    borderTop: '1px solid #64748b',
+                    paddingTop: '4px',
+                    textAlign: 'center',
+                    fontSize: isEn ? '8.5px' : '10px',
+                    fontWeight: 700,
+                    color: navyPrimary,
+                    lineHeight: '1.2'
+                  }}
+                >
+                  {isEn ? 'Scan to verify Bilty' : 'تصدیقِ بلٹی کیلئے اسکین کریں'}
+                </div>
               </div>
 
               {/* Box 2: Driver Signature */}
