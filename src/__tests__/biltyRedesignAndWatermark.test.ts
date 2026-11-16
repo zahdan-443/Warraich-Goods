@@ -87,8 +87,16 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(rowBPos).toBeGreaterThan(rowAPos);
     expect(rowCPos).toBeGreaterThan(rowBPos);
 
-    // Pure crisp white background with no colorful overlay & exact print rules
+    // Pure crisp white canvas with Double Outer Frame, Navy/Gold/Emerald accents, Soft Pastel Row Tints, and Scoped 6% Cargo Watermark
     expect(printableSrc).toContain("const cellBg = '#ffffff'");
+    expect(printableSrc).toContain("const pastelSlate = '#f1f5f9'");
+    expect(printableSrc).toContain("const pastelMint = '#ecfdf5'");
+    expect(printableSrc).toContain("const pastelIvory = '#fffbeb'");
+    expect(printableSrc).toContain("const emeraldAccent = '#065f46'");
+    expect(printableSrc).toContain("const goldAccent = '#d97706'");
+    expect(printableSrc).toContain('bilty-double-inner-frame');
+    expect(printableSrc).toContain('cargo-box-watermark');
+    expect(printableSrc).toContain('opacity: 0.06');
     expect(printableSrc).toContain("backgroundColor: '#ffffff'");
     expect(printableSrc).not.toContain('printable-bilty-watermark');
     expect(printableSrc).toContain('print-color-adjust: exact !important');

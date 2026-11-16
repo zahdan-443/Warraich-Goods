@@ -85,7 +85,14 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
   const termsList = isEn ? BILTY_TERMS_EN : BILTY_TERMS_UR;
 
   const cellBg = '#ffffff';
+  const pastelSlate = '#f1f5f9';
+  const pastelMint = '#ecfdf5';
+  const pastelIvory = '#fffbeb';
   const subtleTintBg = '#f8fafc';
+  const navyPrimary = '#0f2942';
+  const emeraldAccent = '#065f46';
+  const emeraldHighlight = '#047857';
+  const goldAccent = '#d97706';
   const borderNavy = '1.5px solid #0f2942';
   const borderLight = '1px solid #94a3b8';
 
@@ -102,7 +109,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
       style={{
         backgroundColor: '#ffffff',
         color: '#0f172a',
-        border: '2px solid #0f2942',
+        border: '2.5px solid #0f2942',
         fontFamily: isEn ? enBodyFont : urBodyFont,
         lineHeight: isEn ? '1.3' : '1.55',
         width: '794px',
@@ -111,7 +118,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
         maxWidth: '794px',
         minHeight: '1120px',
         maxHeight: '1120px',
-        padding: '0px 14px 10px 14px',
+        padding: '4px 14px 10px 14px',
         boxSizing: 'border-box',
         overflow: 'hidden',
         position: 'relative',
@@ -143,10 +150,10 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             height: 297mm !important;
             max-height: 297mm !important;
             background-color: #ffffff !important;
-            border: 2px solid #0f2942 !important;
+            border: 2.5px solid #0f2942 !important;
             box-shadow: none !important;
             margin: 0 auto !important;
-            padding: 0mm 6mm 5mm 6mm !important;
+            padding: 2mm 6mm 5mm 6mm !important;
             page-break-after: avoid !important;
             page-break-before: avoid !important;
             page-break-inside: avoid !important;
@@ -161,6 +168,22 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
         }
       `}</style>
 
+      {/* Inner Gold Line completing the Double Outer Frame */}
+      <div
+        aria-hidden="true"
+        data-testid="bilty-double-inner-frame"
+        style={{
+          position: 'absolute',
+          top: '3px',
+          right: '3px',
+          bottom: '3px',
+          left: '3px',
+          border: `1.5px solid ${goldAccent}`,
+          pointerEvents: 'none',
+          zIndex: 3
+        }}
+      />
+
       {/* Main Content Layer on Clean White Background */}
       <div
         style={{
@@ -173,12 +196,12 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
           backgroundColor: '#ffffff'
         }}
       >
-        {/* 1. HEADER: 3-Edge Expanded Logo (Top, Side, Date-Row Line) + Top-Right NTN Badge */}
+        {/* 1. HEADER: 3-Edge Expanded Logo (Top, Side, Date-Row Line) + Top-Right NTN Stamp */}
         <div
           dir="ltr"
           style={{
             padding: '0',
-            marginLeft: '-14px',
+            marginLeft: '-10px',
             position: 'relative',
             display: 'flex',
             flexDirection: 'row',
@@ -186,21 +209,22 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             gap: '8px'
           }}
         >
-          {/* NTN Badge restored in original top-right corner */}
+          {/* NTN Corner Stamp restored in top-right corner */}
           <div
             dir={isEn ? 'ltr' : 'rtl'}
             style={{
               position: 'absolute',
               top: '7px',
               right: '0px',
-              border: '1.5px solid #0f2942',
-              borderRadius: '999px',
-              padding: '1px 12px',
+              border: `1.5px solid ${navyPrimary}`,
+              borderBottom: `2.5px solid ${goldAccent}`,
+              borderRadius: '3px',
+              padding: '2px 10px',
               fontSize: '9.5px',
               fontWeight: 800,
               fontFamily: isEn ? monoFont : urBodyFont,
-              color: '#0f2942',
-              backgroundColor: '#ffffff',
+              color: navyPrimary,
+              backgroundColor: pastelIvory,
               letterSpacing: isEn ? '0.04em' : '0',
               zIndex: 2
             }}
@@ -334,11 +358,13 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               </h1>
             )}
 
-            {/* Solid Navy Proprietor Ribbon Strip */}
+            {/* Solid Navy Proprietor Ribbon Strip with Gold Accent Trim */}
             <div
               style={{
-                backgroundColor: '#0f2942',
+                backgroundColor: navyPrimary,
                 color: '#ffffff',
+                borderTop: `2px solid ${goldAccent}`,
+                borderBottom: `2px solid ${goldAccent}`,
                 padding: isEn ? '4px 20px' : '2px 20px',
                 fontSize: isEn ? '11.5px' : '13px',
                 fontWeight: 700,
@@ -363,7 +389,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 fontSize: isEn ? '10.5px' : '11.5px',
                 fontWeight: 700,
                 fontFamily: isEn ? enBodyFont : urBodyFont,
-                color: '#0f2942',
+                color: navyPrimary,
                 lineHeight: isEn ? '1.35' : '1.55'
               }}
             >
@@ -374,6 +400,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   fontFamily: isEn ? monoFont : urBodyFont,
                   fontSize: isEn ? '10.5px' : '11px',
                   marginTop: '1px',
+                  color: emeraldAccent,
+                  fontWeight: 700,
                   fontVariantNumeric: 'tabular-nums'
                 }}
               >
@@ -381,7 +409,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   <span>Mobile: {branchInfo.phone}</span>
                 ) : (
                   <span>
-                    فون نمبر: <span dir="ltr" style={{ fontFamily: monoFont, fontSize: '10px' }}>{branchInfo.phone}</span>
+                    فون نمبر: <span dir="ltr" style={{ fontFamily: monoFont, fontSize: '10px', color: navyPrimary }}>{branchInfo.phone}</span>
                   </span>
                 )}
               </div>
@@ -392,20 +420,21 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
         {/* 2. MASTER DOCUMENT GRID */}
         <div
           style={{
-            border: '2px solid #0f2942',
+            border: `2px solid ${navyPrimary}`,
+            borderTop: `2.5px solid ${goldAccent}`,
             backgroundColor: '#ffffff',
             flex: '1 1 0%',
             display: 'flex',
             flexDirection: 'column'
           }}
         >
-          {/* Row A: Bilty No | Truck No | Date */}
+          {/* Row A: Bilty No | Truck No | Date (Soft Slate Pastel Tint) */}
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
               borderBottom: borderNavy,
-              backgroundColor: subtleTintBg,
+              backgroundColor: pastelSlate,
               fontSize: isEn ? '11.5px' : '12px'
             }}
           >
@@ -425,7 +454,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   fontWeight: 900,
                   fontFamily: monoFont,
                   fontSize: '13px',
-                  color: '#0f2942'
+                  color: emeraldAccent
                 }}
               >
                 {record.biltyNo}
@@ -477,13 +506,13 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             </div>
           </div>
 
-          {/* Row B: Driver Details 4 Boxes (Directly below Vehicle row & above From/To row) */}
+          {/* Row B: Driver Details 4 Boxes (Soft Mint Pastel Tint directly below Vehicle row & above From/To row) */}
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: '1.25fr 1fr',
               borderBottom: borderNavy,
-              backgroundColor: subtleTintBg,
+              backgroundColor: pastelMint,
               fontSize: isEn ? '11px' : '11.5px'
             }}
           >
@@ -618,7 +647,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               backgroundColor: cellBg
             }}
           >
-            {/* Col 1: No of Articles */}
+            {/* Col 1: No of Articles (Navy Header + Gold Rule) */}
             <div style={{ borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column' }}>
               <div
                 style={{
@@ -626,8 +655,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   textAlign: 'center',
                   fontWeight: 700,
                   fontSize: isEn ? '11px' : '12px',
-                  borderBottom: borderNavy,
-                  backgroundColor: '#0f2942',
+                  borderBottom: `2px solid ${goldAccent}`,
+                  backgroundColor: navyPrimary,
                   color: '#ffffff'
                 }}
               >
@@ -661,7 +690,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               </div>
             </div>
 
-            {/* Col 2: Nature of Goods */}
+            {/* Col 2: Nature of Goods (Emerald Header + Gold Rule + Scoped 6% Company Logo Watermark) */}
             <div style={{ borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column' }}>
               <div
                 style={{
@@ -669,8 +698,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   textAlign: 'center',
                   fontWeight: 700,
                   fontSize: isEn ? '11px' : '12px',
-                  borderBottom: borderNavy,
-                  backgroundColor: '#0f2942',
+                  borderBottom: `2px solid ${goldAccent}`,
+                  backgroundColor: emeraldAccent,
                   color: '#ffffff'
                 }}
               >
@@ -680,20 +709,58 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 style={{
                   padding: '14px 12px',
                   flex: '1 1 0%',
+                  position: 'relative',
+                  overflow: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'flex-start',
                   gap: '6px',
+                  backgroundColor: cellBg,
                   fontSize: isEn ? '12.5px' : '13px',
                   fontWeight: 700,
                   color: '#0f172a'
                 }}
               >
-                <div>{record.itemDescription || (isEn ? 'General Goods Cargo' : 'جنرل کارگو سامان')}</div>
+                {/* Scoped 6% Opacity Company Logo Watermark exclusively inside Nature of Goods cell */}
+                <div
+                  aria-hidden="true"
+                  className="cargo-box-watermark"
+                  data-testid="cargo-box-watermark"
+                  style={{
+                    position: 'absolute',
+                    inset: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    pointerEvents: 'none',
+                    opacity: 0.06,
+                    zIndex: 0
+                  }}
+                >
+                  {!logoFailed ? (
+                    <img
+                      src={activeLogoSrc}
+                      alt=""
+                      style={{
+                        width: '220px',
+                        maxWidth: '88%',
+                        maxHeight: '145px',
+                        objectFit: 'contain',
+                        transform: 'scale(1.35)',
+                        display: 'block'
+                      }}
+                    />
+                  ) : (
+                    <CompanyLogo className="w-28 h-28" />
+                  )}
+                </div>
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                  {record.itemDescription || (isEn ? 'General Goods Cargo' : 'جنرل کارگو سامان')}
+                </div>
               </div>
             </div>
 
-            {/* Col 3: Weight */}
+            {/* Col 3: Weight (Navy Header + Gold Rule) */}
             <div style={{ borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column' }}>
               <div
                 style={{
@@ -701,8 +768,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   textAlign: 'center',
                   fontWeight: 700,
                   fontSize: isEn ? '11px' : '12px',
-                  borderBottom: borderNavy,
-                  backgroundColor: '#0f2942',
+                  borderBottom: `2px solid ${goldAccent}`,
+                  backgroundColor: navyPrimary,
                   color: '#ffffff'
                 }}
               >
@@ -736,7 +803,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               </div>
             </div>
 
-            {/* Col 4: Freight Summary (Conditional Advance & Pending when advance > 0; Total Freight only when advance === 0) */}
+            {/* Col 4: Freight Summary (Emerald Header + Gold Rule + Mint Advance / Ivory Pending) */}
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div
                 style={{
@@ -744,8 +811,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   textAlign: 'center',
                   fontWeight: 700,
                   fontSize: isEn ? '11px' : '12px',
-                  borderBottom: borderNavy,
-                  backgroundColor: '#0f2942',
+                  borderBottom: `2px solid ${goldAccent}`,
+                  backgroundColor: emeraldAccent,
                   color: '#ffffff'
                 }}
               >
@@ -762,7 +829,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                         alignItems: 'center',
                         padding: '6px 10px',
                         borderTop: borderLight,
-                        borderBottom: borderLight
+                        borderBottom: borderLight,
+                        backgroundColor: cellBg
                       }}
                     >
                       <span style={{ fontWeight: 700, color: '#334155' }}>
@@ -781,15 +849,16 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         padding: '6px 10px',
-                        borderBottom: borderLight
+                        borderBottom: borderLight,
+                        backgroundColor: pastelMint
                       }}
                     >
-                      <span style={{ fontWeight: 700, color: '#334155' }}>
+                      <span style={{ fontWeight: 700, color: emeraldAccent }}>
                         {isEn ? 'Advance Paid' : 'پیشگی وصول'}
                       </span>
                       <span
                         dir={isEn ? 'ltr' : 'rtl'}
-                        style={{ fontFamily: isEn ? monoFont : urBodyFont, fontWeight: 700, color: '#0f2942' }}
+                        style={{ fontFamily: isEn ? monoFont : urBodyFont, fontWeight: 700, color: emeraldHighlight }}
                       >
                         {formatAmount(advanceAmt)}
                       </span>
@@ -800,10 +869,11 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         padding: '7px 10px',
-                        backgroundColor: subtleTintBg,
+                        backgroundColor: pastelIvory,
+                        borderTop: `1.5px solid ${goldAccent}`,
                         fontWeight: 700,
                         fontSize: isEn ? '11.5px' : '12.5px',
-                        color: '#0f2942'
+                        color: navyPrimary
                       }}
                     >
                       <span>{isEn ? 'Pending Amount' : 'بقایا رقم'}</span>
@@ -822,11 +892,11 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '8px 10px',
-                      borderTop: borderLight,
-                      backgroundColor: subtleTintBg,
+                      borderTop: `1.5px solid ${goldAccent}`,
+                      backgroundColor: pastelIvory,
                       fontWeight: 700,
                       fontSize: isEn ? '11.5px' : '12.5px',
-                      color: '#0f2942'
+                      color: navyPrimary
                     }}
                   >
                     <span>{isEn ? 'TOTAL FREIGHT' : 'کل کرایہ'}</span>
@@ -842,7 +912,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             </div>
           </div>
 
-          {/* Row F: Full-Width Remarks Row */}
+          {/* Row F: Full-Width Remarks Row (Soft Ivory Pastel Tint) */}
           <div
             style={{
               display: 'flex',
@@ -850,11 +920,11 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               gap: '8px',
               padding: '6px 10px',
               borderBottom: borderNavy,
-              backgroundColor: cellBg,
+              backgroundColor: pastelIvory,
               fontSize: isEn ? '11px' : '11.5px'
             }}
           >
-            <span style={{ fontWeight: 700, color: '#0f2942', whiteSpace: 'nowrap' }}>
+            <span style={{ fontWeight: 700, color: navyPrimary, whiteSpace: 'nowrap' }}>
               {isEn ? 'Remarks :' : 'ریمارکس :'}
             </span>
             <span style={{ fontWeight: 700, color: '#0f172a', flex: '1 1 0%' }}>
@@ -881,8 +951,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                       : urBodyFont,
                     fontWeight: 700,
                     fontSize: isEn ? '11.5px' : '14px',
-                    color: '#0f2942',
-                    borderBottom: '2px solid #0f2942',
+                    color: navyPrimary,
+                    borderBottom: `2px solid ${goldAccent}`,
                     paddingBottom: '3px',
                     marginBottom: '5px',
                     letterSpacing: isEn ? '0.04em' : '0',
@@ -1028,15 +1098,17 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
           </div>
         </div>
 
-        {/* 3. COMPLETE SINGLE-LANGUAGE FOOTER */}
+        {/* 3. COMPLETE SINGLE-LANGUAGE FOOTER WITH SUBTLE GOLD TRIM */}
         <div
           style={{
             textAlign: 'center',
-            paddingTop: '5px',
+            marginTop: '4px',
+            paddingTop: '4px',
+            borderTop: `1px solid ${goldAccent}`,
             fontSize: isEn ? '10px' : '11.5px',
             fontWeight: 700,
             fontFamily: isEn ? enBodyFont : urBodyFont,
-            color: '#0f2942',
+            color: navyPrimary,
             letterSpacing: isEn ? '0.02em' : '0'
           }}
         >
