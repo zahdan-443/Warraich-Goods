@@ -334,6 +334,7 @@ async function handleTrackStatus() {
   box.innerHTML = '<div style="color:var(--muted)">اسٹیٹس چیک کیا جا رہا ہے...</div>';
 
   var found = null;
+  var privacyProtected = false;
   // 1. Check local storage first
   try {
     for (var i = 0; i < localStorage.length; i++) {
@@ -348,7 +349,7 @@ async function handleTrackStatus() {
     }
   } catch(e) {}
 
-  // 2. Query Firestore REST
+  // 2. Query Firestore REST (privacy rules restrict unauthenticated reads of other users' emails)
   if (!found) {
     try {
       var queryUrl = 'https://firestore.googleapis.com/v1/projects/' + FB_PROJECT_ID +
@@ -388,9 +389,11 @@ async function handleTrackStatus() {
             scheduledFor: fields.scheduledFor ? fields.scheduledFor.stringValue : '30-Day Period'
           };
         }
+      } else if (res.status === 403 || res.status === 401) {
+        privacyProtected = true;
       }
     } catch(err) {
-      console.warn('Track query error:', err);
+      privacyProtected = true;
     }
   }
 
@@ -402,10 +405,14 @@ async function handleTrackStatus() {
       '<div style="margin-top:4px"><strong>Scheduled Purge:</strong> ' + (found.scheduledFor ? found.scheduledFor.slice(0, 10) : '30 Days') + '</div>' +
       '<div style="margin-top:4px"><strong>Current Status:</strong> <span class="status-pill status-pending">Pending Deletion (30-day grace period)</span></div>' +
       '<div class="ur" style="margin-top:10px;font-size:.85rem;color:var(--muted)">آپ 30 دن کے اندر ایپ میں سائن ان کر کے اسے کسی بھی وقت منسوخ کر سکتے ہیں۔</div>';
+  } else if (privacyProtected) {
+    box.innerHTML =
+      '<div style="color:var(--olive-dark);font-weight:700">🔒 پرائیویسی تحفظ: عوامی کلاؤڈ تلاش محدود ہے (Privacy Protected)</div>' +
+      '<div style="font-size:.85rem;color:var(--muted);margin-top:6px;line-height:1.5">صارفین کے ذاتی ای میل ریکارڈ کے تحفظ کے لیے غیر لاگ ان براؤزر پر کلاؤڈ اسٹیٹس محدود ہے۔ براہ کرم ایپ میں سائن ان کر کے اسٹیٹس دیکھیں یا اپنا Reference ID ای میل <a href="mailto:warraichgoods43@gmail.com">warraichgoods43@gmail.com</a> پر بھیجیں۔</div>';
   } else {
     box.innerHTML =
       '<div style="color:var(--danger);font-weight:700">کوئی فعال درخواست نہیں ملی (No Active Request Found)</div>' +
-      '<div style="font-size:.85rem;color:var(--muted);margin-top:4px">درج کیا گیا ریفرنس نمبر یا ای میل درست نہیں ہے یا 30 دن کی مہلت ختم ہو چکی ہے۔</div>';
+      '<div style="font-size:.85rem;color:var(--muted);margin-top:4px">درج کیا گیا ریفرنس نمبر یا ای میل اس براؤزر میں محفوظ نہیں ملا۔ تصدیق کے لیے ایپ میں سائن ان کریں۔</div>';
   }
 }
 </script>
