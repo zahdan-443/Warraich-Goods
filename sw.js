@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v23';
+const CACHE_NAME = 'driver-dost-v24';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 
 // Core static assets always available locally
@@ -44,31 +44,31 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/BiltyView-BiscdUpF.js',
+    './assets/BiltyView-COcULaGK.js',
   './assets/DashcamView-Cy4SVtcG.js',
-  './assets/DriversView-Bilpj4lI.js',
-  './assets/FuelLogView-B2WDcjFl.js',
-  './assets/LedgerView-DGCUhZ79.js',
-  './assets/MapView-CBpv_kV0.js',
+  './assets/DriversView-DLAtqI_A.js',
+  './assets/FuelLogView-S-9JqP2D.js',
+  './assets/LedgerView-GcK5DehB.js',
+  './assets/MapView-BNlJFPWf.js',
   './assets/MapView-CIGW-MKW.css',
-  './assets/NavigationView-CPGIs1Qc.js',
-  './assets/RoutesView-_i38BORZ.js',
-  './assets/TollPlazaView-BgPiiNhE.js',
-  './assets/TripCostView-CdoOLZLe.js',
-  './assets/VehicleAccountView-DMvUqrhA.js',
-  './assets/VehiclesView-Cl3iYU9t.js',
-  './assets/VerifyView-C_e5z0OF.js',
+  './assets/NavigationView-TGRnShUf.js',
+  './assets/RoutesView-Og0MRarY.js',
+  './assets/TollPlazaView-D6X3Uan9.js',
+  './assets/TripCostView-BOgagJOh.js',
+  './assets/VehicleAccountView-DlFxJTBo.js',
+  './assets/VehiclesView-t9UaqLct.js',
+  './assets/VerifyView-DYb5QfcL.js',
   './assets/biltyHelpers-D46ggOo8.js',
-  './assets/index-Bub5vH9p.css',
+  './assets/index-BWFJOLCN.css',
   './assets/index-CLkxFdwt.js',
-  './assets/index-we293fR3.js',
-  './assets/pdfHelper-Dx2AcO7X.js',
+  './assets/index-Tud2szFW.js',
+  './assets/pdfHelper-CeDRzt19.js',
   './assets/vendor-firebase-wjY2zNzF.js',
   './assets/vendor-pdf-DODiEIfs.js',
   './assets/vendor-react-DqWXzK98.js',
+  './assets/web-CBnHDKqx.js',
   './assets/web-CSsjyOF0.js',
   './assets/web-D-UF4VBT.js',
-  './assets/web-DW5qMu1Z.js',
   './assets/web-Dfcihrvp.js'
 ];
 
@@ -357,10 +357,10 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Driver Dost Transport Manager';
   const options = {
     body: data.body || 'New freight dispatch or vehicle update',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: './icon-192.png',
+    badge: './icon-192.png',
     vibrate: [200, 100, 200],
-    data: data.url || '/',
+    data: data.url || './',
     tag: data.tag || 'wg-push-alert',
     actions: [
       { action: 'open', title: 'Open App (کھولیں)' },
@@ -375,7 +375,7 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   if (event.action === 'dismiss') return;
 
-  const targetUrl = event.notification.data || '/';
+  const targetUrl = event.notification.data || './';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
       for (let client of windowClients) {
