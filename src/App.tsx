@@ -1522,6 +1522,8 @@ export default function App() {
               lang={lang}
               vehicles={vehicles}
               trips={trips}
+              drivers={drivers}
+              bilties={isBiltyAuthorized ? bilties : []}
               isBiltyAuthorized={isBiltyAuthorized}
               onNavigate={handleNavigate}
               userEmail={userEmail}

@@ -40,6 +40,17 @@ import {
   saveStoredVehicleIncomes
 } from './ledgerStorage';
 
+import {
+  getAllBills,
+  getAllEmployees,
+  getAllEmployeeEntries,
+  getAllReceivingPoints,
+  getAllReceivingEntries,
+  getAllDailyExpenses
+} from './khataModulesStorage';
+import { setScopedItem } from './storage';
+import { KHATA_STORAGE_KEYS } from './ledgerStorage';
+
 export interface FullFleetBackup {
   appVersion: string;
   exportedAt: string;
@@ -57,6 +68,10 @@ export interface FullFleetBackup {
     totalBrokerTransactions: number;
     totalVehicleExpenses: number;
     totalVehicleIncomes: number;
+    totalBills?: number;
+    totalEmployees?: number;
+    totalReceivingPoints?: number;
+    totalDailyExpenses?: number;
   };
   data: {
     trips: ReturnType<typeof getStoredTrips>;
@@ -71,6 +86,12 @@ export interface FullFleetBackup {
     brokerTransactions: ReturnType<typeof getStoredBrokerTransactions>;
     vehicleExpenses: ReturnType<typeof getStoredVehicleExpenses>;
     vehicleIncomes: ReturnType<typeof getStoredVehicleIncomes>;
+    bills?: ReturnType<typeof getAllBills>;
+    employees?: ReturnType<typeof getAllEmployees>;
+    employeeEntries?: ReturnType<typeof getAllEmployeeEntries>;
+    receivingPoints?: ReturnType<typeof getAllReceivingPoints>;
+    receivingEntries?: ReturnType<typeof getAllReceivingEntries>;
+    dailyExpenses?: ReturnType<typeof getAllDailyExpenses>;
   };
 }
 
@@ -91,6 +112,13 @@ export function generateFullFleetBackup(): FullFleetBackup {
   const vehicleExpenses = getStoredVehicleExpenses();
   const vehicleIncomes = getStoredVehicleIncomes();
 
+  const bills = getAllBills();
+  const employees = getAllEmployees();
+  const employeeEntries = getAllEmployeeEntries();
+  const receivingPoints = getAllReceivingPoints();
+  const receivingEntries = getAllReceivingEntries();
+  const dailyExpenses = getAllDailyExpenses();
+
   return {
     appVersion: APP_VERSION,
     exportedAt: new Date().toISOString(),
@@ -107,7 +135,11 @@ export function generateFullFleetBackup(): FullFleetBackup {
       totalPartyTransactions: partyTransactions.length,
       totalBrokerTransactions: brokerTransactions.length,
       totalVehicleExpenses: vehicleExpenses.length,
-      totalVehicleIncomes: vehicleIncomes.length
+      totalVehicleIncomes: vehicleIncomes.length,
+      totalBills: bills.length,
+      totalEmployees: employees.length,
+      totalReceivingPoints: receivingPoints.length,
+      totalDailyExpenses: dailyExpenses.length
     },
     data: {
       trips,
@@ -121,7 +153,13 @@ export function generateFullFleetBackup(): FullFleetBackup {
       brokers,
       brokerTransactions,
       vehicleExpenses,
-      vehicleIncomes
+      vehicleIncomes,
+      bills,
+      employees,
+      employeeEntries,
+      receivingPoints,
+      receivingEntries,
+      dailyExpenses
     }
   };
 }
@@ -204,6 +242,9 @@ export async function runScheduledDailyCloudBackup(): Promise<{ executed: boolea
     // Chunk D: Ledger Parties & Brokers
     const ledgerDocRef = doc(db, 'usersData', user.uid, 'cloudBackups', backupId, 'chunks', 'ledger');
 
+    // Chunk E: Khata v1.3.0 Modules (Bills, Employees, Receiving Points, Daily Expenses)
+    const khataExtDocRef = doc(db, 'usersData', user.uid, 'cloudBackups', backupId, 'chunks', 'khataExtended');
+
     await Promise.all([
       setDoc(tripsDocRef, { trips: backup.data.trips, updatedAt: serverTimestamp() }),
       setDoc(fleetDocRef, {
@@ -224,6 +265,15 @@ export async function runScheduledDailyCloudBackup(): Promise<{ executed: boolea
         brokerTransactions: backup.data.brokerTransactions,
         vehicleExpenses: backup.data.vehicleExpenses,
         vehicleIncomes: backup.data.vehicleIncomes,
+        updatedAt: serverTimestamp()
+      }),
+      setDoc(khataExtDocRef, {
+        bills: backup.data.bills || [],
+        employees: backup.data.employees || [],
+        employeeEntries: backup.data.employeeEntries || [],
+        receivingPoints: backup.data.receivingPoints || [],
+        receivingEntries: backup.data.receivingEntries || [],
+        dailyExpenses: backup.data.dailyExpenses || [],
         updatedAt: serverTimestamp()
       })
     ]);
@@ -252,11 +302,12 @@ export async function restoreFromCloudBackup(backupId = 'latestIndex'): Promise<
       targetBackupId = indexSnap.data().backupId || new Date().toISOString().slice(0, 10);
     }
 
-    const [tripsSnap, fleetSnap, opsSnap, ledgerSnap] = await Promise.all([
+    const [tripsSnap, fleetSnap, opsSnap, ledgerSnap, khataExtSnap] = await Promise.all([
       getDoc(doc(db, 'usersData', user.uid, 'cloudBackups', targetBackupId, 'chunks', 'trips')),
       getDoc(doc(db, 'usersData', user.uid, 'cloudBackups', targetBackupId, 'chunks', 'fleet')),
       getDoc(doc(db, 'usersData', user.uid, 'cloudBackups', targetBackupId, 'chunks', 'operations')),
-      getDoc(doc(db, 'usersData', user.uid, 'cloudBackups', targetBackupId, 'chunks', 'ledger'))
+      getDoc(doc(db, 'usersData', user.uid, 'cloudBackups', targetBackupId, 'chunks', 'ledger')),
+      getDoc(doc(db, 'usersData', user.uid, 'cloudBackups', targetBackupId, 'chunks', 'khataExtended'))
     ]);
 
     if (tripsSnap.exists() && tripsSnap.data().trips) {
@@ -281,6 +332,15 @@ export async function restoreFromCloudBackup(backupId = 'latestIndex'): Promise<
       if (data.brokerTransactions) saveStoredBrokerTransactions(data.brokerTransactions);
       if (data.vehicleExpenses) saveStoredVehicleExpenses(data.vehicleExpenses);
       if (data.vehicleIncomes) saveStoredVehicleIncomes(data.vehicleIncomes);
+    }
+    if (khataExtSnap.exists()) {
+      const data = khataExtSnap.data();
+      if (Array.isArray(data.bills)) setScopedItem(KHATA_STORAGE_KEYS.BILLS, JSON.stringify(data.bills));
+      if (Array.isArray(data.employees)) setScopedItem(KHATA_STORAGE_KEYS.EMPLOYEES, JSON.stringify(data.employees));
+      if (Array.isArray(data.employeeEntries)) setScopedItem(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, JSON.stringify(data.employeeEntries));
+      if (Array.isArray(data.receivingPoints)) setScopedItem(KHATA_STORAGE_KEYS.RECEIVING_POINTS, JSON.stringify(data.receivingPoints));
+      if (Array.isArray(data.receivingEntries)) setScopedItem(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, JSON.stringify(data.receivingEntries));
+      if (Array.isArray(data.dailyExpenses)) setScopedItem(KHATA_STORAGE_KEYS.DAILY_EXPENSES, JSON.stringify(data.dailyExpenses));
     }
 
     return true;

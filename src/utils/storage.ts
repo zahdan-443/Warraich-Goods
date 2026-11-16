@@ -538,7 +538,17 @@ export async function autoReconcileAllLocalToCloud(targetUid?: string): Promise<
     }
 
     // Also migrate guest khata keys
-    const khataGuestKeys = ['dd_khata_accounts_v2', 'dd_khata_entries_v2', 'dd_khata_cashbook_v2'];
+    const khataGuestKeys = [
+      'dd_khata_accounts_v2',
+      'dd_khata_entries_v2',
+      'dd_khata_cashbook_v2',
+      'dd_khata_bills_v2',
+      'dd_khata_employees_v2',
+      'dd_khata_employee_entries_v2',
+      'dd_khata_receiving_points_v2',
+      'dd_khata_receiving_entries_v2',
+      'dd_khata_daily_expenses_v2'
+    ];
     for (const kKey of khataGuestKeys) {
       const gKey = `${kKey}_guest`;
       const gData = safeStorage.getItem(gKey);
@@ -2443,6 +2453,22 @@ export async function executeImmediateAccountDeletion(userId: string): Promise<{
     syncCollections.forEach(col => {
       safeStorage.removeItem(getScopedStorageKey(col, userId));
     });
+    const khataScopedBases = [
+      'dd_khata_accounts_v2',
+      'dd_khata_entries_v2',
+      'dd_khata_cashbook_v2',
+      'dd_khata_settings_v2',
+      'dd_khata_doc_queue_v2',
+      'dd_khata_bills_v2',
+      'dd_khata_employees_v2',
+      'dd_khata_employee_entries_v2',
+      'dd_khata_receiving_points_v2',
+      'dd_khata_receiving_entries_v2',
+      'dd_khata_daily_expenses_v2'
+    ];
+    khataScopedBases.forEach(base => {
+      safeStorage.removeItem(`${base}_${userId}`);
+    });
     safeStorage.removeItem(`ah-deletion-${userId}`);
     safeStorage.removeItem('ah-gmail-user');
     safeStorage.removeItem('ah-gmail-user-uid');
@@ -2485,6 +2511,22 @@ export async function purgeExpiredAccountData(userId: string): Promise<boolean> 
       const syncCollections = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel', 'routes', 'khata'];
       syncCollections.forEach(col => {
         safeStorage.removeItem(getScopedStorageKey(col, userId));
+      });
+      const khataScopedBases = [
+        'dd_khata_accounts_v2',
+        'dd_khata_entries_v2',
+        'dd_khata_cashbook_v2',
+        'dd_khata_settings_v2',
+        'dd_khata_doc_queue_v2',
+        'dd_khata_bills_v2',
+        'dd_khata_employees_v2',
+        'dd_khata_employee_entries_v2',
+        'dd_khata_receiving_points_v2',
+        'dd_khata_receiving_entries_v2',
+        'dd_khata_daily_expenses_v2'
+      ];
+      khataScopedBases.forEach(base => {
+        safeStorage.removeItem(`${base}_${userId}`);
       });
       safeStorage.removeItem(`ah-deletion-${userId}`);
 

@@ -10,8 +10,22 @@
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { LedgerAccount, LedgerEntry } from '../types';
+import {
+  KhataBill,
+  KhataEmployee,
+  KhataEmployeeEntry,
+  KhataReceivingEntry,
+  KhataReceivingPoint,
+  LedgerAccount,
+  LedgerEntry
+} from '../types';
 import { calculateAccountBalance, formatPhoneForDisplay } from './ledgerStorage';
+import {
+  ReportsHubAnalytics,
+  calculateEmployeeLedgerSummary,
+  calculateReceivingPointSummary,
+  isEmployeeCreditType
+} from './khataModulesStorage';
 
 export interface GenerateAccountStatementOptions {
   account: LedgerAccount;
@@ -356,3 +370,381 @@ export async function downloadOrSharePdf(doc: jsPDF, filename: string): Promise<
 
   doc.save(filename);
 }
+
+// =========================================================================
+// v1.3.0 KHATA EXPANSION PDF GENERATORS (100% LOCAL jsPDF)
+// =========================================================================
+
+export function generateBillPdf({
+  bill,
+  businessName
+}: {
+  bill: KhataBill;
+  businessName?: string;
+}): { doc: jsPDF; filename: string } {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const appTitle = businessName?.trim() ? `${businessName.trim()} | Driver Dost` : 'Driver Dost - Digital Khata';
+
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, 595, 82, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(appTitle, 40, 40);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(203, 213, 225);
+  doc.text(`Tax / Freight Invoice • ${bill.billNumber}`, 40, 60);
+
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(40, 96, 515, 76, 4, 4, 'FD');
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Bill To: ${bill.partyName}`, 54, 118);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Bill No: ${bill.billNumber}   |   Date: ${bill.date}`, 54, 136);
+  const metaParts: string[] = [];
+  if (bill.partyPhone) metaParts.push(`Phone: ${formatPhoneForDisplay(bill.partyPhone)}`);
+  if (bill.vehicleNo) metaParts.push(`Vehicle: ${bill.vehicleNo}`);
+  if (bill.linkedDocNo) metaParts.push(`Ref Doc: ${bill.linkedDocNo}`);
+  if (metaParts.length > 0) {
+    doc.text(metaParts.join('   |   '), 54, 154);
+  }
+
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  doc.text('Balance Due:', 410, 118);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  if (bill.status === 'paid') {
+    doc.setTextColor(5, 150, 105);
+    doc.text('PAID', 410, 138);
+  } else {
+    doc.setTextColor(225, 29, 72);
+    doc.text(`PKR ${bill.balance.toLocaleString('en-US')}`, 410, 138);
+  }
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Status: ${bill.status.toUpperCase()}`, 410, 154);
+
+  const rows = bill.lineItems.map((it, i) => [
+    String(i + 1),
+    it.description || '-',
+    String(it.qty),
+    `PKR ${it.rate.toLocaleString('en-US')}`,
+    `PKR ${it.amount.toLocaleString('en-US')}`
+  ]);
+
+  autoTable(doc, {
+    startY: 188,
+    head: [['#', 'Description / Route', 'Qty', 'Rate', 'Amount (PKR)']],
+    body: rows,
+    theme: 'striped',
+    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 9 },
+    styles: { fontSize: 8.5, cellPadding: 6 },
+    columnStyles: {
+      0: { cellWidth: 30 },
+      1: { cellWidth: 255 },
+      2: { cellWidth: 50, halign: 'right' },
+      3: { cellWidth: 85, halign: 'right' },
+      4: { cellWidth: 95, halign: 'right', fontStyle: 'bold' }
+    }
+  });
+
+  const tableEndY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 18 : 340;
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(51, 65, 85);
+  let y = tableEndY;
+  const printSummaryLine = (label: string, val: number, bold = false) => {
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.text(label, 350, y);
+    doc.text(`PKR ${val.toLocaleString('en-US')}`, 545, y, { align: 'right' });
+    y += 16;
+  };
+  printSummaryLine('Subtotal:', bill.subtotal);
+  if (bill.extraCharges > 0) printSummaryLine('Extra Charges:', bill.extraCharges);
+  if (bill.discount > 0) printSummaryLine('Discount:', -bill.discount);
+  printSummaryLine('Total Bill:', bill.total, true);
+  printSummaryLine('Advance / Paid:', bill.advance);
+  printSummaryLine('Balance Payable:', bill.balance, true);
+
+  if (bill.notes) {
+    y += 10;
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Notes: ${bill.notes}`, 40, y);
+  }
+
+  doc.setFontSize(8);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Generated locally by Driver Dost Digital Khata.', 40, Math.max(y + 28, 760));
+
+  const cleanNo = bill.billNumber.replace(/[^a-zA-Z0-9_-]/g, '_');
+  return { doc, filename: `Invoice_${cleanNo}_${bill.date}.pdf` };
+}
+
+export function generateEmployeeStatementPdf({
+  employee,
+  entries,
+  businessName
+}: {
+  employee: KhataEmployee;
+  entries: KhataEmployeeEntry[];
+  businessName?: string;
+}): { doc: jsPDF; filename: string } {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const appTitle = businessName?.trim() ? `${businessName.trim()} | Driver Dost` : 'Driver Dost - Digital Khata';
+  const summary = calculateEmployeeLedgerSummary(entries);
+
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, 595, 80, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(appTitle, 40, 40);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(203, 213, 225);
+  doc.text(`Employee Salary & Advance Statement • ${new Date().toISOString().split('T')[0]}`, 40, 60);
+
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(40, 95, 515, 74, 4, 4, 'FD');
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.text(employee.name, 54, 118);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Role: ${employee.role.toUpperCase()}  |  Pay Basis: ${employee.payBasis === 'monthly' ? 'Monthly' : 'Per Trip'} (PKR ${employee.rateAmount.toLocaleString('en-US')})`, 54, 136);
+  doc.text(`Joined: ${employee.joiningDate}${employee.phone ? `  |  Phone: ${formatPhoneForDisplay(employee.phone)}` : ''}`, 54, 152);
+
+  doc.setFontSize(8);
+  doc.text('Net Balance:', 410, 118);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  if (summary.netBalance > 0) doc.setTextColor(5, 150, 105);
+  else if (summary.netBalance < 0) doc.setTextColor(225, 29, 72);
+  else doc.setTextColor(71, 85, 105);
+  doc.text(`PKR ${Math.abs(summary.netBalance).toLocaleString('en-US')}`, 410, 138);
+  doc.setFontSize(8);
+  doc.text(
+    summary.netBalance > 0 ? '(Salary Payable)' : summary.netBalance < 0 ? '(Advance Recoverable)' : '(Settled)',
+    410,
+    152
+  );
+
+  const sorted = [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  let running = 0;
+  const rows = sorted.map(e => {
+    const isCredit = isEmployeeCreditType(e.type);
+    running += isCredit ? e.amount : -e.amount;
+    return [
+      e.date,
+      e.type.replace('_', ' ').toUpperCase(),
+      e.notes || '-',
+      isCredit ? `PKR ${e.amount.toLocaleString('en-US')}` : '-',
+      !isCredit ? `PKR ${e.amount.toLocaleString('en-US')}` : '-',
+      `PKR ${running.toLocaleString('en-US')}`
+    ];
+  });
+
+  autoTable(doc, {
+    startY: 184,
+    head: [['Date', 'Type', 'Notes', 'Earned (+)', 'Paid/Adv (-)', 'Balance']],
+    body: rows,
+    theme: 'striped',
+    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 8.5 },
+    styles: { fontSize: 8, cellPadding: 5 },
+    foot: [[
+      'TOTAL',
+      `${entries.length} entries`,
+      '',
+      `PKR ${summary.totalEarned.toLocaleString('en-US')}`,
+      `PKR ${summary.totalPaidAndDeducted.toLocaleString('en-US')}`,
+      `PKR ${summary.netBalance.toLocaleString('en-US')}`
+    ]],
+    footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
+  });
+
+  const cleanName = employee.name.replace(/[^a-zA-Z0-9]/g, '_');
+  return { doc, filename: `Employee_Statement_${cleanName}_${new Date().toISOString().split('T')[0]}.pdf` };
+}
+
+export function generateReceivingPointStatementPdf({
+  point,
+  entries,
+  businessName
+}: {
+  point: KhataReceivingPoint;
+  entries: KhataReceivingEntry[];
+  businessName?: string;
+}): { doc: jsPDF; filename: string } {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const appTitle = businessName?.trim() ? `${businessName.trim()} | Driver Dost` : 'Driver Dost - Digital Khata';
+  const summary = calculateReceivingPointSummary(entries);
+
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, 595, 80, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(appTitle, 40, 40);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(203, 213, 225);
+  doc.text(`Receiving Point Statement • ${new Date().toISOString().split('T')[0]}`, 40, 60);
+
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(40, 95, 515, 72, 4, 4, 'FD');
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${point.name} (${point.city})`, 54, 118);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  if (point.contactPerson || point.phone) {
+    doc.text(
+      `${point.contactPerson ? `Contact: ${point.contactPerson}  ` : ''}${point.phone ? `Phone: ${formatPhoneForDisplay(point.phone)}` : ''}`,
+      54,
+      138
+    );
+  }
+
+  doc.setFontSize(8);
+  doc.text('Pending Balance:', 410, 118);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(summary.pendingBalance >= 0 ? 5 : 225, summary.pendingBalance >= 0 ? 150 : 29, summary.pendingBalance >= 0 ? 105 : 72);
+  doc.text(`PKR ${summary.pendingBalance.toLocaleString('en-US')}`, 410, 138);
+
+  const sorted = [...entries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  let running = 0;
+  const rows = sorted.map(e => {
+    running += e.type === 'received' ? e.amount : -e.amount;
+    return [
+      e.date,
+      e.type === 'received' ? 'RECEIVED / BILLED' : 'PAID / REMITTED',
+      e.notes || '-',
+      e.type === 'received' ? `PKR ${e.amount.toLocaleString('en-US')}` : '-',
+      e.type === 'paid' ? `PKR ${e.amount.toLocaleString('en-US')}` : '-',
+      `PKR ${running.toLocaleString('en-US')}`
+    ];
+  });
+
+  autoTable(doc, {
+    startY: 182,
+    head: [['Date', 'Type', 'Notes', 'Received', 'Paid', 'Pending']],
+    body: rows,
+    theme: 'striped',
+    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 8.5 },
+    styles: { fontSize: 8, cellPadding: 5 },
+    foot: [[
+      'TOTAL',
+      `${entries.length} entries`,
+      '',
+      `PKR ${summary.totalReceived.toLocaleString('en-US')}`,
+      `PKR ${summary.totalPaid.toLocaleString('en-US')}`,
+      `PKR ${summary.pendingBalance.toLocaleString('en-US')}`
+    ]],
+    footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
+  });
+
+  const cleanName = point.name.replace(/[^a-zA-Z0-9]/g, '_');
+  return { doc, filename: `ReceivingPoint_${cleanName}_${new Date().toISOString().split('T')[0]}.pdf` };
+}
+
+export function generateReportsSummaryPdf({
+  analytics,
+  businessName
+}: {
+  analytics: ReportsHubAnalytics;
+  businessName?: string;
+}): { doc: jsPDF; filename: string } {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const appTitle = businessName?.trim() ? `${businessName.trim()} | Driver Dost` : 'Driver Dost - Business Reports';
+
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, 595, 80, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(appTitle, 40, 40);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(203, 213, 225);
+  doc.text(`Financial & Fleet Summary (${analytics.startDate} to ${analytics.endDate})`, 40, 60);
+
+  const summaryRows = [
+    ['1. Income vs Expenses', `Income: PKR ${analytics.incomeVsExpense.totalIncome.toLocaleString('en-US')} | Expenses: PKR ${analytics.incomeVsExpense.totalExpenses.toLocaleString('en-US')}`, `Net: PKR ${analytics.incomeVsExpense.netProfit.toLocaleString('en-US')}`],
+    ['2. Party Receivable / Payable', `Receivable: PKR ${analytics.partyReceivablePayable.totalReceivable.toLocaleString('en-US')} | Payable: PKR ${analytics.partyReceivablePayable.totalPayable.toLocaleString('en-US')}`, `Net: PKR ${analytics.partyReceivablePayable.netBalance.toLocaleString('en-US')}`],
+    ['3. Broker Commission Due', `Brokers: ${analytics.brokerCommissionDue.brokerCount} | Paid: PKR ${analytics.brokerCommissionDue.totalPaidToBrokers.toLocaleString('en-US')}`, `Due: PKR ${analytics.brokerCommissionDue.totalCommissionDue.toLocaleString('en-US')}`],
+    ['4. Employees (Period)', `Due: PKR ${analytics.employeeSummary.totalSalaryDue.toLocaleString('en-US')} | Advances: PKR ${analytics.employeeSummary.totalAdvance.toLocaleString('en-US')}`, `Paid: PKR ${analytics.employeeSummary.totalSalaryPaid.toLocaleString('en-US')}`],
+    ['5. Receiving Points', `Received: PKR ${analytics.receivingPointsSummary.totalReceived.toLocaleString('en-US')} | Paid: PKR ${analytics.receivingPointsSummary.totalPaid.toLocaleString('en-US')}`, `Pending: PKR ${analytics.receivingPointsSummary.totalPending.toLocaleString('en-US')}`],
+    ['6. Bills Summary', `Bills: ${analytics.billsSummary.totalCount} (Paid: ${analytics.billsSummary.paidCount}, Unpaid: ${analytics.billsSummary.unpaidCount})`, `Balance: PKR ${analytics.billsSummary.totalPendingBalance.toLocaleString('en-US')}`]
+  ];
+
+  autoTable(doc, {
+    startY: 98,
+    head: [['Module', 'Breakdown', 'Key Metric']],
+    body: summaryRows,
+    theme: 'striped',
+    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontSize: 9 },
+    styles: { fontSize: 8.5, cellPadding: 6 }
+  });
+
+  if (analytics.vehicleProfitLoss.length > 0) {
+    const startY = ((doc as any).lastAutoTable?.finalY || 260) + 18;
+    autoTable(doc, {
+      startY,
+      head: [['Vehicle No', 'Trips / Exps', 'Income (PKR)', 'Expenses (PKR)', 'Net Profit (PKR)']],
+      body: analytics.vehicleProfitLoss.map(v => [
+        v.vehicleNo,
+        `${v.tripsCount} trips / ${v.dailyExpensesCount} exp`,
+        v.income.toLocaleString('en-US'),
+        v.expenses.toLocaleString('en-US'),
+        v.netProfit.toLocaleString('en-US')
+      ]),
+      theme: 'grid',
+      headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontSize: 8.5 },
+      styles: { fontSize: 8, cellPadding: 5 }
+    });
+  }
+
+  if (analytics.expensesByCategory.items.length > 0) {
+    const startY = ((doc as any).lastAutoTable?.finalY || 420) + 18;
+    autoTable(doc, {
+      startY,
+      head: [['Expense Category', 'Amount (PKR)', 'Share (%)']],
+      body: analytics.expensesByCategory.items.map(c => [
+        c.category.toUpperCase(),
+        `PKR ${c.amount.toLocaleString('en-US')}`,
+        `${c.percentage}%`
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [217, 119, 6], textColor: [255, 255, 255], fontSize: 8.5 },
+      styles: { fontSize: 8, cellPadding: 5 }
+    });
+  }
+
+  return {
+    doc,
+    filename: `DriverDost_Reports_${analytics.startDate}_to_${analytics.endDate}.pdf`
+  };
+}
+

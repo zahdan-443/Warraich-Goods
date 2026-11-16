@@ -39,6 +39,7 @@ import {
   calculateVehicleProfitLoss,
   evaluateArithmetic
 } from '../../utils/ledgerStorage';
+import { getAllDailyExpenses } from '../../utils/khataModulesStorage';
 
 interface VehicleAccountViewProps {
   lang: Language;
@@ -723,6 +724,27 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
               </div>
             </div>
 
+            {(() => {
+              const cleanVeh = vehicleNo.trim().toUpperCase();
+              const linkedDaily = cleanVeh
+                ? getAllDailyExpenses().filter(d => (d.vehicleNo || '').trim().toUpperCase() === cleanVeh)
+                : [];
+              if (linkedDaily.length === 0) return null;
+              const linkedTotal = linkedDaily.reduce((s, d) => s + (Number(d.amount) || 0), 0);
+              return (
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl px-3.5 py-2 text-xs text-blue-900 flex items-center justify-between gap-2">
+                  <span>
+                    {isUrdu
+                      ? `اس گاڑی (${cleanVeh}) کے ${linkedDaily.length} روزمرہ اخراجات کیش بک میں الگ درج ہیں (ڈبل گنتی سے بچاؤ)`
+                      : `${linkedDaily.length} Daily Expense log(s) for ${cleanVeh} synced in Cashbook (excluded here to avoid double counting)`}
+                  </span>
+                  <span className="font-mono font-bold shrink-0">
+                    PKR {linkedTotal.toLocaleString('en-US')}
+                  </span>
+                </div>
+              );
+            })()}
+
             {/* SECTION 1: آمدن و کرایہ جات (FREIGHT INCOMES) */}
             <div className="bg-[#f4f9f1] dark:bg-[#142219] p-4 sm:p-6 rounded-[24px] border-2 border-emerald-600/30 dark:border-emerald-700/60 space-y-4">
               <div className="flex items-center justify-between">
@@ -1358,9 +1380,21 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                           {isIn ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
                         </div>
                         <div>
-                          <span className="text-xs font-bold text-[#4a4a35] capitalize">
-                            {entry.category || (isIn ? 'Cash In' : 'Expense')}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-bold text-[#4a4a35] capitalize">
+                              {entry.category || (isIn ? 'Cash In' : 'Expense')}
+                            </span>
+                            {entry.vehicleNo && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono">
+                                {entry.vehicleNo}
+                              </span>
+                            )}
+                            {entry.sourceModule === 'daily_expense' && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700">
+                                {isUrdu ? 'روزمرہ خرچ' : 'Daily Exp'}
+                              </span>
+                            )}
+                          </div>
                           {entry.note && (
                             <p className="text-xs text-[#8e8e75] mt-0.5 truncate">
                               {entry.note}
@@ -1416,6 +1450,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
           type={showAddCashModal}
           initialDate={selectedCashDate}
           initialEntry={editingCashEntry}
+          vehicles={vehicles}
           lang={lang}
           onSaved={() => {
             setShowAddCashModal(null);
@@ -1437,6 +1472,7 @@ interface CashFormModalProps {
   type: 'in' | 'out';
   initialDate: string;
   initialEntry: CashEntry | null;
+  vehicles?: Vehicle[];
   lang: Language;
   onSaved: (entry: CashEntry) => void;
 }
@@ -1447,6 +1483,7 @@ const CashFormModal: React.FC<CashFormModalProps> = ({
   type,
   initialDate,
   initialEntry,
+  vehicles = [],
   lang,
   onSaved,
 }) => {
@@ -1458,6 +1495,7 @@ const CashFormModal: React.FC<CashFormModalProps> = ({
   );
   const [date, setDate] = useState(initialEntry?.date || initialDate);
   const [category, setCategory] = useState(initialEntry?.category || (isIn ? 'advance' : 'fuel'));
+  const [selectedVehicleNo, setSelectedVehicleNo] = useState(initialEntry?.vehicleNo || '');
   const [note, setNote] = useState(initialEntry?.note || '');
 
   const evaluatedAmount = useMemo(() => {
@@ -1475,7 +1513,10 @@ const CashFormModal: React.FC<CashFormModalProps> = ({
       amount: finalAmount,
       date,
       category,
-      note: note.trim()
+      vehicleNo: selectedVehicleNo.trim() || undefined,
+      note: note.trim(),
+      sourceModule: initialEntry?.sourceModule,
+      linkedExpenseId: initialEntry?.linkedExpenseId
     });
     onSaved(saved);
   };
@@ -1487,8 +1528,8 @@ const CashFormModal: React.FC<CashFormModalProps> = ({
     { id: 'toll', icon: '🛣️', ur: 'ٹول', en: 'Toll' },
     { id: 'maintenance', icon: '🔧', ur: 'مرمت', en: 'Repair' },
     { id: 'food', icon: '☕', ur: 'کھانا', en: 'Food' },
-    { id: 'kharcha', icon: '👤', ur: 'خرچہ', en: 'Kharcha' },
-    { id: 'challan', icon: '📄', ur: 'چالان', en: 'Challan' },
+    { id: 'parking', icon: '🅿️', ur: 'پارکنگ', en: 'Parking' },
+    { id: 'fine', icon: '📄', ur: 'جرمانہ', en: 'Fine' },
     { id: 'advance', icon: '💸', ur: 'ایڈوانس', en: 'Advance' },
     { id: 'other', icon: '📦', ur: 'دیگر', en: 'Other' }
   ];
@@ -1562,17 +1603,36 @@ const CashFormModal: React.FC<CashFormModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-bold text-[#4a4a35] block mb-1">
-              {isUrdu ? 'تاریخ' : 'Date'}
-            </label>
-            <input
-              type="date"
-              required
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              className="w-full min-h-[44px] px-3.5 py-2.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] text-sm text-[#4a4a35] focus:outline-none"
-            />
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <label className="text-xs font-bold text-[#4a4a35] block mb-1">
+                {isUrdu ? 'تاریخ' : 'Date'}
+              </label>
+              <input
+                type="date"
+                required
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                className="w-full min-h-[44px] px-3 py-2.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] text-sm text-[#4a4a35] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-[#4a4a35] block mb-1">
+                {isUrdu ? 'گاڑی (اختیاری)' : 'Vehicle (Optional)'}
+              </label>
+              <select
+                value={selectedVehicleNo}
+                onChange={e => setSelectedVehicleNo(e.target.value)}
+                className="w-full min-h-[44px] px-3 py-2.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0] text-xs font-bold text-[#4a4a35] focus:outline-none"
+              >
+                <option value="">{isUrdu ? 'کوئی نہیں' : 'None'}</option>
+                {vehicles.map(v => (
+                  <option key={v.id} value={v.reg}>
+                    {v.reg}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>

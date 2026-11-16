@@ -65,7 +65,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
                 {isUrdu ? 'پرائیویسی پالیسی و ڈیٹا تحفظ' : 'Privacy Policy & Data Protection'}
               </h2>
               <p className="text-xs text-blue-200 font-sans mt-0.5">
-                Driver Dost · Warraich Goods Transport Co. · v{APP_VERSION} · 24 October 2026
+                Driver Dost · Warraich Goods Transport Co. · v{APP_VERSION} · 15 November 2026
               </p>
             </div>
           </div>
@@ -97,8 +97,8 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             </div>
             <p className="text-xs text-[#5a5a40] leading-relaxed">
               {isUrdu
-                ? 'ڈرائیور دوست میں گیسٹ موڈ کے دوران تمام ریکارڈز آپ کی ڈیوائس پر محفوظ رہتے ہیں۔ اگر آپ گوگل کے ساتھ سائن اِن کریں تو وہ گوگل فائر بیس پر آپ کے نجی اکاؤنٹ میں سنک ہو جاتے ہیں۔ آپ کے سفری حسابات، گاڑیوں کے لاگز، فیول رسیدیں اور کاروباری دستاویزات محفوظ رہتے ہیں۔'
-                : 'Records stay on your device in guest mode; if you sign in with Google they sync to your private account on Google Firebase. All your trip calculations, vehicle expense records, fuel logs, and business documents are kept safe.'}
+                ? 'ڈرائیور دوست میں گیسٹ موڈ کے دوران تمام ریکارڈز آپ کی ڈیوائس پر محفوظ رہتے ہیں۔ اگر آپ گوگل کے ساتھ سائن اِن کریں تو وہ گوگل فائر بیس پر آپ کے نجی اکاؤنٹ میں سنک ہو جاتے ہیں۔ آپ کے سفری حسابات، گاڑیوں کے لاگز، فیول رسیدیں، پارٹی کھاتہ، بلز/انوائس، ملازمین کے نام/فون نمبر و تنخواہ کے اندراجات (بغیر کسی شناختی کارڈ یا سرکاری آئی ڈی نمبر کے)، ریسیونگ پوائنٹس، روزمرہ اخراجات اور کاروباری دستاویزات صرف آپ کی ڈیوائس یا آپ کے نجی اکاؤنٹ تک محدود اور محفوظ رہتے ہیں۔'
+                : 'Records stay on your device in guest mode; if you sign in with Google they sync strictly to your private account on Google Firebase. Trip calculations, vehicle expense logs, fuel receipts, party ledgers, bills/invoices, employee names, phone numbers and salary entries (without any CNIC or government ID numbers), receiving points, daily expenses, and business reports remain exclusively in your own device or private account.'}
             </p>
           </div>
 

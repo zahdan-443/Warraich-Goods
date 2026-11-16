@@ -220,6 +220,30 @@
     "/crashReports/{reportId}": {
       "schema": "CrashReport",
       "description": "Automated device diagnostics and crash telemetry logs"
+    },
+    "/users/{userId}/khataBills/{billId}": {
+      "schema": "UserData",
+      "description": "User isolated invoices and bills"
+    },
+    "/users/{userId}/khataEmployees/{employeeId}": {
+      "schema": "UserData",
+      "description": "User isolated employee master records (no government IDs)"
+    },
+    "/users/{userId}/khataEmployeeEntries/{entryId}": {
+      "schema": "UserData",
+      "description": "User isolated employee salary, advance, deduction, bonus, and allowance entries"
+    },
+    "/users/{userId}/khataReceivingPoints/{pointId}": {
+      "schema": "UserData",
+      "description": "User isolated receiving point master records"
+    },
+    "/users/{userId}/khataReceivingEntries/{entryId}": {
+      "schema": "UserData",
+      "description": "User isolated receiving point received/paid ledger entries"
+    },
+    "/users/{userId}/khataDailyExpenses/{expenseId}": {
+      "schema": "UserData",
+      "description": "User isolated categorized daily expenses mirrored to cashbook without double counting"
     }
   }
 }

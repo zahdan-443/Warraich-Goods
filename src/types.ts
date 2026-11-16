@@ -2,7 +2,16 @@ export type Language = 'en' | 'ur';
 export type FuelType = 'diesel' | 'petrol' | 'cng';
 export type ActiveTab = 'home' | 'calculator' | 'vehicle' | 'drivers' | 'routes' | 'fuel' | 'verify' | 'bilty' | 'vehicleAccount' | 'map' | 'toll' | 'navigation' | 'dashcam' | 'ledger';
 export type CalcSubTab = 'calc' | 'history' | 'summary';
-export type LedgerSubTab = 'parties' | 'brokers' | 'cashbook' | 'vehicleProfitLoss';
+export type LedgerSubTab =
+  | 'parties'
+  | 'brokers'
+  | 'cashbook'
+  | 'vehicleProfitLoss'
+  | 'bills'
+  | 'employees'
+  | 'receiving_points'
+  | 'daily_expenses'
+  | 'reports';
 
 export interface LedgerAccount {
   id: string;
@@ -37,7 +46,10 @@ export interface CashEntry {
   amount: number; // (> 0)
   date: string; // 'YYYY-MM-DD'
   note?: string;
-  category?: 'fuel' | 'toll' | 'maintenance' | 'food' | 'kharcha' | 'challan' | 'advance' | 'other' | string;
+  category?: 'fuel' | 'toll' | 'maintenance' | 'food' | 'kharcha' | 'challan' | 'advance' | 'parking' | 'fine' | 'other' | string;
+  vehicleNo?: string;
+  sourceModule?: 'manual' | 'daily_expense' | 'vehicle_account';
+  linkedExpenseId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -48,6 +60,124 @@ export interface KhataSettings {
   pinSalt?: string;
   pinLockoutUntil?: number;
   pinFailedAttempts?: number;
+  schemaVersion?: number;
+}
+
+// ----------------- KHATA v1.3.0 EXPANSION MODELS -----------------
+
+export interface KhataBillLineItem {
+  id: string;
+  description: string;
+  qty: number;
+  rate: number;
+  amount: number;
+}
+
+export type KhataBillStatus = 'unpaid' | 'partial' | 'paid';
+
+export interface KhataBill {
+  id: string;
+  billNumber: string; // Auto-generated sequential number e.g. BILL-0001
+  date: string; // 'YYYY-MM-DD'
+  partyId?: string; // Optional link to LedgerAccount
+  partyName: string;
+  partyPhone?: string;
+  vehicleNo?: string;
+  lineItems: KhataBillLineItem[];
+  extraCharges: number;
+  discount: number;
+  advance: number;
+  subtotal: number;
+  total: number;
+  balance: number;
+  status: KhataBillStatus;
+  notes?: string;
+  linkedDocId?: string; // Reference id if created from an authorised freight document
+  linkedDocNo?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type KhataEmployeeRole = 'driver' | 'munshi' | 'helper' | 'other';
+export type KhataEmployeePayBasis = 'monthly' | 'per_trip';
+
+export interface KhataEmployee {
+  id: string;
+  name: string;
+  role: KhataEmployeeRole;
+  phone?: string;
+  payBasis: KhataEmployeePayBasis;
+  rateAmount: number;
+  joiningDate: string; // 'YYYY-MM-DD'
+  active: boolean;
+  linkedDriverId?: number; // Optional link to Driver record
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type KhataEmployeeEntryType =
+  | 'salary_due'
+  | 'advance'
+  | 'salary_paid'
+  | 'deduction'
+  | 'bonus'
+  | 'trip_allowance';
+
+export interface KhataEmployeeEntry {
+  id: string;
+  employeeId: string;
+  date: string; // 'YYYY-MM-DD'
+  type: KhataEmployeeEntryType;
+  amount: number; // (> 0)
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KhataReceivingPoint {
+  id: string;
+  name: string;
+  city: string;
+  contactPerson?: string;
+  phone?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type KhataReceivingEntryType = 'received' | 'paid';
+
+export interface KhataReceivingEntry {
+  id: string;
+  pointId: string;
+  date: string; // 'YYYY-MM-DD'
+  type: KhataReceivingEntryType;
+  amount: number; // (> 0)
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type KhataExpenseCategory =
+  | 'fuel'
+  | 'toll'
+  | 'meals'
+  | 'repair'
+  | 'parking'
+  | 'fine'
+  | 'other';
+
+export interface KhataDailyExpense {
+  id: string;
+  date: string; // 'YYYY-MM-DD'
+  category: KhataExpenseCategory;
+  amount: number; // (> 0)
+  vehicleNo?: string;
+  notes?: string;
+  linkedCashEntryId?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface PartyTransaction {
@@ -280,6 +410,8 @@ export interface BiltyRecord {
   pendingOnlineNumber?: boolean;
   branch?: BiltyBranch;
   language?: BiltyLanguage;
+  receivingPointId?: string;
+  receivingPointName?: string;
   podConfirmation?: PodConfirmation;
   isDelivered?: boolean;
   legalVault?: BiltyLegalVault;

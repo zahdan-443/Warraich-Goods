@@ -5,7 +5,10 @@ import {
   LedgerEntry,
   KhataSettings,
   Vehicle,
-  Trip
+  Trip,
+  Driver,
+  BiltyRecord,
+  LedgerSubTab
 } from '../../types';
 import {
   getLedgerAccounts,
@@ -64,15 +67,26 @@ import {
   ChevronRight,
   ChevronLeft,
   Smartphone,
-  Delete
+  Delete,
+  Receipt,
+  MapPin,
+  Wallet,
+  BarChart3
 } from 'lucide-react';
 import { auth } from '../../utils/firebase';
 import { GuestSavePromptModal } from '../GuestSavePromptModal';
+import { KhataBillsPanel } from './khata/KhataBillsPanel';
+import { KhataEmployeesPanel } from './khata/KhataEmployeesPanel';
+import { KhataReceivingPointsPanel } from './khata/KhataReceivingPointsPanel';
+import { KhataDailyExpensesPanel } from './khata/KhataDailyExpensesPanel';
+import { KhataReportsPanel } from './khata/KhataReportsPanel';
 
 interface LedgerViewProps {
   lang: Language;
   vehicles?: Vehicle[];
   trips?: Trip[];
+  drivers?: Driver[];
+  bilties?: BiltyRecord[];
   isBiltyAuthorized?: boolean;
   onNavigate?: (tab: string) => void;
   userEmail?: string | null;
@@ -83,12 +97,15 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
   lang,
   vehicles = [],
   trips = [],
+  drivers = [],
+  bilties = [],
   isBiltyAuthorized = false,
   onNavigate,
   userEmail = null,
   currentUserUid = null
 }) => {
   const isUrdu = lang === 'ur';
+  const [activeModule, setActiveModule] = useState<LedgerSubTab>('parties');
 
   // Guest Save Verification Modal State
   const [showGuestSaveModal, setShowGuestSaveModal] = useState<boolean>(false);
@@ -874,9 +891,86 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
         </div>
       </div>
 
+      {/* Khata Expansion Dashboard Module Hub (6 Cards) */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-2.5 shrink-0">
+        {([
+          { id: 'parties', ur: 'کھاتہ دار', en: 'Parties', icon: Users, activeCls: 'bg-emerald-600 text-white border-emerald-600' },
+          { id: 'bills', ur: 'بلز / انوائس', en: 'Bills', icon: Receipt, activeCls: 'bg-slate-900 text-white border-slate-900' },
+          { id: 'employees', ur: 'ملازمین', en: 'Staff', icon: Users, activeCls: 'bg-amber-600 text-white border-amber-600' },
+          { id: 'receiving_points', ur: 'ریسیونگ پوائنٹ', en: 'Points', icon: MapPin, activeCls: 'bg-blue-600 text-white border-blue-600' },
+          { id: 'daily_expenses', ur: 'روزمرہ خرچ', en: 'Expenses', icon: Wallet, activeCls: 'bg-rose-600 text-white border-rose-600' },
+          { id: 'reports', ur: 'رپورٹس', en: 'Reports', icon: BarChart3, activeCls: 'bg-emerald-700 text-white border-emerald-700' }
+        ] as Array<{ id: LedgerSubTab; ur: string; en: string; icon: React.ComponentType<any>; activeCls: string }>).map(mod => {
+          const Icon = mod.icon;
+          const isActive = activeModule === mod.id;
+          return (
+            <button
+              key={mod.id}
+              type="button"
+              onClick={() => setActiveModule(mod.id)}
+              className={`min-h-[46px] px-1.5 py-1.5 rounded-2xl border text-[11px] font-bold flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
+                isActive
+                  ? `${mod.activeCls} shadow-sm`
+                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="truncate max-w-full leading-tight">{isUrdu ? mod.ur : mod.en}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Main Scrollable Viewport */}
       <div className="flex-1 overflow-y-auto overscroll-contain pb-24 pr-0.5">
 
+      {activeModule === 'bills' && (
+        <KhataBillsPanel
+          lang={lang}
+          businessName={settings.businessName}
+          vehicles={vehicles}
+          bilties={isBiltyAuthorized ? bilties : []}
+          isBiltyAuthorized={isBiltyAuthorized}
+          onDataChanged={reloadData}
+          onCheckGuestSave={triggerGuestSaveCheck}
+        />
+      )}
+
+      {activeModule === 'employees' && (
+        <KhataEmployeesPanel
+          lang={lang}
+          businessName={settings.businessName}
+          drivers={drivers}
+          onDataChanged={reloadData}
+        />
+      )}
+
+      {activeModule === 'receiving_points' && (
+        <KhataReceivingPointsPanel
+          lang={lang}
+          businessName={settings.businessName}
+          onDataChanged={reloadData}
+        />
+      )}
+
+      {activeModule === 'daily_expenses' && (
+        <KhataDailyExpensesPanel
+          lang={lang}
+          vehicles={vehicles}
+          onDataChanged={reloadData}
+        />
+      )}
+
+      {activeModule === 'reports' && (
+        <KhataReportsPanel
+          lang={lang}
+          businessName={settings.businessName}
+          trips={trips}
+        />
+      )}
+
+      {activeModule === 'parties' && (
+      <>
       {/* Pending Documents Import Banner */}
       {!dismissPendingBanner && pendingDocs.length > 0 && (
         <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 rounded-2xl p-3 mb-3.5 flex items-center justify-between gap-3 shadow-sm">
@@ -1187,6 +1281,8 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
           <span>{isUrdu ? 'نیا کھاتہ' : 'Add Party'}</span>
         </button>
       </div>
+      </>
+      )}
 
       </div>
 

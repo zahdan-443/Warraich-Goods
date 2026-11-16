@@ -43,6 +43,13 @@ export const KHATA_STORAGE_KEYS = {
   CASHBOOK: 'dd_khata_cashbook_v2',
   SETTINGS: 'dd_khata_settings_v2',
   OFFLINE_QUEUE: 'dd_khata_doc_queue_v2',
+  // v1.3.0 Khata Expansion Keys
+  BILLS: 'dd_khata_bills_v2',
+  EMPLOYEES: 'dd_khata_employees_v2',
+  EMPLOYEE_ENTRIES: 'dd_khata_employee_entries_v2',
+  RECEIVING_POINTS: 'dd_khata_receiving_points_v2',
+  RECEIVING_ENTRIES: 'dd_khata_receiving_entries_v2',
+  DAILY_EXPENSES: 'dd_khata_daily_expenses_v2',
   // Legacy keys for backward compatibility
   LEGACY_PARTIES: 'dd_ledger_parties',
   LEGACY_PARTY_TXS: 'dd_ledger_party_transactions',
@@ -439,6 +446,15 @@ export function enqueueKhataDocSync(item: Omit<KhataDocQueueItem, 'id' | 'timest
   }
 }
 
+const KHATA_FLAT_COLLECTIONS = [
+  'khataBills',
+  'khataEmployees',
+  'khataEmployeeEntries',
+  'khataReceivingPoints',
+  'khataReceivingEntries',
+  'khataDailyExpenses'
+] as const;
+
 /**
  * Processes queued per-document sync actions when online
  */
@@ -478,12 +494,19 @@ export async function processKhataDocQueue(): Promise<{ processed: number; remai
         } else {
           await deleteDoc(ref);
         }
+      } else if ((KHATA_FLAT_COLLECTIONS as readonly string[]).includes(item.collectionPath)) {
+        const ref = doc(db, 'users', user.uid, item.collectionPath, item.docId);
+        if (item.action === 'upsert') {
+          await setDoc(ref, item.data, { merge: true });
+        } else {
+          await deleteDoc(ref);
+        }
       } else if (item.collectionPath === 'khataSettings') {
         const ref = doc(db, 'users', user.uid, 'khataSettings', item.docId);
         await setDoc(ref, item.data, { merge: true });
       }
       processed++;
-    } catch (err) {
+    } catch {
       item.retryCount++;
       if (item.retryCount < 5) {
         remaining.push(item);
@@ -569,6 +592,38 @@ async function mirrorSettingsToFirestore(settings: KhataSettings): Promise<void>
   }
 }
 
+export async function mirrorFlatKhataDocToFirestore(
+  collectionPath: (typeof KHATA_FLAT_COLLECTIONS)[number],
+  docData: { id: string; [key: string]: any },
+  action: 'upsert' | 'delete'
+): Promise<void> {
+  const user = auth.currentUser;
+  if (!user || !db) {
+    if (user) enqueueKhataDocSync({ action, collectionPath, docId: docData.id, data: docData });
+    return;
+  }
+
+  try {
+    const ref = doc(db, 'users', user.uid, collectionPath, docData.id);
+    if (action === 'upsert') {
+      await setDoc(ref, docData, { merge: true });
+    } else {
+      await deleteDoc(ref);
+    }
+  } catch {
+    enqueueKhataDocSync({ action, collectionPath, docId: docData.id, data: docData });
+  }
+}
+
+const FLAT_KEY_TO_COLLECTION: Array<{ key: string; coll: (typeof KHATA_FLAT_COLLECTIONS)[number] }> = [
+  { key: KHATA_STORAGE_KEYS.BILLS, coll: 'khataBills' },
+  { key: KHATA_STORAGE_KEYS.EMPLOYEES, coll: 'khataEmployees' },
+  { key: KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, coll: 'khataEmployeeEntries' },
+  { key: KHATA_STORAGE_KEYS.RECEIVING_POINTS, coll: 'khataReceivingPoints' },
+  { key: KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, coll: 'khataReceivingEntries' },
+  { key: KHATA_STORAGE_KEYS.DAILY_EXPENSES, coll: 'khataDailyExpenses' }
+];
+
 // ----------------- FULL FIRESTORE HYDRATION ON LOGIN -----------------
 
 export async function fetchKhataFromFirestore(): Promise<void> {
@@ -651,7 +706,36 @@ export async function fetchKhataFromFirestore(): Promise<void> {
       setJson(KHATA_STORAGE_KEYS.CASHBOOK, Array.from(cashMap.values()));
     }
 
-    // 3. Fetch Settings
+    // 3. Fetch v1.3.0 Khata Expansion Collections
+    for (const { key, coll } of FLAT_KEY_TO_COLLECTION) {
+      try {
+        const collRef = collection(db, 'users', user.uid, coll);
+        const snap = await getDocs(collRef);
+        const cloudItems: Array<{ id: string; updatedAt?: string }> = [];
+        for (const d of snap.docs) {
+          const item = d.data() as { id: string; updatedAt?: string };
+          if (item && item.id) cloudItems.push(item);
+        }
+        if (cloudItems.length > 0) {
+          const localItems = getParsed<Array<{ id: string; updatedAt?: string }>>(key, []);
+          const merged = new Map<string, { id: string; updatedAt?: string }>();
+          for (const li of localItems) merged.set(li.id, li);
+          for (const ci of cloudItems) {
+            const existing = merged.get(ci.id);
+            const ciTime = ci.updatedAt ? new Date(ci.updatedAt).getTime() : 0;
+            const exTime = existing?.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+            if (!existing || ciTime >= exTime) {
+              merged.set(ci.id, ci);
+            }
+          }
+          setJson(key, Array.from(merged.values()));
+        }
+      } catch (e) {
+        console.warn(`[KhataStorage] Fetch notice for ${coll}:`, e);
+      }
+    }
+
+    // 4. Fetch Settings
     const setSnap = await getDoc(doc(db, 'users', user.uid, 'khataSettings', 'config'));
     if (setSnap.exists()) {
       const sdata = setSnap.data() as KhataSettings;
@@ -664,7 +748,7 @@ export async function fetchKhataFromFirestore(): Promise<void> {
 }
 
 /**
- * Pushes all locally created Khata accounts, ledger entries, cashbook records and settings to Firestore
+ * Pushes all locally created Khata accounts, ledger entries, cashbook records, v1.3.0 collections, and settings to Firestore
  */
 export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: number; pushedEntries: number; pushedCash: number }> {
   const user = auth.currentUser;
@@ -682,7 +766,7 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
   // 1. Push settings
   try {
     const setRef = doc(db, 'users', user.uid, 'khataSettings', 'config');
-    await setDoc(setRef, settings, { merge: true });
+    await setDoc(setRef, { ...settings, schemaVersion: 3 }, { merge: true });
   } catch {}
 
   // 2. Push accounts
@@ -710,6 +794,18 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
       await setDoc(ref, cash, { merge: true });
       pushedCash++;
     } catch {}
+  }
+
+  // 5. Push v1.3.0 collections
+  for (const { key, coll } of FLAT_KEY_TO_COLLECTION) {
+    const items = getParsed<Array<{ id: string }>>(key, []);
+    for (const item of items) {
+      if (!item?.id) continue;
+      try {
+        const ref = doc(db, 'users', user.uid, coll, item.id);
+        await setDoc(ref, item, { merge: true });
+      } catch {}
+    }
   }
 
   return { pushedAccounts, pushedEntries, pushedCash };
@@ -879,8 +975,24 @@ export function getCashEntries(date?: string): CashEntry[] {
   return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime() || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
+function mapCashCatToDailyCat(cat?: string): string {
+  switch (cat) {
+    case 'fuel': return 'fuel';
+    case 'toll': return 'toll';
+    case 'food':
+    case 'meals': return 'meals';
+    case 'maintenance':
+    case 'repair': return 'repair';
+    case 'parking': return 'parking';
+    case 'challan':
+    case 'fine': return 'fine';
+    default: return 'other';
+  }
+}
+
 export function saveOrUpdateCashEntry(
-  data: Partial<CashEntry> & { type: 'in' | 'out'; amount: number; date: string }
+  data: Partial<CashEntry> & { type: 'in' | 'out'; amount: number; date: string },
+  options?: { skipExpenseSync?: boolean }
 ): CashEntry {
   const cashList = getAllCashEntries();
   const now = new Date().toISOString();
@@ -904,6 +1016,9 @@ export function saveOrUpdateCashEntry(
       date: data.date,
       note: data.note || '',
       category: data.category || 'other',
+      vehicleNo: data.vehicleNo || undefined,
+      sourceModule: data.sourceModule || 'manual',
+      linkedExpenseId: data.linkedExpenseId || undefined,
       createdAt: now,
       updatedAt: now
     };
@@ -912,10 +1027,41 @@ export function saveOrUpdateCashEntry(
 
   setJson(KHATA_STORAGE_KEYS.CASHBOOK, cashList);
   mirrorCashEntryToFirestore(target, 'upsert');
+
+  // Bi-directional sync with Daily Expenses if this CashEntry is linked to a daily expense
+  if (!options?.skipExpenseSync && (target.linkedExpenseId || target.sourceModule === 'daily_expense')) {
+    const expenses = getParsed<any[]>(KHATA_STORAGE_KEYS.DAILY_EXPENSES, []);
+    const expIdx = expenses.findIndex(
+      e => e.id === target.linkedExpenseId || e.linkedCashEntryId === target.id
+    );
+    if (expIdx >= 0) {
+      if (target.type === 'in') {
+        // Changed to Cash In -> detach or delete linked expense
+        const removed = expenses[expIdx];
+        const nextExps = expenses.filter((_, i) => i !== expIdx);
+        setJson(KHATA_STORAGE_KEYS.DAILY_EXPENSES, nextExps);
+        mirrorFlatKhataDocToFirestore('khataDailyExpenses', removed, 'delete');
+      } else {
+        const updatedExp = {
+          ...expenses[expIdx],
+          date: target.date,
+          amount: target.amount,
+          category: mapCashCatToDailyCat(target.category),
+          vehicleNo: target.vehicleNo,
+          notes: target.note || expenses[expIdx].notes || '',
+          updatedAt: now
+        };
+        expenses[expIdx] = updatedExp;
+        setJson(KHATA_STORAGE_KEYS.DAILY_EXPENSES, expenses);
+        mirrorFlatKhataDocToFirestore('khataDailyExpenses', updatedExp, 'upsert');
+      }
+    }
+  }
+
   return target;
 }
 
-export function deleteCashEntry(id: string): CashEntry | null {
+export function deleteCashEntry(id: string, options?: { skipExpenseSync?: boolean }): CashEntry | null {
   const cashList = getAllCashEntries();
   const target = cashList.find(c => c.id === id);
   if (!target) return null;
@@ -924,6 +1070,19 @@ export function deleteCashEntry(id: string): CashEntry | null {
   setJson(KHATA_STORAGE_KEYS.CASHBOOK, filtered);
 
   mirrorCashEntryToFirestore(target, 'delete');
+
+  if (!options?.skipExpenseSync && (target.linkedExpenseId || target.sourceModule === 'daily_expense')) {
+    const expenses = getParsed<any[]>(KHATA_STORAGE_KEYS.DAILY_EXPENSES, []);
+    const linked = expenses.find(
+      e => e.id === target.linkedExpenseId || e.linkedCashEntryId === target.id
+    );
+    if (linked) {
+      const nextExps = expenses.filter(e => e.id !== linked.id);
+      setJson(KHATA_STORAGE_KEYS.DAILY_EXPENSES, nextExps);
+      mirrorFlatKhataDocToFirestore('khataDailyExpenses', linked, 'delete');
+    }
+  }
+
   return target;
 }
 
@@ -994,12 +1153,19 @@ export function saveKhataSettings(settings: Partial<KhataSettings>): KhataSettin
 export interface KhataBackupData {
   app: 'Driver Dost';
   module: 'khata';
-  version: '2.0';
+  version: '2.0' | '3.0';
+  schemaVersion?: number;
   exportedAt: string;
   businessName: string;
   accounts: LedgerAccount[];
   entries: LedgerEntry[];
   cashEntries: CashEntry[];
+  bills?: any[];
+  employees?: any[];
+  employeeEntries?: any[];
+  receivingPoints?: any[];
+  receivingEntries?: any[];
+  dailyExpenses?: any[];
   checksum: number;
 }
 
@@ -1018,16 +1184,29 @@ export function exportKhataBackup(): string {
   const entries = getAllLedgerEntries();
   const cashEntries = getAllCashEntries();
   const settings = getKhataSettings();
+  const bills = getParsed<any[]>(KHATA_STORAGE_KEYS.BILLS, []);
+  const employees = getParsed<any[]>(KHATA_STORAGE_KEYS.EMPLOYEES, []);
+  const employeeEntries = getParsed<any[]>(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, []);
+  const receivingPoints = getParsed<any[]>(KHATA_STORAGE_KEYS.RECEIVING_POINTS, []);
+  const receivingEntries = getParsed<any[]>(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, []);
+  const dailyExpenses = getParsed<any[]>(KHATA_STORAGE_KEYS.DAILY_EXPENSES, []);
 
   const payload: Omit<KhataBackupData, 'checksum'> = {
     app: 'Driver Dost',
     module: 'khata',
-    version: '2.0',
+    version: '3.0',
+    schemaVersion: 3,
     exportedAt: new Date().toISOString(),
     businessName: settings.businessName || '',
     accounts,
     entries,
-    cashEntries
+    cashEntries,
+    bills,
+    employees,
+    employeeEntries,
+    receivingPoints,
+    receivingEntries,
+    dailyExpenses
   };
 
   const backup: KhataBackupData = {
@@ -1038,10 +1217,34 @@ export function exportKhataBackup(): string {
   return JSON.stringify(backup, null, 2);
 }
 
+function mergeById<T extends { id: string }>(current: T[], incoming?: T[]): T[] {
+  if (!Array.isArray(incoming) || incoming.length === 0) return current;
+  const map = new Map<string, T>();
+  current.forEach(item => {
+    if (item?.id) map.set(item.id, item);
+  });
+  incoming.forEach(item => {
+    if (item?.id && !map.has(item.id)) map.set(item.id, item);
+  });
+  return Array.from(map.values());
+}
+
 export function importKhataBackup(
   jsonStr: string,
   mode: 'merge' | 'replace' = 'merge'
-): { success: boolean; accountsCount: number; entriesCount: number; cashCount: number; error?: string } {
+): {
+  success: boolean;
+  accountsCount: number;
+  entriesCount: number;
+  cashCount: number;
+  billsCount?: number;
+  employeesCount?: number;
+  employeeEntriesCount?: number;
+  receivingPointsCount?: number;
+  receivingEntriesCount?: number;
+  dailyExpensesCount?: number;
+  error?: string;
+} {
   try {
     const data = JSON.parse(jsonStr) as KhataBackupData;
     if (!data || data.app !== 'Driver Dost' || data.module !== 'khata') {
@@ -1052,65 +1255,93 @@ export function importKhataBackup(
       return { success: false, accountsCount: 0, entriesCount: 0, cashCount: 0, error: 'Malformed Khata backup contents' };
     }
 
+    const incomingBills = Array.isArray(data.bills) ? data.bills : [];
+    const incomingEmployees = Array.isArray(data.employees) ? data.employees : [];
+    const incomingEmpEntries = Array.isArray(data.employeeEntries) ? data.employeeEntries : [];
+    const incomingPoints = Array.isArray(data.receivingPoints) ? data.receivingPoints : [];
+    const incomingPointEntries = Array.isArray(data.receivingEntries) ? data.receivingEntries : [];
+    const incomingExpenses = Array.isArray(data.dailyExpenses) ? data.dailyExpenses : [];
+
     if (mode === 'replace') {
       setJson(KHATA_STORAGE_KEYS.ACCOUNTS, data.accounts);
       setJson(KHATA_STORAGE_KEYS.ENTRIES, data.entries);
       setJson(KHATA_STORAGE_KEYS.CASHBOOK, data.cashEntries);
+      if (data.version === '3.0' || Array.isArray(data.bills)) setJson(KHATA_STORAGE_KEYS.BILLS, incomingBills);
+      if (data.version === '3.0' || Array.isArray(data.employees)) setJson(KHATA_STORAGE_KEYS.EMPLOYEES, incomingEmployees);
+      if (data.version === '3.0' || Array.isArray(data.employeeEntries)) setJson(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, incomingEmpEntries);
+      if (data.version === '3.0' || Array.isArray(data.receivingPoints)) setJson(KHATA_STORAGE_KEYS.RECEIVING_POINTS, incomingPoints);
+      if (data.version === '3.0' || Array.isArray(data.receivingEntries)) setJson(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, incomingPointEntries);
+      if (data.version === '3.0' || Array.isArray(data.dailyExpenses)) setJson(KHATA_STORAGE_KEYS.DAILY_EXPENSES, incomingExpenses);
+
       if (data.businessName) {
-        saveKhataSettings({ businessName: data.businessName });
+        saveKhataSettings({ businessName: data.businessName, schemaVersion: 3 });
       }
       // Trigger cloud mirrors
       data.accounts.forEach(a => mirrorAccountToFirestore(a, 'upsert'));
       data.entries.forEach(e => mirrorEntryToFirestore(e, 'upsert'));
       data.cashEntries.forEach(c => mirrorCashEntryToFirestore(c, 'upsert'));
+      incomingBills.forEach(b => b?.id && mirrorFlatKhataDocToFirestore('khataBills', b, 'upsert'));
+      incomingEmployees.forEach(em => em?.id && mirrorFlatKhataDocToFirestore('khataEmployees', em, 'upsert'));
+      incomingEmpEntries.forEach(ee => ee?.id && mirrorFlatKhataDocToFirestore('khataEmployeeEntries', ee, 'upsert'));
+      incomingPoints.forEach(rp => rp?.id && mirrorFlatKhataDocToFirestore('khataReceivingPoints', rp, 'upsert'));
+      incomingPointEntries.forEach(re => re?.id && mirrorFlatKhataDocToFirestore('khataReceivingEntries', re, 'upsert'));
+      incomingExpenses.forEach(dx => dx?.id && mirrorFlatKhataDocToFirestore('khataDailyExpenses', dx, 'upsert'));
 
       return {
         success: true,
         accountsCount: data.accounts.length,
         entriesCount: data.entries.length,
-        cashCount: data.cashEntries.length
+        cashCount: data.cashEntries.length,
+        billsCount: incomingBills.length,
+        employeesCount: incomingEmployees.length,
+        employeeEntriesCount: incomingEmpEntries.length,
+        receivingPointsCount: incomingPoints.length,
+        receivingEntriesCount: incomingPointEntries.length,
+        dailyExpensesCount: incomingExpenses.length
       };
     } else {
       // Merge mode
-      const currentAccounts = getLedgerAccounts();
-      const currentEntries = getAllLedgerEntries();
-      const currentCash = getAllCashEntries();
-
-      const accMap = new Map<string, LedgerAccount>();
-      currentAccounts.forEach(a => accMap.set(a.id, a));
-      data.accounts.forEach(a => {
-        if (!accMap.has(a.id)) accMap.set(a.id, a);
-      });
-
-      const entryMap = new Map<string, LedgerEntry>();
-      currentEntries.forEach(e => entryMap.set(e.id, e));
-      data.entries.forEach(e => {
-        if (!entryMap.has(e.id)) entryMap.set(e.id, e);
-      });
-
-      const cashMap = new Map<string, CashEntry>();
-      currentCash.forEach(c => cashMap.set(c.id, c));
-      data.cashEntries.forEach(c => {
-        if (!cashMap.has(c.id)) cashMap.set(c.id, c);
-      });
-
-      const finalAccounts = Array.from(accMap.values());
-      const finalEntries = Array.from(entryMap.values());
-      const finalCash = Array.from(cashMap.values());
+      const finalAccounts = mergeById(getLedgerAccounts(), data.accounts);
+      const finalEntries = mergeById(getAllLedgerEntries(), data.entries);
+      const finalCash = mergeById(getAllCashEntries(), data.cashEntries);
+      const finalBills = mergeById(getParsed<any[]>(KHATA_STORAGE_KEYS.BILLS, []), incomingBills);
+      const finalEmployees = mergeById(getParsed<any[]>(KHATA_STORAGE_KEYS.EMPLOYEES, []), incomingEmployees);
+      const finalEmpEntries = mergeById(getParsed<any[]>(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, []), incomingEmpEntries);
+      const finalPoints = mergeById(getParsed<any[]>(KHATA_STORAGE_KEYS.RECEIVING_POINTS, []), incomingPoints);
+      const finalPointEntries = mergeById(getParsed<any[]>(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, []), incomingPointEntries);
+      const finalExpenses = mergeById(getParsed<any[]>(KHATA_STORAGE_KEYS.DAILY_EXPENSES, []), incomingExpenses);
 
       setJson(KHATA_STORAGE_KEYS.ACCOUNTS, finalAccounts);
       setJson(KHATA_STORAGE_KEYS.ENTRIES, finalEntries);
       setJson(KHATA_STORAGE_KEYS.CASHBOOK, finalCash);
+      setJson(KHATA_STORAGE_KEYS.BILLS, finalBills);
+      setJson(KHATA_STORAGE_KEYS.EMPLOYEES, finalEmployees);
+      setJson(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, finalEmpEntries);
+      setJson(KHATA_STORAGE_KEYS.RECEIVING_POINTS, finalPoints);
+      setJson(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, finalPointEntries);
+      setJson(KHATA_STORAGE_KEYS.DAILY_EXPENSES, finalExpenses);
 
       finalAccounts.forEach(a => mirrorAccountToFirestore(a, 'upsert'));
       finalEntries.forEach(e => mirrorEntryToFirestore(e, 'upsert'));
       finalCash.forEach(c => mirrorCashEntryToFirestore(c, 'upsert'));
+      finalBills.forEach(b => mirrorFlatKhataDocToFirestore('khataBills', b, 'upsert'));
+      finalEmployees.forEach(em => mirrorFlatKhataDocToFirestore('khataEmployees', em, 'upsert'));
+      finalEmpEntries.forEach(ee => mirrorFlatKhataDocToFirestore('khataEmployeeEntries', ee, 'upsert'));
+      finalPoints.forEach(rp => mirrorFlatKhataDocToFirestore('khataReceivingPoints', rp, 'upsert'));
+      finalPointEntries.forEach(re => mirrorFlatKhataDocToFirestore('khataReceivingEntries', re, 'upsert'));
+      finalExpenses.forEach(dx => mirrorFlatKhataDocToFirestore('khataDailyExpenses', dx, 'upsert'));
 
       return {
         success: true,
         accountsCount: finalAccounts.length,
         entriesCount: finalEntries.length,
-        cashCount: finalCash.length
+        cashCount: finalCash.length,
+        billsCount: finalBills.length,
+        employeesCount: finalEmployees.length,
+        employeeEntriesCount: finalEmpEntries.length,
+        receivingPointsCount: finalPoints.length,
+        receivingEntriesCount: finalPointEntries.length,
+        dailyExpensesCount: finalExpenses.length
       };
     }
   } catch (err: any) {

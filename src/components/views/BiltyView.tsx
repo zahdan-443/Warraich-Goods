@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { BiltyRecord, ContactItem, DICTIONARY, Language, BiltyBranch, BiltyLanguage, LegalRecordingItem } from '../../types';
+import { BiltyRecord, ContactItem, DICTIONARY, Language, BiltyBranch, BiltyLanguage, LegalRecordingItem, KhataReceivingPoint } from '../../types';
+import { getAllReceivingPoints } from '../../utils/khataModulesStorage';
 import {
   Receipt,
   Search,
@@ -169,6 +170,9 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const [mobileNo, setMobileNo] = useState('');
   const [sendingCity, setSendingCity] = useState('');
   const [receivingCity, setReceivingCity] = useState('');
+  const [receivingPointId, setReceivingPointId] = useState('');
+  const [receivingPointName, setReceivingPointName] = useState('');
+  const [receivingPoints] = useState<KhataReceivingPoint[]>(() => getAllReceivingPoints());
   const [senderName, setSenderName] = useState('');
   const [senderMobile, setSenderMobile] = useState('');
   const [receiverName, setReceiverName] = useState('');
@@ -203,6 +207,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setMobileNo('');
     setSendingCity('');
     setReceivingCity('');
+    setReceivingPointId('');
+    setReceivingPointName('');
     setSenderName('');
     setSenderMobile('');
     setReceiverName('');
@@ -229,6 +235,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setMobileNo(record.mobileNo || '');
     setSendingCity(record.sendingCity || '');
     setReceivingCity(record.receivingCity || '');
+    setReceivingPointId(record.receivingPointId || '');
+    setReceivingPointName(record.receivingPointName || '');
     setSenderName(record.senderName || record.consignor || '');
     setSenderMobile(record.senderMobile || '');
     setReceiverName(record.receiverName || record.consignee || '');
@@ -412,6 +420,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         mobileNo: mobileNo.trim(),
         sendingCity: sendingCity.trim(),
         receivingCity: receivingCity.trim(),
+        receivingPointId: receivingPointId || undefined,
+        receivingPointName: receivingPointName || undefined,
         senderName: senderName.trim(),
         senderMobile: senderMobile.trim(),
         receiverName: receiverName.trim(),
@@ -461,6 +471,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       mobileNo: mobileNo.trim(),
       sendingCity: sendingCity.trim(),
       receivingCity: receivingCity.trim(),
+      receivingPointId: receivingPointId || undefined,
+      receivingPointName: receivingPointName || undefined,
       senderName: senderName.trim(),
       senderMobile: senderMobile.trim(),
       receiverName: receiverName.trim(),
@@ -1988,6 +2000,30 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     placeholder={isEnForm ? 'e.g. Karachi' : 'مثلاً کراچی'}
                     className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none transition-all"
                   />
+                  {receivingPoints.length > 0 && (
+                    <select
+                      value={receivingPointId}
+                      onChange={(e) => {
+                        const ptId = e.target.value;
+                        const pt = receivingPoints.find(p => p.id === ptId);
+                        setReceivingPointId(ptId);
+                        setReceivingPointName(pt?.name || '');
+                        if (pt && !receivingCity.trim()) {
+                          setReceivingCity(pt.city);
+                        }
+                      }}
+                      className="mt-2 w-full min-h-[40px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3 py-1.5 text-xs font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none"
+                    >
+                      <option value="">
+                        {isEnForm ? 'Receiving Point (Optional)' : 'ریسیونگ پوائنٹ منتخب کریں (اختیاری)'}
+                      </option>
+                      {receivingPoints.map(pt => (
+                        <option key={pt.id} value={pt.id}>
+                          {pt.name} ({pt.city})
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 

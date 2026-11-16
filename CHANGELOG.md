@@ -2,6 +2,19 @@
 
 All notable changes to the "Driver Dost" transport & logistics application will be documented in this file.
 
+## [1.3.0] - 2026-11-15
+### Added
+- **Khata Expansion (5 Business Modules)**:
+  - **Bills & Invoices**: Auto bill numbering, multi-line items, discounts, advances, balance/status tracking (`unpaid`/`partial`/`paid`), local jsPDF export, WhatsApp share, direct `"Receive Payment"` posting into Party Ledger, and authorised freight document import for authorised accounts.
+  - **Employees & Salary Ledger**: Master records for drivers/munshis/helpers (no government ID collection), monthly/per-trip rates, salary/advance/bonus/deduction/allowance ledger, running balance, and local PDF statements.
+  - **Receiving Points**: Depot/adda profiles and pending balance ledger with local PDF statements and optional link inside freight forms.
+  - **Daily Expenses**: Quick-add 7 expense categories with optional vehicle tagging, daily/weekly/monthly totals, and 1:1 Cashbook synchronization without double counting.
+  - **Reports Hub**: Date-range presets (`Today`, `Week`, `Month`, `Custom`) across 8 analytics cards with local PDF export and WhatsApp summary share.
+- **Privacy & Compliance Disclosures**: Updated bilingual Privacy Policy & Terms covering billing, employee salary entries, receiving points, and daily expenses stored solely on user device/private cloud account.
+
+### Changed
+- **Version Bump**: Bumped app version to `1.3.0` (`versionCode 10300`).
+
 ## [1.2.4] - 2026-11-09
 ### Added
 - **Optimized Font Bundle**: Streamlined typography bundle to ultra-compact native fonts, reducing package size well below 25MB while preserving full bilingual calligraphy support.

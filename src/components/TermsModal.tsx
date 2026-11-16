@@ -36,8 +36,8 @@ const SECTIONS: TermSection[] = [
     id: 3,
     titleEn: '3. What the App Offers',
     titleUr: '3. ایپ کی سہولیات',
-    contentEn: 'Trip fuel and cost calculation, motorway and highway toll estimates, route comparison, weather and fuel-rate information, navigation help using your location, road hazard alerts shared by drivers, fleet, vehicle, driver and expense records, document-expiry reminders, local OCR document scanning, PDF export and WhatsApp sharing, and quick links to third-party government portals. Features may be added, changed or removed over time.',
-    contentUr: 'ٹرپ کے ایندھن اور اخراجات کا حساب، موٹروے اور ہائی وے ٹول کا تخمینہ، روٹ کا موازنہ، موسم اور ایندھن کے نرخوں کی معلومات، آپ کی لوکیشن کے ذریعے نیویگیشن میں مدد، ڈرائیورز کی طرف سے روڈ ہیزرڈ الرٹس، فلیٹ، گاڑی، ڈرائیور اور اخراجات کا ریکارڈ، دستاویزات کی میعاد کی یاد دہانی، لوکل او سی آر دستاویز اسکیننگ، پی ڈی ایف ایکسپورٹ اور واٹس ایپ شیئرنگ، اور تھرڈ پارٹی سرکاری پورٹلز کے فوری لنکس۔ فیچرز وقتاً فوقتاً شامل، تبدیل یا ختم کیے جا سکتے ہیں۔'
+    contentEn: 'Trip fuel and cost calculation, motorway and highway toll estimates, route comparison, weather and fuel-rate information, navigation help using your location, road hazard alerts shared by drivers, fleet, vehicle, driver and expense records, billing and invoice records, employee salary and advance ledgers, receiving point balances, daily expense tracking, financial summary reports, document-expiry reminders, local OCR document scanning, local PDF export and WhatsApp sharing, and quick links to third-party government portals. All user-entered bills, employee names/phones/salary entries, and receiving point records stay strictly on your own device or private authenticated account without collecting government IDs. Features may be added, changed or removed over time.',
+    contentUr: 'ٹرپ کے ایندھن اور اخراجات کا حساب، موٹروے اور ہائی وے ٹول کا تخمینہ، روٹ کا موازنہ، موسم اور ایندھن کے نرخوں کی معلومات، آپ کی لوکیشن کے ذریعے نیویگیشن میں مدد، ڈرائیورز کی طرف سے روڈ ہیزرڈ الرٹس، فلیٹ، گاڑی، ڈرائیور اور روزمرہ اخراجات کا ریکارڈ، بلز اور انوائس ریکارڈ، ملازمین کی تنخواہ اور ایڈوانس کھاتہ، ریسیونگ پوائنٹس کا حساب، کاروباری رپورٹس، دستاویزات کی میعاد کی یاد دہانی، لوکل او سی آر دستاویز اسکیننگ، لوکل پی ڈی ایف ایکسپورٹ اور واٹس ایپ شیئرنگ، اور تھرڈ پارٹی سرکاری پورٹلز کے فوری لنکس۔ صارف کے درج کردہ بلز، ملازمین کے نام/فون/تنخواہ کے اندراجات اور ریسیونگ پوائنٹس کا ڈیٹا بغیر کسی سرکاری آئی ڈی کے صرف آپ کی ڈیوائس یا نجی اکاؤنٹ میں رہتا ہے۔ فیچرز وقتاً فوقتاً شامل، تبدیل یا ختم کیے جا سکتے ہیں۔'
   },
   {
     id: 4,
@@ -201,7 +201,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({
                 {isUrdu ? 'شرائط و ضوابط (Terms & Conditions)' : 'Terms & Conditions'}
               </h2>
               <p className="text-xs text-blue-200 font-sans mt-0.5">
-                Driver Dost · Warraich Goods Transport Company · v{APP_VERSION} · 24 October 2026
+                Driver Dost · Warraich Goods Transport Company · v{APP_VERSION} · 15 November 2026
               </p>
             </div>
           </div>
