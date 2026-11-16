@@ -2,52 +2,93 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { formatBiltyWhatsAppSummary } from '../utils/pdfHelper';
+import { sanitizeContactOrCnic } from '../utils/biltyHelpers';
 import type { BiltyRecord } from '../types';
 
 const readWorkspaceFile = (relPath: string): string => {
   return fs.readFileSync(path.resolve(process.cwd(), relPath), 'utf8');
 };
 
-describe('Warraich Goods Redesigned Bilty Template, Watermark Sync & BiltyView Declutter', () => {
-  it('enforces all 7 template revisions and transparent warraich-card.png watermark in PrintableBilty', () => {
+describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Controls', () => {
+  it('enforces all 9 PDF layout edits, frameless enlarged logo, pure language separation, and 2x2 QR + 3 signatures in PrintableBilty', () => {
     const printableSrc = readWorkspaceFile('src/components/PrintableBilty.tsx');
 
-    // Required additions / replacements
-    expect(printableSrc).toContain('NTN: 7779394-1');
-    expect(printableSrc).toContain('WARRAICH GOODS TRANSPORT COMPANY (REGD.)');
-    expect(printableSrc).toContain('TRUSTED LOGISTICS & TRANSPORT SERVICE.');
-    expect(printableSrc).toContain('Driver CNIC No.');
-    expect(printableSrc).toContain('D.L. No.');
-    expect(printableSrc).toContain('This is a Computer Generated Bilty');
+    // 1. Consignee CNIC replaces Receiving Point
+    expect(printableSrc).toContain('Receiver CNIC :');
+    expect(printableSrc).toContain('record.receiverCnic');
+    expect(printableSrc).not.toContain('Receiving Point');
+    expect(printableSrc).not.toContain('ریسیونگ پوائنٹ');
 
-    // Semi-transparent cell backing + exact print color adjust so warraich-card.png shows in Preview, Print & PDF
+    // 2. Frameless enlarged logo
+    expect(printableSrc).toContain("width: '106px'");
+    expect(printableSrc).toContain("height: '106px'");
+    expect(printableSrc).toContain("border: 'none'");
+    expect(printableSrc).not.toContain("borderRadius: '50%'");
+
+    // 3. Complete single-language footer sentence
+    expect(printableSrc).toContain('This is a computer-generated Bilty, no signature required');
+    expect(printableSrc).toContain('یہ کمپیوٹر سے تیار کردہ بلٹی ہے، دستخط کی ضرورت نہیں');
+
+    // 4. Strict single-language mode without mixed tags or unnecessary dots
+    expect(printableSrc).toContain('WARRAICH GOODS TRANSPORT COMPANY (REGD)');
+    expect(printableSrc).toContain('TRUSTED LOGISTICS & TRANSPORT SERVICE');
+    expect(printableSrc).toContain('معتبر لاجسٹکس اور ٹرانسپورٹ سروس');
+    expect(printableSrc).not.toContain('Mo.');
+    expect(printableSrc).not.toContain('D.L.');
+    expect(printableSrc).not.toContain('Bilty No.');
+    expect(printableSrc).not.toContain('Truck No.');
+    expect(printableSrc).not.toContain('SERVICE.');
+
+    // 5. Conditional Advance & Pending when advance > 0, Total Freight only when advance === 0
+    expect(printableSrc).toContain('const hasAdvance = advanceAmt > 0');
+    expect(printableSrc).toContain('Advance Paid');
+    expect(printableSrc).toContain('Pending Amount');
+    expect(printableSrc).toContain('پیشگی وصول');
+    expect(printableSrc).toContain('بقایا رقم');
+
+    // 6. Full-width Remarks replacing Delivery At
+    expect(printableSrc).toContain('Remarks :');
+    expect(printableSrc).toContain('ریمارکس :');
+    expect(printableSrc).not.toContain('Delivery At');
+    expect(printableSrc).not.toContain('مقامِ ترسیل');
+
+    // 7. 2x2 QR + 3-party Signature Grid (Driver, Sender, Receiver) without Zahdan / For Warraich Goods
+    expect(printableSrc).toContain('Driver Signature');
+    expect(printableSrc).toContain('Sender Signature');
+    expect(printableSrc).toContain('Receiver Signature');
+    expect(printableSrc).toContain('دستخط ڈرائیور');
+    expect(printableSrc).toContain('دستخط بھیجنے والا');
+    expect(printableSrc).toContain('دستخط وصول کنندہ');
+    expect(printableSrc).not.toContain('ZahdanSignatureSvg');
+    expect(printableSrc).not.toContain('Zahdan Nasr');
+    expect(printableSrc).not.toContain('For WARRAICH GOODS');
+
+    // 8. Clean Terms heading without company name
+    expect(printableSrc).not.toContain('Terms & Conditions (Warraich');
+    expect(printableSrc).not.toContain('شرائط و ضوابط (وڑائچ');
+
+    // 9. Driver 4-box row placed after Row A (Truck No) and BEFORE Row C (From | To)
+    const rowAPos = printableSrc.indexOf('Row A: Bilty No | Truck No | Date');
+    const rowBPos = printableSrc.indexOf('Row B: Driver Details 4 Boxes');
+    const rowCPos = printableSrc.indexOf('Row C: From | To');
+    expect(rowAPos).toBeGreaterThan(-1);
+    expect(rowBPos).toBeGreaterThan(rowAPos);
+    expect(rowCPos).toBeGreaterThan(rowBPos);
+
+    // Watermark transparency & exact print rules preserved
     expect(printableSrc).toContain('rgba(255, 255, 255, 0.72)');
     expect(printableSrc).toContain('warraich-card.png');
     expect(printableSrc).toContain('print-color-adjust: exact !important');
-
-    // Removed elements per user instructions
-    expect(printableSrc).not.toContain('CONSIGNOR COPY');
-    expect(printableSrc).not.toContain("AT OWNER'S RISK");
-    expect(printableSrc).not.toContain('Order By');
-    expect(printableSrc).not.toContain('Rate Per Ton');
-    expect(printableSrc).not.toContain('Rate (Rs)');
-    expect(printableSrc).not.toContain('BALAJI');
-    expect(printableSrc).not.toContain('GSTIN');
-    expect(printableSrc).not.toContain('SGST');
-    expect(printableSrc).not.toContain('CGST');
-    expect(printableSrc).not.toContain('Bank Details');
-    expect(printableSrc).not.toContain('Advance Paid');
-    expect(printableSrc).not.toContain('Balance Payable');
-    expect(printableSrc).not.toContain('TO BE PAID');
-    expect(printableSrc).not.toContain('PAID IN FULL');
   });
 
-  it('preloads and decodes background assets cleanly in pdfHelper and removes settlement lines from WhatsApp summary', () => {
-    const pdfHelperSrc = readWorkspaceFile('src/utils/pdfHelper.ts');
-    expect(pdfHelperSrc).toContain('export async function preloadBiltyPdfAssets');
-    expect(pdfHelperSrc).toContain('img.decode');
+  it('supports custom empty fallback in sanitizeContactOrCnic for pure Urdu output', () => {
+    expect(sanitizeContactOrCnic('', '—')).toBe('—');
+    expect(sanitizeContactOrCnic('0000', '—')).toBe('—');
+    expect(sanitizeContactOrCnic('33301-1234567-1', '—')).toBe('33301-1234567-1');
+  });
 
-    const recordWithFreight: BiltyRecord = {
+  it('renders conditional Advance/Pending in WhatsApp summary only when advance > 0 and keeps single-language output', () => {
+    const baseRecord: BiltyRecord = {
       id: 2001,
       biltyNo: 'WG-1201',
       date: '16 Nov, 2026',
@@ -63,47 +104,59 @@ describe('Warraich Goods Redesigned Bilty Template, Watermark Sync & BiltyView D
       receiverName: 'Karachi Traders',
       receiverMobile: '0321-4445566',
       senderCnic: '33301-7654321-3',
+      receiverCnic: '42101-1122334-5',
       qty: '120 Bags',
       itemDescription: 'Cotton Bales',
       weight: '6000',
       total: 45000,
       advance: 15000,
-      payable: 30000
+      payable: 30000,
+      language: 'en'
     };
 
-    const summaryWithFreight = formatBiltyWhatsAppSummary(recordWithFreight);
-    expect(summaryWithFreight).toContain('WARRAICH GOODS TRANSPORT COMPANY (REGD.)');
-    expect(summaryWithFreight).toContain('NTN:* 7779394-1');
-    expect(summaryWithFreight).toContain('*(This is a Computer Generated Bilty)*');
-    expect(summaryWithFreight).toContain('Rs 45,000');
-    expect(summaryWithFreight).not.toContain('Advance');
-    expect(summaryWithFreight).not.toContain('Payable');
-    expect(summaryWithFreight).not.toContain('پیشگی');
-    expect(summaryWithFreight).not.toContain('بقایا');
+    const enWithAdvance = formatBiltyWhatsAppSummary(baseRecord);
+    expect(enWithAdvance).toContain('WARRAICH GOODS TRANSPORT COMPANY (REGD)');
+    expect(enWithAdvance).toContain('Total Freight:* Rs 45,000');
+    expect(enWithAdvance).toContain('Advance Paid:* Rs 15,000');
+    expect(enWithAdvance).toContain('Pending Amount:* Rs 30,000');
+    expect(enWithAdvance).toContain('This is a computer-generated Bilty, no signature required');
 
-    const summaryZeroFreight = formatBiltyWhatsAppSummary({
-      ...recordWithFreight,
-      total: 0
+    const enZeroAdvance = formatBiltyWhatsAppSummary({
+      ...baseRecord,
+      advance: 0,
+      payable: 45000
     });
-    expect(summaryZeroFreight).not.toContain('Freight');
+    expect(enZeroAdvance).toContain('Total Freight:* Rs 45,000');
+    expect(enZeroAdvance).not.toContain('Advance Paid');
+    expect(enZeroAdvance).not.toContain('Pending Amount');
+
+    const urWithAdvance = formatBiltyWhatsAppSummary({
+      ...baseRecord,
+      language: 'ur'
+    });
+    expect(urWithAdvance).toContain('وڑائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)');
+    expect(urWithAdvance).toContain('روپے 45,000');
+    expect(urWithAdvance).toContain('پیشگی وصول:* روپے 15,000');
+    expect(urWithAdvance).toContain('بقایا رقم:* روپے 30,000');
+    expect(urWithAdvance).toContain('یہ کمپیوٹر سے تیار کردہ بلٹی ہے، دستخط کی ضرورت نہیں');
   });
 
-  it('removes payment settlement UI from BiltyView while keeping Dispatch stats, Driver CNIC/DL inputs, and asset sync', () => {
+  it('wires Receiver CNIC, optional Advance on Receipt, and Remarks in BiltyView while keeping Bilty archive free of settlement badges', () => {
     const biltyViewSrc = readWorkspaceFile('src/components/views/BiltyView.tsx');
 
     expect(biltyViewSrc).toContain('preloadBiltyPdfAssets');
     expect(biltyViewSrc).toContain('cardDataUrl={preloadedAssets.card}');
     expect(biltyViewSrc).toContain('logoDataUrl={preloadedAssets.logo}');
-    expect(biltyViewSrc).toContain('Driver CNIC No.');
-    expect(biltyViewSrc).toContain('Driver License (D.L. No.)');
-    expect(biltyViewSrc).toContain('Delivery At (Optional)');
-    expect(biltyViewSrc).toContain('Remark (Optional)');
+    expect(biltyViewSrc).toContain('Receiver CNIC');
+    expect(biltyViewSrc).toContain('Driver CNIC');
+    expect(biltyViewSrc).toContain('Driver License No');
+    expect(biltyViewSrc).toContain('Advance on Receipt (Optional)');
+    expect(biltyViewSrc).toContain('Remarks (Optional)');
+    expect(biltyViewSrc).not.toContain('Delivery At (Optional)');
 
-    // Settlement UI elements must be absent from Bilty section
+    // Bilty archive list/KPIs remain free of financial settlement clutter
     expect(biltyViewSrc).not.toContain('paymentFilter');
     expect(biltyViewSrc).not.toContain('Balance Due');
-    expect(biltyViewSrc).not.toContain('Total Freight (Rs)');
-    expect(biltyViewSrc).not.toContain('Advance Paid (Rs)');
     expect(biltyViewSrc).not.toContain('To-Pay');
     expect(biltyViewSrc).not.toContain('ٹو پے (بقایا)');
   });

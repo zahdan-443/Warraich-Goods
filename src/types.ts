@@ -402,6 +402,7 @@ export interface BiltyRecord {
   receiverName: string;
   receiverMobile: string;
   senderCnic: string;
+  receiverCnic?: string;
   qty: string;
   itemDescription: string;
   weight: string;

@@ -21,39 +21,6 @@ interface PrintableBiltyProps {
   language?: BiltyLanguage;
 }
 
-export const ZahdanSignatureSvg: React.FC<{ className?: string }> = ({ className = 'w-32 h-9 inline-block' }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 240 85"
-    className={className}
-    style={{ overflow: 'visible' }}
-  >
-    <g fill="none" stroke="#0f172a" strokeLinecap="round" strokeLinejoin="round">
-      <path
-        d="M 20 48 C 15 25, 45 15, 60 22 C 75 28, 30 58, 70 52 C 85 50, 90 32, 98 38 C 105 44, 108 52, 116 38 C 122 26, 130 32, 136 44 C 142 54, 150 36, 158 36 C 166 36, 170 48, 178 38 C 185 30, 192 36, 198 46"
-        strokeWidth="2.8"
-      />
-      <path
-        d="M 40 28 C 65 14, 115 12, 145 18 C 160 21, 185 22, 205 16"
-        strokeWidth="2.0"
-      />
-      <circle cx="58" cy="12" r="2.4" fill="#0f172a" stroke="none" />
-      <circle cx="150" cy="14" r="2.0" fill="#0f172a" stroke="none" />
-      <circle cx="160" cy="12" r="1.6" fill="#0f172a" stroke="none" />
-      <path
-        d="M 18 62 Q 115 78 215 54 Q 130 82 25 66"
-        strokeWidth="2.2"
-        fill="#0f172a"
-        fillOpacity="0.1"
-      />
-      <path
-        d="M 205 52 C 220 45, 230 40, 235 48"
-        strokeWidth="2.0"
-      />
-    </g>
-  </svg>
-);
-
 export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
   record,
   qrDataUrl: propQrUrl,
@@ -114,7 +81,16 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
   const activeQrUrl = propQrUrl || internalQrUrl;
   const activeCardSrc = propCardUrl || resolvedCard || './warraich-card.png';
   const activeLogoSrc = propLogoUrl || resolvedLogo || biltyOfficialIconData || './bilty-official-icon.png';
+
   const fmt = (n?: number) => (n !== undefined && n !== null ? n.toLocaleString('en-US') : '0');
+  const formatAmount = (amount: number) => (isEn ? `Rs ${fmt(amount)}` : `${fmt(amount)} روپے`);
+  const emptyVal = isEn ? 'N/A' : '—';
+
+  const totalAmt = Math.max(0, Number(record.total) || 0);
+  const advanceAmt = Math.max(0, Number(record.advance) || 0);
+  const pendingAmt = Math.max(0, Number(record.payable ?? (totalAmt - advanceAmt)) || 0);
+  const hasAdvance = advanceAmt > 0;
+
   const termsList = isEn ? BILTY_TERMS_EN : BILTY_TERMS_UR;
 
   const cellBg = 'rgba(255, 255, 255, 0.72)';
@@ -132,16 +108,16 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
         color: '#0f172a',
         border: '2px solid #0f2942',
         fontFamily: isEn
-          ? "'Plus Jakarta Sans', 'Inter', Arial, sans-serif"
-          : "'Noto Sans Arabic', 'Jameel Noori Nastaleeq', 'PDMS Nastaleeq Nafees', 'Plus Jakarta Sans', Arial, sans-serif",
-        lineHeight: '1.28',
+          ? "'Plus Jakarta Sans', Arial, sans-serif"
+          : "'Noto Sans Arabic', 'Jameel Noori Nastaleeq', 'PDMS Nastaleeq Nafees', Arial, sans-serif",
+        lineHeight: '1.3',
         width: '794px',
         height: '1120px',
         minWidth: '794px',
         maxWidth: '794px',
         minHeight: '1120px',
         maxHeight: '1120px',
-        padding: '14px 18px',
+        padding: '12px 16px',
         boxSizing: 'border-box',
         overflow: 'hidden',
         position: 'relative',
@@ -175,7 +151,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             border: 2px solid #0f2942 !important;
             box-shadow: none !important;
             margin: 0 auto !important;
-            padding: 8mm 10mm !important;
+            padding: 7mm 9mm !important;
             page-break-after: avoid !important;
             page-break-before: avoid !important;
             page-break-inside: avoid !important;
@@ -200,7 +176,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
         className="printable-bilty-watermark"
         style={{
           position: 'absolute',
-          top: '53%',
+          top: '54%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
           opacity: 0.17,
@@ -216,7 +192,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
       >
         <img
           src={activeCardSrc}
-          alt="Warraich Goods Official Background Card"
+          alt={isEn ? 'Warraich Goods Official Background Card' : 'وڑائچ گڈز آفیشل بیک گراؤنڈ کارڈ'}
           referrerPolicy="no-referrer"
           onError={(e) => {
             const target = e.currentTarget;
@@ -253,40 +229,42 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
           height: '100%'
         }}
       >
-        {/* 1. CLASSIC BOXED HEADER (Matched to reference layout, Warraich Goods data only) */}
+        {/* 1. HEADER: Single-Language Company Branding + Frameless Enlarged Logo */}
         <div
           style={{
-            paddingBottom: '8px',
+            paddingBottom: '6px',
             position: 'relative'
           }}
         >
-          {/* Top-right pill: NTN: 7779394-1 */}
+          {/* Top-corner badge: NTN: 7779394-1 */}
           <div
             style={{
               display: 'flex',
               justifyContent: isEn ? 'flex-end' : 'flex-start',
-              marginBottom: '4px'
+              marginBottom: '2px'
             }}
           >
             <div
-              dir="ltr"
+              dir={isEn ? 'ltr' : 'rtl'}
               style={{
                 border: '1.5px solid #0f2942',
                 borderRadius: '999px',
-                padding: '3px 14px',
-                fontSize: '10.5px',
+                padding: '2px 13px',
+                fontSize: '10px',
                 fontWeight: 800,
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: isEn
+                  ? "'JetBrains Mono', monospace"
+                  : "'Noto Sans Arabic', 'JetBrains Mono', sans-serif",
                 color: '#0f2942',
                 backgroundColor: cellBg,
-                letterSpacing: '0.04em'
+                letterSpacing: isEn ? '0.04em' : '0'
               }}
             >
-              NTN: 7779394-1
+              {isEn ? 'NTN: 7779394-1' : 'این ٹی این: 7779394-1'}
             </div>
           </div>
 
-          {/* Logo + Main Centered Company Header */}
+          {/* Frameless Enlarged Logo + Single-Language Header Title */}
           <div
             style={{
               display: 'flex',
@@ -295,13 +273,13 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               gap: '14px'
             }}
           >
-            <div style={{ flexShrink: 0 }}>
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {!logoFailed ? (
                 <img
                   src={activeLogoSrc}
-                  alt="Warraich Goods Official Seal"
-                  width={78}
-                  height={78}
+                  alt={isEn ? 'Warraich Goods Transport Company Emblem' : 'وڑائچ گڈز ٹرانسپورٹ کمپنی لوگو'}
+                  width={106}
+                  height={106}
                   onError={(e) => {
                     const target = e.currentTarget;
                     if (!target.dataset.triedOfficialPng) {
@@ -315,30 +293,26 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     }
                   }}
                   style={{
-                    width: '78px',
-                    height: '78px',
-                    borderRadius: '50%',
-                    padding: '2px',
-                    backgroundColor: '#ffffff',
-                    border: '2px solid #0f2942',
-                    objectFit: 'contain'
+                    width: '106px',
+                    height: '106px',
+                    objectFit: 'contain',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    padding: '0'
                   }}
                 />
               ) : (
                 <div
                   style={{
-                    width: '78px',
-                    height: '78px',
-                    borderRadius: '50%',
-                    padding: '4px',
-                    backgroundColor: '#ffffff',
-                    border: '2px solid #0f2942',
+                    width: '106px',
+                    height: '106px',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    backgroundColor: 'transparent'
                   }}
                 >
-                  <CompanyLogo className="w-14 h-14" />
+                  <CompanyLogo className="w-24 h-24" />
                 </div>
               )}
             </div>
@@ -356,54 +330,40 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 <h1
                   style={{
                     fontFamily: "'Plus Jakarta Sans', Georgia, serif",
-                    fontSize: '23.5px',
+                    fontSize: '23px',
                     fontWeight: 900,
                     letterSpacing: '0.02em',
                     color: '#0f2942',
-                    margin: '0 0 4px 0',
+                    margin: '0 0 6px 0',
                     lineHeight: '1.15',
                     textTransform: 'uppercase'
                   }}
                 >
-                  WARRAICH GOODS TRANSPORT COMPANY (REGD.)
+                  WARRAICH GOODS TRANSPORT COMPANY (REGD)
                 </h1>
               ) : (
-                <>
-                  <h1
-                    style={{
-                      fontFamily:
-                        "'Jameel Noori Nastaleeq', 'jameel-noori-nastaleeq', 'PDMS Nastaleeq Nafees', 'Noto Nastaliq Urdu', serif",
-                      fontSize: '26px',
-                      fontWeight: 700,
-                      color: '#0f2942',
-                      margin: '0',
-                      lineHeight: '1.55'
-                    }}
-                  >
-                    {company.nameUr || 'وڑائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)'}
-                  </h1>
-                  <div
-                    style={{
-                      fontSize: '12px',
-                      fontWeight: 900,
-                      letterSpacing: '0.04em',
-                      color: '#0f2942',
-                      marginBottom: '4px',
-                      textTransform: 'uppercase'
-                    }}
-                  >
-                    WARRAICH GOODS TRANSPORT COMPANY (REGD.)
-                  </div>
-                </>
+                <h1
+                  style={{
+                    fontFamily:
+                      "'Jameel Noori Nastaleeq', 'jameel-noori-nastaleeq', 'PDMS Nastaleeq Nafees', 'Noto Sans Arabic', serif",
+                    fontSize: '29px',
+                    fontWeight: 700,
+                    color: '#0f2942',
+                    margin: '0 0 6px 0',
+                    lineHeight: '1.45'
+                  }}
+                >
+                  {company.nameUr || 'وڑائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)'}
+                </h1>
               )}
 
-              {/* Solid Navy Ribbon Tagline Strip */}
+              {/* Solid Navy Ribbon Tagline Strip (100% single language, no dots) */}
               <div
                 style={{
                   backgroundColor: '#0f2942',
                   color: '#ffffff',
                   padding: '4px 20px',
-                  fontSize: '11.5px',
+                  fontSize: isEn ? '11.5px' : '12.5px',
                   fontWeight: 800,
                   letterSpacing: isEn ? '0.08em' : '0',
                   textTransform: isEn ? 'uppercase' : 'none',
@@ -413,30 +373,43 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 }}
               >
                 {isEn
-                  ? 'TRUSTED LOGISTICS & TRANSPORT SERVICE.'
-                  : 'معتبر لاجسٹکس اور ٹرانسپورٹ سروس • TRUSTED LOGISTICS & TRANSPORT SERVICE.'}
+                  ? 'TRUSTED LOGISTICS & TRANSPORT SERVICE'
+                  : 'معتبر لاجسٹکس اور ٹرانسپورٹ سروس'}
               </div>
 
-              {/* Branch Address & Helpline Line */}
+              {/* Branch Address & Phone Numbers (100% single language, no dots) */}
               <div
                 style={{
                   marginTop: '5px',
                   fontSize: '10.5px',
                   fontWeight: 700,
                   color: '#0f2942',
-                  lineHeight: '1.35'
+                  lineHeight: '1.4'
                 }}
               >
                 <div>{isEn ? branchInfo.addressEn : branchInfo.addressUr}</div>
-                <div dir="ltr" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10.5px', marginTop: '1px' }}>
-                  Mo. {branchInfo.phone}
+                <div
+                  dir={isEn ? 'ltr' : 'rtl'}
+                  style={{
+                    fontFamily: isEn
+                      ? "'JetBrains Mono', monospace"
+                      : "'Noto Sans Arabic', 'JetBrains Mono', sans-serif",
+                    fontSize: '10.5px',
+                    marginTop: '1px'
+                  }}
+                >
+                  {isEn ? (
+                    <span>Mobile: {branchInfo.phone}</span>
+                  ) : (
+                    <span>فون نمبر: <span dir="ltr">{branchInfo.phone}</span></span>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 2. MASTER DOCUMENT GRID (All Outer Bordered Cells) */}
+        {/* 2. MASTER DOCUMENT GRID */}
         <div
           style={{
             border: '2px solid #0f2942',
@@ -446,7 +419,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             flexDirection: 'column'
           }}
         >
-          {/* Row A: Bilty No | Vehicle No | Date */}
+          {/* Row A: Bilty No | Truck No | Date */}
           <div
             style={{
               display: 'grid',
@@ -465,7 +438,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 gap: '6px'
               }}
             >
-              <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Bilty No. :' : 'بلٹی نمبر :'}</span>
+              <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Bilty No :' : 'بلٹی نمبر :'}</span>
               <span
                 dir="ltr"
                 style={{
@@ -487,7 +460,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 gap: '6px'
               }}
             >
-              <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Truck No. :' : 'گاڑی نمبر :'}</span>
+              <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Truck No :' : 'گاڑی نمبر :'}</span>
               <span
                 dir="ltr"
                 style={{
@@ -498,7 +471,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   textTransform: 'uppercase'
                 }}
               >
-                {record.vehicleNo || 'N/A'}
+                {record.vehicleNo || emptyVal}
               </span>
             </div>
             <div
@@ -519,12 +492,51 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   color: '#0f172a'
                 }}
               >
-                {record.date || '-'}
+                {record.date || emptyVal}
               </span>
             </div>
           </div>
 
-          {/* Row B: From | To */}
+          {/* Row B: Driver Details 4 Boxes (Directly below Vehicle row & above From/To row) */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1.25fr 1fr',
+              borderBottom: borderNavy,
+              backgroundColor: subtleTintBg,
+              fontSize: '11px'
+            }}
+          >
+            <div style={{ borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '5px 10px', borderBottom: borderLight, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Driver Name :' : 'ڈرائیور کا نام :'}</span>
+                <span style={{ fontWeight: 900, color: '#0f172a' }}>{record.driverName || emptyVal}</span>
+              </div>
+              <div style={{ padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Driver Mobile :' : 'ڈرائیور موبائل :'}</span>
+                <span dir="ltr" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, color: '#0f172a' }}>
+                  {sanitizeContactOrCnic(record.mobileNo, emptyVal)}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '5px 10px', borderBottom: borderLight, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'License No :' : 'لائسنس نمبر :'}</span>
+                <span dir="ltr" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, color: '#0f172a' }}>
+                  {sanitizeContactOrCnic(record.driverLicense, emptyVal)}
+                </span>
+              </div>
+              <div style={{ padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Driver CNIC :' : 'ڈرائیور شناختی کارڈ :'}</span>
+                <span dir="ltr" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, color: '#0f172a' }}>
+                  {sanitizeContactOrCnic(record.driverCnic, emptyVal)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Row C: From | To */}
           <div
             style={{
               display: 'grid',
@@ -543,12 +555,12 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             <div style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'To :' : 'تا مقام :'}</span>
               <span style={{ fontWeight: 900, color: '#0f172a', fontSize: '12px' }}>
-                {record.receivingCity || 'N/A'}
+                {record.receivingCity || emptyVal}
               </span>
             </div>
           </div>
 
-          {/* Row C: Consignor | Consignee Boxed Columns */}
+          {/* Row D: Consignor | Consignee (with Receiver CNIC) */}
           <div
             style={{
               display: 'grid',
@@ -559,74 +571,74 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             }}
           >
             {/* Consignor (Sender) */}
-            <div style={{ padding: '8px 10px', borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ padding: '7px 10px', borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px' }}>
-                <span style={{ fontWeight: 700, color: '#334155', minWidth: '88px' }}>
+                <span style={{ fontWeight: 700, color: '#334155', minWidth: '92px' }}>
                   {isEn ? 'Consignor :' : 'بھیجنے والا :'}
                 </span>
                 <span style={{ fontWeight: 900, color: '#0f172a', fontSize: '12px' }}>
-                  {record.senderName || record.consignor || 'N/A'}
+                  {record.senderName || record.consignor || emptyVal}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px' }}>
-                <span style={{ fontWeight: 700, color: '#334155', minWidth: '88px' }}>
-                  {isEn ? 'Mobile No. :' : 'فون نمبر :'}
+                <span style={{ fontWeight: 700, color: '#334155', minWidth: '92px' }}>
+                  {isEn ? 'Mobile :' : 'فون نمبر :'}
                 </span>
                 <span dir="ltr" style={{ fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", color: '#0f172a' }}>
-                  {sanitizeContactOrCnic(record.senderMobile)}
+                  {sanitizeContactOrCnic(record.senderMobile, emptyVal)}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontWeight: 700, color: '#334155', minWidth: '88px' }}>
+                <span style={{ fontWeight: 700, color: '#334155', minWidth: '92px' }}>
                   {isEn ? 'Sender CNIC :' : 'شناختی کارڈ :'}
                 </span>
                 <span dir="ltr" style={{ fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: '#334155' }}>
-                  {sanitizeContactOrCnic(record.senderCnic)}
+                  {sanitizeContactOrCnic(record.senderCnic, emptyVal)}
                 </span>
               </div>
             </div>
 
             {/* Consignee (Receiver) */}
-            <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ padding: '7px 10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px' }}>
-                <span style={{ fontWeight: 700, color: '#334155', minWidth: '94px' }}>
+                <span style={{ fontWeight: 700, color: '#334155', minWidth: '96px' }}>
                   {isEn ? 'Consignee :' : 'وصول کرنے والا :'}
                 </span>
                 <span style={{ fontWeight: 900, color: '#0f172a', fontSize: '12px' }}>
-                  {record.receiverName || record.consignee || 'N/A'}
+                  {record.receiverName || record.consignee || emptyVal}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px' }}>
-                <span style={{ fontWeight: 700, color: '#334155', minWidth: '94px' }}>
-                  {isEn ? 'Mobile No. :' : 'فون نمبر :'}
+                <span style={{ fontWeight: 700, color: '#334155', minWidth: '96px' }}>
+                  {isEn ? 'Mobile :' : 'فون نمبر :'}
                 </span>
                 <span dir="ltr" style={{ fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", color: '#0f172a' }}>
-                  {sanitizeContactOrCnic(record.receiverMobile)}
+                  {sanitizeContactOrCnic(record.receiverMobile, emptyVal)}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontWeight: 700, color: '#334155', minWidth: '94px' }}>
-                  {isEn ? 'Receiving Point :' : 'ریسیونگ پوائنٹ :'}
+                <span style={{ fontWeight: 700, color: '#334155', minWidth: '96px' }}>
+                  {isEn ? 'Receiver CNIC :' : 'شناختی کارڈ :'}
                 </span>
-                <span style={{ fontWeight: 800, color: '#0f172a' }}>
-                  {record.receivingPointName || record.receivingCity || 'N/A'}
+                <span dir="ltr" style={{ fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", color: '#334155' }}>
+                  {sanitizeContactOrCnic(record.receiverCnic, emptyVal)}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Row D: EXPANDED GOODS TABLE + CLEAN FREIGHT COLUMN (No Rate column, No Bank/GST boxes) */}
+          {/* Row E: CARGO & CONDITIONAL PAYMENT FREIGHT SUMMARY */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '95px 1fr 110px 210px',
+              gridTemplateColumns: '95px 1fr 110px 215px',
               borderBottom: borderNavy,
               flex: '1 1 0%',
-              minHeight: '220px',
+              minHeight: '205px',
               backgroundColor: cellBg
             }}
           >
-            {/* Col 1: No. of Articles / Pkgs */}
+            {/* Col 1: No of Articles */}
             <div style={{ borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column' }}>
               <div
                 style={{
@@ -639,11 +651,11 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   color: '#ffffff'
                 }}
               >
-                {isEn ? 'No. of Articles' : 'تعداد / نگ'}
+                {isEn ? 'No of Articles' : 'تعداد نگ'}
               </div>
               <div
                 style={{
-                  padding: '18px 8px',
+                  padding: '16px 8px',
                   textAlign: 'center',
                   fontFamily: "'JetBrains Mono', monospace",
                   fontWeight: 900,
@@ -652,12 +664,24 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   flex: '1 1 0%'
                 }}
               >
-                {record.qty || '-'}
-                {record.qty ? <div style={{ fontSize: '10px', fontWeight: 700, color: '#475569', marginTop: '2px' }}>{isEn ? 'Pkgs / Bags' : 'نگ / بوریاں'}</div> : null}
+                {record.qty || emptyVal}
+                {record.qty ? (
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      color: '#475569',
+                      marginTop: '3px',
+                      fontFamily: isEn ? "'Plus Jakarta Sans', sans-serif" : "'Noto Sans Arabic', sans-serif"
+                    }}
+                  >
+                    {isEn ? 'Pkgs / Bags' : 'نگ / بوریاں'}
+                  </div>
+                ) : null}
               </div>
             </div>
 
-            {/* Col 2: Nature of Goods said to contain (Generous expanded space) */}
+            {/* Col 2: Nature of Goods */}
             <div style={{ borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column' }}>
               <div
                 style={{
@@ -674,23 +698,18 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               </div>
               <div
                 style={{
-                  padding: '18px 12px',
+                  padding: '16px 12px',
                   flex: '1 1 0%',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'flex-start',
-                  gap: '8px',
+                  gap: '6px',
                   fontSize: '12.5px',
                   fontWeight: 800,
                   color: '#0f172a'
                 }}
               >
-                <div>{record.itemDescription || (isEn ? 'General Goods Cargo' : 'جنرل کارگو ٹرانسپورٹ')}</div>
-                {record.remarks ? (
-                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#334155', marginTop: '4px' }}>
-                    {isEn ? `Note: ${record.remarks}` : `نوٹ: ${record.remarks}`}
-                  </div>
-                ) : null}
+                <div>{record.itemDescription || (isEn ? 'General Goods Cargo' : 'جنرل کارگو سامان')}</div>
               </div>
             </div>
 
@@ -707,11 +726,11 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   color: '#ffffff'
                 }}
               >
-                {isEn ? 'Weight (kg)' : 'وزن (کلو)'}
+                {isEn ? 'Weight (kg)' : 'وزن (کلوگرام)'}
               </div>
               <div
                 style={{
-                  padding: '18px 8px',
+                  padding: '16px 8px',
                   textAlign: 'center',
                   fontFamily: "'JetBrains Mono', monospace",
                   fontWeight: 900,
@@ -720,12 +739,24 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   flex: '1 1 0%'
                 }}
               >
-                {record.weight || '-'}
-                {record.weight ? <div style={{ fontSize: '10px', fontWeight: 700, color: '#475569', marginTop: '2px' }}>{isEn ? 'KG' : 'کلوگرام'}</div> : null}
+                {record.weight || emptyVal}
+                {record.weight ? (
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      color: '#475569',
+                      marginTop: '3px',
+                      fontFamily: isEn ? "'Plus Jakarta Sans', sans-serif" : "'Noto Sans Arabic', sans-serif"
+                    }}
+                  >
+                    {isEn ? 'KG' : 'کلوگرام'}
+                  </div>
+                ) : null}
               </div>
             </div>
 
-            {/* Col 4: Freight Summary (Clean Freight Total only — zero GST, Advance, Balance, or Paid/Pending pills) */}
+            {/* Col 4: Freight Summary (Conditional Advance & Pending when advance > 0; Total Freight only when advance === 0) */}
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div
                 style={{
@@ -738,145 +769,162 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   color: '#ffffff'
                 }}
               >
-                {isEn ? 'Total Freight (PKR)' : 'کرایہ تفصیل (روپے)'}
+                {isEn ? 'Freight Summary' : 'تفصیلِ کرایہ'}
               </div>
 
               <div style={{ flex: '1 1 0%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', fontSize: '11px' }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '6px 10px',
-                    borderTop: borderLight,
-                    borderBottom: borderLight
-                  }}
-                >
-                  <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Freight' : 'بنیادی کرایہ'}</span>
-                  <span dir="ltr" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, color: '#0f172a' }}>
-                    {Number(record.total) > 0 ? `Rs ${fmt(record.total)}` : '-'}
-                  </span>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '7px 10px',
-                    backgroundColor: subtleTintBg,
-                    fontWeight: 900,
-                    fontSize: '11.5px',
-                    color: '#0f2942'
-                  }}
-                >
-                  <span>{isEn ? 'TOTAL FREIGHT RS.' : 'کل کرایہ روپے'}</span>
-                  <span dir="ltr" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 900 }}>
-                    {Number(record.total) > 0 ? `Rs ${fmt(record.total)}` : '-'}
-                  </span>
-                </div>
+                {hasAdvance ? (
+                  <>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '6px 10px',
+                        borderTop: borderLight,
+                        borderBottom: borderLight
+                      }}
+                    >
+                      <span style={{ fontWeight: 700, color: '#334155' }}>
+                        {isEn ? 'Total Freight' : 'کل کرایہ'}
+                      </span>
+                      <span
+                        dir={isEn ? 'ltr' : 'rtl'}
+                        style={{ fontFamily: "'JetBrains Mono', 'Noto Sans Arabic', monospace", fontWeight: 800, color: '#0f172a' }}
+                      >
+                        {totalAmt > 0 ? formatAmount(totalAmt) : emptyVal}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '6px 10px',
+                        borderBottom: borderLight
+                      }}
+                    >
+                      <span style={{ fontWeight: 700, color: '#334155' }}>
+                        {isEn ? 'Advance Paid' : 'پیشگی وصول'}
+                      </span>
+                      <span
+                        dir={isEn ? 'ltr' : 'rtl'}
+                        style={{ fontFamily: "'JetBrains Mono', 'Noto Sans Arabic', monospace", fontWeight: 800, color: '#0f2942' }}
+                      >
+                        {formatAmount(advanceAmt)}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '7px 10px',
+                        backgroundColor: subtleTintBg,
+                        fontWeight: 900,
+                        fontSize: '11.5px',
+                        color: '#0f2942'
+                      }}
+                    >
+                      <span>{isEn ? 'Pending Amount' : 'بقایا رقم'}</span>
+                      <span
+                        dir={isEn ? 'ltr' : 'rtl'}
+                        style={{ fontFamily: "'JetBrains Mono', 'Noto Sans Arabic', monospace", fontWeight: 900 }}
+                      >
+                        {formatAmount(pendingAmt)}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px 10px',
+                      borderTop: borderLight,
+                      backgroundColor: subtleTintBg,
+                      fontWeight: 900,
+                      fontSize: '11.5px',
+                      color: '#0f2942'
+                    }}
+                  >
+                    <span>{isEn ? 'TOTAL FREIGHT' : 'کل کرایہ'}</span>
+                    <span
+                      dir={isEn ? 'ltr' : 'rtl'}
+                      style={{ fontFamily: "'JetBrains Mono', 'Noto Sans Arabic', monospace", fontWeight: 900 }}
+                    >
+                      {totalAmt > 0 ? formatAmount(totalAmt) : emptyVal}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Row E: Delivery At | Gate Pass / Ref */}
+          {/* Row F: Full-Width Remarks Row */}
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '7px 10px',
               borderBottom: borderNavy,
               backgroundColor: cellBg,
               fontSize: '11px'
             }}
           >
-            <div style={{ padding: '6px 10px', borderInlineEnd: borderNavy, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Delivery At :' : 'مقامِ ترسیل :'}</span>
-              <span style={{ fontWeight: 800, color: '#0f172a' }}>
-                {record.deliveryAt || record.receivingPointName || record.receivingCity || 'N/A'}
-              </span>
-            </div>
-            <div style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Remark :' : 'ریمارکس :'}</span>
-              <span style={{ fontWeight: 700, color: '#0f172a' }}>
-                {record.remarks || '-'}
-              </span>
-            </div>
+            <span style={{ fontWeight: 800, color: '#0f2942', whiteSpace: 'nowrap' }}>
+              {isEn ? 'Remarks :' : 'ریمارکس :'}
+            </span>
+            <span style={{ fontWeight: 700, color: '#0f172a', flex: '1 1 0%' }}>
+              {record.remarks || emptyVal}
+            </span>
           </div>
 
-          {/* Row F: Driver Details (Name, D.L. No., Mobile No., Driver CNIC) */}
+          {/* Row G: REFINED TERMS & CONDITIONS + 2x2 QR & 3-PARTY SIGNATURE GRID */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '1.3fr 1fr',
-              borderBottom: borderNavy,
-              backgroundColor: subtleTintBg,
-              fontSize: '11px'
-            }}
-          >
-            <div style={{ borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column' }}>
-              <div style={{ padding: '5px 10px', borderBottom: borderLight, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Driver Name :' : 'ڈرائیور کا نام :'}</span>
-                <span style={{ fontWeight: 900, color: '#0f172a' }}>{record.driverName || 'N/A'}</span>
-              </div>
-              <div style={{ padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Driver Mobile No. :' : 'ڈرائیور موبائل نمبر :'}</span>
-                <span dir="ltr" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, color: '#0f172a' }}>
-                  {sanitizeContactOrCnic(record.mobileNo)}
-                </span>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ padding: '5px 10px', borderBottom: borderLight, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'D.L. No. :' : 'ڈرائیونگ لائسنس :'}</span>
-                <span dir="ltr" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, color: '#0f172a' }}>
-                  {sanitizeContactOrCnic(record.driverLicense)}
-                </span>
-              </div>
-              <div style={{ padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Driver CNIC No. :' : 'ڈرائیور شناختی کارڈ :'}</span>
-                <span dir="ltr" style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, color: '#0f172a' }}>
-                  {sanitizeContactOrCnic(record.driverCnic)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Row G: EXPANDED TERMS & CONDITIONS + QR VERIFICATION & AUTHORIZED SIGNATORY */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1.65fr 1fr',
+              gridTemplateColumns: '1.42fr 1fr',
               backgroundColor: cellBg,
               alignItems: 'stretch'
             }}
           >
-            {/* Left/Main: Warraich Goods Terms & Conditions (Expanded area) */}
-            <div style={{ padding: '8px 10px', borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            {/* Left/Main: Terms & Conditions (Clean heading without company name, elevated typography) */}
+            <div style={{ padding: '9px 11px', borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
                 <div
                   style={{
-                    fontWeight: 900,
-                    fontSize: '10.5px',
+                    fontFamily: isEn
+                      ? "'Plus Jakarta Sans', sans-serif"
+                      : "'Noto Sans Arabic', 'Jameel Noori Nastaleeq', sans-serif",
+                    fontWeight: 800,
+                    fontSize: isEn ? '11.5px' : '12.5px',
                     color: '#0f2942',
-                    borderBottom: '1px solid #cbd5e1',
-                    paddingBottom: '3px',
-                    marginBottom: '4px',
-                    textTransform: 'uppercase'
+                    borderBottom: '1.5px solid #0f2942',
+                    paddingBottom: '4px',
+                    marginBottom: '6px',
+                    letterSpacing: isEn ? '0.04em' : '0',
+                    textTransform: isEn ? 'uppercase' : 'none'
                   }}
                 >
-                  {isEn ? 'Terms & Conditions (Warraich Goods Transport Company)' : 'شرائط و ضوابط (وڑائچ گڈز ٹرانسپورٹ کمپنی)'}
+                  {isEn ? 'Terms & Conditions' : 'شرائط و ضوابط'}
                 </div>
                 <ol
                   style={{
-                    paddingLeft: isEn ? '15px' : '0',
-                    paddingRight: isEn ? '0' : '15px',
+                    paddingLeft: isEn ? '16px' : '0',
+                    paddingRight: isEn ? '0' : '16px',
                     margin: '0',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '2px',
-                    fontSize: isEn ? '8.5px' : '9px',
-                    lineHeight: isEn ? '1.25' : '1.35',
-                    fontWeight: 600,
+                    gap: isEn ? '3px' : '3.5px',
+                    fontFamily: isEn
+                      ? "'Plus Jakarta Sans', Arial, sans-serif"
+                      : "'Noto Sans Arabic', 'Jameel Noori Nastaleeq', Arial, sans-serif",
+                    fontSize: isEn ? '8.8px' : '9.5px',
+                    lineHeight: isEn ? '1.38' : '1.48',
+                    fontWeight: 500,
                     color: '#1e293b',
                     textAlign: isEn ? 'left' : 'justify'
                   }}
@@ -888,94 +936,134 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               </div>
             </div>
 
-            {/* Right: QR Verification + For WARRAICH GOODS + Signature */}
+            {/* Right: 4 Verification Boxes in 2x2 Grid (1: QR Code, 2: Driver Sig, 3: Sender Sig, 4: Receiver Sig) */}
             <div
               style={{
-                padding: '8px 10px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                textAlign: 'center',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                gridTemplateRows: 'repeat(2, minmax(0, 1fr))',
                 backgroundColor: subtleTintBg
               }}
             >
-              <div style={{ fontWeight: 900, fontSize: '9.5px', color: '#0f2942', lineHeight: '1.25' }}>
-                For WARRAICH GOODS TRANSPORT COMPANY (REGD.)
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', width: '100%', padding: '4px 0' }}>
-                {/* QR Block */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  {activeQrUrl ? (
-                    <img
-                      src={activeQrUrl}
-                      alt="Bilty Verification QR Code"
-                      width={60}
-                      height={60}
-                      style={{
-                        width: '60px',
-                        height: '60px',
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #0f2942',
-                        padding: '2px',
-                        imageRendering: 'pixelated',
-                        objectFit: 'contain'
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: '56px',
-                        height: '56px',
-                        backgroundColor: '#f1f5f9',
-                        border: '1px solid #cbd5e1',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '9px',
-                        fontFamily: 'monospace'
-                      }}
-                    >
-                      QR
-                    </div>
-                  )}
-                  <span style={{ fontSize: '7.5px', fontWeight: 900, color: '#166534', marginTop: '2px' }}>
-                    {isEn ? 'SCAN TO VERIFY' : 'تصدیق QR'}
-                  </span>
-                </div>
-
-                {/* Signature */}
-                <div style={{ flex: '1 1 0%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <ZahdanSignatureSvg className="w-28 h-9 inline-block" />
-                  <div style={{ fontSize: '8.5px', color: '#334155', fontWeight: 700, borderTop: '1px solid #94a3b8', paddingTop: '2px', width: '100%' }}>
-                    Zahdan Nasr
+              {/* Box 1: QR Code */}
+              <div
+                style={{
+                  borderInlineEnd: borderLight,
+                  borderBottom: borderLight,
+                  padding: '8px 6px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  gap: '4px'
+                }}
+              >
+                {activeQrUrl ? (
+                  <img
+                    src={activeQrUrl}
+                    alt={isEn ? 'Bilty Verification QR Code' : 'بلٹی تصدیقی کیو آر کوڈ'}
+                    width={64}
+                    height={64}
+                    style={{
+                      width: '64px',
+                      height: '64px',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #0f2942',
+                      padding: '2px',
+                      imageRendering: 'pixelated',
+                      objectFit: 'contain'
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      backgroundColor: '#f1f5f9',
+                      border: '1px solid #cbd5e1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '9px',
+                      fontFamily: isEn ? "'JetBrains Mono', monospace" : "'Noto Sans Arabic', sans-serif"
+                    }}
+                  >
+                    {isEn ? 'QR' : 'کوڈ'}
                   </div>
+                )}
+                <span style={{ fontSize: '9px', fontWeight: 800, color: '#0f2942' }}>
+                  {isEn ? 'Scan to Verify' : 'تصدیقی کیو آر'}
+                </span>
+              </div>
+
+              {/* Box 2: Driver Signature */}
+              <div
+                style={{
+                  borderBottom: borderLight,
+                  padding: '8px 8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-end',
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ width: '100%', borderTop: '1px solid #64748b', paddingTop: '5px', fontSize: '9.5px', fontWeight: 800, color: '#0f2942' }}>
+                  {isEn ? 'Driver Signature' : 'دستخط ڈرائیور'}
                 </div>
               </div>
 
-              <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #cbd5e1', paddingTop: '4px', fontSize: '9.5px', fontWeight: 800, color: '#0f2942' }}>
-                <span>{isEn ? 'Driver Sign' : 'دستخط ڈرائیور'}</span>
-                <span>{isEn ? 'Authorized Signatory' : 'مجاز دستخط و مہر'}</span>
+              {/* Box 3: Sender Signature */}
+              <div
+                style={{
+                  borderInlineEnd: borderLight,
+                  padding: '8px 8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-end',
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ width: '100%', borderTop: '1px solid #64748b', paddingTop: '5px', fontSize: '9.5px', fontWeight: 800, color: '#0f2942' }}>
+                  {isEn ? 'Sender Signature' : 'دستخط بھیجنے والا'}
+                </div>
+              </div>
+
+              {/* Box 4: Receiver Signature */}
+              <div
+                style={{
+                  padding: '8px 8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-end',
+                  alignItems: 'center',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ width: '100%', borderTop: '1px solid #64748b', paddingTop: '5px', fontSize: '9.5px', fontWeight: 800, color: '#0f2942' }}>
+                  {isEn ? 'Receiver Signature' : 'دستخط وصول کنندہ'}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 3. COMPUTER GENERATED FOOTER */}
+        {/* 3. COMPLETE SINGLE-LANGUAGE FOOTER */}
         <div
           style={{
             textAlign: 'center',
             paddingTop: '5px',
-            fontSize: '10.5px',
-            fontWeight: 900,
+            fontSize: isEn ? '10px' : '11px',
+            fontWeight: 800,
             color: '#0f2942',
-            letterSpacing: '0.02em'
+            letterSpacing: isEn ? '0.02em' : '0'
           }}
         >
           {isEn
-            ? 'This is a Computer Generated Bilty'
-            : 'This is a Computer Generated Bilty • کمپیوٹرائزڈ آفیشل بلٹی دستاویز'}
+            ? 'This is a computer-generated Bilty, no signature required'
+            : 'یہ کمپیوٹر سے تیار کردہ بلٹی ہے، دستخط کی ضرورت نہیں'}
         </div>
       </div>
     </div>

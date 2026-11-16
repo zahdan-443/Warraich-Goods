@@ -175,11 +175,12 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const [receiverName, setReceiverName] = useState('');
   const [receiverMobile, setReceiverMobile] = useState('');
   const [senderCnic, setSenderCnic] = useState('');
+  const [receiverCnic, setReceiverCnic] = useState('');
   const [qty, setQty] = useState('');
   const [itemDescription, setItemDescription] = useState('');
   const [weight, setWeight] = useState('');
   const [total, setTotal] = useState('');
-  const [deliveryAt, setDeliveryAt] = useState('');
+  const [advance, setAdvance] = useState('');
   const [remarks, setRemarks] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
@@ -230,11 +231,12 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setReceiverName('');
     setReceiverMobile('');
     setSenderCnic('');
+    setReceiverCnic('');
     setQty('');
     setItemDescription('');
     setWeight('');
     setTotal('');
-    setDeliveryAt('');
+    setAdvance('');
     setRemarks('');
     setCreationLegalVault({});
     setIsLegalVaultExpanded(false);
@@ -261,11 +263,12 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setReceiverName(record.receiverName || record.consignee || '');
     setReceiverMobile(record.receiverMobile || '');
     setSenderCnic(record.senderCnic || '');
+    setReceiverCnic(record.receiverCnic || '');
     setQty(record.qty || '');
     setItemDescription(record.itemDescription || '');
     setWeight(record.weight || '');
     setTotal(record.total !== undefined ? String(record.total) : '');
-    setDeliveryAt(record.deliveryAt || '');
+    setAdvance(record.advance !== undefined ? String(record.advance) : '');
     setRemarks(record.remarks || '');
     setCreationLegalVault(record.legalVault || {});
     if (record.branch) setSelectedBranch(record.branch);
@@ -351,7 +354,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           (b.sendingCity && b.sendingCity.toLowerCase().includes(q)) ||
           (b.receivingCity && b.receivingCity.toLowerCase().includes(q)) ||
           (b.itemDescription && b.itemDescription.toLowerCase().includes(q)) ||
-          (b.senderCnic && b.senderCnic.toLowerCase().includes(q))
+          (b.senderCnic && b.senderCnic.toLowerCase().includes(q)) ||
+          (b.receiverCnic && b.receiverCnic.toLowerCase().includes(q))
         );
       });
     }
@@ -434,11 +438,12 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     const totalNum = parseFloat(total) || 0;
+    const advanceNum = parseFloat(advance) || 0;
 
     setFormError(null);
-    const validation = validateBiltyFreight(totalNum, 0);
+    const validation = validateBiltyFreight(totalNum, advanceNum);
     if (!validation.isValid) {
-      setFormError(validation.error || (selectedLanguage === 'en' ? 'Please enter valid freight amount.' : 'درست کرایہ رقم درج کریں۔'));
+      setFormError(validation.error || (selectedLanguage === 'en' ? 'Please enter valid freight & advance amount.' : 'درست کرایہ اور پیشگی رقم درج کریں۔'));
       return;
     }
 
@@ -462,13 +467,13 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         receiverName: receiverName.trim(),
         receiverMobile: receiverMobile.trim(),
         senderCnic: senderCnic.trim(),
+        receiverCnic: receiverCnic.trim() || undefined,
         qty: qty.trim(),
         itemDescription: itemDescription.trim(),
         weight: weight.trim(),
         total: validation.total,
-        advance: 0,
-        payable: validation.total,
-        deliveryAt: deliveryAt.trim() || undefined,
+        advance: validation.advance,
+        payable: validation.payable,
         remarks: remarks.trim() || undefined,
         isDelivered: editIsDelivered,
         podConfirmation: editIsDelivered
@@ -517,13 +522,13 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       receiverName: receiverName.trim(),
       receiverMobile: receiverMobile.trim(),
       senderCnic: senderCnic.trim(),
+      receiverCnic: receiverCnic.trim() || undefined,
       qty: qty.trim(),
       itemDescription: itemDescription.trim(),
       weight: weight.trim(),
       total: validation.total,
-      advance: 0,
-      payable: validation.total,
-      deliveryAt: deliveryAt.trim() || undefined,
+      advance: validation.advance,
+      payable: validation.payable,
       remarks: remarks.trim() || undefined,
       legalVault: Object.keys(creationLegalVault).length > 0 ? creationLegalVault : undefined,
     };
@@ -1906,7 +1911,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
-                    {isEnForm ? 'Driver CNIC No.' : 'ڈرائیور شناختی کارڈ نمبر (CNIC)'}
+                    {isEnForm ? 'Driver CNIC' : 'ڈرائیور شناختی کارڈ نمبر'}
                   </label>
                   <input
                     type="text"
@@ -1918,7 +1923,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
-                    {isEnForm ? 'Driver License (D.L. No.)' : 'ڈرائیونگ لائسنس نمبر (D.L. No.)'}
+                    {isEnForm ? 'Driver License No' : 'ڈرائیونگ لائسنس نمبر'}
                   </label>
                   <input
                     type="text"
@@ -2052,18 +2057,32 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 </div>
               </div>
 
-              {/* CNIC */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
-                  {isEnForm ? 'Sender CNIC' : t.senderCnic}
-                </label>
-                <input
-                  type="text"
-                  value={senderCnic}
-                  onChange={(e) => setSenderCnic(e.target.value)}
-                  placeholder="XXXXX-XXXXXXX-X"
-                  className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono transition-all"
-                />
+              {/* Sender & Receiver CNIC */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
+                    {isEnForm ? 'Sender CNIC' : t.senderCnic}
+                  </label>
+                  <input
+                    type="text"
+                    value={senderCnic}
+                    onChange={(e) => setSenderCnic(e.target.value)}
+                    placeholder="XXXXX-XXXXXXX-X"
+                    className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
+                    {isEnForm ? 'Receiver CNIC' : 'وصول کنندہ شناختی کارڈ'}
+                  </label>
+                  <input
+                    type="text"
+                    value={receiverCnic}
+                    onChange={(e) => setReceiverCnic(e.target.value)}
+                    placeholder="XXXXX-XXXXXXX-X"
+                    className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono transition-all"
+                  />
+                </div>
               </div>
 
               {/* Qty & Description */}
@@ -2094,8 +2113,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 </div>
               </div>
 
-              {/* Weight & Receipt Freight (Receipt only - Khata manages settlements) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+              {/* Weight, Receipt Total Freight & Optional Receipt Advance */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-3">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
                     {isEnForm ? 'Weight (kg)' : t.weight}
@@ -2110,7 +2129,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
-                    {isEnForm ? 'Total Freight on Receipt (Rs)' : 'کرایہ برائے رسید (اختیاری Rs)'}
+                    {isEnForm ? 'Total Freight on Receipt (Rs)' : 'کل کرایہ برائے رسید (اختیاری Rs)'}
                   </label>
                   <input
                     type="number"
@@ -2120,34 +2139,32 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono transition-all"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
+                    {isEnForm ? 'Advance on Receipt (Optional)' : 'پیشگی رقم برائے رسید (اختیاری)'}
+                  </label>
+                  <input
+                    type="number"
+                    value={advance}
+                    onChange={(e) => setAdvance(e.target.value)}
+                    placeholder="0"
+                    className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono transition-all"
+                  />
+                </div>
               </div>
 
-              {/* Delivery At & Remarks */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
-                    {isEnForm ? 'Delivery At (Optional)' : 'جائے ترسیل / ڈلیوری ایڈریس'}
-                  </label>
-                  <input
-                    type="text"
-                    value={deliveryAt}
-                    onChange={(e) => setDeliveryAt(e.target.value)}
-                    placeholder={isEnForm ? 'Warehouse / Market / City' : 'گودام / مارکیٹ / شہر'}
-                    className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
-                    {isEnForm ? 'Remark (Optional)' : 'کیفیت / ریمارکس'}
-                  </label>
-                  <input
-                    type="text"
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    placeholder={isEnForm ? 'Special instructions' : 'خصوصی ہدایت یا نوٹ'}
-                    className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none transition-all"
-                  />
-                </div>
+              {/* Full-Width Remarks */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
+                  {isEnForm ? 'Remarks (Optional)' : 'ریمارکس / خصوصی ہدایت (اختیاری)'}
+                </label>
+                <input
+                  type="text"
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  placeholder={isEnForm ? 'Special instructions or notes' : 'خصوصی ہدایت یا نوٹ'}
+                  className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none transition-all"
+                />
               </div>
 
               {/* Optional Legal Vault Attachments (Driver, Vehicle, Sender, Receiver Photos/CNIC & Audio) */}

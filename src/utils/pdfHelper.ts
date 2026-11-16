@@ -246,32 +246,62 @@ export async function generatePdfFromElement(
 export function formatBiltyWhatsAppSummary(record: BiltyRecord): string {
   const company = getCachedCompanyProfile();
   const fmt = (n?: number) => (n !== undefined && n !== null ? n.toLocaleString('en-US') : '0');
-
+  const isEn = record.language === 'en';
+  const totalAmt = Math.max(0, Number(record.total) || 0);
+  const advanceAmt = Math.max(0, Number(record.advance) || 0);
+  const pendingAmt = Math.max(0, Number(record.payable ?? (totalAmt - advanceAmt)) || 0);
+  const hasAdvance = advanceAmt > 0;
   const verifyLink = getBiltyVerificationUrl(record);
 
-  const lines = [
-    `🚚 *${company.nameUr || 'وڑائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)'}*`,
-    `📋 *WARRAICH GOODS TRANSPORT COMPANY (REGD.)*`,
-    `🏛️ *NTN:* 7779394-1`,
-    `───────────────────────`,
-    `📄 *بلٹی نمبر (Bilty No):* ${record.biltyNo}`,
-    `🚛 *گاڑی نمبر (Vehicle No):* ${record.vehicleNo}`,
-    `📅 *تاریخ (Date):* ${record.date || '-'}`,
-    `🛣️ *روٹ:* ${record.sendingCity || '-'} تا ${record.receivingCity || '-'}`,
-    `───────────────────────`,
-    `👤 *مال بھیجنے والا (Consignor):* ${record.senderName || record.consignor || '-'} (${record.senderMobile || '-'})`,
-    `👤 *مال وصول کرنے والا (Consignee):* ${record.receiverName || record.consignee || '-'} (${record.receiverMobile || '-'})`,
-    `📦 *تفصیلِ سامان:* ${record.itemDescription || 'جنرل کارگو'}`,
-    `📦 *تعداد (Qty):* ${record.qty || '-'} نگ / کارٹن`,
-    `⚖️ *وزن (Weight):* ${record.weight || '-'} کلوگرام`,
-    Number(record.total) > 0 ? `💰 *کرایہ (Freight):* Rs ${fmt(record.total)}` : '',
-    `───────────────────────`,
-    `📍 *ہیڈ آفس:* ${company.headOfficeUr || 'سمندری، فیصل آباد'}`,
-    `📞 *ہیلپ لائن:* ${company.phoneNumbers || '0300-5370443 | 0339-5370443'}`,
-    verifyLink ? `🌐 *آن لائن تصدیق:* ${verifyLink}` : '',
-    `───────────────────────`,
-    `*(This is a Computer Generated Bilty)*`
-  ];
+  const lines = isEn
+    ? [
+        `🚚 *WARRAICH GOODS TRANSPORT COMPANY (REGD)*`,
+        `🏛️ *NTN:* 7779394-1`,
+        `───────────────────────`,
+        `📄 *Bilty No:* ${record.biltyNo}`,
+        `🚛 *Truck No:* ${record.vehicleNo}`,
+        `📅 *Date:* ${record.date || '-'}`,
+        `🛣️ *Route:* ${record.sendingCity || '-'} to ${record.receivingCity || '-'}`,
+        `───────────────────────`,
+        `👤 *Consignor:* ${record.senderName || record.consignor || '-'} (${record.senderMobile || '-'})`,
+        `👤 *Consignee:* ${record.receiverName || record.consignee || '-'} (${record.receiverMobile || '-'})`,
+        `📦 *Goods:* ${record.itemDescription || 'General Cargo'}`,
+        `📦 *Qty:* ${record.qty || '-'}`,
+        `⚖️ *Weight:* ${record.weight || '-'} KG`,
+        totalAmt > 0 ? `💰 *Total Freight:* Rs ${fmt(totalAmt)}` : '',
+        hasAdvance ? `💵 *Advance Paid:* Rs ${fmt(advanceAmt)}` : '',
+        hasAdvance ? `⏳ *Pending Amount:* Rs ${fmt(pendingAmt)}` : '',
+        `───────────────────────`,
+        `📍 *Head Office:* ${company.headOfficeEn || 'Samundri, Faisalabad'}`,
+        `📞 *Helpline:* ${company.phoneNumbers || '0300-5370443, 0339-5370443'}`,
+        verifyLink ? `🌐 *Verify Online:* ${verifyLink}` : '',
+        `───────────────────────`,
+        `*(This is a computer-generated Bilty, no signature required)*`
+      ]
+    : [
+        `🚚 *${company.nameUr || 'وڑائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)'}*`,
+        `🏛️ *این ٹی این:* 7779394-1`,
+        `───────────────────────`,
+        `📄 *بلٹی نمبر:* ${record.biltyNo}`,
+        `🚛 *گاڑی نمبر:* ${record.vehicleNo}`,
+        `📅 *تاریخ:* ${record.date || '-'}`,
+        `🛣️ *روٹ:* ${record.sendingCity || '-'} تا ${record.receivingCity || '-'}`,
+        `───────────────────────`,
+        `👤 *بھیجنے والا:* ${record.senderName || record.consignor || '-'} (${record.senderMobile || '-'})`,
+        `👤 *وصول کرنے والا:* ${record.receiverName || record.consignee || '-'} (${record.receiverMobile || '-'})`,
+        `📦 *تفصیلِ سامان:* ${record.itemDescription || 'جنرل کارگو'}`,
+        `📦 *تعداد:* ${record.qty || '-'} نگ / کارٹن`,
+        `⚖️ *وزن:* ${record.weight || '-'} کلوگرام`,
+        totalAmt > 0 ? `💰 *کل کرایہ:* روپے ${fmt(totalAmt)}` : '',
+        hasAdvance ? `💵 *پیشگی وصول:* روپے ${fmt(advanceAmt)}` : '',
+        hasAdvance ? `⏳ *بقایا رقم:* روپے ${fmt(pendingAmt)}` : '',
+        `───────────────────────`,
+        `📍 *ہیڈ آفس:* ${company.headOfficeUr || 'سمندری، فیصل آباد'}`,
+        `📞 *ہیلپ لائن:* ${company.phoneNumbers || '0300-5370443, 0339-5370443'}`,
+        verifyLink ? `🌐 *آن لائن تصدیق:* ${verifyLink}` : '',
+        `───────────────────────`,
+        `*(یہ کمپیوٹر سے تیار کردہ بلٹی ہے، دستخط کی ضرورت نہیں)*`
+      ];
 
   return lines.filter(Boolean).join('\n');
 }
