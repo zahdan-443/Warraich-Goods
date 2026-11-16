@@ -539,6 +539,8 @@ html.dark .bg-rose-100 {
   .printable-bilty-area,
   .printable-bilty-area * {
     visibility: visible;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .printable-bilty-area {

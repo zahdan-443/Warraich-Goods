@@ -391,6 +391,10 @@ export interface BiltyRecord {
   date: string;
   driverName: string;
   mobileNo: string;
+  driverCnic?: string;
+  driverLicense?: string;
+  deliveryAt?: string;
+  remarks?: string;
   sendingCity: string;
   receivingCity: string;
   senderName: string;

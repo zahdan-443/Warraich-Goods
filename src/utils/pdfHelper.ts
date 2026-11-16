@@ -147,9 +147,15 @@ export async function getCompanyCardBase64(): Promise<string> {
   return '';
 }
 
+export async function preloadBiltyPdfAssets(): Promise<{ logo: string; card: string }> {
+  const [logo, card] = await Promise.all([getLogoBase64(), getCompanyCardBase64()]);
+  return { logo, card };
+}
+
 /**
  * Generate A4 PDF from a DOM element with zero 'oklch' errors.
- * Uses html-to-image (primary) and html2canvas-pro (secondary fallback).
+ * Uses html-to-image (primary) with strict image decode synchronization so
+ * background card watermarks and seals always render in exports.
  */
 export async function generatePdfFromElement(
   element: HTMLElement,
@@ -161,6 +167,9 @@ export async function generatePdfFromElement(
   const quality = options?.quality ?? 0.98;
   const scale = options?.scale ?? 2;
 
+  // Preload official seal & background card before capture
+  await preloadBiltyPdfAssets().catch(() => ({ logo: '', card: '' }));
+
   // Ensure all fonts are fully loaded and layout has stabilized before capturing
   if (typeof document !== 'undefined' && (document as any).fonts?.ready) {
     try {
@@ -169,8 +178,26 @@ export async function generatePdfFromElement(
       // ignore font ready error
     }
   }
-  // Brief stabilization pause to ensure no offline font metric reflows occur
-  await new Promise((r) => setTimeout(r, 120));
+
+  // Wait for every embedded <img> (including warraich-card.png watermark & QR) to finish loading & decoding
+  const imgs = Array.from(element.querySelectorAll('img'));
+  await Promise.all(
+    imgs.map(async (img) => {
+      if (!img.complete || img.naturalWidth === 0) {
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, 2500);
+          img.addEventListener('load', () => { clearTimeout(timer); resolve(); }, { once: true });
+          img.addEventListener('error', () => { clearTimeout(timer); resolve(); }, { once: true });
+        });
+      }
+      if (typeof img.decode === 'function') {
+        await img.decode().catch(() => {});
+      }
+    })
+  );
+
+  // Brief stabilization pause to ensure painted frames reflect decoded images
+  await new Promise((r) => setTimeout(r, 150));
 
   let imgDataUrl = '';
 
@@ -223,8 +250,9 @@ export function formatBiltyWhatsAppSummary(record: BiltyRecord): string {
   const verifyLink = getBiltyVerificationUrl(record);
 
   const lines = [
-    `🚚 *${company.nameUr || 'ورائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)'}*`,
-    `📋 *${company.nameEn || 'WARRAICH GOODS TRANSPORT CO.'}*`,
+    `🚚 *${company.nameUr || 'وڑائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)'}*`,
+    `📋 *WARRAICH GOODS TRANSPORT COMPANY (REGD.)*`,
+    `🏛️ *NTN:* 7779394-1`,
     `───────────────────────`,
     `📄 *بلٹی نمبر (Bilty No):* ${record.biltyNo}`,
     `🚛 *گاڑی نمبر (Vehicle No):* ${record.vehicleNo}`,
@@ -236,16 +264,13 @@ export function formatBiltyWhatsAppSummary(record: BiltyRecord): string {
     `📦 *تفصیلِ سامان:* ${record.itemDescription || 'جنرل کارگو'}`,
     `📦 *تعداد (Qty):* ${record.qty || '-'} نگ / کارٹن`,
     `⚖️ *وزن (Weight):* ${record.weight || '-'} کلوگرام`,
-    `───────────────────────`,
-    `💰 *کل کرایہ (Grand Total):* Rs ${fmt(record.total)}`,
-    `💵 *پیشگی ادا شدہ (Advance):* Rs ${fmt(record.advance)}`,
-    `💳 *بقایا رقم (Payable):* Rs ${fmt(record.payable)}`,
+    Number(record.total) > 0 ? `💰 *کرایہ (Freight):* Rs ${fmt(record.total)}` : '',
     `───────────────────────`,
     `📍 *ہیڈ آفس:* ${company.headOfficeUr || 'سمندری، فیصل آباد'}`,
     `📞 *ہیلپ لائن:* ${company.phoneNumbers || '0300-5370443 | 0339-5370443'}`,
     verifyLink ? `🌐 *آن لائن تصدیق:* ${verifyLink}` : '',
     `───────────────────────`,
-    `*(نوٹ: کمپیوٹرائزڈ آفیشل بلٹی رسید)*`
+    `*(This is a Computer Generated Bilty)*`
   ];
 
   return lines.filter(Boolean).join('\n');

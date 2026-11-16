@@ -29,7 +29,6 @@ import {
   Layers,
   Truck,
   User,
-  Wallet,
   Calendar,
   RefreshCw,
   PackageCheck,
@@ -54,13 +53,10 @@ import {
   getContactList,
   allocateNextBiltyNumber,
   exportAllBiltiesCSV,
-  setScopedItem,
-  syncToFirestore,
-  getStoredBilties,
   saveStoredBilties
 } from '../../utils/storage';
 import { validateBiltyFreight } from '../../utils/calculator';
-import { generatePdfFromElement, shareBiltyPdfOrWhatsApp } from '../../utils/pdfHelper';
+import { generatePdfFromElement, preloadBiltyPdfAssets, shareBiltyPdfOrWhatsApp } from '../../utils/pdfHelper';
 import { downloadBiltyLegalZip } from '../../utils/zipHelper';
 import { PublicImage } from '../PublicImage';
 import {
@@ -126,12 +122,11 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     }
   }, [initialSubTab]);
 
-  // Filters for "All Bilties" view
+  // Filters for "All Bilties" view (focused strictly on dispatch records, not payment ledger)
   const [allFilterQuery, setAllFilterQuery] = useState('');
   const [branchFilter, setBranchFilter] = useState<'all' | 'samundri' | 'kamalia'>('all');
-  const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'partial' | 'topay'>('all');
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'delivered' | 'pending'>('all');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'total_desc' | 'payable_desc'>('newest');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
 
   // Modal & Edit states
   const [selectedModalBilty, setSelectedModalBilty] = useState<BiltyRecord | null>(null);
@@ -168,6 +163,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const [date, setDate] = useState(getTodayFormatted);
   const [driverName, setDriverName] = useState('');
   const [mobileNo, setMobileNo] = useState('');
+  const [driverCnic, setDriverCnic] = useState('');
+  const [driverLicense, setDriverLicense] = useState('');
   const [sendingCity, setSendingCity] = useState('');
   const [receivingCity, setReceivingCity] = useState('');
   const [receivingPointId, setReceivingPointId] = useState('');
@@ -182,13 +179,30 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const [itemDescription, setItemDescription] = useState('');
   const [weight, setWeight] = useState('');
   const [total, setTotal] = useState('');
-  const [advance, setAdvance] = useState('');
+  const [deliveryAt, setDeliveryAt] = useState('');
+  const [remarks, setRemarks] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
 
   const [lastBilty, setLastBilty] = useState<BiltyRecord | null>(null);
   const [activePrintRecord, setActivePrintRecord] = useState<BiltyRecord | null>(null);
   const [activePrintQrUrl, setActivePrintQrUrl] = useState<string>('');
+  const [preloadedAssets, setPreloadedAssets] = useState<{ logo: string; card: string }>({
+    logo: '',
+    card: ''
+  });
+
+  useEffect(() => {
+    let active = true;
+    preloadBiltyPdfAssets()
+      .then((assets) => {
+        if (active) setPreloadedAssets(assets);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Legal Vault state for newly created bilty
   const [creationLegalVault, setCreationLegalVault] = useState<BiltyLegalVault>({});
@@ -205,6 +219,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setDate(getTodayFormatted());
     setDriverName('');
     setMobileNo('');
+    setDriverCnic('');
+    setDriverLicense('');
     setSendingCity('');
     setReceivingCity('');
     setReceivingPointId('');
@@ -218,7 +234,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setItemDescription('');
     setWeight('');
     setTotal('');
-    setAdvance('');
+    setDeliveryAt('');
+    setRemarks('');
     setCreationLegalVault({});
     setIsLegalVaultExpanded(false);
     setEditingBilty(null);
@@ -233,6 +250,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setDate(record.date || getTodayFormatted());
     setDriverName(record.driverName || '');
     setMobileNo(record.mobileNo || '');
+    setDriverCnic(record.driverCnic || '');
+    setDriverLicense(record.driverLicense || '');
     setSendingCity(record.sendingCity || '');
     setReceivingCity(record.receivingCity || '');
     setReceivingPointId(record.receivingPointId || '');
@@ -246,7 +265,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setItemDescription(record.itemDescription || '');
     setWeight(record.weight || '');
     setTotal(record.total !== undefined ? String(record.total) : '');
-    setAdvance(record.advance !== undefined ? String(record.advance) : '');
+    setDeliveryAt(record.deliveryAt || '');
+    setRemarks(record.remarks || '');
     setCreationLegalVault(record.legalVault || {});
     if (record.branch) setSelectedBranch(record.branch);
     if (record.language) setSelectedLanguage(record.language);
@@ -280,21 +300,21 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setContactsList(getContactList());
   }, [bilties]);
 
-  // Aggregates for All Bilties
-  const totalStats = useMemo(() => {
-    let totalFreight = 0;
-    let totalAdvance = 0;
-    let totalPayable = 0;
+  // Dispatch volume aggregates for All Bilties (no payment totals)
+  const dispatchStats = useMemo(() => {
+    let samundriCount = 0;
+    let kamaliaCount = 0;
+    let deliveredCount = 0;
     bilties.forEach((b) => {
-      totalFreight += Number(b.total) || 0;
-      totalAdvance += Number(b.advance) || 0;
-      totalPayable += Number(b.payable) || 0;
+      if ((b.branch || 'samundri') === 'kamalia') kamaliaCount += 1;
+      else samundriCount += 1;
+      if (b.isDelivered || b.podConfirmation?.status === 'delivered') deliveredCount += 1;
     });
     return {
       count: bilties.length,
-      totalFreight,
-      totalAdvance,
-      totalPayable
+      samundriCount,
+      kamaliaCount,
+      deliveredCount
     };
   }, [bilties]);
 
@@ -304,15 +324,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     // Branch filter
     if (branchFilter !== 'all') {
       list = list.filter((b) => (b.branch || 'samundri') === branchFilter);
-    }
-
-    // Payment status filter
-    if (paymentFilter === 'paid') {
-      list = list.filter((b) => Number(b.payable) <= 0);
-    } else if (paymentFilter === 'partial') {
-      list = list.filter((b) => Number(b.advance) > 0 && Number(b.payable) > 0);
-    } else if (paymentFilter === 'topay') {
-      list = list.filter((b) => Number(b.advance) <= 0 && Number(b.payable) > 0);
     }
 
     // Delivery status (POD) filter
@@ -331,6 +342,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           (b.vehicleNo && b.vehicleNo.toLowerCase().includes(q)) ||
           (b.driverName && b.driverName.toLowerCase().includes(q)) ||
           (b.mobileNo && b.mobileNo.toLowerCase().includes(q)) ||
+          (b.driverCnic && b.driverCnic.toLowerCase().includes(q)) ||
+          (b.driverLicense && b.driverLicense.toLowerCase().includes(q)) ||
           (b.senderName && b.senderName.toLowerCase().includes(q)) ||
           (b.senderMobile && b.senderMobile.toLowerCase().includes(q)) ||
           (b.receiverName && b.receiverName.toLowerCase().includes(q)) ||
@@ -347,13 +360,11 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     list.sort((a, b) => {
       if (sortBy === 'newest') return (b.id || 0) - (a.id || 0);
       if (sortBy === 'oldest') return (a.id || 0) - (b.id || 0);
-      if (sortBy === 'total_desc') return (Number(b.total) || 0) - (Number(a.total) || 0);
-      if (sortBy === 'payable_desc') return (Number(b.payable) || 0) - (Number(a.payable) || 0);
       return 0;
     });
 
     return list;
-  }, [bilties, branchFilter, paymentFilter, deliveryFilter, allFilterQuery, sortBy]);
+  }, [bilties, branchFilter, deliveryFilter, allFilterQuery, sortBy]);
 
   const handleBranchChange = (branch: BiltyBranch) => {
     setSelectedBranch(branch);
@@ -376,14 +387,38 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   };
 
   const handlePrintBuilty = async (record: BiltyRecord) => {
-    const qrUrl = await getQrDataUrl(record);
+    const [qrUrl, assets] = await Promise.all([
+      getQrDataUrl(record),
+      preloadBiltyPdfAssets().catch(() => preloadedAssets)
+    ]);
+    if (assets?.card || assets?.logo) {
+      setPreloadedAssets(assets);
+    }
     setActivePrintQrUrl(qrUrl);
     setActivePrintRecord({
       ...record,
       branch: record.branch || selectedBranch,
       language: record.language || selectedLanguage
     });
-    setTimeout(() => {
+    setTimeout(async () => {
+      const target = document.getElementById('printable-bilty-dom');
+      if (target) {
+        const imgs = Array.from(target.querySelectorAll('img'));
+        await Promise.all(
+          imgs.map(async (img) => {
+            if (!img.complete || img.naturalWidth === 0) {
+              await new Promise<void>((resolve) => {
+                const timer = setTimeout(resolve, 1500);
+                img.addEventListener('load', () => { clearTimeout(timer); resolve(); }, { once: true });
+                img.addEventListener('error', () => { clearTimeout(timer); resolve(); }, { once: true });
+              });
+            }
+            if (typeof img.decode === 'function') {
+              await img.decode().catch(() => {});
+            }
+          })
+        );
+      }
       if (typeof (window as any).AndroidPrinter?.print === 'function') {
         (window as any).AndroidPrinter.print();
       } else {
@@ -399,13 +434,11 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     const totalNum = parseFloat(total) || 0;
-    const advanceNum = parseFloat(advance) || 0;
 
-    // Financial Validation
     setFormError(null);
-    const validation = validateBiltyFreight(totalNum, advanceNum);
+    const validation = validateBiltyFreight(totalNum, 0);
     if (!validation.isValid) {
-      setFormError(validation.error || (selectedLanguage === 'en' ? 'Please enter valid freight & advance amount.' : 'درست کرایہ اور پیشگی رقم درج کریں۔'));
+      setFormError(validation.error || (selectedLanguage === 'en' ? 'Please enter valid freight amount.' : 'درست کرایہ رقم درج کریں۔'));
       return;
     }
 
@@ -418,6 +451,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         date: date.trim() || getTodayFormatted(),
         driverName: driverName.trim(),
         mobileNo: mobileNo.trim(),
+        driverCnic: driverCnic.trim() || undefined,
+        driverLicense: driverLicense.trim() || undefined,
         sendingCity: sendingCity.trim(),
         receivingCity: receivingCity.trim(),
         receivingPointId: receivingPointId || undefined,
@@ -431,8 +466,10 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         itemDescription: itemDescription.trim(),
         weight: weight.trim(),
         total: validation.total,
-        advance: validation.advance,
-        payable: validation.payable,
+        advance: 0,
+        payable: validation.total,
+        deliveryAt: deliveryAt.trim() || undefined,
+        remarks: remarks.trim() || undefined,
         isDelivered: editIsDelivered,
         podConfirmation: editIsDelivered
           ? (editingBilty.podConfirmation || {
@@ -469,6 +506,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       date: date.trim() || getTodayFormatted(),
       driverName: driverName.trim(),
       mobileNo: mobileNo.trim(),
+      driverCnic: driverCnic.trim() || undefined,
+      driverLicense: driverLicense.trim() || undefined,
       sendingCity: sendingCity.trim(),
       receivingCity: receivingCity.trim(),
       receivingPointId: receivingPointId || undefined,
@@ -482,8 +521,10 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       itemDescription: itemDescription.trim(),
       weight: weight.trim(),
       total: validation.total,
-      advance: validation.advance,
-      payable: validation.payable,
+      advance: 0,
+      payable: validation.total,
+      deliveryAt: deliveryAt.trim() || undefined,
+      remarks: remarks.trim() || undefined,
       legalVault: Object.keys(creationLegalVault).length > 0 ? creationLegalVault : undefined,
     };
 
@@ -497,7 +538,13 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const generateBiltyPdf = async (record: BiltyRecord): Promise<{ pdf: jsPDF; pdfBlob: Blob } | null> => {
-    const qrUrl = await getQrDataUrl(record);
+    const [qrUrl, assets] = await Promise.all([
+      getQrDataUrl(record),
+      preloadBiltyPdfAssets().catch(() => preloadedAssets)
+    ]);
+    if (assets?.card || assets?.logo) {
+      setPreloadedAssets(assets);
+    }
     setActivePrintQrUrl(qrUrl);
     setActivePrintRecord({
       ...record,
@@ -676,6 +723,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         <div className="bg-slate-100/70 p-2 sm:p-4 rounded-xl border border-slate-200 overflow-x-auto">
           <PrintableBilty
             record={record}
+            cardDataUrl={preloadedAssets.card}
+            logoDataUrl={preloadedAssets.logo}
             branch={previewBranch}
             language={previewLang}
           />
@@ -1135,7 +1184,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         {/* ALL BILTIES ARCHIVE / LEDGER */}
         {subTab === 'all' && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* 1. Summary KPI Financial & Volume Cards */}
+            {/* 1. Operational Dispatch Summary Cards (No financial ledger balances in Bilty section) */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {/* Total Bilties */}
               <div className="p-4 rounded-2xl bg-[#0f2942] text-white border border-[#1a3a5c] shadow-xs flex flex-col justify-between">
@@ -1149,7 +1198,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 </div>
                 <div className="mt-3">
                   <div className="text-2xl sm:text-3xl font-black font-mono text-white">
-                    {totalStats.count}
+                    {dispatchStats.count}
                   </div>
                   <div className="text-[11px] text-slate-300 mt-0.5">
                     {isUrdu ? 'تمام محفوظ شدہ بلٹی ریکارڈز' : 'All saved bilty records'}
@@ -1157,62 +1206,62 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 </div>
               </div>
 
-              {/* Total Freight */}
+              {/* Samundri Branch */}
               <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                    {isUrdu ? 'کل فریٹ رقم' : 'Total Freight'}
+                    {isUrdu ? 'سمندری برانچ' : 'Samundri'}
                   </span>
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                    <Wallet className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                    <MapPin className="w-4 h-4" />
                   </div>
                 </div>
                 <div className="mt-3">
-                  <div className="text-xl sm:text-2xl font-black font-mono text-slate-800">
-                    Rs {totalStats.totalFreight.toLocaleString('en-PK')}
+                  <div className="text-2xl sm:text-3xl font-black font-mono text-slate-800">
+                    {dispatchStats.samundriCount}
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5">
-                    {isUrdu ? 'تمام بلٹیوں کی کل مالیت' : 'Gross booking volume'}
+                    {isUrdu ? 'سمندری سے جاری کردہ' : 'Issued from Samundri'}
                   </div>
                 </div>
               </div>
 
-              {/* Advance Collected */}
+              {/* Kamalia Branch */}
               <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                    {isUrdu ? 'پیشگی وصولی' : 'Advance Paid'}
+                    {isUrdu ? 'کمالیہ برانچ' : 'Kamalia'}
                   </span>
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                    <CheckCircle2 className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
+                    <Truck className="w-4 h-4" />
                   </div>
                 </div>
                 <div className="mt-3">
-                  <div className="text-xl sm:text-2xl font-black font-mono text-blue-600">
-                    Rs {totalStats.totalAdvance.toLocaleString('en-PK')}
+                  <div className="text-2xl sm:text-3xl font-black font-mono text-blue-700">
+                    {dispatchStats.kamaliaCount}
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5">
-                    {isUrdu ? 'روانگی پر موصول ایڈوانس' : 'Advance freight collected'}
+                    {isUrdu ? 'کمالیہ سے جاری کردہ' : 'Issued from Kamalia'}
                   </div>
                 </div>
               </div>
 
-              {/* Balance Due */}
+              {/* Delivered (POD) */}
               <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                    {isUrdu ? 'بقایا واجب الادا' : 'Balance Due'}
+                    {isUrdu ? 'مکمل ڈلیوری (POD)' : 'Delivered'}
                   </span>
-                  <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
-                    <AlertTriangle className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center">
+                    <PackageCheck className="w-4 h-4" />
                   </div>
                 </div>
                 <div className="mt-3">
-                  <div className="text-xl sm:text-2xl font-black font-mono text-rose-600">
-                    Rs {totalStats.totalPayable.toLocaleString('en-PK')}
+                  <div className="text-2xl sm:text-3xl font-black font-mono text-indigo-700">
+                    {dispatchStats.deliveredCount}
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5">
-                    {isUrdu ? 'ان لوڈنگ پر قابل وصولی' : 'Pending to collect at depot'}
+                    {isUrdu ? 'تصدیق شدہ ترسیل' : 'Confirmed deliveries'}
                   </div>
                 </div>
               </div>
@@ -1266,7 +1315,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 </div>
               </div>
 
-              {/* Row 2: Branch Filters, Payment Filters & Sorting */}
+              {/* Row 2: Branch Filters, Delivery POD Filters & Sorting */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200/80">
                 {/* Branch Filters */}
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -1308,57 +1357,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                   </button>
                 </div>
 
-                {/* Payment Filters */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] font-bold text-slate-500 ml-1">
-                    {isUrdu ? 'ادائیگی:' : 'Payment:'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentFilter('all')}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      paymentFilter === 'all'
-                        ? 'bg-slate-800 text-white'
-                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {isUrdu ? 'تمام' : 'All'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentFilter('paid')}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      paymentFilter === 'paid'
-                        ? 'bg-emerald-700 text-white'
-                        : 'bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-50'
-                    }`}
-                  >
-                    {isUrdu ? 'مکمل ادا' : 'Paid'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentFilter('partial')}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      paymentFilter === 'partial'
-                        ? 'bg-amber-700 text-white'
-                        : 'bg-white border border-amber-200 text-amber-800 hover:bg-amber-50'
-                    }`}
-                  >
-                    {isUrdu ? 'جزوی پیشگی' : 'Advance'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentFilter('topay')}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      paymentFilter === 'topay'
-                        ? 'bg-rose-700 text-white'
-                        : 'bg-white border border-rose-200 text-rose-800 hover:bg-rose-50'
-                    }`}
-                  >
-                    {isUrdu ? 'ٹو پے (بقایا)' : 'To-Pay'}
-                  </button>
-                </div>
-
                 {/* Delivery / POD Status Filters */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[11px] font-bold text-slate-500 ml-1">
@@ -1397,7 +1395,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     }`}
                   >
                     <Clock className="w-3 h-3" />
-                    <span>{isUrdu ? 'وصولی باقی' : 'Pending POD'}</span>
+                    <span>{isUrdu ? 'جاری شدہ' : 'Issued'}</span>
                   </button>
                 </div>
 
@@ -1406,19 +1404,17 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                   <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
                   <select
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
+                    onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest')}
                     className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
                   >
                     <option value="newest">{isUrdu ? 'تازہ ترین پہلے' : 'Newest First'}</option>
                     <option value="oldest">{isUrdu ? 'پرانی بلٹیاں پہلے' : 'Oldest First'}</option>
-                    <option value="total_desc">{isUrdu ? 'زیادہ کرایہ پہلے' : 'Highest Freight'}</option>
-                    <option value="payable_desc">{isUrdu ? 'زیادہ بقایا پہلے' : 'Highest Balance Due'}</option>
                   </select>
                 </div>
               </div>
             </div>
 
-            {/* 3. Ledger Content: Empty State OR Records */}
+            {/* 3. Bilty Records Content: Empty State OR Dispatch Table */}
             {filteredBilties.length === 0 ? (
               <div className="p-10 text-center bg-[#fdfbf7] rounded-3xl border-2 border-dashed border-[#ecece0] space-y-3">
                 <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
@@ -1431,8 +1427,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 </h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
                   {bilties.length === 0
-                    ? (isUrdu ? 'نئی بلٹی بنائیں کے بٹن پر کلک کر کے اپنی پہلی آفیشل بلٹی رسید تیار کریں۔' : 'Click "New Bilty" to create your first official freight consignment note.')
-                    : (isUrdu ? 'براہ کرم سرچ کیورڈ یا فلٹرز تبدیل کر کے دوبارہ کوشش کریں۔' : 'Try clearing your search query or adjusting your branch/payment filters.')}
+                    ? (isUrdu ? 'نئی بلٹی بنائیں کے بٹن پر کلک کر کے اپنی پہلی آفیشل بلٹی رسید تیار کریں۔' : 'Click "New Bilty" to create your first official consignment bilty.')
+                    : (isUrdu ? 'براہ کرم سرچ کیورڈ یا فلٹرز تبدیل کر کے دوبارہ کوشش کریں۔' : 'Try clearing your search query or adjusting your branch filters.')}
                 </p>
                 {bilties.length === 0 ? (
                   <button
@@ -1449,7 +1445,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     onClick={() => {
                       setAllFilterQuery('');
                       setBranchFilter('all');
-                      setPaymentFilter('all');
+                      setDeliveryFilter('all');
                     }}
                     className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-full text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-all"
                   >
@@ -1460,7 +1456,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Desktop & Tablet Full Ledger Table */}
+                {/* Desktop & Tablet Dispatch Table */}
                 <div className="hidden lg:block overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
                   <table className="w-full text-right text-xs border-collapse">
                     <thead>
@@ -1471,15 +1467,12 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                         <th className="py-3 px-3 text-right">{isUrdu ? 'روٹ (از ➔ تا)' : 'Route'}</th>
                         <th className="py-3 px-3 text-right">{isUrdu ? 'پارٹیاں (بھیجنے/وصول کنندہ)' : 'Parties'}</th>
                         <th className="py-3 px-3 text-right">{isUrdu ? 'تفصیل مال' : 'Cargo'}</th>
-                        <th className="py-3 px-3 text-right">{isUrdu ? 'کرایہ تفصیل' : 'Freight'}</th>
                         <th className="py-3 px-3 text-center">{isUrdu ? 'سٹیٹس' : 'Status'}</th>
                         <th className="py-3 px-3.5 text-center">{isUrdu ? 'کارروائی' : 'Actions'}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {filteredBilties.map((b) => {
-                        const isPaid = Number(b.payable) <= 0;
-                        const isPartial = Number(b.advance) > 0 && Number(b.payable) > 0;
                         const bBranch = b.branch || 'samundri';
                         return (
                           <tr key={b.id || b.biltyNo} className="hover:bg-amber-50/40 transition-colors">
@@ -1549,39 +1542,11 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                               </div>
                             </td>
 
-                            {/* Freight Breakdown */}
-                            <td className="py-3 px-3 font-mono whitespace-nowrap">
-                              <div className="font-bold text-slate-900">
-                                کل: Rs {Number(b.total || 0).toLocaleString('en-PK')}
-                              </div>
-                              <div className="text-[10px] text-blue-600">
-                                پیشگی: Rs {Number(b.advance || 0).toLocaleString('en-PK')}
-                              </div>
-                              <div className="text-[10px] font-bold text-rose-600">
-                                بقایا: Rs {Number(b.payable || 0).toLocaleString('en-PK')}
-                              </div>
-                            </td>
-
-                            {/* Status */}
+                            {/* Status (Dispatch / Delivery POD only) */}
                             <td className="py-3 px-3 text-center whitespace-nowrap">
                               <div className="flex flex-col items-center gap-1">
-                                {isPaid ? (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                    ✓ مکمل ادا
-                                  </span>
-                                ) : isPartial ? (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                                    جزوی پیشگی
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
-                                    ٹو پے (بقایا)
-                                  </span>
-                                )}
-
-                                {/* Delivery / POD Badge */}
                                 {b.isDelivered || b.podConfirmation ? (
-                                  <span 
+                                  <span
                                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300"
                                     title={b.podConfirmation ? `وصول کنندہ: ${b.podConfirmation.receiverName}` : 'پہنچ گیا'}
                                   >
@@ -1686,8 +1651,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 {/* Mobile Responsive Cards */}
                 <div className="lg:hidden space-y-3">
                   {filteredBilties.map((b) => {
-                    const isPaid = Number(b.payable) <= 0;
-                    const isPartial = Number(b.advance) > 0 && Number(b.payable) > 0;
                     const bBranch = b.branch || 'samundri';
                     return (
                       <div
@@ -1705,20 +1668,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                             </span>
                           </div>
                           <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                            {isPaid ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                ✓ مکمل ادا
-                              </span>
-                            ) : isPartial ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-                                جزوی پیشگی
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                                ٹو پے (بقایا)
-                              </span>
-                            )}
-
                             {b.isDelivered || b.podConfirmation ? (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950/70 text-blue-900 dark:text-blue-300 border border-blue-300 dark:border-blue-800 flex items-center gap-1">
                                 <PackageCheck className="w-3 h-3 text-blue-600 dark:text-blue-400" />
@@ -1759,22 +1708,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                           </div>
                           <div className="truncate text-slate-700 dark:text-slate-300">
                             <strong className="text-slate-500 dark:text-slate-400">مال:</strong> {b.itemDescription || '—'} {b.weight ? `(${b.weight} kg)` : ''}
-                          </div>
-                        </div>
-
-                        {/* Financial Pills */}
-                        <div className="grid grid-cols-3 gap-1.5 font-mono text-center text-[11px]">
-                          <div className="bg-slate-100 dark:bg-[#22252c] p-1.5 rounded-lg border border-slate-200 dark:border-[#2d313b]">
-                            <div className="text-[9px] text-slate-500 dark:text-slate-400">{isUrdu ? 'کل' : 'Total'}</div>
-                            <div className="font-bold text-slate-900 dark:text-[#f8fafc]">Rs {Number(b.total || 0).toLocaleString('en-PK')}</div>
-                          </div>
-                          <div className="bg-blue-50 dark:bg-blue-950/60 p-1.5 rounded-lg text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
-                            <div className="text-[9px] text-blue-600 dark:text-blue-400">{isUrdu ? 'پیشگی' : 'Advance'}</div>
-                            <div className="font-bold">Rs {Number(b.advance || 0).toLocaleString('en-PK')}</div>
-                          </div>
-                          <div className="bg-rose-50 dark:bg-rose-950/60 p-1.5 rounded-lg text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
-                            <div className="text-[9px] text-rose-600 dark:text-rose-400">{isUrdu ? 'بقایا' : 'Due'}</div>
-                            <div className="font-bold">Rs {Number(b.payable || 0).toLocaleString('en-PK')}</div>
                           </div>
                         </div>
 
@@ -1969,6 +1902,34 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 />
               </div>
 
+              {/* Driver CNIC & License No */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
+                    {isEnForm ? 'Driver CNIC No.' : 'ڈرائیور شناختی کارڈ نمبر (CNIC)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={driverCnic}
+                    onChange={(e) => setDriverCnic(e.target.value)}
+                    placeholder="XXXXX-XXXXXXX-X"
+                    className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
+                    {isEnForm ? 'Driver License (D.L. No.)' : 'ڈرائیونگ لائسنس نمبر (D.L. No.)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={driverLicense}
+                    onChange={(e) => setDriverLicense(e.target.value)}
+                    placeholder={isEnForm ? 'e.g. FSD-12345' : 'لائسنس نمبر'}
+                    className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono transition-all"
+                  />
+                </div>
+              </div>
+
               {/* Cities */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                 <div>
@@ -2133,8 +2094,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 </div>
               </div>
 
-              {/* Weight, Total, Advance */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-3">
+              {/* Weight & Receipt Freight (Receipt only - Khata manages settlements) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
                     {isEnForm ? 'Weight (kg)' : t.weight}
@@ -2149,7 +2110,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
-                    {isEnForm ? 'Total Freight (Rs)' : t.total}
+                    {isEnForm ? 'Total Freight on Receipt (Rs)' : 'کرایہ برائے رسید (اختیاری Rs)'}
                   </label>
                   <input
                     type="number"
@@ -2159,16 +2120,32 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono transition-all"
                   />
                 </div>
+              </div>
+
+              {/* Delivery At & Remarks */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
-                    {isEnForm ? 'Advance Paid (Rs)' : t.advance}
+                    {isEnForm ? 'Delivery At (Optional)' : 'جائے ترسیل / ڈلیوری ایڈریس'}
                   </label>
                   <input
-                    type="number"
-                    value={advance}
-                    onChange={(e) => setAdvance(e.target.value)}
-                    placeholder="0"
-                    className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono transition-all"
+                    type="text"
+                    value={deliveryAt}
+                    onChange={(e) => setDeliveryAt(e.target.value)}
+                    placeholder={isEnForm ? 'Warehouse / Market / City' : 'گودام / مارکیٹ / شہر'}
+                    className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">
+                    {isEnForm ? 'Remark (Optional)' : 'کیفیت / ریمارکس'}
+                  </label>
+                  <input
+                    type="text"
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder={isEnForm ? 'Special instructions' : 'خصوصی ہدایت یا نوٹ'}
+                    className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -2500,6 +2477,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           <PrintableBilty
             record={activePrintRecord}
             qrDataUrl={activePrintQrUrl}
+            cardDataUrl={preloadedAssets.card}
+            logoDataUrl={preloadedAssets.logo}
             branch={activePrintRecord.branch || selectedBranch}
             language={activePrintRecord.language || selectedLanguage}
           />
