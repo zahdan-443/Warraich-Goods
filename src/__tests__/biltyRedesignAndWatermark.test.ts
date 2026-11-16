@@ -75,8 +75,10 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(rowBPos).toBeGreaterThan(rowAPos);
     expect(rowCPos).toBeGreaterThan(rowBPos);
 
-    // Watermark transparency & exact print rules preserved
-    expect(printableSrc).toContain('rgba(255, 255, 255, 0.72)');
+    // Full-bleed high-visibility watermark over transparent cells & exact print rules
+    expect(printableSrc).toContain("const cellBg = 'transparent'");
+    expect(printableSrc).toContain('opacity: 0.95');
+    expect(printableSrc).toContain("objectFit: 'cover'");
     expect(printableSrc).toContain('warraich-card.png');
     expect(printableSrc).toContain('print-color-adjust: exact !important');
   });

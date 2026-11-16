@@ -93,8 +93,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
 
   const termsList = isEn ? BILTY_TERMS_EN : BILTY_TERMS_UR;
 
-  const cellBg = 'rgba(255, 255, 255, 0.72)';
-  const subtleTintBg = 'rgba(248, 250, 252, 0.72)';
+  const cellBg = 'transparent';
+  const subtleTintBg = 'rgba(248, 250, 252, 0.22)';
   const borderNavy = '1.5px solid #0f2942';
   const borderLight = '1px solid #94a3b8';
 
@@ -161,7 +161,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             print-color-adjust: exact !important;
           }
           .printable-bilty-watermark {
-            opacity: 0.16 !important;
+            opacity: 0.95 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
@@ -171,23 +171,22 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
         }
       `}</style>
 
-      {/* Official Background Card Watermark ("public/warraich-card.png") */}
+      {/* Official Background Card Watermark ("public/warraich-card.png") - full A4 bleed */}
       <div
         className="printable-bilty-watermark"
         style={{
           position: 'absolute',
-          top: '54%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          opacity: 0.17,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100%',
+          height: '100%',
+          opacity: 0.95,
           pointerEvents: 'none',
           userSelect: 'none',
           zIndex: 0,
-          width: '620px',
-          maxWidth: '84%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
+          overflow: 'hidden'
         }}
       >
         <img
@@ -209,11 +208,10 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
           }}
           style={{
             width: '100%',
-            height: 'auto',
-            maxHeight: '460px',
-            objectFit: 'contain',
-            borderRadius: '10px',
-            mixBlendMode: 'multiply'
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+            display: 'block'
           }}
         />
       </div>

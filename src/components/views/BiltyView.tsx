@@ -581,7 +581,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       )
     );
 
-    const innerEl = document.getElementById('printable-bilty-inner') || target;
+    const innerEl = target.querySelector('.printable-bilty-container') || target;
     const { pdf, pdfBlob } = await generatePdfFromElement(innerEl as HTMLElement, {
       scale: 2,
       quality: 0.98,
