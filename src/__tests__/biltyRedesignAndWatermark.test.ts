@@ -19,10 +19,10 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(printableSrc).not.toContain('Receiving Point');
     expect(printableSrc).not.toContain('ریسیونگ پوائنٹ');
 
-    // 2. Frameless enlarged logo extending to full top edge
-    expect(printableSrc).toContain("width: '176px'");
-    expect(printableSrc).toContain("height: '116px'");
-    expect(printableSrc).toContain("transform: 'scale(1.42)'");
+    // 2. Frameless enlarged logo extending to 3 edges (top, left side, and Date box border)
+    expect(printableSrc).toContain("width: '180px'");
+    expect(printableSrc).toContain("minHeight: '132px'");
+    expect(printableSrc).toContain("transform: 'scale(1.6)'");
     expect(printableSrc).toContain("border: 'none'");
     expect(printableSrc).not.toContain("borderRadius: '50%'");
 
@@ -57,8 +57,9 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(printableSrc).not.toContain('Delivery At');
     expect(printableSrc).not.toContain('مقامِ ترسیل');
 
-    // 7. 2x2 Fit-to-Box QR + 3-party Signature Grid (Driver, Sender, Receiver) without Zahdan / For Warraich Goods
-    expect(printableSrc).toContain("maxWidth: '96px'");
+    // 7. 2x2 Edge-to-Edge QR + 3-party Signature Grid (Driver, Sender, Receiver) without Zahdan / For Warraich Goods
+    expect(printableSrc).toContain("width: '100%'");
+    expect(printableSrc).toContain("height: '100%'");
     expect(printableSrc).toContain('Driver Signature');
     expect(printableSrc).toContain('Sender Signature');
     expect(printableSrc).toContain('Receiver Signature');
@@ -69,11 +70,12 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(printableSrc).not.toContain('Zahdan Nasr');
     expect(printableSrc).not.toContain('For WARRAICH GOODS');
 
-    // 8. Bold Terms & Conditions heading without company name & professional press fonts
+    // 8. Bold Noto Nastaliq Urdu title + Jameel Noori Nastaleeq body & bold Terms
     expect(printableSrc).toContain('fontWeight: 700');
     expect(printableSrc).toContain('Libre Baskerville');
     expect(printableSrc).toContain('IBM Plex Sans');
-    expect(printableSrc).toContain('Akbar');
+    expect(printableSrc).toContain('Noto Nastaliq Urdu');
+    expect(printableSrc).toContain('Jameel Noori Nastaleeq');
     expect(printableSrc).not.toContain('Terms & Conditions (Warraich');
     expect(printableSrc).not.toContain('شرائط و ضوابط (وڑائچ');
 
@@ -85,11 +87,10 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(rowBPos).toBeGreaterThan(rowAPos);
     expect(rowCPos).toBeGreaterThan(rowBPos);
 
-    // Full-bleed generated parchment stationery watermark over transparent cells & exact print rules
-    expect(printableSrc).toContain("const cellBg = 'transparent'");
-    expect(printableSrc).toContain("backgroundColor: '#f4f1ea'");
-    expect(printableSrc).toContain('biltyWatermarkBgData');
-    expect(printableSrc).toContain("objectFit: 'cover'");
+    // Pure crisp white background with no colorful overlay & exact print rules
+    expect(printableSrc).toContain("const cellBg = '#ffffff'");
+    expect(printableSrc).toContain("backgroundColor: '#ffffff'");
+    expect(printableSrc).not.toContain('printable-bilty-watermark');
     expect(printableSrc).toContain('print-color-adjust: exact !important');
   });
 

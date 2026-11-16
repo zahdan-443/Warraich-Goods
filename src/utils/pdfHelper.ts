@@ -205,10 +205,10 @@ export async function generatePdfFromElement(
     imgDataUrl = await toJpeg(element, {
       quality,
       pixelRatio: scale,
-      backgroundColor: '#f4f1ea',
+      backgroundColor: '#ffffff',
       cacheBust: true,
       style: {
-        backgroundColor: '#f4f1ea',
+        backgroundColor: '#ffffff',
         color: '#0f172a',
         transform: 'none',
         margin: '0',
