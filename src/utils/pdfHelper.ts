@@ -13,7 +13,8 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { shareOrDownloadBlob } from './nativeExport';
 import { BiltyRecord } from '../types';
 import { getCachedCompanyProfile } from './storage';
-import { getBiltyVerificationUrl } from './biltyHelpers';
+import { BILTY_BRANCHES, getBiltyVerificationUrl } from './biltyHelpers';
+import { biltyWatermarkBgData } from '../assets/dashboardIcons';
 
 /**
  * Escapes unsafe characters for HTML injection prevention.
@@ -109,16 +110,14 @@ export async function getCompanyCardBase64(): Promise<string> {
   const cleanBase = base.endsWith('/') ? base : base + '/';
 
   const candidates = [
+    biltyWatermarkBgData,
     `${cleanBase}warraich-card.png`,
     './warraich-card.png',
     '/warraich-card.png',
     'warraich-card.png',
     `${origin}/Warraich-Goods/warraich-card.png`,
     'https://zahdan-443.github.io/Warraich-Goods/warraich-card.png',
-    `${origin}/warraich-card.png`,
-    `${cleanBase}company-card.png`,
-    './company-card.png',
-    '/company-card.png'
+    `${origin}/warraich-card.png`
   ];
 
   for (const url of candidates) {
@@ -206,10 +205,10 @@ export async function generatePdfFromElement(
     imgDataUrl = await toJpeg(element, {
       quality,
       pixelRatio: scale,
-      backgroundColor: '#ffffff',
+      backgroundColor: '#f4f1ea',
       cacheBust: true,
       style: {
-        backgroundColor: '#ffffff',
+        backgroundColor: '#f4f1ea',
         color: '#0f172a',
         transform: 'none',
         margin: '0',
@@ -253,9 +252,13 @@ export function formatBiltyWhatsAppSummary(record: BiltyRecord): string {
   const hasAdvance = advanceAmt > 0;
   const verifyLink = getBiltyVerificationUrl(record);
 
+  const cleanUrTitle = (company.nameUr || 'وڑائچ گڈز ٹرانسپورٹ کمپنی').replace(/\s*\(رجسٹرڈ\)\s*/g, '').trim();
+  const officeInfo = BILTY_BRANCHES.samundri;
+
   const lines = isEn
     ? [
-        `🚚 *WARRAICH GOODS TRANSPORT COMPANY (REGD)*`,
+        `🚚 *WARRAICH GOODS TRANSPORT COMPANY®*`,
+        `👤 *Proprietor:* Zahdan Nasar Warraich`,
         `🏛️ *NTN:* 7779394-1`,
         `───────────────────────`,
         `📄 *Bilty No:* ${record.biltyNo}`,
@@ -272,14 +275,15 @@ export function formatBiltyWhatsAppSummary(record: BiltyRecord): string {
         hasAdvance ? `💵 *Advance Paid:* Rs ${fmt(advanceAmt)}` : '',
         hasAdvance ? `⏳ *Pending Amount:* Rs ${fmt(pendingAmt)}` : '',
         `───────────────────────`,
-        `📍 *Head Office:* ${company.headOfficeEn || 'Samundri, Faisalabad'}`,
-        `📞 *Helpline:* ${company.phoneNumbers || '0300-5370443, 0339-5370443'}`,
+        `📍 *Head Office:* ${officeInfo.addressEn}`,
+        `📞 *Helpline:* ${officeInfo.phone}`,
         verifyLink ? `🌐 *Verify Online:* ${verifyLink}` : '',
         `───────────────────────`,
         `*(This is a computer-generated Bilty, no signature required)*`
       ]
     : [
-        `🚚 *${company.nameUr || 'وڑائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)'}*`,
+        `🚚 *${cleanUrTitle}®*`,
+        `👤 *پروپرائیٹر:* زاہدان نصر وڑائچ`,
         `🏛️ *این ٹی این:* 7779394-1`,
         `───────────────────────`,
         `📄 *بلٹی نمبر:* ${record.biltyNo}`,
@@ -296,8 +300,8 @@ export function formatBiltyWhatsAppSummary(record: BiltyRecord): string {
         hasAdvance ? `💵 *پیشگی وصول:* روپے ${fmt(advanceAmt)}` : '',
         hasAdvance ? `⏳ *بقایا رقم:* روپے ${fmt(pendingAmt)}` : '',
         `───────────────────────`,
-        `📍 *ہیڈ آفس:* ${company.headOfficeUr || 'سمندری، فیصل آباد'}`,
-        `📞 *ہیلپ لائن:* ${company.phoneNumbers || '0300-5370443, 0339-5370443'}`,
+        `📍 *ہیڈ آفس:* ${officeInfo.addressUr}`,
+        `📞 *ہیلپ لائن:* ${officeInfo.phone}`,
         verifyLink ? `🌐 *آن لائن تصدیق:* ${verifyLink}` : '',
         `───────────────────────`,
         `*(یہ کمپیوٹر سے تیار کردہ بلٹی ہے، دستخط کی ضرورت نہیں)*`

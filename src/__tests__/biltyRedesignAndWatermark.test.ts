@@ -19,9 +19,10 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(printableSrc).not.toContain('Receiving Point');
     expect(printableSrc).not.toContain('ریسیونگ پوائنٹ');
 
-    // 2. Frameless enlarged logo
-    expect(printableSrc).toContain("width: '106px'");
-    expect(printableSrc).toContain("height: '106px'");
+    // 2. Frameless enlarged logo extending to full top edge
+    expect(printableSrc).toContain("width: '176px'");
+    expect(printableSrc).toContain("height: '116px'");
+    expect(printableSrc).toContain("transform: 'scale(1.42)'");
     expect(printableSrc).toContain("border: 'none'");
     expect(printableSrc).not.toContain("borderRadius: '50%'");
 
@@ -29,10 +30,14 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(printableSrc).toContain('This is a computer-generated Bilty, no signature required');
     expect(printableSrc).toContain('یہ کمپیوٹر سے تیار کردہ بلٹی ہے، دستخط کی ضرورت نہیں');
 
-    // 4. Strict single-language mode without mixed tags or unnecessary dots
-    expect(printableSrc).toContain('WARRAICH GOODS TRANSPORT COMPANY (REGD)');
-    expect(printableSrc).toContain('TRUSTED LOGISTICS & TRANSPORT SERVICE');
-    expect(printableSrc).toContain('معتبر لاجسٹکس اور ٹرانسپورٹ سروس');
+    // 4. Strict single-language mode without mixed tags or unnecessary dots + Proprietor & ® mark
+    expect(printableSrc).toContain('WARRAICH GOODS TRANSPORT COMPANY');
+    expect(printableSrc).toContain('PROPRIETOR: ZAHDAN NASAR WARRAICH');
+    expect(printableSrc).toContain('پروپرائیٹر: زاہدان نصر وڑائچ');
+    expect(printableSrc).toContain('®');
+    expect(printableSrc).not.toContain('TRUSTED LOGISTICS & TRANSPORT SERVICE');
+    expect(printableSrc).not.toContain('معتبر لاجسٹکس اور ٹرانسپورٹ سروس');
+    expect(printableSrc).not.toContain('(REGD)');
     expect(printableSrc).not.toContain('Mo.');
     expect(printableSrc).not.toContain('D.L.');
     expect(printableSrc).not.toContain('Bilty No.');
@@ -52,7 +57,8 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(printableSrc).not.toContain('Delivery At');
     expect(printableSrc).not.toContain('مقامِ ترسیل');
 
-    // 7. 2x2 QR + 3-party Signature Grid (Driver, Sender, Receiver) without Zahdan / For Warraich Goods
+    // 7. 2x2 Fit-to-Box QR + 3-party Signature Grid (Driver, Sender, Receiver) without Zahdan / For Warraich Goods
+    expect(printableSrc).toContain("maxWidth: '96px'");
     expect(printableSrc).toContain('Driver Signature');
     expect(printableSrc).toContain('Sender Signature');
     expect(printableSrc).toContain('Receiver Signature');
@@ -63,7 +69,11 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(printableSrc).not.toContain('Zahdan Nasr');
     expect(printableSrc).not.toContain('For WARRAICH GOODS');
 
-    // 8. Clean Terms heading without company name
+    // 8. Bold Terms & Conditions heading without company name & professional press fonts
+    expect(printableSrc).toContain('fontWeight: 700');
+    expect(printableSrc).toContain('Libre Baskerville');
+    expect(printableSrc).toContain('IBM Plex Sans');
+    expect(printableSrc).toContain('Akbar');
     expect(printableSrc).not.toContain('Terms & Conditions (Warraich');
     expect(printableSrc).not.toContain('شرائط و ضوابط (وڑائچ');
 
@@ -75,11 +85,11 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(rowBPos).toBeGreaterThan(rowAPos);
     expect(rowCPos).toBeGreaterThan(rowBPos);
 
-    // Full-bleed high-visibility watermark over transparent cells & exact print rules
+    // Full-bleed generated parchment stationery watermark over transparent cells & exact print rules
     expect(printableSrc).toContain("const cellBg = 'transparent'");
-    expect(printableSrc).toContain('opacity: 0.95');
+    expect(printableSrc).toContain("backgroundColor: '#f4f1ea'");
+    expect(printableSrc).toContain('biltyWatermarkBgData');
     expect(printableSrc).toContain("objectFit: 'cover'");
-    expect(printableSrc).toContain('warraich-card.png');
     expect(printableSrc).toContain('print-color-adjust: exact !important');
   });
 
@@ -117,7 +127,9 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     };
 
     const enWithAdvance = formatBiltyWhatsAppSummary(baseRecord);
-    expect(enWithAdvance).toContain('WARRAICH GOODS TRANSPORT COMPANY (REGD)');
+    expect(enWithAdvance).toContain('WARRAICH GOODS TRANSPORT COMPANY®');
+    expect(enWithAdvance).toContain('Proprietor:* Zahdan Nasar Warraich');
+    expect(enWithAdvance).toContain('Okara Bypass, Near 466 Chock, Samundri');
     expect(enWithAdvance).toContain('Total Freight:* Rs 45,000');
     expect(enWithAdvance).toContain('Advance Paid:* Rs 15,000');
     expect(enWithAdvance).toContain('Pending Amount:* Rs 30,000');
@@ -136,15 +148,25 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
       ...baseRecord,
       language: 'ur'
     });
-    expect(urWithAdvance).toContain('وڑائچ گڈز ٹرانسپورٹ کمپنی (رجسٹرڈ)');
+    expect(urWithAdvance).toContain('وڑائچ گڈز ٹرانسپورٹ کمپنی®');
+    expect(urWithAdvance).toContain('پروپرائیٹر:* زاہدان نصر وڑائچ');
+    expect(urWithAdvance).toContain('اوکاڑہ بائی پاس، نزدیک 466 چوک، سمندری');
     expect(urWithAdvance).toContain('روپے 45,000');
     expect(urWithAdvance).toContain('پیشگی وصول:* روپے 15,000');
     expect(urWithAdvance).toContain('بقایا رقم:* روپے 30,000');
     expect(urWithAdvance).toContain('یہ کمپیوٹر سے تیار کردہ بلٹی ہے، دستخط کی ضرورت نہیں');
   });
 
-  it('wires Receiver CNIC, optional Advance on Receipt, and Remarks in BiltyView while keeping Bilty archive free of settlement badges', () => {
+  it('uses single Samundri office, Language-only setup modal, Receiver CNIC, optional Advance, and Remarks in BiltyView', () => {
     const biltyViewSrc = readWorkspaceFile('src/components/views/BiltyView.tsx');
+    const helpersSrc = readWorkspaceFile('src/utils/biltyHelpers.ts');
+
+    expect(helpersSrc).toContain('Okara Bypass, Near 466 Chock, Samundri');
+    expect(helpersSrc).not.toContain('Kamalia');
+    expect(biltyViewSrc).not.toContain('Kamalia');
+    expect(biltyViewSrc).not.toContain('کمالیہ');
+    expect(biltyViewSrc).toContain('بلٹی کی زبان منتخب کریں');
+    expect(biltyViewSrc).not.toContain('Select Branch & Language');
 
     expect(biltyViewSrc).toContain('preloadBiltyPdfAssets');
     expect(biltyViewSrc).toContain('cardDataUrl={preloadedAssets.card}');

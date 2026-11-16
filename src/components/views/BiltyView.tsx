@@ -124,7 +124,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
 
   // Filters for "All Bilties" view (focused strictly on dispatch records, not payment ledger)
   const [allFilterQuery, setAllFilterQuery] = useState('');
-  const [branchFilter, setBranchFilter] = useState<'all' | 'samundri' | 'kamalia'>('all');
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'delivered' | 'pending'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
 
@@ -134,14 +133,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const [editingBilty, setEditingBilty] = useState<BiltyRecord | null>(null);
   const [editIsDelivered, setEditIsDelivered] = useState<boolean>(false);
 
-  // Branch and Language Selection State
-  const [selectedBranch, setSelectedBranch] = useState<BiltyBranch>(() => {
-    try {
-      const stored = localStorage.getItem('ah-bilty-branch');
-      if (stored === 'samundri' || stored === 'kamalia') return stored;
-    } catch {}
-    return 'samundri';
-  });
+  // Single Head Office (Samundri) and Language Selection State
+  const selectedBranch: BiltyBranch = 'samundri';
 
   const [selectedLanguage, setSelectedLanguage] = useState<BiltyLanguage>(() => {
     try {
@@ -271,7 +264,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setAdvance(record.advance !== undefined ? String(record.advance) : '');
     setRemarks(record.remarks || '');
     setCreationLegalVault(record.legalVault || {});
-    if (record.branch) setSelectedBranch(record.branch);
     if (record.language) setSelectedLanguage(record.language);
     setIsConfigModalOpen(false);
     setSelectedModalBilty(null);
@@ -305,29 +297,18 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
 
   // Dispatch volume aggregates for All Bilties (no payment totals)
   const dispatchStats = useMemo(() => {
-    let samundriCount = 0;
-    let kamaliaCount = 0;
     let deliveredCount = 0;
     bilties.forEach((b) => {
-      if ((b.branch || 'samundri') === 'kamalia') kamaliaCount += 1;
-      else samundriCount += 1;
       if (b.isDelivered || b.podConfirmation?.status === 'delivered') deliveredCount += 1;
     });
     return {
       count: bilties.length,
-      samundriCount,
-      kamaliaCount,
       deliveredCount
     };
   }, [bilties]);
 
   const filteredBilties = useMemo(() => {
     let list = [...bilties];
-
-    // Branch filter
-    if (branchFilter !== 'all') {
-      list = list.filter((b) => (b.branch || 'samundri') === branchFilter);
-    }
 
     // Delivery status (POD) filter
     if (deliveryFilter === 'delivered') {
@@ -368,17 +349,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     });
 
     return list;
-  }, [bilties, branchFilter, deliveryFilter, allFilterQuery, sortBy]);
-
-  const handleBranchChange = (branch: BiltyBranch) => {
-    setSelectedBranch(branch);
-    try {
-      localStorage.setItem('ah-bilty-branch', branch);
-    } catch {}
-    if (lastBilty) {
-      setLastBilty({ ...lastBilty, branch });
-    }
-  };
+  }, [bilties, deliveryFilter, allFilterQuery, sortBy]);
 
   const handleLanguageChange = (language: BiltyLanguage) => {
     setSelectedLanguage(language);
@@ -658,7 +629,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   };
 
   const renderBiltyPreview = (record: BiltyRecord) => {
-    const previewBranch = record.branch || selectedBranch;
     const previewLang = record.language || selectedLanguage;
 
     return (
@@ -716,7 +686,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
               </span>
             )}
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#0f2942] text-white">
-              📍 {previewBranch === 'kamalia' ? 'کمالیہ (Kamalia)' : 'سمندری (Samundri)'}
+              📍 {previewLang === 'en' ? 'Samundri Office' : 'سمندری آفس'}
             </span>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-950 border border-amber-300">
               🌐 {previewLang === 'en' ? '100% English' : 'مکمل اردو'}
@@ -730,7 +700,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             record={record}
             cardDataUrl={preloadedAssets.card}
             logoDataUrl={preloadedAssets.logo}
-            branch={previewBranch}
+            branch="samundri"
             language={previewLang}
           />
         </div>
@@ -810,12 +780,12 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     );
   };
 
-  const branchObj = BILTY_BRANCHES[selectedBranch] || BILTY_BRANCHES.samundri;
+  const branchObj = BILTY_BRANCHES.samundri;
   const isEnForm = selectedLanguage === 'en';
 
   return (
     <div className="flex-1 p-3 sm:p-6 md:p-10 max-w-5xl mx-auto w-full space-y-6 sm:space-y-8">
-      {/* 1. Branch & Language Setup Modal Prompt */}
+      {/* 1. Language Selection Setup Modal Prompt (Single-step language selection only) */}
       {isConfigModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
           <div
@@ -826,90 +796,28 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             <div className="flex items-center justify-between border-b border-slate-200 pb-3.5">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-[#0f2942] text-amber-400 flex items-center justify-center shrink-0 shadow-sm">
-                  <Building2 className="w-6 h-6" />
+                  <Globe className="w-6 h-6" />
                 </div>
                 <div>
                   <h2 className="text-xl sm:text-2xl font-black text-[#0f2942]">
-                    بلٹی جنریٹر سیٹ اپ
+                    بلٹی کی زبان منتخب کریں
                   </h2>
                   <p className="text-xs text-slate-500 font-semibold">
-                    Select Branch & Language for Bilty
+                    Select Language for Bilty
                   </p>
                 </div>
               </div>
             </div>
 
             <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
-              براہ کرم بلٹی بنانے سے قبل اپنی مطلوبہ برانچ اور زبان کا انتخاب کریں۔
+              براہ کرم بلٹی بنانے سے قبل اپنی مطلوبہ زبان (اردو یا انگریزی) کا انتخاب کریں۔
             </p>
 
-            {/* A. Branch Selection */}
+            {/* Language Selection */}
             <div className="space-y-2">
               <label className="block text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-emerald-600" />
-                <span>A. برانچ منتخب کریں (Select Branch)</span>
-              </label>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Samundri Card */}
-                <button
-                  type="button"
-                  onClick={() => handleBranchChange('samundri')}
-                  className={`p-3.5 rounded-2xl border-2 text-right transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                    selectedBranch === 'samundri'
-                      ? 'border-[#0f2942] bg-emerald-50/70 shadow-sm ring-2 ring-[#0f2942]/20'
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-sm text-[#0f2942] flex items-center gap-1.5">
-                      📍 سمندری (Samundri)
-                    </span>
-                    {selectedBranch === 'samundri' && (
-                      <span className="w-5 h-5 rounded-full bg-[#0f2942] text-white flex items-center justify-center text-[10px]">
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-slate-600 leading-tight">
-                    <div className="font-semibold text-slate-800">466 چوک، سمندری بائی پاس، سمندری ۔</div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">466 chok, Samundri Bypass, Samundri.</div>
-                  </div>
-                </button>
-
-                {/* Kamalia Card */}
-                <button
-                  type="button"
-                  onClick={() => handleBranchChange('kamalia')}
-                  className={`p-3.5 rounded-2xl border-2 text-right transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                    selectedBranch === 'kamalia'
-                      ? 'border-[#0f2942] bg-emerald-50/70 shadow-sm ring-2 ring-[#0f2942]/20'
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-sm text-[#0f2942] flex items-center gap-1.5">
-                      📍 کمالیہ (Kamalia)
-                    </span>
-                    {selectedBranch === 'kamalia' && (
-                      <span className="w-5 h-5 rounded-full bg-[#0f2942] text-white flex items-center justify-center text-[10px]">
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-slate-600 leading-tight">
-                    <div className="font-semibold text-slate-800">رجانہ روڈ، بلمقابل رائل پیلس، کمالیہ ۔</div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">Rajana Road, Opposite Royal Palace, Kamalia.</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* B. Language Selection */}
-            <div className="space-y-2 pt-2">
-              <label className="block text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                 <Globe className="w-4 h-4 text-blue-600" />
-                <span>B. زبان منتخب کریں (Select Language)</span>
+                <span>زبان منتخب کریں (Select Language)</span>
               </label>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -917,14 +825,14 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 <button
                   type="button"
                   onClick={() => handleLanguageChange('ur')}
-                  className={`p-3.5 rounded-2xl border-2 text-right transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                  className={`p-4 rounded-2xl border-2 text-right transition-all cursor-pointer flex items-center justify-between gap-2 ${
                     selectedLanguage === 'ur'
                       ? 'border-[#0f2942] bg-blue-50/70 shadow-sm ring-2 ring-[#0f2942]/20'
                       : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                   }`}
                 >
                   <div>
-                    <div className="font-black text-sm text-[#0f2942]">
+                    <div className="font-black text-base text-[#0f2942]">
                       اردو (Urdu)
                     </div>
                     <div className="text-[11px] text-slate-500 mt-0.5">
@@ -942,14 +850,14 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 <button
                   type="button"
                   onClick={() => handleLanguageChange('en')}
-                  className={`p-3.5 rounded-2xl border-2 text-right transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                  className={`p-4 rounded-2xl border-2 text-right transition-all cursor-pointer flex items-center justify-between gap-2 ${
                     selectedLanguage === 'en'
                       ? 'border-[#0f2942] bg-blue-50/70 shadow-sm ring-2 ring-[#0f2942]/20'
                       : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                   }`}
                 >
                   <div>
-                    <div className="font-black text-sm text-[#0f2942]">
+                    <div className="font-black text-base text-[#0f2942]">
                       English (انگریزی)
                     </div>
                     <div className="text-[11px] text-slate-500 mt-0.5">
@@ -965,18 +873,18 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
               </div>
             </div>
 
-            {/* Note & Helpline Info */}
-            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900 leading-tight">
-              <strong>نوٹ:</strong> ہمارے پاس دونوں برانچوں کے علیحدہ پتے ہیں، جبکہ موبائل نمبر ایک ہی ہیں (0300-5370443، 0339-5370443)۔ بلٹی کے بیک گراؤنڈ میں آفیشل کارڈ خودکار سنک رہے گا۔
+            {/* Office Address & Watermark Note */}
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
+              <strong>ہیڈ آفس:</strong> {branchObj.addressUr} ({branchObj.addressEn}) • <strong>ہیلپ لائن:</strong> <span dir="ltr">{branchObj.phone}</span>
             </div>
 
             {/* Submit & Continue Button */}
-            <div className="pt-2">
+            <div className="pt-1">
               <button
                 type="button"
                 onClick={() => {
                   try {
-                    localStorage.setItem('ah-bilty-branch', selectedBranch);
+                    localStorage.setItem('ah-bilty-branch', 'samundri');
                     localStorage.setItem('ah-bilty-lang', selectedLanguage);
                   } catch {}
                   setIsConfigModalOpen(false);
@@ -1100,7 +1008,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           </div>
         )}
 
-        {/* 2. Top Branch & Language Control Bar */}
+        {/* 2. Top Single-Office & Language Control Bar */}
         <div className="p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-linear-to-r from-amber-50/80 via-emerald-50/60 to-blue-50/80 border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#0f2942] text-amber-400 flex items-center justify-center shrink-0 shadow-xs">
@@ -1109,42 +1017,20 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap text-xs sm:text-sm font-black text-slate-800">
                 <span className="flex items-center gap-1 text-[#0f2942]">
-                  📍 برانچ: <strong className="underline underline-offset-2">{selectedBranch === 'kamalia' ? 'کمالیہ (Kamalia)' : 'سمندری (Samundri)'}</strong>
+                  📍 {isEnForm ? 'Office:' : 'ہیڈ آفس:'} <strong className="underline underline-offset-2">{isEnForm ? 'Samundri' : 'سمندری'}</strong>
                 </span>
                 <span className="text-slate-300">•</span>
                 <span className="flex items-center gap-1 text-[#0f2942]">
-                  🌐 زبان: <strong className="underline underline-offset-2">{selectedLanguage === 'en' ? 'English (مکمل انگریزی)' : 'اردو (مکمل اردو)'}</strong>
+                  🌐 {isEnForm ? 'Language:' : 'زبان:'} <strong className="underline underline-offset-2">{selectedLanguage === 'en' ? 'English' : 'اردو'}</strong>
                 </span>
               </div>
               <div className="text-[11px] text-slate-600 mt-0.5">
-                <strong>ایڈریس:</strong> {selectedLanguage === 'en' ? branchObj.addressEn : branchObj.addressUr}
+                <strong>{isEnForm ? 'Address:' : 'ایڈریس:'}</strong> {selectedLanguage === 'en' ? branchObj.addressEn : branchObj.addressUr}
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Quick Branch Toggle */}
-            <div className="flex items-center bg-white border border-slate-300 rounded-xl p-0.5 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => handleBranchChange('samundri')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedBranch === 'samundri' ? 'bg-[#0f2942] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                سمندری
-              </button>
-              <button
-                type="button"
-                onClick={() => handleBranchChange('kamalia')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedBranch === 'kamalia' ? 'bg-[#0f2942] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                کمالیہ
-              </button>
-            </div>
-
             {/* Quick Language Toggle */}
             <div className="flex items-center bg-white border border-slate-300 rounded-xl p-0.5 shadow-2xs">
               <button
@@ -1167,12 +1053,12 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
               </button>
             </div>
 
-            {/* Reopen Modal Button */}
+            {/* Reopen Language Modal Button */}
             <button
               type="button"
               onClick={() => setIsConfigModalOpen(true)}
               className="p-2 bg-white border border-slate-300 hover:bg-slate-100 text-[#0f2942] rounded-xl transition-all cursor-pointer shadow-2xs"
-              title="برانچ اور زبان سیٹ اپ تبدیل کریں"
+              title="زبان منتخب کریں (Select Language)"
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -1190,7 +1076,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         {subTab === 'all' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* 1. Operational Dispatch Summary Cards (No financial ledger balances in Bilty section) */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               {/* Total Bilties */}
               <div className="p-4 rounded-2xl bg-[#0f2942] text-white border border-[#1a3a5c] shadow-xs flex flex-col justify-between">
                 <div className="flex items-center justify-between">
@@ -1211,11 +1097,11 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 </div>
               </div>
 
-              {/* Samundri Branch */}
+              {/* Samundri Office */}
               <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                    {isUrdu ? 'سمندری برانچ' : 'Samundri'}
+                    {isUrdu ? 'سمندری آفس' : 'Samundri Office'}
                   </span>
                   <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
                     <MapPin className="w-4 h-4" />
@@ -1223,30 +1109,10 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 </div>
                 <div className="mt-3">
                   <div className="text-2xl sm:text-3xl font-black font-mono text-slate-800">
-                    {dispatchStats.samundriCount}
+                    {dispatchStats.count}
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5">
-                    {isUrdu ? 'سمندری سے جاری کردہ' : 'Issued from Samundri'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Kamalia Branch */}
-              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                    {isUrdu ? 'کمالیہ برانچ' : 'Kamalia'}
-                  </span>
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
-                    <Truck className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="text-2xl sm:text-3xl font-black font-mono text-blue-700">
-                    {dispatchStats.kamaliaCount}
-                  </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
-                    {isUrdu ? 'کمالیہ سے جاری کردہ' : 'Issued from Kamalia'}
+                    {isUrdu ? branchObj.addressUr : branchObj.addressEn}
                   </div>
                 </div>
               </div>
@@ -1320,48 +1186,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 </div>
               </div>
 
-              {/* Row 2: Branch Filters, Delivery POD Filters & Sorting */}
+              {/* Row 2: Delivery POD Filters & Sorting */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200/80">
-                {/* Branch Filters */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] font-bold text-slate-500 ml-1">
-                    {isUrdu ? 'برانچ:' : 'Branch:'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setBranchFilter('all')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      branchFilter === 'all'
-                        ? 'bg-[#0f2942] text-white shadow-2xs'
-                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {isUrdu ? 'تمام' : 'All'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBranchFilter('samundri')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      branchFilter === 'samundri'
-                        ? 'bg-[#0f2942] text-white shadow-2xs'
-                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    📍 {isUrdu ? 'سمندری' : 'Samundri'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBranchFilter('kamalia')}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      branchFilter === 'kamalia'
-                        ? 'bg-[#0f2942] text-white shadow-2xs'
-                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    📍 {isUrdu ? 'کمالیہ' : 'Kamalia'}
-                  </button>
-                </div>
-
                 {/* Delivery / POD Status Filters */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[11px] font-bold text-slate-500 ml-1">
@@ -1433,7 +1259,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
                   {bilties.length === 0
                     ? (isUrdu ? 'نئی بلٹی بنائیں کے بٹن پر کلک کر کے اپنی پہلی آفیشل بلٹی رسید تیار کریں۔' : 'Click "New Bilty" to create your first official consignment bilty.')
-                    : (isUrdu ? 'براہ کرم سرچ کیورڈ یا فلٹرز تبدیل کر کے دوبارہ کوشش کریں۔' : 'Try clearing your search query or adjusting your branch filters.')}
+                    : (isUrdu ? 'براہ کرم سرچ کیورڈ یا فلٹرز تبدیل کر کے دوبارہ کوشش کریں۔' : 'Try clearing your search query or adjusting your filters.')}
                 </p>
                 {bilties.length === 0 ? (
                   <button
@@ -1449,7 +1275,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     type="button"
                     onClick={() => {
                       setAllFilterQuery('');
-                      setBranchFilter('all');
                       setDeliveryFilter('all');
                     }}
                     className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-full text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-all"
@@ -1467,7 +1292,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     <thead>
                       <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                         <th className="py-3 px-3.5 text-right">{isUrdu ? 'بلٹی نمبر و تاریخ' : 'Bilty # & Date'}</th>
-                        <th className="py-3 px-3 text-right">{isUrdu ? 'برانچ' : 'Branch'}</th>
+                        <th className="py-3 px-3 text-right">{isUrdu ? 'آفس / زبان' : 'Office / Lang'}</th>
                         <th className="py-3 px-3 text-right">{isUrdu ? 'گاڑی و ڈرائیور' : 'Vehicle & Driver'}</th>
                         <th className="py-3 px-3 text-right">{isUrdu ? 'روٹ (از ➔ تا)' : 'Route'}</th>
                         <th className="py-3 px-3 text-right">{isUrdu ? 'پارٹیاں (بھیجنے/وصول کنندہ)' : 'Parties'}</th>
@@ -1478,7 +1303,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {filteredBilties.map((b) => {
-                        const bBranch = b.branch || 'samundri';
                         return (
                           <tr key={b.id || b.biltyNo} className="hover:bg-amber-50/40 transition-colors">
                             {/* Bilty No & Date */}
@@ -1498,10 +1322,10 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                               </div>
                             </td>
 
-                            {/* Branch */}
+                            {/* Office & Language */}
                             <td className="py-3 px-3 whitespace-nowrap">
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#0f2942] text-white">
-                                📍 {bBranch === 'kamalia' ? 'کمالیہ' : 'سمندری'}
+                                📍 سمندری
                               </span>
                               <div className="text-[10px] text-slate-500 mt-0.5">
                                 {b.language === 'en' ? 'English' : 'اردو'}
@@ -1656,7 +1480,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 {/* Mobile Responsive Cards */}
                 <div className="lg:hidden space-y-3">
                   {filteredBilties.map((b) => {
-                    const bBranch = b.branch || 'samundri';
                     return (
                       <div
                         key={b.id || b.biltyNo}
@@ -1669,7 +1492,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                               {b.biltyNo}
                             </span>
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0f2942] text-white">
-                              📍 {bBranch === 'kamalia' ? 'کمالیہ' : 'سمندری'}
+                              📍 سمندری
                             </span>
                           </div>
                           <div className="flex items-center gap-1.5 flex-wrap justify-end">
@@ -1948,7 +1771,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     type="text"
                     value={sendingCity}
                     onChange={(e) => setSendingCity(e.target.value)}
-                    placeholder={isEnForm ? (selectedBranch === 'kamalia' ? 'Kamalia' : 'Samundri') : (selectedBranch === 'kamalia' ? 'کمالیہ' : 'سمندری')}
+                    placeholder={isEnForm ? 'Samundri' : 'سمندری'}
                     className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none transition-all"
                   />
                 </div>
@@ -2489,14 +2312,14 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       {activePrintRecord && (
         <div
           id="printable-bilty-dom"
-          className="printable-bilty-area fixed -top-[9999px] left-0 w-[794px] min-w-[794px] max-w-[794px] h-auto min-h-[1110px] bg-white text-slate-900 pointer-events-none opacity-100 z-[-100] print:static print:w-full print:h-auto print:opacity-100 print:pointer-events-auto print:z-auto"
+          className="printable-bilty-area fixed -top-[9999px] left-0 w-[794px] min-w-[794px] max-w-[794px] h-auto min-h-[1110px] bg-[#f4f1ea] text-slate-900 pointer-events-none opacity-100 z-[-100] print:static print:w-full print:h-auto print:opacity-100 print:pointer-events-auto print:z-auto"
         >
           <PrintableBilty
             record={activePrintRecord}
             qrDataUrl={activePrintQrUrl}
             cardDataUrl={preloadedAssets.card}
             logoDataUrl={preloadedAssets.logo}
-            branch={activePrintRecord.branch || selectedBranch}
+            branch="samundri"
             language={activePrintRecord.language || selectedLanguage}
           />
         </div>

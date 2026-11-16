@@ -121,21 +121,13 @@ export interface BiltyBranchInfo {
   phone: string;
 }
 
-export const BILTY_BRANCHES: Record<BiltyBranch, BiltyBranchInfo> = {
+export const BILTY_BRANCHES: Record<'samundri', BiltyBranchInfo> = {
   samundri: {
     id: 'samundri',
     nameUr: 'سمندری',
     nameEn: 'Samundri',
-    addressUr: '466 چوک، سمندری بائی پاس، سمندری',
-    addressEn: '466 Chok, Samundri Bypass, Samundri',
-    phone: '0300-5370443, 0339-5370443'
-  },
-  kamalia: {
-    id: 'kamalia',
-    nameUr: 'کمالیہ',
-    nameEn: 'Kamalia',
-    addressUr: 'رجانہ روڈ، بلمقابل رائل پیلس، کمالیہ',
-    addressEn: 'Rajana Road, Opposite Royal Palace, Kamalia',
+    addressUr: 'اوکاڑہ بائی پاس، نزدیک 466 چوک، سمندری',
+    addressEn: 'Okara Bypass, Near 466 Chock, Samundri',
     phone: '0300-5370443, 0339-5370443'
   }
 };
