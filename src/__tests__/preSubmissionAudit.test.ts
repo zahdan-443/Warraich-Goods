@@ -34,6 +34,7 @@ vi.mock('../utils/firebase', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../utils/firebase')>();
   return {
     ...actual,
+    db: null,
     auth: mocks.authObj,
     deleteFirebaseUserAccount: mocks.deleteFirebaseUserAccount
   };

@@ -2496,55 +2496,70 @@ export const USER_FIRESTORE_SUBCOLLECTIONS = [
 export async function purgeAllUserFirestoreData(userId: string): Promise<void> {
   if (!db || !userId) return;
 
-  // 1. Delete user's nested Khata ledgerAccounts and each account's entries subcollection
-  try {
-    const accSnap = await withTimeout(getDocs(collection(db, 'users', userId, 'ledgerAccounts')), 8000);
-    for (const accDoc of accSnap.docs) {
-      try {
-        const entrySnap = await withTimeout(
-          getDocs(collection(db, 'users', userId, 'ledgerAccounts', accDoc.id, 'entries')),
-          8000
-        );
-        await Promise.all(entrySnap.docs.map((ed) => deleteDoc(ed.ref).catch(() => {})));
-      } catch {}
-      await deleteDoc(accDoc.ref).catch(() => {});
-    }
-  } catch (err) {
-    console.warn('Notice purging ledgerAccounts subcollection:', err);
-  }
+  const firestore = db;
 
-  // 2. Delete all other user subcollections under users/{uid}/*
-  for (const subColl of USER_FIRESTORE_SUBCOLLECTIONS) {
+  const purgeLedgerAccounts = async () => {
     try {
-      const subSnap = await withTimeout(getDocs(collection(db, 'users', userId, subColl)), 8000);
-      await Promise.all(subSnap.docs.map((d) => deleteDoc(d.ref).catch(() => {})));
+      const accSnap = await withTimeout(getDocs(collection(firestore, 'users', userId, 'ledgerAccounts')), 5000);
+      await Promise.all(
+        accSnap.docs.map(async (accDoc) => {
+          try {
+            const entrySnap = await withTimeout(
+              getDocs(collection(firestore, 'users', userId, 'ledgerAccounts', accDoc.id, 'entries')),
+              5000
+            );
+            await Promise.all(entrySnap.docs.map((ed) => deleteDoc(ed.ref).catch(() => {})));
+          } catch {}
+          await deleteDoc(accDoc.ref).catch(() => {});
+        })
+      );
     } catch (err) {
-      console.warn(`Notice purging subcollection ${subColl}:`, err);
+      console.warn('Notice purging ledgerAccounts subcollection:', err);
     }
-  }
+  };
 
-  // 3. Delete chunked cloud backups under usersData/{uid}/cloudBackups/*/chunks/*
-  try {
-    const backupsSnap = await withTimeout(getDocs(collection(db, 'usersData', userId, 'cloudBackups')), 8000);
-    for (const bDoc of backupsSnap.docs) {
+  const purgeSubcollections = Promise.all(
+    USER_FIRESTORE_SUBCOLLECTIONS.map(async (subColl) => {
       try {
-        const chunksSnap = await withTimeout(
-          getDocs(collection(db, 'usersData', userId, 'cloudBackups', bDoc.id, 'chunks')),
-          8000
-        );
-        await Promise.all(chunksSnap.docs.map((cd) => deleteDoc(cd.ref).catch(() => {})));
-      } catch {}
-      await deleteDoc(bDoc.ref).catch(() => {});
-    }
-  } catch (err) {
-    console.warn('Notice purging cloudBackups subcollection:', err);
-  }
+        const subSnap = await withTimeout(getDocs(collection(firestore, 'users', userId, subColl)), 5000);
+        await Promise.all(subSnap.docs.map((d) => deleteDoc(d.ref).catch(() => {})));
+      } catch (err) {
+        console.warn(`Notice purging subcollection ${subColl}:`, err);
+      }
+    })
+  );
 
-  // 4. Delete top-level user documents
+  const purgeCloudBackups = async () => {
+    try {
+      const backupsSnap = await withTimeout(getDocs(collection(firestore, 'usersData', userId, 'cloudBackups')), 5000);
+      await Promise.all(
+        backupsSnap.docs.map(async (bDoc) => {
+          try {
+            const chunksSnap = await withTimeout(
+              getDocs(collection(firestore, 'usersData', userId, 'cloudBackups', bDoc.id, 'chunks')),
+              5000
+            );
+            await Promise.all(chunksSnap.docs.map((cd) => deleteDoc(cd.ref).catch(() => {})));
+          } catch {}
+          await deleteDoc(bDoc.ref).catch(() => {});
+        })
+      );
+    } catch (err) {
+      console.warn('Notice purging cloudBackups subcollection:', err);
+    }
+  };
+
+  const purgeRootDocs = Promise.all([
+    withTimeout(deleteDoc(doc(firestore, 'users', userId)), 5000).catch(() => {}),
+    withTimeout(deleteDoc(doc(firestore, 'usersData', userId)), 5000).catch(() => {}),
+    withTimeout(deleteDoc(doc(firestore, 'accountDeletionRequests', userId)), 5000).catch(() => {})
+  ]);
+
   await Promise.all([
-    withTimeout(deleteDoc(doc(db, 'users', userId)), 5000).catch(() => {}),
-    withTimeout(deleteDoc(doc(db, 'usersData', userId)), 5000).catch(() => {}),
-    withTimeout(deleteDoc(doc(db, 'accountDeletionRequests', userId)), 5000).catch(() => {})
+    purgeLedgerAccounts(),
+    purgeSubcollections,
+    purgeCloudBackups(),
+    purgeRootDocs
   ]);
 }
 
