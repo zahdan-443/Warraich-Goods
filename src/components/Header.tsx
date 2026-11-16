@@ -28,6 +28,7 @@ interface HeaderProps {
   lang: Language;
   onToggleLang: () => void;
   userEmail: string | null;
+  userId?: string | null;
   onSignIn?: () => void;
   onSignOut: () => void;
   role: UserRole;
@@ -50,6 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
   lang,
   onToggleLang,
   userEmail,
+  userId = null,
   onSignIn,
   onSignOut,
   role,
@@ -720,6 +722,7 @@ export const Header: React.FC<HeaderProps> = ({
         isOpen={showAccountDeletionModal}
         onClose={() => setShowAccountDeletionModal(false)}
         userEmail={userEmail || ''}
+        userId={userId || ''}
         onDeleted={() => {
           onSignOut();
         }}

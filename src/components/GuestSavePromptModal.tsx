@@ -7,7 +7,7 @@ interface GuestSavePromptModalProps {
   isOpen: boolean;
   onClose: () => void;
   onProceedWithoutAuth: () => void;
-  onAuthSuccess: (email: string) => void;
+  onAuthSuccess: (email: string, uid?: string) => void;
   lang: Language;
   saveDescription?: string;
 }
@@ -34,7 +34,7 @@ export const GuestSavePromptModal: React.FC<GuestSavePromptModalProps> = ({
       if (!user) return;
       const email = user.email || (user as any)?.providerData?.[0]?.email || '';
       if (email) {
-        onAuthSuccess(email);
+        onAuthSuccess(email, user.uid);
         onClose();
       } else {
         setError(

@@ -181,6 +181,8 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
   // Fetch REAL road routing geometry from Open Source Routing Machine (OSRM)
   useEffect(() => {
     let isCancelled = false;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     const fetchRealRoute = async () => {
       setLoadingRealRoute(true);
@@ -192,7 +194,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
       const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startCoord};${destCoord}?overview=full&geometries=geojson`;
 
       try {
-        const res = await fetch(osrmUrl);
+        const res = await fetch(osrmUrl, { signal: controller.signal });
         if (!res.ok) throw new Error('OSRM network response error');
         const data = await res.json();
 
@@ -239,6 +241,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
           routePolylineRef.current = polyline;
         }
       } finally {
+        clearTimeout(timeoutId);
         if (!isCancelled) setLoadingRealRoute(false);
       }
     };
@@ -247,6 +250,8 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
 
     return () => {
       isCancelled = true;
+      clearTimeout(timeoutId);
+      controller.abort();
     };
   }, [originId, destId, userLocation]);
 

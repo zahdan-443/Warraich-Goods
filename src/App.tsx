@@ -550,7 +550,7 @@ export default function App() {
       if (user) {
         const email = user.email || (user as any)?.providerData?.[0]?.email || '';
         if (email) {
-          await handleAuthSuccess(email);
+          await handleAuthSuccess(email, user.uid);
           pushAppNotification(
             lang === 'ur' ? 'خوش آمدید' : 'Welcome',
             lang === 'ur' ? `گوگل اکاؤنٹ (${email}) کامیابی سے لاگ ان ہو گیا۔` : `Successfully signed in as ${email}.`,
@@ -597,7 +597,7 @@ export default function App() {
     }
   };
 
-  const handleAuthSuccess = async (email: string) => {
+  const handleAuthSuccess = async (email: string, explicitUid?: string) => {
     try {
       const isOwnerEmail = email.toLowerCase() === OWNER_EMAIL.toLowerCase();
       const finalRole: UserRole = isOwnerEmail ? 'owner' : 'driver';
@@ -606,8 +606,10 @@ export default function App() {
       saveStoredRole(finalRole);
       localStorage.setItem('ah-gmail-user', email);
 
-      const uid = currentUid || `user_${Date.now()}`;
-      setCurrentUid(uid);
+      const uid = auth.currentUser?.uid || explicitUid || currentUid || null;
+      if (uid) {
+        setCurrentUid(uid);
+      }
 
       // Refresh bilty access immediately (Confidential: Strictly App Owner)
       if (isOwnerEmail) {
@@ -621,6 +623,10 @@ export default function App() {
       } else {
         setBiltyAllowedUIDs([]);
         setBiltyAllowedEmails([]);
+      }
+
+      if (!uid) {
+        return;
       }
 
       try {
@@ -775,14 +781,22 @@ export default function App() {
         const lngs = keyCities.map(c => c.lng).join(',');
         
         let res: Response | null = null;
-        try {
-          res = await fetch(`/api/weather?latitude=${lats}&longitude=${lngs}`);
-        } catch {
-          // proxy fallback
+        if (!Capacitor.isNativePlatform()) {
+          try {
+            const proxyController = new AbortController();
+            const proxyTid = setTimeout(() => proxyController.abort(), 5000);
+            res = await fetch(`/api/weather?latitude=${lats}&longitude=${lngs}`, { signal: proxyController.signal });
+            clearTimeout(proxyTid);
+          } catch {
+            // proxy fallback
+          }
         }
         if (!res || !res.ok) {
           try {
-            res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&timezone=Asia%2FKarachi`);
+            const directController = new AbortController();
+            const directTid = setTimeout(() => directController.abort(), 8000);
+            res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&timezone=Asia%2FKarachi`, { signal: directController.signal });
+            clearTimeout(directTid);
           } catch {
             // direct fetch failed
           }
@@ -846,7 +860,7 @@ export default function App() {
     // Check for Google Sign-In redirect completion on page load
     checkRedirectAuthResult().then((user) => {
       if (user && user.email) {
-        handleAuthSuccess(user.email);
+        handleAuthSuccess(user.email, user.uid);
       }
     }).catch((err) => {
       console.warn("Redirect auth check skipped:", err);
@@ -1249,7 +1263,7 @@ export default function App() {
     verify: {
       title: 'Verification Center',
       titleUr: 'گاڑی و لائسنس تصدیق',
-      subtitle: 'Vehicles, Licenses, Challans & Bilty QR',
+      subtitle: 'Vehicles, Licenses, Challans & Document QR',
       subtitleUr: 'آن لائن تصدیقی پورٹل'
     },
     map: {
@@ -1308,6 +1322,7 @@ export default function App() {
               lang={lang}
               onToggleLang={handleToggleLang}
               userEmail={userEmail}
+              userId={currentUid}
               onSignIn={handleSignIn}
               onSignOut={handleSignOut}
               role={role}
@@ -1561,8 +1576,8 @@ export default function App() {
               setPendingGuestSaveAction(null);
             }
           }}
-          onAuthSuccess={async (email) => {
-            await handleAuthSuccess(email);
+          onAuthSuccess={async (email, uid) => {
+            await handleAuthSuccess(email, uid);
             if (pendingGuestSaveAction) {
               pendingGuestSaveAction();
               setPendingGuestSaveAction(null);

@@ -578,9 +578,10 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
           <button 
             type="button" 
             onClick={() => setLocationStatus(null)}
-            className="text-blue-500 hover:text-blue-800 p-0.5"
+            aria-label={isUrdu ? 'نوٹس بند کریں' : 'Dismiss notice'}
+            className="text-blue-500 hover:text-blue-800 p-2 min-w-[36px] min-h-[36px] inline-flex items-center justify-center rounded-lg cursor-pointer"
           >
-            <X className="w-3 h-3" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
@@ -671,9 +672,10 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
               onClick={() => fetchFuel(true)}
               disabled={fuelLoading}
               title={isUrdu ? 'تازہ ترین سرکاری نرخ حاصل کریں' : 'Refresh official rates'}
-              className="p-1 rounded-md hover:bg-[#ecece0] dark:hover:bg-[#22252c] text-[#5a5a40] dark:text-slate-300 transition-colors cursor-pointer disabled:opacity-50"
+              aria-label={isUrdu ? 'تازہ ترین سرکاری نرخ حاصل کریں' : 'Refresh official rates'}
+              className="p-2 min-w-[38px] min-h-[38px] inline-flex items-center justify-center rounded-lg hover:bg-[#ecece0] dark:hover:bg-[#22252c] text-[#5a5a40] dark:text-slate-300 transition-colors cursor-pointer disabled:opacity-50"
             >
-              <RefreshCw className={'w-3 h-3 ' + (fuelLoading ? 'animate-spin text-emerald-600 dark:text-emerald-400' : '')} />
+              <RefreshCw className={'w-3.5 h-3.5 ' + (fuelLoading ? 'animate-spin text-emerald-600 dark:text-emerald-400' : '')} />
             </button>
           </div>
         </div>
@@ -770,9 +772,10 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
             <button
               type="button"
               onClick={() => setFuelStatusMsg(null)}
-              className="p-0.5 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+              aria-label={isUrdu ? 'پیغام بند کریں' : 'Dismiss message'}
+              className="p-2 min-w-[36px] min-h-[36px] inline-flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
             >
-              <X className="w-3 h-3" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}

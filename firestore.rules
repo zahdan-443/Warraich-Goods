@@ -96,10 +96,8 @@ service cloud.firestore {
 
     // Play Store account deletion requests (30-day grace period tracking & external web form submission)
     match /accountDeletionRequests/{requestId} {
-      // Allow signed-in users to manage their own deletion request; owner can view
-      allow read: if (isSignedIn() && (request.auth.uid == requestId || (resource != null && resource.data.userId == request.auth.uid) || isOwner())) ||
-                     (resource != null && resource.data.referenceId != null);
-      allow update, delete: if isSignedIn() && (request.auth.uid == requestId || (resource != null && resource.data.userId == request.auth.uid) || isOwner());
+      // Strictly authenticated request owners or Fleet Owner only (never expose deletion request PII publicly)
+      allow read, update, delete: if isSignedIn() && (request.auth.uid == requestId || (resource != null && resource.data.userId == request.auth.uid) || isOwner());
 
       // Allow creation by authenticated users (via in-app modal) OR unauthenticated users (via external deletion web form)
       allow create: if request.resource.data.keys().hasAll(['userEmail', 'requestedAt', 'scheduledFor', 'status', 'referenceId']) &&
@@ -165,10 +163,19 @@ service cloud.firestore {
       allow read, write: if isOwner();
     }
 
-    // Activity Log (Owner can read and manage, signed-in users can create entries)
+    // Activity Log (Owner can read and manage, signed-in users can create schema-validated entries for their own UID)
     match /activityLog/{logId} {
       allow read: if isOwner();
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() &&
+                    request.resource.data.keys().hasAll(['action', 'timestamp', 'uid', 'category']) &&
+                    request.resource.data.keys().hasOnly(['id', 'timestamp', 'uid', 'email', 'action', 'details', 'category']) &&
+                    request.resource.data.uid == request.auth.uid &&
+                    request.resource.data.action is string && request.resource.data.action.size() >= 1 && request.resource.data.action.size() <= 160 &&
+                    request.resource.data.timestamp is string && request.resource.data.timestamp.size() <= 64 &&
+                    request.resource.data.category in ['auth', 'bilty', 'settings', 'fleet', 'export', 'error', 'sync'] &&
+                    (!('details' in request.resource.data) || (request.resource.data.details is string && request.resource.data.details.size() <= 600)) &&
+                    (!('email' in request.resource.data) || (request.resource.data.email is string && request.resource.data.email.size() <= 160)) &&
+                    (!('id' in request.resource.data) || (request.resource.data.id is string && request.resource.data.id.size() <= 128));
       allow update, delete: if isOwner();
     }
 

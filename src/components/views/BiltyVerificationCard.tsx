@@ -53,8 +53,8 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
 
   const handleWhatsAppShare = () => {
     const text = isUrdu
-      ? `ورائچ گڈز ٹرانسپورٹ کمپنی - تصدیق شدہ بلٹی نمبر ${biltyNo}\nتاریخ: ${biltyDate}\nگاڑی نمبر: ${vehicleNo}\nروٹ: ${origin} تا ${destination}\nمال: ${goodsDescription} (${weightOrQty})\nتصدیقی لنک:\n${verificationUrl}`
-      : `Warraich Goods Transport Co. - Verified Bilty #${biltyNo}\nDate: ${biltyDate}\nVehicle: ${vehicleNo}\nRoute: ${origin} to ${destination}\nGoods: ${goodsDescription} (${weightOrQty})\nVerification Link:\n${verificationUrl}`;
+      ? `ورائچ گڈز ٹرانسپورٹ کمپنی - تصدیق شدہ کنسائنمنٹ دستاویز نمبر ${biltyNo}\nتاریخ: ${biltyDate}\nگاڑی نمبر: ${vehicleNo}\nروٹ: ${origin} تا ${destination}\nمال: ${goodsDescription} (${weightOrQty})\nتصدیقی لنک:\n${verificationUrl}`
+      : `Warraich Goods Transport Co. - Verified Consignment Document #${biltyNo}\nDate: ${biltyDate}\nVehicle: ${vehicleNo}\nRoute: ${origin} to ${destination}\nGoods: ${goodsDescription} (${weightOrQty})\nVerification Link:\n${verificationUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -69,7 +69,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-700 text-white font-mono">
-                {isUrdu ? 'تصدیق شدہ آفیشل بلٹی' : 'VERIFIED OFFICIAL BILTY'}
+                {isUrdu ? 'تصدیق شدہ آفیشل دستاویز' : 'VERIFIED OFFICIAL DOCUMENT'}
               </span>
               <span className="text-xs text-emerald-900 font-mono font-bold">
                 {biltyNo}
@@ -87,7 +87,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
           <button
             type="button"
             onClick={onBack}
-            className="px-3 py-1.5 rounded-xl bg-white border border-emerald-300 hover:bg-emerald-100 text-xs font-bold text-emerald-800 cursor-pointer transition-all shrink-0"
+            className="min-h-[40px] px-3.5 py-2 rounded-xl bg-white border border-emerald-300 hover:bg-emerald-100 text-xs font-bold text-emerald-800 cursor-pointer transition-all shrink-0"
           >
             {isUrdu ? 'نئی تصدیق' : 'Back'}
           </button>
@@ -106,13 +106,13 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
               </h3>
             </div>
             <p className="text-xs text-[#8e8e75]">
-              {isUrdu ? 'رجسٹرڈ بلٹی تصدیق پورٹل' : 'Registered Bilty Verification Portal'}
+              {isUrdu ? 'رجسٹرڈ دستاویز تصدیق پورٹل' : 'Registered Document Verification Portal'}
             </p>
           </div>
 
           <div className="text-right shrink-0">
             <span className="text-[10px] uppercase font-bold text-[#8e8e75] block">
-              {isUrdu ? 'بلٹی نمبر' : 'Bilty No'}
+              {isUrdu ? 'دستاویز نمبر' : 'Document No'}
             </span>
             <span className="text-base sm:text-lg font-mono font-bold text-[#4a5e38] bg-[#4a5e38]/10 px-2.5 py-1 rounded-xl inline-block">
               {biltyNo}
@@ -125,7 +125,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
           <div className="p-3.5 rounded-2xl bg-[#fdfbf7] border border-[#ecece0]">
             <span className="text-[11px] font-bold text-[#8e8e75] flex items-center gap-1 mb-1">
               <Calendar className="w-3.5 h-3.5 text-[#8b9d77]" />
-              {isUrdu ? 'تاریخ بلٹی' : 'Bilty Date'}
+              {isUrdu ? 'تاریخ دستاویز' : 'Document Date'}
             </span>
             <p className="font-mono text-xs sm:text-sm font-bold text-[#4a4a35]">
               {biltyDate}
@@ -230,7 +230,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
           <button
             type="button"
             onClick={handleCopyLink}
-            className="w-full py-3 bg-white hover:bg-slate-50 border border-[#ecece0] text-[#4a4a35] rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-2xs active:scale-98"
+            className="w-full min-h-[44px] py-3 bg-white hover:bg-slate-50 border border-[#ecece0] text-[#4a4a35] rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-2xs active:scale-98"
           >
             {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-[#8e8e75]" />}
             <span>{copiedLink ? (isUrdu ? 'لنک کاپی ہو گیا' : 'Link Copied!') : (isUrdu ? 'تصدیقی لنک کاپی کریں' : 'Copy Verification Link')}</span>
@@ -239,7 +239,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
           <button
             type="button"
             onClick={handleWhatsAppShare}
-            className="w-full py-3 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-98"
+            className="w-full min-h-[44px] py-3 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs active:scale-98"
           >
             <Share2 className="w-4 h-4 text-white" />
             <span>{isUrdu ? 'واٹس ایپ پر شیئر کریں' : 'Share on WhatsApp'}</span>

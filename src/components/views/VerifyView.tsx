@@ -223,8 +223,8 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
         } else {
           setScanStatus(
             isUrdu
-              ? 'تصویر میں کیو آر کوڈ نہیں مل سکا۔ براہ کرم بلٹی کے نچلے حصے پر موجود واضح کیو آر کی تصویر لیں۔'
-              : 'No QR code found in the image. Please take a clear, well-lit photo of the QR code on the bilty.'
+              ? 'تصویر میں کیو آر کوڈ نہیں مل سکا۔ براہ کرم دستاویز کے نچلے حصے پر موجود واضح کیو آر کی تصویر لیں۔'
+              : 'No QR code found in the image. Please take a clear, well-lit photo of the QR code on the consignment document.'
           );
         }
       };
@@ -501,7 +501,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
               }`}
             >
               <QrCode className="w-4 h-4" />
-              <span>{isUrdu ? 'بلٹی تصدیق (QR و نمبر)' : 'Bilty Verification (QR & No)'}</span>
+              <span>{isUrdu ? 'دستاویز تصدیق (QR و نمبر)' : 'Document Verification (QR & No)'}</span>
             </button>
           </div>
         )}
@@ -604,7 +604,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setVehicleProvince('punjab')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    className={`min-h-[38px] px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                       vehicleProvince === 'punjab' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
                     }`}
                   >
@@ -613,7 +613,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setVehicleProvince('sindh')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    className={`min-h-[38px] px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                       vehicleProvince === 'sindh' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
                     }`}
                   >
@@ -622,7 +622,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setVehicleProvince('islamabad')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    className={`min-h-[38px] px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                       vehicleProvince === 'islamabad' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
                     }`}
                   >
@@ -693,7 +693,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleCopy(vehicleAuditResult.reg)}
-                          className="p-1 rounded-md hover:bg-gray-100 text-gray-500 cursor-pointer"
+                          className="min-w-[38px] min-h-[38px] p-2 rounded-lg hover:bg-gray-100 text-gray-500 cursor-pointer inline-flex items-center justify-center"
                           title="کاپی کریں"
                         >
                           {copiedText === vehicleAuditResult.reg ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
@@ -901,7 +901,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleCopy(licenseAuditResult.identifier)}
-                          className="p-1 rounded-md hover:bg-gray-100 text-gray-500 cursor-pointer"
+                          className="min-w-[38px] min-h-[38px] p-2 rounded-lg hover:bg-gray-100 text-gray-500 cursor-pointer inline-flex items-center justify-center"
                           title="کاپی کریں"
                         >
                           {copiedText === licenseAuditResult.identifier ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
@@ -1040,7 +1040,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setChallanCity('lahore')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    className={`min-h-[38px] px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                       challanCity === 'lahore' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
                     }`}
                   >
@@ -1049,7 +1049,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setChallanCity('islamabad')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    className={`min-h-[38px] px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                       challanCity === 'islamabad' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
                     }`}
                   >
@@ -1058,7 +1058,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setChallanCity('rawalpindi')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    className={`min-h-[38px] px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                       challanCity === 'rawalpindi' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
                     }`}
                   >
@@ -1132,7 +1132,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleCopy(challanAuditResult.identifier)}
-                          className="p-1 rounded-md hover:bg-gray-100 text-gray-500 cursor-pointer"
+                          className="min-w-[38px] min-h-[38px] p-2 rounded-lg hover:bg-gray-100 text-gray-500 cursor-pointer inline-flex items-center justify-center"
                           title="کاپی کریں"
                         >
                           {copiedText === challanAuditResult.identifier ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
@@ -1246,10 +1246,10 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                       <button
                         type="button"
                         onClick={() => handleDeleteAuditRecord(item.id)}
-                        className="p-1 rounded-lg text-red-500 hover:bg-red-50 cursor-pointer transition-all"
+                        className="min-w-[38px] min-h-[38px] p-2 rounded-lg text-red-500 hover:bg-red-50 cursor-pointer transition-all inline-flex items-center justify-center"
                         title={isUrdu ? 'حذف کریں' : 'Delete'}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -1282,12 +1282,12 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     <div>
                       <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35] flex items-center gap-2">
                         <QrCode className="w-5 h-5 text-[#8b9d77]" />
-                        <span>{isUrdu ? 'آفیشل آن لائن بلٹی تصدیق' : 'Official Online Bilty Verification'}</span>
+                        <span>{isUrdu ? 'آفیشل آن لائن دستاویز تصدیق' : 'Official Online Document Verification'}</span>
                       </h2>
                       <p className="text-xs text-[#8e8e75] mt-1">
                         {isUrdu
-                          ? 'بلٹی پر موجود کیو آر کوڈ اسکین کریں یا بلٹی نمبر درج کر کے اصل بلٹی کی تفصیلات (سامان، تاریخ، گاڑی اور روٹ) کی فوری تصدیق کریں۔'
-                          : 'Verify authentic Bilty records, cargo description, weight/quantity, origin/destination, and vehicle details.'}
+                          ? 'دستاویز پر موجود کیو آر کوڈ اسکین کریں یا حوالہ نمبر درج کر کے سامان، تاریخ، گاڑی اور روٹ کی فوری تصدیق کریں۔'
+                          : 'Verify authentic consignment documents, cargo description, weight/quantity, origin/destination, and vehicle details.'}
                       </p>
                     </div>
 
@@ -1306,7 +1306,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   >
                     <div className="flex items-center justify-between">
                       <label className="block text-xs font-bold text-[#4a4a35]">
-                        {isUrdu ? 'بلٹی نمبر یا گاڑی نمبر درج کریں:' : 'Enter Bilty Number or Vehicle Registration:'}
+                        {isUrdu ? 'دستاویز نمبر یا گاڑی نمبر درج کریں:' : 'Enter Document Number or Vehicle Registration:'}
                       </label>
                       <span className="text-[11px] text-[#8e8e75]">
                         {isUrdu ? 'مثال: WG-2026-0001 یا 0001' : 'e.g. WG-2026-0001'}
@@ -1356,8 +1356,8 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
                       <p className="text-[11px] text-[#8e8e75] text-center sm:text-right">
                         {isUrdu 
-                          ? 'بلٹی کے کاغذ پر موجود QR کوڈ کی تصویر کھینچیں، بلٹی خودکار ویریفائی ہو جائے گی' 
-                          : 'Point camera at Bilty printed QR code for instant zero-failure verification'}
+                          ? 'دستاویز پر موجود QR کوڈ کی تصویر کھینچیں، تصدیق خودکار ہو جائے گی' 
+                          : 'Point camera at printed document QR code for instant zero-failure verification'}
                       </p>
                     </div>
 
@@ -1374,7 +1374,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   <div className="p-6 rounded-3xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 flex items-center justify-center gap-3 animate-in fade-in">
                     <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
                     <span className="text-xs sm:text-sm font-bold text-emerald-900">
-                      {isUrdu ? 'آفیشل بلٹی ریکارڈز سے تصدیق جاری ہے...' : 'Checking verified bilty records...'}
+                      {isUrdu ? 'آفیشل ریکارڈز سے تصدیق جاری ہے...' : 'Checking verified document records...'}
                     </span>
                   </div>
                 )}
@@ -1388,12 +1388,12 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                       </div>
                       <div className="space-y-1">
                         <h4 className="font-serif font-bold text-sm text-amber-900 dark:text-amber-200">
-                          {isUrdu ? 'بلٹی نمبر رجسٹرڈ نہیں ملا' : 'Bilty Record Not Found'}
+                          {isUrdu ? 'دستاویز نمبر رجسٹرڈ نہیں ملا' : 'Document Record Not Found'}
                         </h4>
                         <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
                           {isUrdu
-                            ? `نمبر "${biltyQuery}" کے تحت کوئی تصدیق شدہ بلٹی ریکارڈ نہیں ملا۔ براہ کرم بلٹی نمبر کی درستگی چیک کریں یا ہیلپ لائن سے رابطہ کریں۔`
-                            : `No verified bilty record matched "${biltyQuery}". Please double-check the Bilty number or contact our helpline.`}
+                            ? `نمبر "${biltyQuery}" کے تحت کوئی تصدیق شدہ ریکارڈ نہیں ملا۔ براہ کرم نمبر کی درستگی چیک کریں یا ہیلپ لائن سے رابطہ کریں۔`
+                            : `No verified document record matched "${biltyQuery}". Please double-check the document number or contact our helpline.`}
                         </p>
                       </div>
                     </div>
@@ -1411,7 +1411,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   </div>
                 )}
 
-                {/* Quick Selection of Registered Bilties */}
+                {/* Quick Selection of Registered Documents */}
                 {(() => {
                   const stored = getStoredBilties();
                   if (stored.length === 0) return null;
@@ -1420,10 +1420,10 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-[#4a4a35] flex items-center gap-1.5">
                           <Truck className="w-3.5 h-3.5 text-[#8b9d77]" />
-                          {isUrdu ? 'حالیہ رجسٹرڈ بلٹیاں (فوری تصدیق کیلئے کلک کریں):' : 'Recent Registered Bilties (Click to verify):'}
+                          {isUrdu ? 'حالیہ رجسٹرڈ دستاویزات (فوری تصدیق کیلئے کلک کریں):' : 'Recent Registered Documents (Click to verify):'}
                         </span>
                         <span className="text-[11px] font-mono text-[#8e8e75]">
-                          {stored.length} {isUrdu ? 'کل بلٹیاں' : 'total'}
+                          {stored.length} {isUrdu ? 'کل ریکارڈز' : 'total'}
                         </span>
                       </div>
 
@@ -1456,18 +1456,18 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   );
                 })()}
 
-                {/* Online QR Bilty Verification Banner */}
+                {/* Online QR Document Verification Banner */}
                 <div className="p-4 sm:p-5 rounded-3xl bg-white border border-[#ecece0] space-y-2">
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-[#8b9d77]" />
                     <h4 className="font-serif font-bold text-xs sm:text-sm text-[#4a4a35]">
-                      {isUrdu ? 'آن لائن کیو آر بلٹی تصدیق سسٹم' : 'Online QR Bilty Verification System'}
+                      {isUrdu ? 'آن لائن کیو آر دستاویز تصدیق سسٹم' : 'Online QR Document Verification System'}
                     </h4>
                   </div>
                   <p className="text-xs text-[#5a5a40] leading-relaxed">
                     {isUrdu
-                      ? 'ہر جاری کردہ بلٹی پر ایک آفیشل کیو آر کوڈ پرنٹ ہوتا ہے جو ورائچ گڈز کے آن لائن تصدیقی ریکارڈ سے منسلک ہے۔ کسی بھی اسمارٹ فون یا کیمرہ سے بلٹی کی اصلیت کی فوری تصدیق کی جا سکتی ہے۔'
-                      : 'Every generated Bilty carries an official QR code linked to Warraich Goods online verification records so consignors and consignees can verify document authenticity from any smartphone.'}
+                      ? 'ہر جاری کردہ کنسائنمنٹ دستاویز پر ایک آفیشل کیو آر کوڈ پرنٹ ہوتا ہے جو ورائچ گڈز کے آن لائن تصدیقی ریکارڈ سے منسلک ہے۔ کسی بھی اسمارٹ فون یا کیمرہ سے دستاویز کی اصلیت کی فوری تصدیق کی جا سکتی ہے۔'
+                      : 'Every generated consignment document carries an official QR code linked to Warraich Goods online verification records so consignors and consignees can verify authenticity from any smartphone.'}
                   </p>
                 </div>
               </div>

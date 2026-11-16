@@ -3,6 +3,7 @@ import {
   Language, 
   ActiveTab 
 } from '../../types';
+import { Capacitor } from '@capacitor/core';
 import { PublicImage } from '../../assets/dashboardIcons';
 import { 
   Map as MapIcon, 
@@ -534,18 +535,20 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
 
     let data: any = null;
 
-    // 1. Try same-origin server proxy first (completely immune to CORS/iframe constraints)
-    try {
-      const proxyUrl = `/api/weather?latitude=${lats}&longitude=${lngs}&_t=${timestamp}`;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
-      const resp = await fetch(proxyUrl, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (resp.ok) {
-        data = await resp.json();
+    // 1. Try same-origin server proxy first on Web (skipped in Capacitor APK where localhost has no /api server)
+    if (!Capacitor.isNativePlatform()) {
+      try {
+        const proxyUrl = `/api/weather?latitude=${lats}&longitude=${lngs}&_t=${timestamp}`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const resp = await fetch(proxyUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (resp.ok) {
+          data = await resp.json();
+        }
+      } catch {
+        // proxy unavailable (e.g. static host or preview), continue to direct fetch
       }
-    } catch {
-      // proxy unavailable (e.g. static host or preview), continue to direct fetch
     }
 
     // 2. Direct Open-Meteo call using simple CORS without any custom headers

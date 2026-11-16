@@ -50,6 +50,7 @@ import {
 } from './khataModulesStorage';
 import { setScopedItem } from './storage';
 import { KHATA_STORAGE_KEYS } from './ledgerStorage';
+import { shareOrDownloadText } from './nativeExport';
 
 export interface FullFleetBackup {
   appVersion: string;
@@ -171,17 +172,12 @@ export function downloadFleetBackupJson(): boolean {
   try {
     const backup = generateFullFleetBackup();
     const jsonStr = JSON.stringify(backup, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
     const todayStr = new Date().toISOString().slice(0, 10);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `driver-dost-fleet-backup-${todayStr}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const fileName = `driver-dost-fleet-backup-${todayStr}.json`;
+    void shareOrDownloadText(jsonStr, fileName, 'application/json', {
+      title: fileName,
+      dialogTitle: fileName
+    });
     return true;
   } catch (err) {
     console.error('[BackupService] Failed to generate download backup:', err);

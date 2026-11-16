@@ -29,7 +29,8 @@ import {
   sanitizeDriverRecord,
   sanitizeTripRecord
 } from './calculator';
-import { idbSet, idbDelete } from './persistentStorage';
+import { idbSet, idbDelete, idbGetAllEntries } from './persistentStorage';
+import { shareOrDownloadText } from './nativeExport';
 
 // Memory storage fallback for non-browser/test environments or quota exceeded
 const memoryStorage = new Map<string, string>();
@@ -1971,8 +1972,7 @@ export function exportContactsCSV(privacyOptions?: ExportPrivacyOptions) {
     return false;
   }
 
-  let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-  csvContent += "Name,Phone Number,Type,Last Used Date\n";
+  let csvContent = "\uFEFFName,Phone Number,Type,Last Used Date\n";
 
   contacts.forEach(c => {
     const nameSanitized = `"${c.name.replace(/"/g, '""')}"`;
@@ -1982,13 +1982,12 @@ export function exportContactsCSV(privacyOptions?: ExportPrivacyOptions) {
     csvContent += `${nameSanitized},${phoneSanitized},${typeSanitized},${dateSanitized}\n`;
   });
 
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `Driver_Dost_Contacts_${new Date().toISOString().slice(0, 10)}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const fileName = `Driver_Dost_Contacts_${new Date().toISOString().slice(0, 10)}.csv`;
+  void shareOrDownloadText(csvContent, fileName, 'text/csv;charset=utf-8;', {
+    title: fileName,
+    dialogTitle: fileName
+  });
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -2170,15 +2169,11 @@ export function exportAllBusinessDataJSON(privacyOptions?: ExportPrivacyOptions)
   };
 
   const jsonStr = JSON.stringify(data, null, 2);
-  const blob = new Blob([jsonStr], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `Driver_Dost_FullBackup_${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  const fileName = `Driver_Dost_FullBackup_${new Date().toISOString().slice(0, 10)}.json`;
+  void shareOrDownloadText(jsonStr, fileName, 'application/json', {
+    title: fileName,
+    dialogTitle: fileName
+  });
   logActivity('Data Backup Exported', 'Full JSON backup downloaded with privacy filters', 'export');
 }
 
@@ -2193,8 +2188,7 @@ export function exportAllBiltiesCSV(privacyOptions?: ExportPrivacyOptions) {
 
   const bilties = rawBilties.map(b => sanitizeBiltyRecord(b, privacyOptions));
 
-  let csv = "data:text/csv;charset=utf-8,\uFEFF";
-  csv += "Bilty No,Date,Vehicle No,Driver Name,Mobile,Sender (Consignor),Sender Mobile,Sender CNIC,Receiver (Consignee),Receiver Mobile,From City,To City,Item,Qty,Weight,Total Freight,Advance,Payable\n";
+  let csv = "\uFEFFBilty No,Date,Vehicle No,Driver Name,Mobile,Sender (Consignor),Sender Mobile,Sender CNIC,Receiver (Consignee),Receiver Mobile,From City,To City,Item,Qty,Weight,Total Freight,Advance,Payable\n";
 
   bilties.forEach(b => {
     const row = [
@@ -2220,13 +2214,11 @@ export function exportAllBiltiesCSV(privacyOptions?: ExportPrivacyOptions) {
     csv += row + "\n";
   });
 
-  const encodedUri = encodeURI(csv);
-  const link = document.createElement("a");
-  link.href = encodedUri;
-  link.download = `Driver_Dost_Bilties_${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const fileName = `Driver_Dost_Bilties_${new Date().toISOString().slice(0, 10)}.csv`;
+  void shareOrDownloadText(csv, fileName, 'text/csv;charset=utf-8;', {
+    title: fileName,
+    dialogTitle: fileName
+  });
   logActivity('Bilties CSV Exported', `${bilties.length} bilty records exported as CSV`, 'export');
   return true;
 }
@@ -2240,8 +2232,7 @@ export function exportAllTripsCSV(privacyOptions?: ExportPrivacyOptions) {
 
   const trips = rawTrips.map(t => sanitizeTripRecord(t, privacyOptions));
 
-  let csv = "data:text/csv;charset=utf-8,\uFEFF";
-  csv += "Trip ID,Trip Name,Date,Month,Distance (km),Fuel Type,Fuel Cost,Tolls,Loading,Driver Kharcha,Other,Total Expense\n";
+  let csv = "\uFEFFTrip ID,Trip Name,Date,Month,Distance (km),Fuel Type,Fuel Cost,Tolls,Loading,Driver Kharcha,Other,Total Expense\n";
 
   trips.forEach(t => {
     const row = [
@@ -2261,14 +2252,13 @@ export function exportAllTripsCSV(privacyOptions?: ExportPrivacyOptions) {
     csv += row + "\n";
   });
 
-  const encodedUri = encodeURI(csv);
-  const link = document.createElement("a");
-  link.href = encodedUri;
-  link.download = `Driver_Dost_Trips_${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const fileName = `Driver_Dost_Trips_${new Date().toISOString().slice(0, 10)}.csv`;
+  void shareOrDownloadText(csv, fileName, 'text/csv;charset=utf-8;', {
+    title: fileName,
+    dialogTitle: fileName
+  });
   logActivity('Trips CSV Exported', `${trips.length} trip records exported as CSV`, 'export');
+  return true;
 }
 
 export function restoreFullBackupFromJson(jsonString: string): { success: boolean; message: string; count: number } {
@@ -2441,54 +2431,155 @@ export async function fetchAccountDeletionStatus(userId: string): Promise<Accoun
   return getAccountDeletionStatus(userId);
 }
 
+async function clearLocalAndIndexedDbForUser(userId: string): Promise<void> {
+  const syncCollections = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel', 'routes', 'khata'];
+  syncCollections.forEach(col => {
+    safeStorage.removeItem(getScopedStorageKey(col, userId));
+  });
+  const khataScopedBases = [
+    'dd_khata_accounts_v2',
+    'dd_khata_entries_v2',
+    'dd_khata_cashbook_v2',
+    'dd_khata_settings_v2',
+    'dd_khata_doc_queue_v2',
+    'dd_khata_bills_v2',
+    'dd_khata_employees_v2',
+    'dd_khata_employee_entries_v2',
+    'dd_khata_receiving_points_v2',
+    'dd_khata_receiving_entries_v2',
+    'dd_khata_daily_expenses_v2'
+  ];
+  khataScopedBases.forEach(base => {
+    safeStorage.removeItem(`${base}_${userId}`);
+  });
+  safeStorage.removeItem(`ah-deletion-${userId}`);
+  safeStorage.removeItem(`wg_last_daily_cloud_backup_${userId}`);
+  safeStorage.removeItem('ah-gmail-user');
+  safeStorage.removeItem('ah-gmail-user-uid');
+  safeStorage.removeItem('ah-gmail-user-photo');
+  safeStorage.removeItem('ah-auth-state');
+  safeStorage.removeItem('ah-user-role');
+  clearOfflineQueue();
+
+  try {
+    const entries = await idbGetAllEntries();
+    const deletePromises: Promise<boolean>[] = [];
+    for (const key of Object.keys(entries)) {
+      if (
+        (userId && (key.includes(`_${userId}`) || key.includes(`wg_v2_${userId}_`))) ||
+        key === `ah-deletion-${userId}` ||
+        key === `wg_last_daily_cloud_backup_${userId}` ||
+        key.startsWith('offline-queue') ||
+        key.startsWith('ah-offline-queue')
+      ) {
+        deletePromises.push(idbDelete(key));
+      }
+    }
+    await Promise.all(deletePromises);
+  } catch {
+    // Non-fatal IndexedDB cleanup notice
+  }
+}
+
+export const USER_FIRESTORE_SUBCOLLECTIONS = [
+  'collections',
+  'cashbookEntries',
+  'khataSettings',
+  'khataBills',
+  'khataEmployees',
+  'khataEmployeeEntries',
+  'khataReceivingPoints',
+  'khataReceivingEntries',
+  'khataDailyExpenses'
+] as const;
+
+export async function purgeAllUserFirestoreData(userId: string): Promise<void> {
+  if (!db || !userId) return;
+
+  // 1. Delete user's nested Khata ledgerAccounts and each account's entries subcollection
+  try {
+    const accSnap = await withTimeout(getDocs(collection(db, 'users', userId, 'ledgerAccounts')), 8000);
+    for (const accDoc of accSnap.docs) {
+      try {
+        const entrySnap = await withTimeout(
+          getDocs(collection(db, 'users', userId, 'ledgerAccounts', accDoc.id, 'entries')),
+          8000
+        );
+        await Promise.all(entrySnap.docs.map((ed) => deleteDoc(ed.ref).catch(() => {})));
+      } catch {}
+      await deleteDoc(accDoc.ref).catch(() => {});
+    }
+  } catch (err) {
+    console.warn('Notice purging ledgerAccounts subcollection:', err);
+  }
+
+  // 2. Delete all other user subcollections under users/{uid}/*
+  for (const subColl of USER_FIRESTORE_SUBCOLLECTIONS) {
+    try {
+      const subSnap = await withTimeout(getDocs(collection(db, 'users', userId, subColl)), 8000);
+      await Promise.all(subSnap.docs.map((d) => deleteDoc(d.ref).catch(() => {})));
+    } catch (err) {
+      console.warn(`Notice purging subcollection ${subColl}:`, err);
+    }
+  }
+
+  // 3. Delete chunked cloud backups under usersData/{uid}/cloudBackups/*/chunks/*
+  try {
+    const backupsSnap = await withTimeout(getDocs(collection(db, 'usersData', userId, 'cloudBackups')), 8000);
+    for (const bDoc of backupsSnap.docs) {
+      try {
+        const chunksSnap = await withTimeout(
+          getDocs(collection(db, 'usersData', userId, 'cloudBackups', bDoc.id, 'chunks')),
+          8000
+        );
+        await Promise.all(chunksSnap.docs.map((cd) => deleteDoc(cd.ref).catch(() => {})));
+      } catch {}
+      await deleteDoc(bDoc.ref).catch(() => {});
+    }
+  } catch (err) {
+    console.warn('Notice purging cloudBackups subcollection:', err);
+  }
+
+  // 4. Delete top-level user documents
+  await Promise.all([
+    withTimeout(deleteDoc(doc(db, 'users', userId)), 5000).catch(() => {}),
+    withTimeout(deleteDoc(doc(db, 'usersData', userId)), 5000).catch(() => {}),
+    withTimeout(deleteDoc(doc(db, 'accountDeletionRequests', userId)), 5000).catch(() => {})
+  ]);
+}
+
 /**
  * Executes immediate permanent account deletion:
- * 1. Permanently purges user data documents and subcollections from Firestore.
- * 2. Clears user scoped local storage, offline queue, and cached records.
- * 3. Permanently deletes the Firebase Auth user account via deleteFirebaseUserAccount.
+ * 1. Verifies Firebase Auth sign-in recency before destroying cloud/local data.
+ * 2. Recursively purges all user documents and subcollections from Firestore.
+ * 3. Clears user-scoped local storage, IndexedDB entries, offline queue, and cached records.
+ * 4. Permanently deletes the Firebase Auth user account via deleteFirebaseUserAccount.
  */
 export async function executeImmediateAccountDeletion(userId: string): Promise<{ success: boolean; message: string }> {
   try {
-    const syncCollections = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel', 'routes', 'khata'];
-    syncCollections.forEach(col => {
-      safeStorage.removeItem(getScopedStorageKey(col, userId));
-    });
-    const khataScopedBases = [
-      'dd_khata_accounts_v2',
-      'dd_khata_entries_v2',
-      'dd_khata_cashbook_v2',
-      'dd_khata_settings_v2',
-      'dd_khata_doc_queue_v2',
-      'dd_khata_bills_v2',
-      'dd_khata_employees_v2',
-      'dd_khata_employee_entries_v2',
-      'dd_khata_receiving_points_v2',
-      'dd_khata_receiving_entries_v2',
-      'dd_khata_daily_expenses_v2'
-    ];
-    khataScopedBases.forEach(base => {
-      safeStorage.removeItem(`${base}_${userId}`);
-    });
-    safeStorage.removeItem(`ah-deletion-${userId}`);
-    safeStorage.removeItem('ah-gmail-user');
-    safeStorage.removeItem('ah-gmail-user-uid');
-    safeStorage.removeItem('ah-gmail-user-photo');
-    safeStorage.removeItem('ah-auth-state');
-
     const currentUser = auth.currentUser;
-    if (db && currentUser && currentUser.uid === userId) {
-      try {
-        const userDoc = doc(db, 'usersData', userId);
-        await withTimeout(deleteDoc(userDoc), 4000);
-        const delDoc = doc(db, 'accountDeletionRequests', userId);
-        await withTimeout(deleteDoc(delDoc), 4000);
-      } catch (err) {
-        console.warn('Notice while deleting Firestore docs during immediate purge:', err);
+    const targetUid = currentUser?.uid || userId;
+    if (!targetUid) {
+      return { success: false, message: 'No authenticated user account found to delete.' };
+    }
+
+    // Check Firebase recent-login window (~5 min) BEFORE wiping cloud data so a stale session fails cleanly
+    const lastSignIn = currentUser?.metadata?.lastSignInTime;
+    if (lastSignIn) {
+      const elapsedMs = Date.now() - new Date(lastSignIn).getTime();
+      if (!isNaN(elapsedMs) && elapsedMs > 4.5 * 60 * 1000) {
+        return { success: false, message: 'AUTH_REQUIRES_RECENT_LOGIN' };
       }
     }
 
-    // Call Firebase Auth user deletion
+    if (db && currentUser && currentUser.uid === targetUid) {
+      await purgeAllUserFirestoreData(targetUid);
+    }
+
+    // Call Firebase Auth user deletion while credentials are active
     await deleteFirebaseUserAccount(currentUser);
+
+    await clearLocalAndIndexedDbForUser(targetUid);
 
     return { success: true, message: 'Account permanently deleted from Firebase Auth and cloud storage.' };
   } catch (err: any) {
@@ -2508,40 +2599,17 @@ export async function purgeExpiredAccountData(userId: string): Promise<boolean> 
     if (!status) return false;
     const scheduled = new Date(status.scheduledFor).getTime();
     if (Date.now() >= scheduled) {
-      const syncCollections = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel', 'routes', 'khata'];
-      syncCollections.forEach(col => {
-        safeStorage.removeItem(getScopedStorageKey(col, userId));
-      });
-      const khataScopedBases = [
-        'dd_khata_accounts_v2',
-        'dd_khata_entries_v2',
-        'dd_khata_cashbook_v2',
-        'dd_khata_settings_v2',
-        'dd_khata_doc_queue_v2',
-        'dd_khata_bills_v2',
-        'dd_khata_employees_v2',
-        'dd_khata_employee_entries_v2',
-        'dd_khata_receiving_points_v2',
-        'dd_khata_receiving_entries_v2',
-        'dd_khata_daily_expenses_v2'
-      ];
-      khataScopedBases.forEach(base => {
-        safeStorage.removeItem(`${base}_${userId}`);
-      });
-      safeStorage.removeItem(`ah-deletion-${userId}`);
-
       const currentUser = auth.currentUser;
-      if (db && currentUser && currentUser.uid === userId) {
-        try {
-          const userDoc = doc(db, 'usersData', userId);
-          await withTimeout(deleteDoc(userDoc), 4000);
-          const delDoc = doc(db, 'accountDeletionRequests', userId);
-          await withTimeout(deleteDoc(delDoc), 4000);
-        } catch {}
+      const targetUid = currentUser?.uid || userId;
+
+      if (db && currentUser && currentUser.uid === targetUid) {
+        await purgeAllUserFirestoreData(targetUid).catch(() => {});
         try {
           await deleteFirebaseUserAccount(currentUser);
         } catch {}
       }
+
+      await clearLocalAndIndexedDbForUser(targetUid);
       return true;
     }
   } catch {}

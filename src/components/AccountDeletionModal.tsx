@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AlertTriangle, X, ShieldAlert, CheckCircle2, Clock, Trash2, ExternalLink, Zap, ShieldCheck } from 'lucide-react';
 import { Language } from '../types';
 import { requestAccountDeletion, executeImmediateAccountDeletion } from '../utils/storage';
+import { auth } from '../utils/firebase';
 
 interface AccountDeletionModalProps {
   isOpen: boolean;
@@ -38,9 +39,19 @@ export const AccountDeletionModal: React.FC<AccountDeletionModalProps> = ({
     setErrorMessage(null);
 
     try {
+      const effectiveUid = userId || auth.currentUser?.uid || '';
+      if (!effectiveUid) {
+        setErrorMessage(
+          isUrdu
+            ? 'تصدیق شدہ یوزر آئی ڈی دستیاب نہیں۔ براہ کرم دوبارہ سائن ان کریں۔'
+            : 'Verified user session ID is unavailable. Please sign in again.'
+        );
+        return;
+      }
+
       if (deletionType === 'immediate') {
         // Immediate Permanent Deletion from Firebase Auth & Cloud Firestore
-        const res = await executeImmediateAccountDeletion(userId || userEmail);
+        const res = await executeImmediateAccountDeletion(effectiveUid);
         if (res.success) {
           setImmediateSuccess(true);
           setTimeout(() => {
@@ -58,7 +69,7 @@ export const AccountDeletionModal: React.FC<AccountDeletionModalProps> = ({
         }
       } else {
         // 30-Day Grace Period Deletion Request
-        const res = await requestAccountDeletion(userId || userEmail, userEmail, reason);
+        const res = await requestAccountDeletion(effectiveUid, userEmail, reason);
         const formattedDate = new Date(res.scheduledFor).toLocaleDateString(isUrdu ? 'ur-PK' : 'en-PK', {
           day: '2-digit',
           month: 'long',

@@ -10,6 +10,7 @@
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { shareOrDownloadBlob } from './nativeExport';
 import {
   KhataBill,
   KhataEmployee,
@@ -353,22 +354,11 @@ export function generateAllAccountsSummaryPdf({
  */
 export async function downloadOrSharePdf(doc: jsPDF, filename: string): Promise<void> {
   const blob = doc.output('blob');
-  const file = new File([blob], filename, { type: 'application/pdf' });
-
-  if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      await navigator.share({
-        files: [file],
-        title: filename,
-        text: 'Account Statement from Driver Dost Digital Khata'
-      });
-      return;
-    } catch {
-      // User cancelled or share failed, fallback to direct download
-    }
-  }
-
-  doc.save(filename);
+  await shareOrDownloadBlob(blob, filename, {
+    title: filename,
+    text: 'Account Statement from Driver Dost Digital Khata',
+    dialogTitle: filename
+  });
 }
 
 // =========================================================================

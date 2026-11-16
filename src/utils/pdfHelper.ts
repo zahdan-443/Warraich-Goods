@@ -10,6 +10,7 @@ import DOMPurify from 'dompurify';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { shareOrDownloadBlob } from './nativeExport';
 import { BiltyRecord } from '../types';
 import { getCachedCompanyProfile } from './storage';
 import { getBiltyVerificationUrl } from './biltyHelpers';
@@ -367,36 +368,14 @@ export async function sharePdfFileOrWhatsApp(options: {
 }): Promise<void> {
   const { pdfBlob, fileName, title, textSummary, onDownloadedFallback } = options;
 
-  try {
-    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+  const outcome = await shareOrDownloadBlob(pdfBlob, fileName, {
+    title,
+    text: textSummary,
+    dialogTitle: title
+  });
 
-    if (typeof navigator !== 'undefined' && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-      await navigator.share({
-        title,
-        text: textSummary,
-        files: [pdfFile]
-      });
-      return;
-    }
-  } catch (err: any) {
-    if (err?.name === 'AbortError') {
-      return;
-    }
-    console.warn('Web Share with file failed, executing download + WhatsApp link fallback:', err);
-  }
-
-  // Desktop or fallback: download the PDF file and open WhatsApp
-  try {
-    const url = URL.createObjectURL(pdfBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  } catch (e) {
-    console.warn('Download link failed:', e);
+  if (outcome === 'shared' || outcome === 'cancelled') {
+    return;
   }
 
   if (onDownloadedFallback) {

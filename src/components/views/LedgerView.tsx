@@ -44,6 +44,7 @@ import {
   generateAllAccountsSummaryPdf,
   downloadOrSharePdf
 } from '../../utils/khataPdf';
+import { shareOrDownloadText } from '../../utils/nativeExport';
 import {
   BookOpen,
   Users,
@@ -2159,16 +2160,14 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
     setTimeout(() => setPinMessage(''), 3000);
   };
 
-  const handleExportBackup = () => {
+  const handleExportBackup = async () => {
     const jsonStr = exportKhataBackup();
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `driverdost-khata-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setBackupMessage(isUrdu ? 'بیک اپ فائل ڈاؤن لوڈ ہو گئی' : 'Backup downloaded');
+    const fileName = `driverdost-khata-${new Date().toISOString().split('T')[0]}.json`;
+    await shareOrDownloadText(jsonStr, fileName, 'application/json', {
+      title: fileName,
+      dialogTitle: fileName
+    });
+    setBackupMessage(isUrdu ? 'بیک اپ فائل محفوظ / شیئر ہو گئی' : 'Backup exported');
     setTimeout(() => setBackupMessage(''), 3000);
   };
 

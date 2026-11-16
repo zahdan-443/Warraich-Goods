@@ -196,11 +196,17 @@ export const logoutUser = async (): Promise<void> => {
  */
 export const deleteFirebaseUserAccount = async (targetUser?: User | null): Promise<void> => {
   const userToDelete = targetUser || auth.currentUser;
+  let nativeDeleted = false;
 
   if (Capacitor.isNativePlatform()) {
     try {
       await FirebaseAuthentication.deleteUser();
-    } catch (nativeErr) {
+      nativeDeleted = true;
+    } catch (nativeErr: any) {
+      const msg = String(nativeErr?.message || nativeErr || '').toLowerCase();
+      if (nativeErr?.code === 'auth/requires-recent-login' || msg.includes('recent') || msg.includes('requires-recent-login')) {
+        throw new Error('AUTH_REQUIRES_RECENT_LOGIN');
+      }
       console.warn('Native deleteUser error, falling back to web SDK:', nativeErr);
     }
   }
@@ -209,7 +215,12 @@ export const deleteFirebaseUserAccount = async (targetUser?: User | null): Promi
     try {
       await deleteUser(userToDelete);
     } catch (err: any) {
-      if (err?.code === 'auth/requires-recent-login') {
+      const code = err?.code || '';
+      const msg = String(err?.message || '').toLowerCase();
+      if (nativeDeleted && code === 'auth/user-not-found') {
+        return;
+      }
+      if (code === 'auth/requires-recent-login' || msg.includes('requires-recent-login')) {
         throw new Error('AUTH_REQUIRES_RECENT_LOGIN');
       }
       throw err;

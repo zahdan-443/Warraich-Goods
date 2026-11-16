@@ -1,4 +1,6 @@
 import JSZip from 'jszip';
+import { Capacitor } from '@capacitor/core';
+import { shareOrDownloadBlob } from './nativeExport';
 import { BiltyRecord } from '../types';
 import { getBiltyVerificationUrl } from './biltyHelpers';
 
@@ -146,12 +148,9 @@ export async function downloadBiltyLegalZip(record: BiltyRecord, pdfBlob?: Blob)
   const zipBlob = await generateBiltyLegalZip({ record, pdfBlob });
   const fileName = `Bilty_${record.biltyNo || 'WG-0000'}_Legal_Vault.zip`;
 
-  const url = URL.createObjectURL(zipBlob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  await shareOrDownloadBlob(zipBlob, fileName, {
+    title: fileName,
+    dialogTitle: fileName,
+    preferDownloadOnDesktop: !Capacitor.isNativePlatform()
+  });
 }
