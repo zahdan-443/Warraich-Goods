@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v23';
+const CACHE_NAME = 'driver-dost-v24';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 
 // Core static assets always available locally
@@ -332,10 +332,10 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Driver Dost Transport Manager';
   const options = {
     body: data.body || 'New freight dispatch or vehicle update',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: './icon-192.png',
+    badge: './icon-192.png',
     vibrate: [200, 100, 200],
-    data: data.url || '/',
+    data: data.url || './',
     tag: data.tag || 'wg-push-alert',
     actions: [
       { action: 'open', title: 'Open App (کھولیں)' },
@@ -350,7 +350,7 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   if (event.action === 'dismiss') return;
 
-  const targetUrl = event.notification.data || '/';
+  const targetUrl = event.notification.data || './';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
       for (let client of windowClients) {

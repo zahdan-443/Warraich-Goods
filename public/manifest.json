@@ -42,14 +42,14 @@
   "screenshots": [
     {
       "src": "screenshot-mobile.png",
-      "sizes": "540x960",
+      "sizes": "1080x2400",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Driver Dost Mobile Fleet & Calculator Screen"
     },
     {
       "src": "screenshot-desktop.png",
-      "sizes": "1280x720",
+      "sizes": "1920x1080",
       "type": "image/png",
       "form_factor": "wide",
       "label": "Driver Dost Desktop Dashboard & Trip Operations"
