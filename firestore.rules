@@ -16,17 +16,17 @@ service cloud.firestore {
     }
 
     // Helper function to safely check if non-owner is explicitly authorized bilty staff
-    function isStaffAuthorized(data) {
+    function isStaffAuthorized(accessDoc) {
       return (
-        ('allowedUIDs' in data &&
-         data.allowedUIDs is list &&
-         request.auth.uid in data.allowedUIDs) ||
-        ('allowedEmails' in data &&
-         data.allowedEmails is list &&
+        ('allowedUIDs' in accessDoc &&
+         accessDoc.allowedUIDs is list &&
+         request.auth.uid in accessDoc.allowedUIDs) ||
+        ('allowedEmails' in accessDoc &&
+         accessDoc.allowedEmails is list &&
          request.auth.token != null &&
          request.auth.token.email != null &&
          (!('email_verified' in request.auth.token) || request.auth.token.email_verified == true) &&
-         request.auth.token.email.lower() in data.allowedEmails)
+         request.auth.token.email.lower() in accessDoc.allowedEmails)
       );
     }
 
@@ -66,18 +66,18 @@ service cloud.firestore {
         'driverName', 'driverLicense', 'senderName', 'receiverName', 'senderAddress', 'receiverAddress',
         'podConfirmation', 'receivedBy', 'ownerUid'
       ];
-      let d = request.resource.data;
-      return d.keys().hasAll(allowedKeys) &&
-             d.keys().hasOnly(allowedKeys) &&
-             !d.keys().hasAny(forbiddenKeys) &&
-             d.biltyNo is string && d.biltyNo.size() >= 1 && d.biltyNo.size() <= 64 &&
-             d.biltyDate is string && d.biltyDate.size() <= 64 &&
-             d.origin is string && d.origin.size() <= 120 &&
-             d.destination is string && d.destination.size() <= 120 &&
-             d.goodsDescription is string && d.goodsDescription.size() <= 300 &&
-             d.weightOrQty is string && d.weightOrQty.size() <= 120 &&
-             d.vehicleNo is string && d.vehicleNo.size() <= 64 &&
-             d.status is string && d.status.size() >= 1 && d.status.size() <= 64;
+      let payload = request.resource.data;
+      return payload.keys().hasAll(allowedKeys) &&
+             payload.keys().hasOnly(allowedKeys) &&
+             !payload.keys().hasAny(forbiddenKeys) &&
+             payload.biltyNo is string && payload.biltyNo.size() >= 1 && payload.biltyNo.size() <= 64 &&
+             payload.biltyDate is string && payload.biltyDate.size() <= 64 &&
+             payload.origin is string && payload.origin.size() <= 120 &&
+             payload.destination is string && payload.destination.size() <= 120 &&
+             payload.goodsDescription is string && payload.goodsDescription.size() <= 300 &&
+             payload.weightOrQty is string && payload.weightOrQty.size() <= 120 &&
+             payload.vehicleNo is string && payload.vehicleNo.size() <= 64 &&
+             payload.status is string && payload.status.size() >= 1 && payload.status.size() <= 64;
     }
 
     // Global default deny catch-all

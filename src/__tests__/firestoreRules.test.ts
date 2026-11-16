@@ -17,9 +17,10 @@ describe('Firestore Rules Security Audit & Structure', () => {
   });
 
   it('should harden isBiltyAuthorized with isStaffAuthorized checking list types and email verification', () => {
-    expect(rulesContent).toContain('function isStaffAuthorized(data)');
-    expect(rulesContent).toContain('data.allowedUIDs is list');
-    expect(rulesContent).toContain('data.allowedEmails is list');
+    expect(rulesContent).toContain('function isStaffAuthorized(accessDoc)');
+    expect(rulesContent).not.toContain('function isStaffAuthorized(data)');
+    expect(rulesContent).toContain('accessDoc.allowedUIDs is list');
+    expect(rulesContent).toContain('accessDoc.allowedEmails is list');
     expect(rulesContent).toContain('function isBiltyAuthorized()');
   });
 
