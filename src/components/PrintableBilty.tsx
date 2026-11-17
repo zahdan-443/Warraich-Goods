@@ -97,7 +97,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
   const borderLight = '1px solid #94a3b8';
 
   const urBodyFont = "'Jameel Noori Nastaleeq', 'PDMS Nastaleeq Nafees', 'Noto Nastaliq Urdu', serif";
-  const urTitleFont = "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'PDMS Nastaleeq Nafees', serif";
+  const urTitleFont = "'Akbar', 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif";
   const enBodyFont = "'IBM Plex Sans', 'Segoe UI', Arial, sans-serif";
   const monoFont = "'JetBrains Mono', 'Courier New', monospace";
 
@@ -196,288 +196,354 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
           backgroundColor: '#ffffff'
         }}
       >
-        {/* 1. HEADER: 3-Edge Expanded Logo (Top, Side, Date-Row Line) + Top-Right NTN Stamp */}
+        {/* 1. HEADER: Pure White Ornamental Pakistani Certificate Frame with Inside Logo & Fixed Top-Right NTN Stamp */}
         <div
-          dir="ltr"
+          dir={isEn ? 'ltr' : 'rtl'}
+          data-testid="pakistani-header-frame"
           style={{
-            padding: '0',
-            marginLeft: '-10px',
+            width: '100%',
+            margin: '4px 0 6px 0',
+            border: `1.5px solid ${navyPrimary}`,
+            borderRadius: '4px',
+            padding: '3px',
+            backgroundColor: '#ffffff',
             position: 'relative',
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'stretch',
-            gap: '8px'
+            display: 'flex'
           }}
         >
-          {/* Enlarged Logo flush to Top Edge, Left Side Edge, and Bottom Date-Box Border Line */}
           <div
             style={{
-              width: '180px',
-              minHeight: '132px',
-              flexShrink: 0,
+              flex: '1 1 0%',
+              border: `1px solid ${goldAccent}`,
+              borderRadius: '2px',
+              backgroundColor: '#ffffff',
+              padding: '16px 16px 9px 14px',
+              position: 'relative',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              margin: '0',
-              padding: '0'
+              flexDirection: 'column'
             }}
           >
-            {!logoFailed ? (
-              <img
-                src={activeLogoSrc}
-                alt={isEn ? 'Warraich Goods Transport Company Emblem' : 'وڑائچ گڈز ٹرانسپورٹ کمپنی لوگو'}
-                width={180}
-                height={132}
-                onError={(e) => {
-                  const target = e.currentTarget;
-                  if (!target.dataset.triedOfficialPng) {
-                    target.dataset.triedOfficialPng = '1';
-                    target.src = './bilty-official-icon.png';
-                  } else if (!target.dataset.triedBilty) {
-                    target.dataset.triedBilty = '1';
-                    target.src = './bilty-icon.png';
-                  } else {
-                    setLogoFailed(true);
-                  }
-                }}
+            {/* Top-Center Pakistani Geometric Crest Divider */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                top: '-7px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: '#ffffff',
+                padding: '0 6px',
+                lineHeight: 0,
+                zIndex: 2
+              }}
+            >
+              <svg width="76" height="14" viewBox="0 0 76 14" fill="none">
+                <path d="M2 7H25" stroke={navyPrimary} strokeWidth="1.4" />
+                <path d="M51 7H74" stroke={navyPrimary} strokeWidth="1.4" />
+                <polygon points="38,1 44,7 38,13 32,7" fill={goldAccent} stroke={navyPrimary} strokeWidth="1.2" />
+                <polygon points="28,3 31,7 28,11 25,7" fill={emeraldAccent} />
+                <polygon points="48,3 51,7 48,11 45,7" fill={emeraldAccent} />
+                <circle cx="38" cy="7" r="1.8" fill="#ffffff" />
+              </svg>
+            </div>
+
+            {/* 4 Corner Pakistani Architectural Step-Brackets */}
+            {[
+              { top: '2px', left: '2px', transform: 'none' },
+              { top: '2px', right: '2px', transform: 'scaleX(-1)' },
+              { bottom: '2px', left: '2px', transform: 'scaleY(-1)' },
+              { bottom: '2px', right: '2px', transform: 'scale(-1, -1)' }
+            ].map((cornerPos, idx) => (
+              <svg
+                key={idx}
+                aria-hidden="true"
+                width="18"
+                height="18"
+                viewBox="0 0 18 18"
+                fill="none"
                 style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'contain',
-                  transform: 'scale(1.6)',
-                  transformOrigin: '44% center',
-                  border: 'none',
-                  backgroundColor: 'transparent',
-                  padding: '0',
-                  display: 'block'
+                  position: 'absolute',
+                  ...cornerPos,
+                  pointerEvents: 'none'
                 }}
-              />
-            ) : (
+              >
+                <path d="M1 15V4C1 2.34315 2.34315 1 4 1H15" stroke={navyPrimary} strokeWidth="1.5" />
+                <path d="M4 13V5.5C4 4.67157 4.67157 4 5.5 4H13" stroke={goldAccent} strokeWidth="1.1" />
+                <polygon points="7,7 9.5,4.5 12,7 9.5,9.5" fill={emeraldAccent} />
+              </svg>
+            ))}
+
+            {/* Top-Right NTN Corner Stamp (Crisp White + Proper RTL/LTR BiDi Isolation) */}
+            <div
+              dir={isEn ? 'ltr' : 'rtl'}
+              data-testid="ntn-corner-stamp"
+              style={{
+                position: 'absolute',
+                top: '6px',
+                right: '24px',
+                border: `1.5px solid ${navyPrimary}`,
+                borderBottom: `2px solid ${goldAccent}`,
+                borderRadius: '3px',
+                padding: isEn ? '2px 9px' : '2px 10px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: isEn ? '9.5px' : '10.5px',
+                fontWeight: 700,
+                fontFamily: isEn ? monoFont : "'Noto Sans Arabic', 'Jameel Noori Nastaleeq', sans-serif",
+                color: navyPrimary,
+                backgroundColor: '#ffffff',
+                letterSpacing: isEn ? '0.04em' : '0',
+                lineHeight: '1.35',
+                zIndex: 2
+              }}
+            >
+              {isEn ? (
+                <span style={{ fontWeight: 800 }}>NTN: 7779394-1</span>
+              ) : (
+                <>
+                  <span>این ٹی این نمبر:</span>
+                  <span
+                    dir="ltr"
+                    style={{
+                      fontFamily: monoFont,
+                      fontSize: '9.5px',
+                      fontWeight: 800,
+                      unicodeBidi: 'isolate'
+                    }}
+                  >
+                    7779394-1
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Inner Frame Flex Row: Left Company Logo + Right/Center Bold Masthead */}
+            <div
+              dir="ltr"
+              style={{
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: '12px',
+                width: '100%'
+              }}
+            >
+              {/* Company Logo neatly enclosed inside the Pakistani White Frame */}
               <div
+                data-testid="header-logo-inside-frame"
                 style={{
-                  width: '124px',
-                  height: '124px',
+                  width: '132px',
+                  height: '104px',
+                  flexShrink: 0,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: 'transparent'
-                }}
-              >
-                <CompanyLogo className="w-28 h-28" />
-              </div>
-            )}
-          </div>
-
-          {/* Centered Masthead inside Ornamental Pakistani-Style Certificate Frame */}
-          <div
-            dir={isEn ? 'ltr' : 'rtl'}
-            data-testid="pakistani-header-frame"
-            style={{
-              flex: '1 1 0%',
-              margin: '5px 0 5px 0',
-              border: `1.5px solid ${navyPrimary}`,
-              borderRadius: '4px',
-              padding: '3px',
-              backgroundColor: '#fffdf7',
-              position: 'relative',
-              display: 'flex'
-            }}
-          >
-            <div
-              style={{
-                flex: '1 1 0%',
-                border: `1px solid ${goldAccent}`,
-                borderRadius: '2px',
-                backgroundColor: '#ffffff',
-                padding: '18px 14px 7px 14px',
-                position: 'relative',
-                textAlign: 'center',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              {/* Top-Center Pakistani Geometric Crest Divider */}
-              <div
-                aria-hidden="true"
-                style={{
-                  position: 'absolute',
-                  top: '-7px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
+                  overflow: 'hidden',
                   backgroundColor: '#ffffff',
-                  padding: '0 6px',
-                  lineHeight: 0,
-                  zIndex: 2
+                  margin: '0',
+                  padding: '0'
                 }}
               >
-                <svg width="76" height="14" viewBox="0 0 76 14" fill="none">
-                  <path d="M2 7H25" stroke={navyPrimary} strokeWidth="1.4" />
-                  <path d="M51 7H74" stroke={navyPrimary} strokeWidth="1.4" />
-                  <polygon points="38,1 44,7 38,13 32,7" fill={goldAccent} stroke={navyPrimary} strokeWidth="1.2" />
-                  <polygon points="28,3 31,7 28,11 25,7" fill={emeraldAccent} />
-                  <polygon points="48,3 51,7 48,11 45,7" fill={emeraldAccent} />
-                  <circle cx="38" cy="7" r="1.8" fill="#ffffff" />
-                </svg>
+                {!logoFailed ? (
+                  <img
+                    src={activeLogoSrc}
+                    alt={isEn ? 'Warraich Goods Transport Company Emblem' : 'وڑائچ گڈز ٹرانسپورٹ کمپنی لوگو'}
+                    width={132}
+                    height={104}
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.dataset.triedOfficialPng) {
+                        target.dataset.triedOfficialPng = '1';
+                        target.src = './bilty-official-icon.png';
+                      } else if (!target.dataset.triedBilty) {
+                        target.dataset.triedBilty = '1';
+                        target.src = './bilty-icon.png';
+                      } else {
+                        setLogoFailed(true);
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      transform: 'scale(1.32)',
+                      transformOrigin: 'center center',
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      padding: '0',
+                      display: 'block'
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '104px',
+                      height: '104px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: 'transparent'
+                    }}
+                  >
+                    <CompanyLogo className="w-24 h-24" />
+                  </div>
+                )}
               </div>
 
-              {/* 4 Corner Pakistani Architectural Step-Brackets */}
-              {[
-                { top: '2px', left: '2px', transform: 'none' },
-                { top: '2px', right: '2px', transform: 'scaleX(-1)' },
-                { bottom: '2px', left: '2px', transform: 'scaleY(-1)' },
-                { bottom: '2px', right: '2px', transform: 'scale(-1, -1)' }
-              ].map((cornerPos, idx) => (
-                <svg
-                  key={idx}
-                  aria-hidden="true"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 18 18"
-                  fill="none"
-                  style={{
-                    position: 'absolute',
-                    ...cornerPos,
-                    pointerEvents: 'none'
-                  }}
-                >
-                  <path d="M1 15V4C1 2.34315 2.34315 1 4 1H15" stroke={navyPrimary} strokeWidth="1.5" />
-                  <path d="M4 13V5.5C4 4.67157 4.67157 4 5.5 4H13" stroke={goldAccent} strokeWidth="1.1" />
-                  <polygon points="7,7 9.5,4.5 12,7 9.5,9.5" fill={emeraldAccent} />
-                </svg>
-              ))}
-
-              {/* NTN Corner Stamp integrated neatly at top-right inside frame */}
+              {/* Bold, Distinctive Company Masthead + Clean White Proprietor + Contact */}
               <div
                 dir={isEn ? 'ltr' : 'rtl'}
                 style={{
-                  position: 'absolute',
-                  top: '5px',
-                  right: '22px',
-                  border: `1.5px solid ${navyPrimary}`,
-                  borderBottom: `2px solid ${goldAccent}`,
-                  borderRadius: '3px',
-                  padding: '1px 9px',
-                  fontSize: '9px',
-                  fontWeight: 800,
-                  fontFamily: isEn ? monoFont : urBodyFont,
-                  color: navyPrimary,
-                  backgroundColor: pastelIvory,
-                  letterSpacing: isEn ? '0.04em' : '0',
-                  zIndex: 2
+                  flex: '1 1 0%',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingTop: '10px',
+                  paddingRight: '8px'
                 }}
               >
-                {isEn ? 'NTN: 7779394-1' : 'این ٹی این: 7779394-1'}
-              </div>
-
-              {isEn ? (
-                <h1
-                  style={{
-                    fontFamily: "'Libre Baskerville', Georgia, 'Times New Roman', serif",
-                    fontSize: '19.5px',
-                    fontWeight: 700,
-                    letterSpacing: '0.015em',
-                    color: '#0f2942',
-                    margin: '0 0 5px 0',
-                    lineHeight: '1.15',
-                    textTransform: 'uppercase'
-                  }}
-                >
-                  WARRAICH GOODS TRANSPORT COMPANY
-                  <sup
-                    style={{
-                      fontSize: '11.5px',
-                      fontWeight: 700,
-                      verticalAlign: 'super',
-                      marginLeft: '2px',
-                      fontFamily: enBodyFont
-                    }}
-                  >
-                    ®
-                  </sup>
-                </h1>
-              ) : (
-                <h1
-                  style={{
-                    fontFamily: urTitleFont,
-                    fontSize: '23.5px',
-                    fontWeight: 700,
-                    color: '#0f2942',
-                    margin: '0 0 6px 0',
-                    lineHeight: '1.85'
-                  }}
-                >
-                  {cleanUrduCompanyName}
-                  <sup
-                    style={{
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      verticalAlign: 'super',
-                      marginRight: '3px',
-                      fontFamily: enBodyFont
-                    }}
-                  >
-                    ®
-                  </sup>
-                </h1>
-              )}
-
-              {/* Solid Navy Proprietor Ribbon Strip with Gold Accent Trim */}
-              <div
-                style={{
-                  backgroundColor: navyPrimary,
-                  color: '#ffffff',
-                  borderTop: `2px solid ${goldAccent}`,
-                  borderBottom: `2px solid ${goldAccent}`,
-                  padding: isEn ? '4px 20px' : '2px 20px',
-                  fontSize: isEn ? '11.5px' : '13px',
-                  fontWeight: 700,
-                  fontFamily: isEn ? enBodyFont : urBodyFont,
-                  letterSpacing: isEn ? '0.07em' : '0',
-                  textTransform: isEn ? 'uppercase' : 'none',
-                  borderRadius: '2px',
-                  width: '94%',
-                  maxWidth: '520px',
-                  lineHeight: isEn ? '1.3' : '1.6'
-                }}
-              >
-                {isEn
-                  ? 'PROPRIETOR: ZAHDAN NASAR WARRAICH'
-                  : 'پروپرائیٹر: زاہدان نصر وڑائچ'}
-              </div>
-
-              {/* Single Samundri Office Address & Phone Numbers */}
-              <div
-                style={{
-                  marginTop: '4px',
-                  fontSize: isEn ? '10.5px' : '11.5px',
-                  fontWeight: 700,
-                  fontFamily: isEn ? enBodyFont : urBodyFont,
-                  color: navyPrimary,
-                  lineHeight: isEn ? '1.35' : '1.55'
-                }}
-              >
-                <div>{isEn ? branchInfo.addressEn : branchInfo.addressUr}</div>
+                {/* Distinctive Calligraphic / Engraved Company Name */}
                 <div
-                  dir={isEn ? 'ltr' : 'rtl'}
+                  data-testid="company-masthead-title"
                   style={{
-                    fontFamily: isEn ? monoFont : urBodyFont,
-                    fontSize: isEn ? '10.5px' : '11px',
-                    marginTop: '1px',
-                    color: emeraldAccent,
-                    fontWeight: 700,
-                    fontVariantNumeric: 'tabular-nums'
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    borderBottom: `2px solid ${goldAccent}`,
+                    paddingBottom: '4px',
+                    marginBottom: '5px'
+                  }}
+                >
+                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
+                    <polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill={emeraldAccent} stroke={goldAccent} strokeWidth="1" />
+                  </svg>
+                  {isEn ? (
+                    <h1
+                      style={{
+                        fontFamily: "'Cinzel', 'Libre Baskerville', Georgia, 'Times New Roman', serif",
+                        fontSize: '20.5px',
+                        fontWeight: 900,
+                        letterSpacing: '0.035em',
+                        color: navyPrimary,
+                        margin: '0',
+                        lineHeight: '1.16',
+                        textTransform: 'uppercase',
+                        textShadow: '0 1px 0 rgba(217, 119, 6, 0.25)'
+                      }}
+                    >
+                      WARRAICH GOODS TRANSPORT COMPANY
+                      <sup
+                        style={{
+                          fontSize: '11.5px',
+                          fontWeight: 800,
+                          verticalAlign: 'super',
+                          marginLeft: '2px',
+                          fontFamily: enBodyFont,
+                          color: emeraldAccent
+                        }}
+                      >
+                        ®
+                      </sup>
+                    </h1>
+                  ) : (
+                    <h1
+                      style={{
+                        fontFamily: urTitleFont,
+                        fontSize: '27px',
+                        fontWeight: 800,
+                        color: navyPrimary,
+                        margin: '0',
+                        lineHeight: '1.52',
+                        textShadow: '0 1px 0 rgba(217, 119, 6, 0.22)'
+                      }}
+                    >
+                      {cleanUrduCompanyName}
+                      <sup
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 800,
+                          verticalAlign: 'super',
+                          marginRight: '3px',
+                          fontFamily: enBodyFont,
+                          color: emeraldAccent
+                        }}
+                      >
+                        ®
+                      </sup>
+                    </h1>
+                  )}
+                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
+                    <polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill={emeraldAccent} stroke={goldAccent} strokeWidth="1" />
+                  </svg>
+                </div>
+
+                {/* Clean White-Background Proprietor Line (No Blue Strip) */}
+                <div
+                  data-testid="proprietor-clean-line"
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: navyPrimary,
+                    padding: isEn ? '2px 12px' : '1px 12px',
+                    fontSize: isEn ? '11.5px' : '13px',
+                    fontWeight: 800,
+                    fontFamily: isEn ? enBodyFont : urBodyFont,
+                    letterSpacing: isEn ? '0.06em' : '0',
+                    textTransform: isEn ? 'uppercase' : 'none',
+                    borderBottom: '1px solid #cbd5e1',
+                    lineHeight: isEn ? '1.35' : '1.55'
                   }}
                 >
                   {isEn ? (
-                    <span>Mobile: {branchInfo.phone}</span>
+                    <>
+                      <span style={{ color: emeraldAccent, fontWeight: 800 }}>PROPRIETOR:</span>{' '}
+                      <span style={{ color: navyPrimary, fontWeight: 900 }}>ZAHDAN NASAR WARRAICH</span>
+                    </>
                   ) : (
-                    <span>
-                      فون نمبر: <span dir="ltr" style={{ fontFamily: monoFont, fontSize: '10px', color: navyPrimary }}>{branchInfo.phone}</span>
-                    </span>
+                    <>
+                      <span style={{ color: emeraldAccent, fontWeight: 800 }}>پروپرائیٹر:</span>{' '}
+                      <span style={{ color: navyPrimary, fontWeight: 900 }}>زاہدان نصر وڑائچ</span>
+                    </>
                   )}
+                </div>
+
+                {/* Single Samundri Office Address & Phone Numbers */}
+                <div
+                  style={{
+                    marginTop: '4px',
+                    fontSize: isEn ? '10.5px' : '11.5px',
+                    fontWeight: 700,
+                    fontFamily: isEn ? enBodyFont : urBodyFont,
+                    color: navyPrimary,
+                    lineHeight: isEn ? '1.35' : '1.55'
+                  }}
+                >
+                  <div>{isEn ? branchInfo.addressEn : branchInfo.addressUr}</div>
+                  <div
+                    dir={isEn ? 'ltr' : 'rtl'}
+                    style={{
+                      fontFamily: isEn ? monoFont : urBodyFont,
+                      fontSize: isEn ? '10.5px' : '11px',
+                      marginTop: '1px',
+                      color: emeraldAccent,
+                      fontWeight: 700,
+                      fontVariantNumeric: 'tabular-nums'
+                    }}
+                  >
+                    {isEn ? (
+                      <span>Mobile: {branchInfo.phone}</span>
+                    ) : (
+                      <span>
+                        فون نمبر:{' '}
+                        <span dir="ltr" style={{ fontFamily: monoFont, fontSize: '10px', color: navyPrimary, unicodeBidi: 'isolate' }}>
+                          {branchInfo.phone}
+                        </span>
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

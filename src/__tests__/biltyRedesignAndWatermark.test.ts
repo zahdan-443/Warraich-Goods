@@ -19,12 +19,17 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(printableSrc).not.toContain('Receiving Point');
     expect(printableSrc).not.toContain('ریسیونگ پوائنٹ');
 
-    // 2. Frameless enlarged logo extending to 3 edges (top, left side, and Date box border)
-    expect(printableSrc).toContain("width: '180px'");
-    expect(printableSrc).toContain("minHeight: '132px'");
-    expect(printableSrc).toContain("transform: 'scale(1.6)'");
+    // 2. Pure white Pakistani header frame enclosing frameless company logo, fixed Urdu NTN stamp, distinct company title & strip-free proprietor
+    expect(printableSrc).toContain('header-logo-inside-frame');
+    expect(printableSrc).toContain("width: '132px'");
+    expect(printableSrc).toContain("height: '104px'");
     expect(printableSrc).toContain("border: 'none'");
     expect(printableSrc).not.toContain("borderRadius: '50%'");
+    expect(printableSrc).toContain('ntn-corner-stamp');
+    expect(printableSrc).toContain('این ٹی این نمبر:');
+    expect(printableSrc).toContain("unicodeBidi: 'isolate'");
+    expect(printableSrc).toContain('company-masthead-title');
+    expect(printableSrc).toContain('proprietor-clean-line');
 
     // 3. Complete single-language footer sentence
     expect(printableSrc).toContain('This is a computer-generated Bilty, no signature required');
@@ -32,8 +37,10 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
 
     // 4. Strict single-language mode without mixed tags or unnecessary dots + Proprietor & ® mark
     expect(printableSrc).toContain('WARRAICH GOODS TRANSPORT COMPANY');
-    expect(printableSrc).toContain('PROPRIETOR: ZAHDAN NASAR WARRAICH');
-    expect(printableSrc).toContain('پروپرائیٹر: زاہدان نصر وڑائچ');
+    expect(printableSrc).toContain('PROPRIETOR:');
+    expect(printableSrc).toContain('ZAHDAN NASAR WARRAICH');
+    expect(printableSrc).toContain('پروپرائیٹر:');
+    expect(printableSrc).toContain('زاہدان نصر وڑائچ');
     expect(printableSrc).toContain('®');
     expect(printableSrc).not.toContain('TRUSTED LOGISTICS & TRANSPORT SERVICE');
     expect(printableSrc).not.toContain('معتبر لاجسٹکس اور ٹرانسپورٹ سروس');
@@ -70,10 +77,12 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(printableSrc).not.toContain('Zahdan Nasr');
     expect(printableSrc).not.toContain('For WARRAICH GOODS');
 
-    // 8. Bold Noto Nastaliq Urdu title + Jameel Noori Nastaleeq body & bold Terms
+    // 8. Bold Akbar + Noto Nastaliq Urdu title, Cinzel + Libre Baskerville English title, Jameel Noori Nastaleeq body & bold Terms
     expect(printableSrc).toContain('fontWeight: 700');
+    expect(printableSrc).toContain('Cinzel');
     expect(printableSrc).toContain('Libre Baskerville');
     expect(printableSrc).toContain('IBM Plex Sans');
+    expect(printableSrc).toContain('Akbar');
     expect(printableSrc).toContain('Noto Nastaliq Urdu');
     expect(printableSrc).toContain('Jameel Noori Nastaleeq');
     expect(printableSrc).not.toContain('Terms & Conditions (Warraich');
@@ -99,6 +108,7 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(printableSrc).toContain('cargo-box-watermark');
     expect(printableSrc).toContain('opacity: 0.06');
     expect(printableSrc).toContain("backgroundColor: '#ffffff'");
+    expect(printableSrc).not.toContain('#fffdf7');
     expect(printableSrc).not.toContain('printable-bilty-watermark');
     expect(printableSrc).not.toContain('نگ / بوریاں');
     expect(printableSrc).not.toContain('Pkgs / Bags');
