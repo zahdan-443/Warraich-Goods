@@ -397,12 +397,24 @@ async function handleTrackStatus() {
     }
   }
 
+  function escapeHtml(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   if (found) {
+    var safeRef = escapeHtml(found.referenceId || '-');
+    var safeEmail = escapeHtml(found.email || '-');
+    var safeScheduled = escapeHtml(found.scheduledFor ? String(found.scheduledFor).slice(0, 10) : '30 Days');
     box.innerHTML =
       '<div style="color:var(--success);font-weight:700;margin-bottom:8px">✅ تصدیق شدہ فعال درخواست (Verified Request)</div>' +
-      '<div><strong>Reference ID:</strong> <span class="ref-badge">' + (found.referenceId || '-') + '</span></div>' +
-      '<div style="margin-top:4px"><strong>Account Email:</strong> ' + (found.email || '-') + '</div>' +
-      '<div style="margin-top:4px"><strong>Scheduled Purge:</strong> ' + (found.scheduledFor ? found.scheduledFor.slice(0, 10) : '30 Days') + '</div>' +
+      '<div><strong>Reference ID:</strong> <span class="ref-badge">' + safeRef + '</span></div>' +
+      '<div style="margin-top:4px"><strong>Account Email:</strong> ' + safeEmail + '</div>' +
+      '<div style="margin-top:4px"><strong>Scheduled Purge:</strong> ' + safeScheduled + '</div>' +
       '<div style="margin-top:4px"><strong>Current Status:</strong> <span class="status-pill status-pending">Pending Deletion (30-day grace period)</span></div>' +
       '<div class="ur" style="margin-top:10px;font-size:.85rem;color:var(--muted)">آپ 30 دن کے اندر ایپ میں سائن ان کر کے اسے کسی بھی وقت منسوخ کر سکتے ہیں۔</div>';
   } else if (privacyProtected) {

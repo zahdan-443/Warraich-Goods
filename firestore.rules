@@ -102,9 +102,14 @@ service cloud.firestore {
       // Allow creation by authenticated users (via in-app modal) OR unauthenticated users (via external deletion web form)
       allow create: if request.resource.data.keys().hasAll(['userEmail', 'requestedAt', 'scheduledFor', 'status', 'referenceId']) &&
                     request.resource.data.keys().hasOnly(['userId', 'userEmail', 'requestedAt', 'scheduledFor', 'status', 'referenceId', 'reason', 'source']) &&
-                    request.resource.data.userEmail is string && request.resource.data.userEmail.size() <= 100 &&
+                    request.resource.data.userEmail is string && request.resource.data.userEmail.size() >= 3 && request.resource.data.userEmail.size() <= 100 &&
+                    request.resource.data.requestedAt is string && request.resource.data.requestedAt.size() <= 64 &&
+                    request.resource.data.scheduledFor is string && request.resource.data.scheduledFor.size() <= 64 &&
                     request.resource.data.status in ['pending_deletion', 'deleted'] &&
-                    request.resource.data.referenceId is string && request.resource.data.referenceId.size() <= 64;
+                    request.resource.data.referenceId is string && request.resource.data.referenceId.size() <= 64 &&
+                    (!('reason' in request.resource.data) || (request.resource.data.reason is string && request.resource.data.reason.size() <= 300)) &&
+                    (!('source' in request.resource.data) || (request.resource.data.source is string && request.resource.data.source.size() <= 64)) &&
+                    (!('userId' in request.resource.data) || (isSignedIn() && request.resource.data.userId == request.auth.uid));
     }
 
     // User profile entries and user-isolated nested collections

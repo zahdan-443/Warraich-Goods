@@ -14,15 +14,6 @@ export interface FirebaseConfigType {
   firestoreDatabaseId?: string;
 }
 
-// Dynamically assembled client identifiers to prevent false alerts by GitHub secret scanners
-const resolveTonalFlamesKey = (): string => {
-  const p1 = ['A', 'I', 'z', 'a', 'S', 'y'].join('');
-  const p2 = ['C', '2', 'w', 'O', 'q', 'c', 'q', '5', 'F', 'p'].join('');
-  const p3 = ['I', 'b', 's', 'a', 'O', '5', '6', 'T', 'B', '4', 'i'].join('');
-  const p4 = ['L', 'E', '9', 'a', 'i', 'X', 'y', 'j', 'f', 'd', 'M', 'g'].join('');
-  return `${p1}${p2}${p3}${p4}`;
-};
-
 const resolveWarraichGoodsKey = (): string => {
   const p1 = ['A', 'I', 'z', 'a', 'S', 'y'].join('');
   const p2 = ['B', '2', 'i', '8', 'A', 'W', 'a', '0'].join('');
@@ -43,22 +34,19 @@ export const WARRAICH_GOODS_CONFIG: FirebaseConfigType = {
   measurementId: ""
 };
 
-// AI Studio Sandbox configuration (tonal-flames-kj1d7 Cloud Run instance)
-export const AI_STUDIO_CONFIG: FirebaseConfigType = {
-  projectId: "tonal-flames-kj1d7",
-  appId: "1:460929296293:web:f35405d556a42b0ec66a4c",
-  apiKey: resolveTonalFlamesKey(),
-  authDomain: "tonal-flames-kj1d7.firebaseapp.com",
-  firestoreDatabaseId: "ai-studio-warraichgoodspun-fd5c860a-1eec-472e-bc43-66d7324d14f5",
-  storageBucket: "tonal-flames-kj1d7.firebasestorage.app",
-  messagingSenderId: "460929296293",
-  measurementId: ""
-};
-
 export const resolveActiveFirebaseConfig = (): FirebaseConfigType => {
-  // If explicitly overridden via environment variable to use sandbox project
-  if (import.meta.env.VITE_FIREBASE_PROJECT_ID === 'tonal-flames-kj1d7') {
-    return AI_STUDIO_CONFIG;
+  // Allow explicit environment override (staging / private environments) without hardcoding internal IDs
+  if (import.meta.env.VITE_FIREBASE_PROJECT_ID && import.meta.env.VITE_FIREBASE_API_KEY) {
+    return {
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+      appId: import.meta.env.VITE_FIREBASE_APP_ID || WARRAICH_GOODS_CONFIG.appId,
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+      firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || '(default)',
+      storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebasestorage.app`,
+      messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+      measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ''
+    };
   }
 
   // Official primary Firebase project for Driver Dost (GitHub Pages, Android, web, and local development)
@@ -66,4 +54,5 @@ export const resolveActiveFirebaseConfig = (): FirebaseConfigType => {
 };
 
 export const ACTIVE_FIREBASE_CONFIG: FirebaseConfigType = resolveActiveFirebaseConfig();
+
 

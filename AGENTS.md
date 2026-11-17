@@ -44,7 +44,7 @@
   - A4 Print Layout (`794x1120px`) on clean white card with Navy Blue (`#0f2942`), Gold (`#d97706`), and Emerald (`#065f46`) accents, double outer border, Pakistani ornamental header frame (`pakistani-header-frame`), 3-edge left company emblem, top-right NTN stamp, Nastaleeq font stack (`font-weight: 400` in `@font-face`), soft pastel row tints, 6% opacity logo watermark inside `Nature of Goods` only, enlarged cargo text, clean quantity box (without `Pkgs / Bags` label), top `Freight` row + conditional bottom summary, bold highlighted legal `Remarks` and `Terms & Conditions`, and `88x88` QR aligned with Driver Signature + bottom verification caption.
 
 ### Firebase & Verification Status
-- **Primary Firebase Project**: `warraich-goods` (`WARRAICH_GOODS_CONFIG` in `src/utils/firebaseConfig.ts`; fallback built-in for GitHub Pages and Android).
+- **Primary Firebase Project**: `warraich-goods` (`WARRAICH_GOODS_CONFIG` in `src/utils/firebaseConfig.ts`; supports `VITE_FIREBASE_*` environment overrides cleanly).
 - **Firestore Rules (`firestore.rules`)**: Published to Firebase Console; uses non-reserved parameter `accessDoc` in `isStaffAuthorized(accessDoc)` and `payload` in `hasOnlyPublicBiltyFields()`. Public QR records store ONLY 8 non-PII, non-financial fields under `publicBiltyVerifications/{UPPERCASE_BILTY_NO}`.
 - **External Website Verification Note**: `Warraichgoodstransportcompany` reads its 6 `VITE_FIREBASE_*` keys strictly from its own GitHub **Repository secrets** at build time and requires a manual **Run workflow** (or new push) after secrets are added before live QR verification resolves.
 

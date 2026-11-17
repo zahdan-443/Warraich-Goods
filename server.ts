@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
+app.disable('x-powered-by');
 
 // Parse port and host from CLI args (--port, --host) or environment
 let port = Number(process.env.PORT) || 3000;
@@ -21,8 +22,10 @@ if (hostArgIndex !== -1 && process.argv[hostArgIndex + 1]) {
   host = process.argv[hostArgIndex + 1];
 }
 
-// CORS middleware for cross-origin client requests (PWA, mobile, preview, GitHub Pages)
+// Security & CORS middleware for cross-origin client requests (PWA, mobile, preview, GitHub Pages)
 app.use((req, res, next) => {
+  res.header('X-Content-Type-Options', 'nosniff');
+  res.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
@@ -84,19 +87,28 @@ const weatherCache = new Map<string, { timestamp: number; data: any }>();
 const WEATHER_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 app.get('/api/weather', async (req, res) => {
-  const { latitude, longitude } = req.query;
-  if (!latitude || !longitude) {
-    return res.status(400).json({ error: 'Latitude and Longitude required' });
+  const lat = Number(req.query.latitude);
+  const lon = Number(req.query.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+    return res.status(400).json({ error: 'Valid numeric latitude and longitude required' });
   }
 
-  const cacheKey = `${latitude}_${longitude}`;
+  const cacheKey = `${lat.toFixed(4)}_${lon.toFixed(4)}`;
   const cached = weatherCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < WEATHER_CACHE_TTL) {
     return res.json(cached.data);
   }
 
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility&hourly=precipitation_probability&forecast_days=1&timezone=Asia%2FKarachi`;
+    const params = new URLSearchParams({
+      latitude: String(lat),
+      longitude: String(lon),
+      current: 'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,visibility',
+      hourly: 'precipitation_probability',
+      forecast_days: '1',
+      timezone: 'Asia/Karachi'
+    });
+    const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
 

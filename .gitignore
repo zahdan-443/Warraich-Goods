@@ -28,3 +28,9 @@ public/assets/**
 *.pdf
 *.docx
 *.zip
+*.bak
+*.orig
+.aistudio/
+firebase-export-*
+android/app/src/debug/google-services.json
+
