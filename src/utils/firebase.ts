@@ -55,9 +55,16 @@ const firebaseConfig = isGithubPages
 
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
+export const resolveOptionalAppCheckSiteKey = (rawKey?: unknown): string | null => {
+  if (typeof rawKey !== 'string') return null;
+  const trimmed = rawKey.trim();
+  if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return null;
+  return trimmed;
+};
+
 export const appCheck: AppCheck | null = (() => {
   if (typeof window === 'undefined') return null;
-  const siteKey = (import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY || '').trim();
+  const siteKey = resolveOptionalAppCheckSiteKey(import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY);
   if (!siteKey) return null;
   try {
     return initializeAppCheck(app, {

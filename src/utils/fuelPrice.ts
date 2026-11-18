@@ -40,10 +40,16 @@ export const STALE_FUEL_THRESHOLD_DAYS = 7;
 const FUEL_CACHE_VERSION = 2;
 const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours
 
-export const DEFAULT_CUSTOM_FUEL_API_URL: string =
-  typeof import.meta !== 'undefined' && import.meta.env?.VITE_FUEL_API_URL
-    ? String(import.meta.env.VITE_FUEL_API_URL).trim()
-    : '';
+export function resolveCustomFuelApiUrl(rawUrl?: unknown): string {
+  if (typeof rawUrl !== 'string') return '';
+  const trimmed = rawUrl.trim();
+  if (!trimmed || trimmed === 'undefined' || trimmed === 'null') return '';
+  return trimmed;
+}
+
+export const DEFAULT_CUSTOM_FUEL_API_URL: string = resolveCustomFuelApiUrl(
+  typeof import.meta !== 'undefined' ? import.meta.env?.VITE_FUEL_API_URL : ''
+);
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',

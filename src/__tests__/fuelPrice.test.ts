@@ -11,8 +11,11 @@ import {
   setManualFuelPrices,
   getManualFuelOverride,
   clearManualFuelPrices,
-  computeFuelStaleness
+  computeFuelStaleness,
+  resolveCustomFuelApiUrl,
+  DEFAULT_CUSTOM_FUEL_API_URL
 } from '../utils/fuelPrice';
+import { appCheck, resolveOptionalAppCheckSiteKey } from '../utils/firebase';
 
 describe('Live Pakistan Fuel Prices Multi-Provider Sync', () => {
   const store: Record<string, string> = {};
@@ -244,5 +247,45 @@ describe('Live Pakistan Fuel Prices Multi-Provider Sync', () => {
     expect(live.diesel).toBe('358.50');
     expect(live.petrol).toBe('329.00');
     expect(live.source).toBe('Custom Fleet Feed');
+  });
+
+  it('uses built-in fuel sources when VITE_FUEL_API_URL is empty or unset', async () => {
+    expect(DEFAULT_CUSTOM_FUEL_API_URL).toBe('');
+    expect(resolveCustomFuelApiUrl(undefined)).toBe('');
+    expect(resolveCustomFuelApiUrl('')).toBe('');
+    expect(resolveCustomFuelApiUrl('   ')).toBe('');
+    expect(resolveCustomFuelApiUrl('undefined')).toBe('');
+
+    const fetchedUrls: string[] = [];
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      fetchedUrls.push(url);
+      if (url.includes('eklitre.pk')) {
+        return new Response(
+          JSON.stringify({
+            day: {
+              effective_date: '2026-11-18',
+              products: { petrol: { pump_price: 330 }, diesel: { pump_price: 360 } }
+            }
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        );
+      }
+      return new Response('Not found', { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const live = await fetchLiveFuelPrices(true, '   ');
+    expect(live.isFallback).toBe(false);
+    expect(live.diesel).toBe('360.00');
+    expect(fetchedUrls.some((u) => u.includes('eklitre.pk'))).toBe(true);
+  });
+
+  it('skips Firebase App Check initialization when VITE_FIREBASE_APPCHECK_SITE_KEY is empty or missing', () => {
+    expect(resolveOptionalAppCheckSiteKey(undefined)).toBeNull();
+    expect(resolveOptionalAppCheckSiteKey('')).toBeNull();
+    expect(resolveOptionalAppCheckSiteKey('   ')).toBeNull();
+    expect(resolveOptionalAppCheckSiteKey('undefined')).toBeNull();
+    expect(resolveOptionalAppCheckSiteKey('null')).toBeNull();
+    expect(appCheck).toBeNull();
   });
 });
