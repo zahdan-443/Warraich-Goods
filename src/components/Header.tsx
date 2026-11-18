@@ -22,6 +22,7 @@ import {
   DailyDigestSettings 
 } from '../utils/dailyDigestNotification';
 import { getCrashReportingConsent, setCrashReportingConsent } from '../utils/crashReportingService';
+import { isOwnerEmail } from '../utils/authUtils';
 import { APP_VERSION } from '../constants/version';
 
 interface HeaderProps {
@@ -208,7 +209,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
-  const isOwnerUser = userEmail?.toLowerCase() === 'warraichgoods43@gmail.com';
+  const isOwnerUser = isOwnerEmail(userEmail);
 
   return (
     <>

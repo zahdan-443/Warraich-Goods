@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from 'firebase/app-check';
 import {
   getAuth,
   GoogleAuthProvider,
@@ -53,6 +54,21 @@ const firebaseConfig = isGithubPages
     };
 
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+export const appCheck: AppCheck | null = (() => {
+  if (typeof window === 'undefined') return null;
+  const siteKey = (import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY || '').trim();
+  if (!siteKey) return null;
+  try {
+    return initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(siteKey),
+      isTokenAutoRefreshEnabled: true
+    });
+  } catch (err) {
+    console.warn('[Firebase] App Check initialization notice:', err);
+    return null;
+  }
+})();
 
 export const auth = getAuth(app);
 
@@ -120,10 +136,11 @@ export const checkRedirectAuthResult = async (): Promise<User | null> => {
     if (result?.user) {
       return result.user;
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const code = typeof error === 'object' && error !== null && 'code' in error ? String((error as { code?: unknown }).code) : '';
     if (
-      error?.code !== 'auth/missing-initial-state' &&
-      error?.code !== 'auth/operation-not-supported-in-this-environment'
+      code !== 'auth/missing-initial-state' &&
+      code !== 'auth/operation-not-supported-in-this-environment'
     ) {
       console.warn("Redirect Auth check notice:", error);
     }
@@ -143,7 +160,7 @@ export const loginWithGoogle = async (): Promise<User | null> => {
       let result;
       try {
         result = await FirebaseAuthentication.signInWithGoogle();
-      } catch (nativeErr: any) {
+      } catch (nativeErr: unknown) {
         console.warn("First native signInWithGoogle attempt notice, retrying with useCredentialManager: false:", nativeErr);
         result = await FirebaseAuthentication.signInWithGoogle({ useCredentialManager: false });
       }
@@ -160,7 +177,7 @@ export const loginWithGoogle = async (): Promise<User | null> => {
         return (auth.currentUser || (result.user as unknown as User));
       }
       if (auth.currentUser) return auth.currentUser;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Native Google Sign-In error:", error);
       throw error;
     }
@@ -171,7 +188,7 @@ export const loginWithGoogle = async (): Promise<User | null> => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.warn("Google Sign-In popup notice:", error);
     throw error;
   }
@@ -202,9 +219,10 @@ export const deleteFirebaseUserAccount = async (targetUser?: User | null): Promi
     try {
       await FirebaseAuthentication.deleteUser();
       nativeDeleted = true;
-    } catch (nativeErr: any) {
-      const msg = String(nativeErr?.message || nativeErr || '').toLowerCase();
-      if (nativeErr?.code === 'auth/requires-recent-login' || msg.includes('recent') || msg.includes('requires-recent-login')) {
+    } catch (nativeErr: unknown) {
+      const code = typeof nativeErr === 'object' && nativeErr !== null && 'code' in nativeErr ? String((nativeErr as { code?: unknown }).code) : '';
+      const msg = (nativeErr instanceof Error ? nativeErr.message : String(nativeErr || '')).toLowerCase();
+      if (code === 'auth/requires-recent-login' || msg.includes('recent') || msg.includes('requires-recent-login')) {
         throw new Error('AUTH_REQUIRES_RECENT_LOGIN');
       }
       console.warn('Native deleteUser error, falling back to web SDK:', nativeErr);
@@ -214,9 +232,9 @@ export const deleteFirebaseUserAccount = async (targetUser?: User | null): Promi
   if (userToDelete) {
     try {
       await deleteUser(userToDelete);
-    } catch (err: any) {
-      const code = err?.code || '';
-      const msg = String(err?.message || '').toLowerCase();
+    } catch (err: unknown) {
+      const code = typeof err === 'object' && err !== null && 'code' in err ? String((err as { code?: unknown }).code) : '';
+      const msg = (err instanceof Error ? err.message : String(err || '')).toLowerCase();
       if (nativeDeleted && code === 'auth/user-not-found') {
         return;
       }

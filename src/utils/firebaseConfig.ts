@@ -14,24 +14,21 @@ export interface FirebaseConfigType {
   firestoreDatabaseId?: string;
 }
 
-const resolveWarraichGoodsKey = (): string => {
-  const p1 = ['A', 'I', 'z', 'a', 'S', 'y'].join('');
-  const p2 = ['B', '2', 'i', '8', 'A', 'W', 'a', '0'].join('');
-  const p3 = ['O', '2', 'f', 'r', '2', 'C', 't', 'M', 'v', 'd'].join('');
-  const p4 = ['5', 'H', 'W', 'R', '9', '4', 'h', 'O', 'z', 'C', 'Y', 'B', 'U', 'l', 's'].join('');
-  return `${p1}${p2}${p3}${p4}`;
-};
-
-// Official project configuration for GitHub Pages (zahdan-443.github.io) and Android production
+/**
+ * Official public Firebase Web configuration for GitHub Pages and Android production.
+ * NOTE: Firebase Web API keys are public client project identifiers, NOT secrets.
+ * Protect quota and abuse using Google Cloud API Key restrictions (HTTP referrers / Android SHA-1),
+ * Firebase App Check (VITE_FIREBASE_APPCHECK_SITE_KEY), and strict Firestore security rules.
+ */
 export const WARRAICH_GOODS_CONFIG: FirebaseConfigType = {
-  projectId: "warraich-goods",
-  appId: "1:805249879186:web:0ccfeaa631bb1a07e5ea4b",
-  apiKey: resolveWarraichGoodsKey(),
-  authDomain: "warraich-goods.firebaseapp.com",
-  firestoreDatabaseId: "(default)",
-  storageBucket: "warraich-goods.firebasestorage.app",
-  messagingSenderId: "805249879186",
-  measurementId: ""
+  projectId: 'warraich-goods',
+  appId: '1:805249879186:web:0ccfeaa631bb1a07e5ea4b',
+  apiKey: 'AIzaSyB2i8AWa0O2fr2CtMvd5HWR94hOzCYBUls',
+  authDomain: 'warraich-goods.firebaseapp.com',
+  firestoreDatabaseId: '(default)',
+  storageBucket: 'warraich-goods.firebasestorage.app',
+  messagingSenderId: '805249879186',
+  measurementId: ''
 };
 
 export const resolveActiveFirebaseConfig = (): FirebaseConfigType => {

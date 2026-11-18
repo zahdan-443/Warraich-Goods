@@ -1,6 +1,5 @@
 import express from 'express';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -62,18 +61,6 @@ app.get(['/robots.txt', '/Warraich-Goods/robots.txt'], (_req, res) => {
   });
 });
 
-// Serve Digital Asset Links for Android TWA verification
-app.get(['/.well-known/assetlinks.json', '/Warraich-Goods/.well-known/assetlinks.json'], (_req, res) => {
-  const publicPath = path.join(process.cwd(), 'public', '.well-known', 'assetlinks.json');
-  const distPath = path.join(process.cwd(), 'dist', '.well-known', 'assetlinks.json');
-  res.header('Content-Type', 'application/json; charset=utf-8');
-  res.header('Cache-Control', 'public, max-age=86400, s-maxage=86400');
-  res.header('X-CDN-Status', 'Active');
-  res.sendFile(publicPath, (err) => {
-    if (err) res.sendFile(distPath);
-  });
-});
-
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -83,7 +70,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 // Weather API Proxy Endpoint (Server-Side Proxy with in-memory cache to prevent CORS & rate-limiting)
-const weatherCache = new Map<string, { timestamp: number; data: any }>();
+const weatherCache = new Map<string, { timestamp: number; data: unknown }>();
 const WEATHER_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 app.get('/api/weather', async (req, res) => {
@@ -119,11 +106,12 @@ app.get('/api/weather', async (req, res) => {
       throw new Error(`Open-Meteo returned status ${apiRes.status}`);
     }
 
-    const data = await apiRes.json();
+    const data: unknown = await apiRes.json();
     weatherCache.set(cacheKey, { timestamp: Date.now(), data });
     return res.json(data);
-  } catch (err: any) {
-    console.warn('Weather proxy fetch error:', err.message);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn('Weather proxy fetch error:', message);
     if (cached) {
       return res.json(cached.data);
     }
@@ -132,7 +120,7 @@ app.get('/api/weather', async (req, res) => {
 });
 
 // Pakistan Fuel Prices Proxy Endpoint (Official PSO POL Archives with 30-min cache)
-let fuelProxyCache: { timestamp: number; data: any } | null = null;
+let fuelProxyCache: { timestamp: number; data: Record<string, unknown> } | null = null;
 const FUEL_PROXY_TTL = 30 * 60 * 1000;
 
 app.get('/api/fuel-prices', async (_req, res) => {
@@ -176,8 +164,9 @@ app.get('/api/fuel-prices', async (_req, res) => {
         }
       }
     }
-  } catch (err: any) {
-    console.warn('PSO archive proxy notice:', err.message);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn('PSO archive proxy notice:', message);
   }
 
   if (fuelProxyCache) {
@@ -189,6 +178,7 @@ app.get('/api/fuel-prices', async (_req, res) => {
 // Vite & Static Asset Handling
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -213,7 +203,7 @@ async function startServer() {
     console.log(`Driver Dost Server running on http://${host}:${port}`);
   });
 
-  server.on('error', (err: any) => {
+  server.on('error', (err: NodeJS.ErrnoException) => {
     if (err.code === 'EADDRINUSE') {
       console.warn(`Port ${port} is currently in use, process will exit cleanly.`);
       process.exit(0);

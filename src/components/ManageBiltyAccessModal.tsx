@@ -46,6 +46,15 @@ import {
   resetTollRatesToDefault, 
   DEFAULT_TOLL_RATES 
 } from '../utils/tollMatrix';
+import { OWNER_EMAIL, isOwnerEmail } from '../utils/authUtils';
+import { getPakistanMonthKey } from '../utils/dateUtils';
+import {
+  BackupPreviewSummary,
+  previewCloudBackup,
+  previewJsonBackup,
+  restoreFromCloudBackup
+} from '../utils/backupService';
+import { BackupRestoreConfirmModal } from './BackupRestoreConfirmModal';
 
 interface ManageBiltyAccessModalProps {
   isOpen: boolean;
@@ -66,7 +75,7 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
   currentUserEmail,
   onUpdated
 }) => {
-  const isOwner = currentUserEmail?.toLowerCase().trim() === 'warraichgoods43@gmail.com';
+  const isOwner = isOwnerEmail(currentUserEmail);
 
   // Strictly block and hide confidential bilty access and registered user list from non-owners
   if (!isOpen || !isOwner) {
@@ -91,16 +100,16 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
   // Business Reports State
   const [bilties, setBilties] = useState<BiltyRecord[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => getPakistanMonthKey());
 
   // Backup, Settings & Payment Accounts State
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(DEFAULT_COMPANY_PROFILE);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSuccessMsg, setProfileSuccessMsg] = useState(false);
   const [restoreStatus, setRestoreStatus] = useState<{ msg: string; success: boolean } | null>(null);
+  const [pendingRestorePreview, setPendingRestorePreview] = useState<BackupPreviewSummary | null>(null);
+  const [pendingRestoreJson, setPendingRestoreJson] = useState<string | null>(null);
+  const [confirmingRestore, setConfirmingRestore] = useState(false);
   const backupInputRef = useRef<HTMLInputElement>(null);
 
   // Activity Logs State
@@ -188,17 +197,51 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
-      const res = restoreFullBackupFromJson(content);
-      if (res.success) {
-        setRestoreStatus({ msg: `${res.message} (${res.count} records)`, success: true });
-        setBilties(getStoredBilties());
-        setTrips(getStoredTrips());
-      } else {
-        setRestoreStatus({ msg: res.message, success: false });
-      }
+      const preview = previewJsonBackup(content);
+      setPendingRestoreJson(content);
+      setPendingRestorePreview(preview);
     };
     reader.readAsText(file);
     e.target.value = '';
+  };
+
+  const handleOpenCloudRestorePreview = async () => {
+    const preview = await previewCloudBackup('latestIndex');
+    setPendingRestoreJson(null);
+    setPendingRestorePreview(preview);
+  };
+
+  const handleConfirmPendingRestore = async () => {
+    if (!pendingRestorePreview || !pendingRestorePreview.valid) return;
+    setConfirmingRestore(true);
+    try {
+      if (pendingRestorePreview.source === 'json' && pendingRestoreJson) {
+        const res = restoreFullBackupFromJson(pendingRestoreJson);
+        if (res.success) {
+          setRestoreStatus({ msg: `${res.message} (${res.count} records)`, success: true });
+          setBilties(getStoredBilties());
+          setTrips(getStoredTrips());
+        } else {
+          setRestoreStatus({ msg: res.message, success: false });
+        }
+      } else if (pendingRestorePreview.source === 'cloud') {
+        const ok = await restoreFromCloudBackup(pendingRestorePreview.backupId || 'latestIndex');
+        if (ok) {
+          setRestoreStatus({
+            msg: `Cloud backup restored (${pendingRestorePreview.totalRecords} records)`,
+            success: true
+          });
+          setBilties(getStoredBilties());
+          setTrips(getStoredTrips());
+        } else {
+          setRestoreStatus({ msg: 'Cloud backup restore failed — rolled back safely', success: false });
+        }
+      }
+    } finally {
+      setConfirmingRestore(false);
+      setPendingRestorePreview(null);
+      setPendingRestoreJson(null);
+    }
   };
 
   if (!isOpen) return null;
@@ -366,7 +409,7 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
                   {lang === 'ur' ? 'آنر کنٹرول پینل (وارائچ گڈز ایڈمن)' : 'Owner Control Panel'}
                 </h2>
                 <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px] border border-amber-300 font-mono">
-                  warraichgoods43@gmail.com
+                  {OWNER_EMAIL}
                 </span>
               </div>
               <p className="text-xs text-[#8e8e75] mt-0.5 font-sans">
@@ -513,7 +556,7 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
                   </div>
                 ) : (
                   filteredUsers.map(user => {
-                    const isOwnerRole = user.email?.toLowerCase().trim() === 'warraichgoods43@gmail.com' || user.role === 'owner';
+                    const isOwnerRole = isOwnerEmail(user.email) || user.role === 'owner';
                     const isAuthorized = isOwnerRole || 
                       (user.uid && allowedUIDs.includes(user.uid)) || 
                       (user.email && allowedEmails.map(e => e.toLowerCase().trim()).includes(user.email.toLowerCase().trim()));
@@ -837,6 +880,22 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
                       <Upload className="w-4 h-4 text-amber-700 shrink-0" />
                     </button>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenCloudRestorePreview}
+                    className="sm:col-span-2 p-3 bg-white hover:bg-emerald-50/60 border border-[#ecece0] hover:border-emerald-300 rounded-xl text-right transition-all cursor-pointer flex items-center justify-between group shadow-2xs"
+                  >
+                    <div>
+                      <div className="font-bold text-xs text-[#4a4a35] group-hover:text-emerald-900">
+                        {lang === 'ur' ? 'کلاؤڈ سنیپ شاٹ سے بحال کریں' : 'Restore from Cloud Snapshot'}
+                      </div>
+                      <div className="text-[10px] text-[#8e8e75] mt-0.5">
+                        {lang === 'ur' ? 'تازہ ترین فائر بیس بیک اپ چیک اور بحال کریں' : 'Preview and restore latest verified Firebase backup'}
+                      </div>
+                    </div>
+                    <Database className="w-4 h-4 text-emerald-700 shrink-0" />
+                  </button>
                 </div>
               </div>
 
@@ -1198,6 +1257,18 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
             {lang === 'ur' ? 'بند کریں' : 'Close Panel'}
           </button>
         </div>
+
+        <BackupRestoreConfirmModal
+          isOpen={Boolean(pendingRestorePreview)}
+          lang={lang}
+          preview={pendingRestorePreview}
+          confirming={confirmingRestore}
+          onCancel={() => {
+            setPendingRestorePreview(null);
+            setPendingRestoreJson(null);
+          }}
+          onConfirm={handleConfirmPendingRestore}
+        />
 
       </div>
     </div>

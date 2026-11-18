@@ -57,7 +57,7 @@ jobs:
 
       - name: Install NPM Dependencies
         run: |
-          npm install --legacy-peer-deps --no-audit --no-fund
+          npm ci --legacy-peer-deps --no-audit --no-fund
 
       - name: Run Test Suite
         run: |

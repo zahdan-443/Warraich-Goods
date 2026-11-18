@@ -31,10 +31,13 @@ import {
   LedgerEntry,
   Trip
 } from '../types';
-import { getScopedItem, safeStorage, setScopedItem } from './storage';
+import { getScopedItem, setScopedItem } from './storage';
+import { fromPaisa, multiplyRupees, toPaisa } from './calculator';
+import { getPakistanDateKey, shiftDateKey } from './dateUtils';
 import {
   KHATA_STORAGE_KEYS,
   calculateAccountBalance,
+  clearKhataDeletionTombstone,
   deleteCashEntry,
   formatPhoneForDisplay,
   getAllCashEntries,
@@ -42,6 +45,7 @@ import {
   getLedgerAccounts,
   mirrorFlatKhataDocToFirestore,
   normalizePakistaniPhone,
+  recordKhataDeletionTombstone,
   saveOrUpdateCashEntry,
   saveOrUpdateLedgerAccount,
   saveOrUpdateLedgerEntry
@@ -53,12 +57,6 @@ function readCollection<T>(key: string): T[] {
   try {
     const raw = getScopedItem(key);
     if (!raw) {
-      const legacy = safeStorage.getItem(key);
-      if (legacy !== null) {
-        setScopedItem(key, legacy);
-        const parsed = JSON.parse(legacy);
-        return Array.isArray(parsed) ? parsed : [];
-      }
       return [];
     }
     const parsed = JSON.parse(raw);
@@ -77,7 +75,7 @@ function writeCollection<T>(key: string, items: T[]): void {
 }
 
 export function getTodayIsoDate(): string {
-  return new Date().toISOString().split('T')[0];
+  return getPakistanDateKey();
 }
 
 // =========================================================================
@@ -95,26 +93,29 @@ export function calculateBillTotals(
   balance: number;
   status: KhataBillStatus;
 } {
-  let subtotal = 0;
+  let subtotalPaisa = 0;
   for (const item of lineItems) {
     const qty = Math.max(0, Number(item.qty) || 0);
     const rate = Math.max(0, Number(item.rate) || 0);
-    const lineAmt = qty > 0 && rate > 0 ? qty * rate : Math.max(0, Number(item.amount) || 0);
-    subtotal += lineAmt;
+    const lineAmt = qty > 0 && rate > 0 ? multiplyRupees(qty, rate) : Math.max(0, Number(item.amount) || 0);
+    subtotalPaisa += toPaisa(lineAmt);
   }
 
-  subtotal = Math.round(subtotal * 100) / 100;
-  const safeExtra = Math.max(0, Number(extraCharges) || 0);
-  const safeDiscount = Math.max(0, Number(discount) || 0);
-  const safeAdvance = Math.max(0, Number(advance) || 0);
+  const subtotal = fromPaisa(subtotalPaisa);
+  const safeExtraPaisa = Math.max(0, toPaisa(Number(extraCharges) || 0));
+  const safeDiscountPaisa = Math.max(0, toPaisa(Number(discount) || 0));
+  const safeAdvancePaisa = Math.max(0, toPaisa(Number(advance) || 0));
 
-  const total = Math.max(0, Math.round((subtotal + safeExtra - safeDiscount) * 100) / 100);
-  const balance = Math.max(0, Math.round((total - safeAdvance) * 100) / 100);
+  const totalPaisa = Math.max(0, subtotalPaisa + safeExtraPaisa - safeDiscountPaisa);
+  const balancePaisa = Math.max(0, totalPaisa - safeAdvancePaisa);
+
+  const total = fromPaisa(totalPaisa);
+  const balance = fromPaisa(balancePaisa);
 
   let status: KhataBillStatus = 'unpaid';
-  if (total === 0 || balance === 0) {
+  if (totalPaisa === 0 || balancePaisa === 0) {
     status = 'paid';
-  } else if (safeAdvance > 0 && balance > 0) {
+  } else if (safeAdvancePaisa > 0 && balancePaisa > 0) {
     status = 'partial';
   }
 
@@ -222,8 +223,9 @@ export function saveOrUpdateBill(
     bills.unshift(target);
   }
 
+  clearKhataDeletionTombstone('khataBills', target.id);
   writeCollection(KHATA_STORAGE_KEYS.BILLS, bills);
-  mirrorFlatKhataDocToFirestore('khataBills', target, 'upsert');
+  void mirrorFlatKhataDocToFirestore('khataBills', target as unknown as { id: string }, 'upsert');
   return target;
 }
 
@@ -233,7 +235,8 @@ export function deleteBill(id: string): boolean {
   if (!target) return false;
   const remaining = bills.filter(b => b.id !== id);
   writeCollection(KHATA_STORAGE_KEYS.BILLS, remaining);
-  mirrorFlatKhataDocToFirestore('khataBills', target, 'delete');
+  recordKhataDeletionTombstone('khataBills', id);
+  void mirrorFlatKhataDocToFirestore('khataBills', target as unknown as { id: string }, 'delete');
   return true;
 }
 
@@ -439,8 +442,9 @@ export function saveOrUpdateEmployee(
     list.unshift(target);
   }
 
+  clearKhataDeletionTombstone('khataEmployees', target.id);
   writeCollection(KHATA_STORAGE_KEYS.EMPLOYEES, list);
-  mirrorFlatKhataDocToFirestore('khataEmployees', target, 'upsert');
+  void mirrorFlatKhataDocToFirestore('khataEmployees', target as unknown as { id: string }, 'upsert');
   return target;
 }
 
@@ -450,7 +454,8 @@ export function deleteEmployee(id: string): boolean {
   if (!target) return false;
 
   writeCollection(KHATA_STORAGE_KEYS.EMPLOYEES, list.filter(e => e.id !== id));
-  mirrorFlatKhataDocToFirestore('khataEmployees', target, 'delete');
+  recordKhataDeletionTombstone('khataEmployees', id);
+  void mirrorFlatKhataDocToFirestore('khataEmployees', target as unknown as { id: string }, 'delete');
 
   const allEntries = readCollection<KhataEmployeeEntry>(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES);
   const toDelete = allEntries.filter(en => en.employeeId === id);
@@ -458,7 +463,10 @@ export function deleteEmployee(id: string): boolean {
     KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES,
     allEntries.filter(en => en.employeeId !== id)
   );
-  toDelete.forEach(en => mirrorFlatKhataDocToFirestore('khataEmployeeEntries', en, 'delete'));
+  toDelete.forEach(en => {
+    recordKhataDeletionTombstone('khataEmployeeEntries', en.id);
+    void mirrorFlatKhataDocToFirestore('khataEmployeeEntries', en as unknown as { id: string }, 'delete');
+  });
   return true;
 }
 
@@ -489,7 +497,7 @@ export function saveOrUpdateEmployeeEntry(
     target = {
       ...list[existingIdx],
       ...data,
-      amount: Math.abs(Number(data.amount)),
+      amount: Math.abs(fromPaisa(toPaisa(Number(data.amount) || 0))),
       updatedAt: now
     };
     list[existingIdx] = target;
@@ -499,7 +507,7 @@ export function saveOrUpdateEmployeeEntry(
       employeeId: data.employeeId,
       date: data.date || getTodayIsoDate(),
       type: data.type,
-      amount: Math.abs(Number(data.amount)),
+      amount: Math.abs(fromPaisa(toPaisa(Number(data.amount) || 0))),
       notes: data.notes?.trim() || '',
       createdAt: now,
       updatedAt: now
@@ -507,8 +515,9 @@ export function saveOrUpdateEmployeeEntry(
     list.unshift(target);
   }
 
+  clearKhataDeletionTombstone('khataEmployeeEntries', target.id);
   writeCollection(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, list);
-  mirrorFlatKhataDocToFirestore('khataEmployeeEntries', target, 'upsert');
+  void mirrorFlatKhataDocToFirestore('khataEmployeeEntries', target as unknown as { id: string }, 'upsert');
   return target;
 }
 
@@ -517,7 +526,8 @@ export function deleteEmployeeEntry(id: string): boolean {
   const target = list.find(e => e.id === id);
   if (!target) return false;
   writeCollection(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, list.filter(e => e.id !== id));
-  mirrorFlatKhataDocToFirestore('khataEmployeeEntries', target, 'delete');
+  recordKhataDeletionTombstone('khataEmployeeEntries', id);
+  void mirrorFlatKhataDocToFirestore('khataEmployeeEntries', target as unknown as { id: string }, 'delete');
   return true;
 }
 
@@ -530,7 +540,7 @@ export interface EmployeeLedgerSummary {
   totalSalaryPaid: number;
   totalDeduction: number;
   totalPaidAndDeducted: number;
-  netBalance: number; // + payable to employee, - advance recoverable
+  netBalance: number;
   status: 'payable' | 'advance_recoverable' | 'settled';
 }
 
@@ -539,50 +549,50 @@ export function isEmployeeCreditType(type: KhataEmployeeEntry['type']): boolean 
 }
 
 export function calculateEmployeeLedgerSummary(entries: KhataEmployeeEntry[] = []): EmployeeLedgerSummary {
-  let totalSalaryDue = 0;
-  let totalBonus = 0;
-  let totalTripAllowance = 0;
-  let totalAdvance = 0;
-  let totalSalaryPaid = 0;
-  let totalDeduction = 0;
+  let totalSalaryDuePaisa = 0;
+  let totalBonusPaisa = 0;
+  let totalTripAllowancePaisa = 0;
+  let totalAdvancePaisa = 0;
+  let totalSalaryPaidPaisa = 0;
+  let totalDeductionPaisa = 0;
 
   for (const e of entries) {
-    const amt = Math.max(0, Number(e.amount) || 0);
+    const amtPaisa = Math.max(0, toPaisa(Number(e.amount) || 0));
     switch (e.type) {
       case 'salary_due':
-        totalSalaryDue += amt;
+        totalSalaryDuePaisa += amtPaisa;
         break;
       case 'bonus':
-        totalBonus += amt;
+        totalBonusPaisa += amtPaisa;
         break;
       case 'trip_allowance':
-        totalTripAllowance += amt;
+        totalTripAllowancePaisa += amtPaisa;
         break;
       case 'advance':
-        totalAdvance += amt;
+        totalAdvancePaisa += amtPaisa;
         break;
       case 'salary_paid':
-        totalSalaryPaid += amt;
+        totalSalaryPaidPaisa += amtPaisa;
         break;
       case 'deduction':
-        totalDeduction += amt;
+        totalDeductionPaisa += amtPaisa;
         break;
     }
   }
 
-  const totalEarned = totalSalaryDue + totalBonus + totalTripAllowance;
-  const totalPaidAndDeducted = totalAdvance + totalSalaryPaid + totalDeduction;
-  const netBalance = Math.round((totalEarned - totalPaidAndDeducted) * 100) / 100;
+  const totalEarnedPaisa = totalSalaryDuePaisa + totalBonusPaisa + totalTripAllowancePaisa;
+  const totalPaidAndDeductedPaisa = totalAdvancePaisa + totalSalaryPaidPaisa + totalDeductionPaisa;
+  const netBalance = fromPaisa(totalEarnedPaisa - totalPaidAndDeductedPaisa);
 
   return {
-    totalSalaryDue: Math.round(totalSalaryDue),
-    totalBonus: Math.round(totalBonus),
-    totalTripAllowance: Math.round(totalTripAllowance),
-    totalEarned: Math.round(totalEarned),
-    totalAdvance: Math.round(totalAdvance),
-    totalSalaryPaid: Math.round(totalSalaryPaid),
-    totalDeduction: Math.round(totalDeduction),
-    totalPaidAndDeducted: Math.round(totalPaidAndDeducted),
+    totalSalaryDue: fromPaisa(totalSalaryDuePaisa),
+    totalBonus: fromPaisa(totalBonusPaisa),
+    totalTripAllowance: fromPaisa(totalTripAllowancePaisa),
+    totalEarned: fromPaisa(totalEarnedPaisa),
+    totalAdvance: fromPaisa(totalAdvancePaisa),
+    totalSalaryPaid: fromPaisa(totalSalaryPaidPaisa),
+    totalDeduction: fromPaisa(totalDeductionPaisa),
+    totalPaidAndDeducted: fromPaisa(totalPaidAndDeductedPaisa),
     netBalance,
     status: netBalance > 0 ? 'payable' : netBalance < 0 ? 'advance_recoverable' : 'settled'
   };
@@ -685,8 +695,9 @@ export function saveOrUpdateReceivingPoint(
     list.unshift(target);
   }
 
+  clearKhataDeletionTombstone('khataReceivingPoints', target.id);
   writeCollection(KHATA_STORAGE_KEYS.RECEIVING_POINTS, list);
-  mirrorFlatKhataDocToFirestore('khataReceivingPoints', target, 'upsert');
+  void mirrorFlatKhataDocToFirestore('khataReceivingPoints', target as unknown as { id: string }, 'upsert');
   return target;
 }
 
@@ -696,7 +707,8 @@ export function deleteReceivingPoint(id: string): boolean {
   if (!target) return false;
 
   writeCollection(KHATA_STORAGE_KEYS.RECEIVING_POINTS, list.filter(p => p.id !== id));
-  mirrorFlatKhataDocToFirestore('khataReceivingPoints', target, 'delete');
+  recordKhataDeletionTombstone('khataReceivingPoints', id);
+  void mirrorFlatKhataDocToFirestore('khataReceivingPoints', target as unknown as { id: string }, 'delete');
 
   const allEntries = readCollection<KhataReceivingEntry>(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES);
   const toDelete = allEntries.filter(e => e.pointId === id);
@@ -704,7 +716,10 @@ export function deleteReceivingPoint(id: string): boolean {
     KHATA_STORAGE_KEYS.RECEIVING_ENTRIES,
     allEntries.filter(e => e.pointId !== id)
   );
-  toDelete.forEach(e => mirrorFlatKhataDocToFirestore('khataReceivingEntries', e, 'delete'));
+  toDelete.forEach(e => {
+    recordKhataDeletionTombstone('khataReceivingEntries', e.id);
+    void mirrorFlatKhataDocToFirestore('khataReceivingEntries', e as unknown as { id: string }, 'delete');
+  });
   return true;
 }
 
@@ -735,7 +750,7 @@ export function saveOrUpdateReceivingEntry(
     target = {
       ...list[existingIdx],
       ...data,
-      amount: Math.abs(Number(data.amount)),
+      amount: Math.abs(fromPaisa(toPaisa(Number(data.amount) || 0))),
       updatedAt: now
     };
     list[existingIdx] = target;
@@ -745,7 +760,7 @@ export function saveOrUpdateReceivingEntry(
       pointId: data.pointId,
       date: data.date || getTodayIsoDate(),
       type: data.type,
-      amount: Math.abs(Number(data.amount)),
+      amount: Math.abs(fromPaisa(toPaisa(Number(data.amount) || 0))),
       notes: data.notes?.trim() || '',
       createdAt: now,
       updatedAt: now
@@ -753,8 +768,9 @@ export function saveOrUpdateReceivingEntry(
     list.unshift(target);
   }
 
+  clearKhataDeletionTombstone('khataReceivingEntries', target.id);
   writeCollection(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, list);
-  mirrorFlatKhataDocToFirestore('khataReceivingEntries', target, 'upsert');
+  void mirrorFlatKhataDocToFirestore('khataReceivingEntries', target as unknown as { id: string }, 'upsert');
   return target;
 }
 
@@ -763,7 +779,8 @@ export function deleteReceivingEntry(id: string): boolean {
   const target = list.find(e => e.id === id);
   if (!target) return false;
   writeCollection(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, list.filter(e => e.id !== id));
-  mirrorFlatKhataDocToFirestore('khataReceivingEntries', target, 'delete');
+  recordKhataDeletionTombstone('khataReceivingEntries', id);
+  void mirrorFlatKhataDocToFirestore('khataReceivingEntries', target as unknown as { id: string }, 'delete');
   return true;
 }
 
@@ -772,17 +789,17 @@ export function calculateReceivingPointSummary(entries: KhataReceivingEntry[] = 
   totalPaid: number;
   pendingBalance: number;
 } {
-  let totalReceived = 0;
-  let totalPaid = 0;
+  let totalReceivedPaisa = 0;
+  let totalPaidPaisa = 0;
   for (const e of entries) {
-    const amt = Math.max(0, Number(e.amount) || 0);
-    if (e.type === 'received') totalReceived += amt;
-    else if (e.type === 'paid') totalPaid += amt;
+    const amtPaisa = Math.max(0, toPaisa(Number(e.amount) || 0));
+    if (e.type === 'received') totalReceivedPaisa += amtPaisa;
+    else if (e.type === 'paid') totalPaidPaisa += amtPaisa;
   }
   return {
-    totalReceived: Math.round(totalReceived),
-    totalPaid: Math.round(totalPaid),
-    pendingBalance: Math.round(totalReceived - totalPaid)
+    totalReceived: fromPaisa(totalReceivedPaisa),
+    totalPaid: fromPaisa(totalPaidPaisa),
+    pendingBalance: fromPaisa(totalReceivedPaisa - totalPaidPaisa)
   };
 }
 
@@ -901,8 +918,9 @@ export function saveOrUpdateDailyExpense(
     list.unshift(target);
   }
 
+  clearKhataDeletionTombstone('khataDailyExpenses', target.id);
   writeCollection(KHATA_STORAGE_KEYS.DAILY_EXPENSES, list);
-  mirrorFlatKhataDocToFirestore('khataDailyExpenses', target, 'upsert');
+  void mirrorFlatKhataDocToFirestore('khataDailyExpenses', target as unknown as { id: string }, 'upsert');
   return target;
 }
 
@@ -912,7 +930,8 @@ export function deleteDailyExpense(id: string): boolean {
   if (!target) return false;
 
   writeCollection(KHATA_STORAGE_KEYS.DAILY_EXPENSES, list.filter(e => e.id !== id));
-  mirrorFlatKhataDocToFirestore('khataDailyExpenses', target, 'delete');
+  recordKhataDeletionTombstone('khataDailyExpenses', id);
+  void mirrorFlatKhataDocToFirestore('khataDailyExpenses', target as unknown as { id: string }, 'delete');
 
   if (target.linkedCashEntryId) {
     deleteCashEntry(target.linkedCashEntryId, { skipExpenseSync: true });
@@ -929,17 +948,14 @@ export function getDailyExpensesPeriodTotals(
   monthlyTotal: number;
   byCategory: Record<KhataExpenseCategory, number>;
 } {
-  const ref = new Date(`${referenceDate}T00:00:00Z`);
-  const weekStartObj = new Date(ref);
-  weekStartObj.setUTCDate(ref.getUTCDate() - 6);
-  const weekStart = weekStartObj.toISOString().split('T')[0];
+  const weekStart = shiftDateKey(referenceDate, -6);
   const monthPrefix = referenceDate.slice(0, 7); // YYYY-MM
 
-  let dailyTotal = 0;
-  let weeklyTotal = 0;
-  let monthlyTotal = 0;
+  let dailyTotalPaisa = 0;
+  let weeklyTotalPaisa = 0;
+  let monthlyTotalPaisa = 0;
 
-  const byCategory: Record<KhataExpenseCategory, number> = {
+  const byCategoryPaisa: Record<KhataExpenseCategory, number> = {
     fuel: 0,
     toll: 0,
     meals: 0,
@@ -950,21 +966,29 @@ export function getDailyExpensesPeriodTotals(
   };
 
   for (const exp of expenses) {
-    const amt = Math.max(0, Number(exp.amount) || 0);
-    if (exp.date === referenceDate) dailyTotal += amt;
-    if (exp.date >= weekStart && exp.date <= referenceDate) weeklyTotal += amt;
+    const amtPaisa = Math.max(0, toPaisa(Number(exp.amount) || 0));
+    if (exp.date === referenceDate) dailyTotalPaisa += amtPaisa;
+    if (exp.date >= weekStart && exp.date <= referenceDate) weeklyTotalPaisa += amtPaisa;
     if (exp.date.startsWith(monthPrefix)) {
-      monthlyTotal += amt;
-      const cat = exp.category in byCategory ? exp.category : 'other';
-      byCategory[cat] += amt;
+      monthlyTotalPaisa += amtPaisa;
+      const cat = exp.category in byCategoryPaisa ? exp.category : 'other';
+      byCategoryPaisa[cat] += amtPaisa;
     }
   }
 
   return {
-    dailyTotal: Math.round(dailyTotal),
-    weeklyTotal: Math.round(weeklyTotal),
-    monthlyTotal: Math.round(monthlyTotal),
-    byCategory
+    dailyTotal: fromPaisa(dailyTotalPaisa),
+    weeklyTotal: fromPaisa(weeklyTotalPaisa),
+    monthlyTotal: fromPaisa(monthlyTotalPaisa),
+    byCategory: {
+      fuel: fromPaisa(byCategoryPaisa.fuel),
+      toll: fromPaisa(byCategoryPaisa.toll),
+      meals: fromPaisa(byCategoryPaisa.meals),
+      repair: fromPaisa(byCategoryPaisa.repair),
+      parking: fromPaisa(byCategoryPaisa.parking),
+      fine: fromPaisa(byCategoryPaisa.fine),
+      other: fromPaisa(byCategoryPaisa.other)
+    }
   };
 }
 
@@ -989,9 +1013,7 @@ export function getDateRangeBounds(
     return { startDate: referenceDate, endDate: referenceDate };
   }
   if (preset === 'week') {
-    const ref = new Date(`${referenceDate}T00:00:00Z`);
-    ref.setUTCDate(ref.getUTCDate() - 6);
-    return { startDate: ref.toISOString().split('T')[0], endDate: referenceDate };
+    return { startDate: shiftDateKey(referenceDate, -6), endDate: referenceDate };
   }
   // month
   const monthStart = `${referenceDate.slice(0, 7)}-01`;
@@ -1124,34 +1146,35 @@ export function calculateReportsHubAnalytics(input: ReportsHubInput): ReportsHub
   const rangeRpEntries = receivingEntries.filter(e => isInDateRange(e.date, startDate, endDate));
   const rangeTrips = trips.filter(t => isInDateRange(t.date, startDate, endDate));
 
-  // 1. Income vs Expenses vs Net (no double counting)
-  const cashInTotal = rangeCashIn.reduce((s, c) => s + (Number(c.amount) || 0), 0);
-  const billsCollectedTotal = rangeBills.reduce((s, b) => s + (Number(b.advance) || 0), 0);
-  const tripsIncomeTotal = rangeTrips.reduce(
-    (s, t) => s + (Number(t.totalIncome ?? t.expectedIncome ?? 0) || 0),
+  // 1. Income vs Expenses vs Net (no double counting, integer paisa precision #22)
+  const cashInTotalPaisa = rangeCashIn.reduce((s, c) => s + toPaisa(Number(c.amount) || 0), 0);
+  const billsCollectedTotalPaisa = rangeBills.reduce((s, b) => s + toPaisa(Number(b.advance) || 0), 0);
+  const tripsIncomeTotalPaisa = rangeTrips.reduce(
+    (s, t) => s + toPaisa(Number(t.totalIncome ?? t.expectedIncome ?? 0) || 0),
     0
   );
 
-  const dailyExpensesTotal = rangeDailyExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-  const manualCashOutTotal = rangeNonDupCashOut.reduce((s, c) => s + (Number(c.amount) || 0), 0);
-  const employeeSalaryPaidTotal = rangeEmpEntries
+  const dailyExpensesTotalPaisa = rangeDailyExpenses.reduce((s, e) => s + toPaisa(Number(e.amount) || 0), 0);
+  const manualCashOutTotalPaisa = rangeNonDupCashOut.reduce((s, c) => s + toPaisa(Number(c.amount) || 0), 0);
+  const employeeSalaryPaidTotalPaisa = rangeEmpEntries
     .filter(e => e.type === 'salary_paid' || e.type === 'advance')
-    .reduce((s, e) => s + (Number(e.amount) || 0), 0);
-  const tripsExpenseTotal = rangeTrips.reduce((s, t) => s + (Number(t.total) || 0), 0);
+    .reduce((s, e) => s + toPaisa(Number(e.amount) || 0), 0);
+  const tripsExpenseTotalPaisa = rangeTrips.reduce((s, t) => s + toPaisa(Number(t.total) || 0), 0);
 
-  const totalIncome = Math.round(cashInTotal + tripsIncomeTotal + billsCollectedTotal);
-  const totalExpenses = Math.round(
-    dailyExpensesTotal + manualCashOutTotal + employeeSalaryPaidTotal + tripsExpenseTotal
-  );
+  const totalIncomePaisa = cashInTotalPaisa + tripsIncomeTotalPaisa + billsCollectedTotalPaisa;
+  const totalExpensesPaisa =
+    dailyExpensesTotalPaisa + manualCashOutTotalPaisa + employeeSalaryPaidTotalPaisa + tripsExpenseTotalPaisa;
+  const totalIncome = Math.round(fromPaisa(totalIncomePaisa));
+  const totalExpenses = Math.round(fromPaisa(totalExpensesPaisa));
   const netProfit = totalIncome - totalExpenses;
 
   // 2. Party Receivable / Payable & 3. Broker Commission Due
-  let totalReceivable = 0;
-  let totalPayable = 0;
+  let totalReceivablePaisa = 0;
+  let totalPayablePaisa = 0;
   let partyCount = 0;
 
-  let totalCommissionDue = 0;
-  let totalPaidToBrokers = 0;
+  let totalCommissionDuePaisa = 0;
+  let totalPaidToBrokersPaisa = 0;
   let brokerCount = 0;
 
   for (const acc of accounts) {
@@ -1159,37 +1182,37 @@ export function calculateReportsHubAnalytics(input: ReportsHubInput): ReportsHub
     if (acc.kind === 'party') {
       partyCount++;
       const { balance } = calculateAccountBalance(acc, accEntries);
-      if (balance > 0) totalReceivable += balance;
-      else if (balance < 0) totalPayable += Math.abs(balance);
+      if (balance > 0) totalReceivablePaisa += toPaisa(balance);
+      else if (balance < 0) totalPayablePaisa += toPaisa(Math.abs(balance));
     } else if (acc.kind === 'broker') {
       brokerCount++;
       const { balance, totalGave } = calculateAccountBalance(acc, accEntries);
-      totalPaidToBrokers += totalGave;
-      if (balance < 0) totalCommissionDue += Math.abs(balance);
+      totalPaidToBrokersPaisa += toPaisa(totalGave);
+      if (balance < 0) totalCommissionDuePaisa += toPaisa(Math.abs(balance));
     }
   }
 
-  // 4. Vehicle-wise Profit/Loss
+  // 4. Vehicle-wise Profit/Loss (integer paisa accumulation)
   const vehicleMap = new Map<
     string,
-    { income: number; expenses: number; tripsCount: number; dailyExpensesCount: number }
+    { incomePaisa: number; expensesPaisa: number; tripsCount: number; dailyExpensesCount: number }
   >();
 
   const ensureVehicle = (regRaw?: string) => {
     const reg = (regRaw || '').trim().toUpperCase();
     if (!reg) return null;
     if (!vehicleMap.has(reg)) {
-      vehicleMap.set(reg, { income: 0, expenses: 0, tripsCount: 0, dailyExpensesCount: 0 });
+      vehicleMap.set(reg, { incomePaisa: 0, expensesPaisa: 0, tripsCount: 0, dailyExpensesCount: 0 });
     }
     return vehicleMap.get(reg)!;
   };
 
   for (const t of rangeTrips) {
-    const reg = (t as any).vehicleNo || (t.name?.match(/\(([^)]+)\)/)?.[1]) || t.name || 'General';
+    const reg = t.vehicleNo || (t.name?.match(/\(([^)]+)\)/)?.[1]) || t.name || 'General';
     const bucket = ensureVehicle(reg);
     if (bucket) {
-      bucket.income += Number(t.totalIncome ?? t.expectedIncome ?? 0) || 0;
-      bucket.expenses += Number(t.total) || 0;
+      bucket.incomePaisa += toPaisa(Number(t.totalIncome ?? t.expectedIncome ?? 0) || 0);
+      bucket.expensesPaisa += toPaisa(Number(t.total) || 0);
       bucket.tripsCount++;
     }
   }
@@ -1198,7 +1221,7 @@ export function calculateReportsHubAnalytics(input: ReportsHubInput): ReportsHub
     if (!d.vehicleNo) continue;
     const bucket = ensureVehicle(d.vehicleNo);
     if (bucket) {
-      bucket.expenses += Number(d.amount) || 0;
+      bucket.expensesPaisa += toPaisa(Number(d.amount) || 0);
       bucket.dailyExpensesCount++;
     }
   }
@@ -1207,7 +1230,7 @@ export function calculateReportsHubAnalytics(input: ReportsHubInput): ReportsHub
     if (!c.vehicleNo) continue;
     const bucket = ensureVehicle(c.vehicleNo);
     if (bucket) {
-      bucket.expenses += Number(c.amount) || 0;
+      bucket.expensesPaisa += toPaisa(Number(c.amount) || 0);
     }
   }
 
@@ -1215,19 +1238,23 @@ export function calculateReportsHubAnalytics(input: ReportsHubInput): ReportsHub
     if (!b.vehicleNo) continue;
     const bucket = ensureVehicle(b.vehicleNo);
     if (bucket) {
-      bucket.income += Number(b.total) || 0;
+      bucket.incomePaisa += toPaisa(Number(b.total) || 0);
     }
   }
 
   const vehicleProfitLoss = Array.from(vehicleMap.entries())
-    .map(([vehicleNo, v]) => ({
-      vehicleNo,
-      income: Math.round(v.income),
-      expenses: Math.round(v.expenses),
-      netProfit: Math.round(v.income - v.expenses),
-      tripsCount: v.tripsCount,
-      dailyExpensesCount: v.dailyExpensesCount
-    }))
+    .map(([vehicleNo, v]) => {
+      const income = Math.round(fromPaisa(v.incomePaisa));
+      const expenses = Math.round(fromPaisa(v.expensesPaisa));
+      return {
+        vehicleNo,
+        income,
+        expenses,
+        netProfit: income - expenses,
+        tripsCount: v.tripsCount,
+        dailyExpensesCount: v.dailyExpensesCount
+      };
+    })
     .sort((a, b) => b.netProfit - a.netProfit);
 
   // 5. Employee Salary / Advances (for range)
@@ -1256,25 +1283,25 @@ export function calculateReportsHubAnalytics(input: ReportsHubInput): ReportsHub
       pending: sum.pendingBalance
     };
   });
-  const totalRpReceived = pointsBreakdown.reduce((s, p) => s + p.received, 0);
-  const totalRpPaid = pointsBreakdown.reduce((s, p) => s + p.paid, 0);
+  const totalRpReceived = fromPaisa(pointsBreakdown.reduce((s, p) => s + toPaisa(p.received), 0));
+  const totalRpPaid = fromPaisa(pointsBreakdown.reduce((s, p) => s + toPaisa(p.paid), 0));
 
   // 7. Bills Summary (in range)
   const billsSummary = {
     totalCount: rangeBills.length,
-    totalBilled: Math.round(rangeBills.reduce((s, b) => s + (Number(b.total) || 0), 0)),
-    totalCollected: Math.round(rangeBills.reduce((s, b) => s + (Number(b.advance) || 0), 0)),
-    totalPendingBalance: Math.round(rangeBills.reduce((s, b) => s + (Number(b.balance) || 0), 0)),
+    totalBilled: Math.round(fromPaisa(rangeBills.reduce((s, b) => s + toPaisa(Number(b.total) || 0), 0))),
+    totalCollected: Math.round(fromPaisa(rangeBills.reduce((s, b) => s + toPaisa(Number(b.advance) || 0), 0))),
+    totalPendingBalance: Math.round(fromPaisa(rangeBills.reduce((s, b) => s + toPaisa(Number(b.balance) || 0), 0))),
     unpaidCount: rangeBills.filter(b => b.status === 'unpaid').length,
     partialCount: rangeBills.filter(b => b.status === 'partial').length,
     paidCount: rangeBills.filter(b => b.status === 'paid').length
   };
 
   // 8. Expenses by Category (dailyExpenses + non-duplicated CashOut)
-  const catTotals = new Map<string, number>();
+  const catTotalsPaisa = new Map<string, number>();
   for (const e of rangeDailyExpenses) {
     const k = e.category || 'other';
-    catTotals.set(k, (catTotals.get(k) || 0) + (Number(e.amount) || 0));
+    catTotalsPaisa.set(k, (catTotalsPaisa.get(k) || 0) + toPaisa(Number(e.amount) || 0));
   }
   for (const c of rangeNonDupCashOut) {
     const k =
@@ -1285,15 +1312,15 @@ export function calculateReportsHubAnalytics(input: ReportsHubInput): ReportsHub
         : c.category === 'challan'
         ? 'fine'
         : c.category || 'other';
-    catTotals.set(k, (catTotals.get(k) || 0) + (Number(c.amount) || 0));
+    catTotalsPaisa.set(k, (catTotalsPaisa.get(k) || 0) + toPaisa(Number(c.amount) || 0));
   }
 
-  const catGrandTotal = Array.from(catTotals.values()).reduce((s, v) => s + v, 0);
-  const catItems = Array.from(catTotals.entries())
-    .map(([category, amount]) => ({
+  const catGrandTotalPaisa = Array.from(catTotalsPaisa.values()).reduce((s, v) => s + v, 0);
+  const catItems = Array.from(catTotalsPaisa.entries())
+    .map(([category, amountPaisa]) => ({
       category,
-      amount: Math.round(amount),
-      percentage: catGrandTotal > 0 ? Math.round((amount / catGrandTotal) * 100) : 0
+      amount: Math.round(fromPaisa(amountPaisa)),
+      percentage: catGrandTotalPaisa > 0 ? Math.round((amountPaisa / catGrandTotalPaisa) * 100) : 0
     }))
     .sort((a, b) => b.amount - a.amount);
 
@@ -1304,23 +1331,23 @@ export function calculateReportsHubAnalytics(input: ReportsHubInput): ReportsHub
       totalIncome,
       totalExpenses,
       netProfit,
-      cashInTotal: Math.round(cashInTotal),
-      billsCollectedTotal: Math.round(billsCollectedTotal),
-      tripsIncomeTotal: Math.round(tripsIncomeTotal),
-      dailyExpensesTotal: Math.round(dailyExpensesTotal),
-      manualCashOutTotal: Math.round(manualCashOutTotal),
-      employeeSalaryPaidTotal: Math.round(employeeSalaryPaidTotal),
-      tripsExpenseTotal: Math.round(tripsExpenseTotal)
+      cashInTotal: Math.round(fromPaisa(cashInTotalPaisa)),
+      billsCollectedTotal: Math.round(fromPaisa(billsCollectedTotalPaisa)),
+      tripsIncomeTotal: Math.round(fromPaisa(tripsIncomeTotalPaisa)),
+      dailyExpensesTotal: Math.round(fromPaisa(dailyExpensesTotalPaisa)),
+      manualCashOutTotal: Math.round(fromPaisa(manualCashOutTotalPaisa)),
+      employeeSalaryPaidTotal: Math.round(fromPaisa(employeeSalaryPaidTotalPaisa)),
+      tripsExpenseTotal: Math.round(fromPaisa(tripsExpenseTotalPaisa))
     },
     partyReceivablePayable: {
-      totalReceivable: Math.round(totalReceivable),
-      totalPayable: Math.round(totalPayable),
-      netBalance: Math.round(totalReceivable - totalPayable),
+      totalReceivable: Math.round(fromPaisa(totalReceivablePaisa)),
+      totalPayable: Math.round(fromPaisa(totalPayablePaisa)),
+      netBalance: Math.round(fromPaisa(totalReceivablePaisa - totalPayablePaisa)),
       partyCount
     },
     brokerCommissionDue: {
-      totalCommissionDue: Math.round(totalCommissionDue),
-      totalPaidToBrokers: Math.round(totalPaidToBrokers),
+      totalCommissionDue: Math.round(fromPaisa(totalCommissionDuePaisa)),
+      totalPaidToBrokers: Math.round(fromPaisa(totalPaidToBrokersPaisa)),
       brokerCount
     },
     vehicleProfitLoss,
@@ -1328,13 +1355,13 @@ export function calculateReportsHubAnalytics(input: ReportsHubInput): ReportsHub
     receivingPointsSummary: {
       totalReceived: totalRpReceived,
       totalPaid: totalRpPaid,
-      totalPending: totalRpReceived - totalRpPaid,
+      totalPending: fromPaisa(toPaisa(totalRpReceived) - toPaisa(totalRpPaid)),
       pointsCount: receivingPoints.length,
       pointsBreakdown
     },
     billsSummary,
     expensesByCategory: {
-      total: Math.round(catGrandTotal),
+      total: Math.round(fromPaisa(catGrandTotalPaisa)),
       items: catItems
     }
   };

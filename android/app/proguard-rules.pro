@@ -65,5 +65,20 @@
 -dontwarn com.yahoo.**
 -dontwarn com.google.android.gms.games.**
 
-# 6. Keep native activity entry point
+# 6. Keep AndroidX Credentials, Google Identity & App Check reflection classes
+-keep class androidx.credentials.** { *; }
+-keep class com.google.android.libraries.identity.googleid.** { *; }
+-keep class com.google.firebase.appcheck.** { *; }
+-dontwarn androidx.credentials.**
+-dontwarn com.google.android.libraries.identity.googleid.**
+
+# 7. Gson & JSON serialization models
+-keepattributes Signature,InnerClasses,EnclosingMethod
+-keep class com.google.gson.** { *; }
+-keepclassmembers,allowobfuscation class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+
+# 8. Keep native activity & app package entry points
+-keep class com.warraichgoods.driverdost.** { *; }
 -keep class com.warraichgoods.driverdost.MainActivity { *; }

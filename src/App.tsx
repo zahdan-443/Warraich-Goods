@@ -28,7 +28,6 @@ import {
   updateBiltyAccessInFirestore,
   saveUserProfileInFirestore,
   processOfflineQueue,
-  clearOfflineQueue,
   autoReconcileAllLocalToCloud,
   initAmbientSyncEngine,
   subscribeToSyncEvents,
@@ -38,6 +37,7 @@ import {
   purgeExpiredAccountData,
   type AccountDeletionRequest
 } from './utils/storage';
+import { OWNER_EMAIL, DEFAULT_AUTHORIZED_EMAILS, isOwnerEmail } from './utils/authUtils';
 import { fetchLiveFuelPrices } from './utils/fuelPrice';
 import { runScheduledDailyCloudBackup } from './utils/backupService';
 import { auth, onAuthStateChanged, logoutUser, checkRedirectAuthResult, loginWithGoogle } from './utils/firebase';
@@ -80,8 +80,7 @@ import { initKhataDueDateScheduler } from './utils/khataNotifications';
 
 export default function App() {
   const isStoreBuild = import.meta.env.VITE_STORE_BUILD === 'true';
-  const OWNER_EMAIL = 'warraichgoods43@gmail.com';
-  const MASTER_EMAILS = ['warraichgoods43@gmail.com'];
+  const MASTER_EMAILS = [...DEFAULT_AUTHORIZED_EMAILS];
 
   const [lang, setLang] = useState<Language>(() => {
     try {
@@ -141,11 +140,8 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(false);
   const [showTopMenu, setShowTopMenu] = useState(false);
 
-  // Authorization check for Bilty Generator — Strictly restricted to App Owner warraichgoods43@gmail.com
-  const cleanEmail = userEmail ? userEmail.toLowerCase().trim() : null;
-  const isOwner = Boolean(
-    cleanEmail && cleanEmail === OWNER_EMAIL.toLowerCase().trim()
-  );
+  // Authorization check via centralized owner helper
+  const isOwner = isOwnerEmail(userEmail);
   const isBiltyAuthorized = isOwner;
 
   // Stored state
@@ -512,10 +508,9 @@ export default function App() {
     try {
       const queueRes = await processOfflineQueue();
       const reconRes = await autoReconcileAllLocalToCloud(user.uid);
-      clearOfflineQueue();
       
-      // Refresh local React state
-      setOfflineQueue([]);
+      // Refresh local React state without wiping remaining/blocked queue items (#9, #10)
+      setOfflineQueue(getStoredOfflineQueue());
       setTrips(getStoredTrips());
       setVehicles(getStoredVehicles());
       setDrivers(getStoredDrivers());
@@ -524,13 +519,23 @@ export default function App() {
       setBilties(getStoredBilties());
 
       const totalCount = (queueRes.processed || 0) + (reconRes.count || 0);
-      pushAppNotification(
-        lang === 'ur' ? 'کلاؤڈ سنک مکمل' : 'Cloud Sync Complete',
-        lang === 'ur' 
-          ? `ڈیٹا کلاؤڈ کے ساتھ کامیابی سے ہم آہنگ ہو گیا (${totalCount} ریکارڈز اپ ڈیٹ)۔` 
-          : `Data successfully synchronized with cloud database (${totalCount} records updated).`,
-        'system'
-      );
+      if (queueRes.blocked > 0 || !reconRes.synced) {
+        pushAppNotification(
+          lang === 'ur' ? 'سنک نامکمل' : 'Sync Partially Completed',
+          lang === 'ur'
+            ? `کچھ ریکارڈز سنک نہیں ہو سکے (${queueRes.remaining} قطار میں باقی ہیں)۔`
+            : `${queueRes.remaining} item(s) could not be synced yet.`,
+          'system'
+        );
+      } else {
+        pushAppNotification(
+          lang === 'ur' ? 'کلاؤڈ سنک مکمل' : 'Cloud Sync Complete',
+          lang === 'ur' 
+            ? `ڈیٹا کلاؤڈ کے ساتھ کامیابی سے ہم آہنگ ہو گیا (${totalCount} ریکارڈز اپ ڈیٹ)۔` 
+            : `Data successfully synchronized with cloud database (${totalCount} records updated).`,
+          'system'
+        );
+      }
     } catch (err) {
       console.warn("Manual sync error:", err);
       pushAppNotification(
@@ -1551,7 +1556,7 @@ export default function App() {
       <React.Suspense fallback={null}>
 
         <ManageBiltyAccessModal
-          isOpen={showBiltyAccessModal && (userEmail?.toLowerCase().trim() === 'warraichgoods43@gmail.com')}
+          isOpen={showBiltyAccessModal && isOwnerEmail(userEmail)}
           onClose={() => setShowBiltyAccessModal(false)}
           currentUserUid={currentUid}
           currentUserEmail={userEmail}

@@ -9,7 +9,7 @@ import {
   AlertCircle,
   Database
 } from 'lucide-react';
-import { getSyncStatus, subscribeToSyncEvents, clearOfflineQueue } from '../utils/storage';
+import { getSyncStatus, subscribeToSyncEvents } from '../utils/storage';
 import type { Language, SyncStatusState } from '../types';
 
 interface SyncStatusBadgeProps {
@@ -22,8 +22,7 @@ interface SyncStatusBadgeProps {
 
 /**
  * Interactive Cloud Synchronization Status Indicator & Manual Sync Controller
- * Displays clean states: Synced (emerald), Syncing (blue spinner), Guest Mode (slate), or Offline (amber).
- * Allows one-tap manual sync with live feedback and instant sign-in prompt for guest users.
+ * Displays clean states: Synced (emerald), Syncing (blue spinner), Guest Mode (slate), Offline (amber), or Blocked/Error (rose).
  */
 export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({ 
   lang,
@@ -59,6 +58,7 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
   const isOffline = syncState.status === 'offline' || !isOnline;
   const isSyncing = isManualSyncing || syncState.status === 'syncing';
+  const hasBlocked = (syncState.blockedCount || 0) > 0;
   const isGuest = !userEmail;
 
   // Format human-friendly time
@@ -90,9 +90,24 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
       if (onSyncTrigger) {
         await onSyncTrigger();
       }
-      clearOfflineQueue();
-      setSyncFeedbackMsg(lang === 'ur' ? 'ڈیٹا کامیابی سے ہم آہنگ ہو گیا!' : 'Data synced successfully!');
-      setTimeout(() => setSyncFeedbackMsg(null), 3000);
+      const nextStatus = getSyncStatus();
+      setSyncState(nextStatus);
+      if ((nextStatus.blockedCount || 0) > 0) {
+        setSyncFeedbackMsg(
+          lang === 'ur'
+            ? `${nextStatus.blockedCount} ریکارڈز اجازت نہ ہونے کی وجہ سے رکے ہوئے ہیں`
+            : `${nextStatus.blockedCount} item(s) blocked by cloud rules`
+        );
+      } else if (nextStatus.pendingCount > 0) {
+        setSyncFeedbackMsg(
+          lang === 'ur'
+            ? `${nextStatus.pendingCount} ریکارڈز دوبارہ کوشش کے لیے قطار میں ہیں`
+            : `${nextStatus.pendingCount} item(s) still queued for retry`
+        );
+      } else {
+        setSyncFeedbackMsg(lang === 'ur' ? 'ڈیٹا کامیابی سے ہم آہنگ ہو گیا!' : 'Data synced successfully!');
+      }
+      setTimeout(() => setSyncFeedbackMsg(null), 3500);
     } catch (err) {
       console.warn('Manual sync failed:', err);
       setSyncFeedbackMsg(lang === 'ur' ? 'سنک میں مسئلہ، دوبارہ کوشش کریں۔' : 'Sync error, please retry.');
@@ -112,6 +127,8 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer shadow-2xs select-none active:scale-95 ${
           isOffline
             ? 'bg-amber-500/10 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800 hover:bg-amber-500/15'
+            : hasBlocked || syncState.status === 'error'
+            ? 'bg-rose-500/10 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-800 hover:bg-rose-500/15'
             : isSyncing
             ? 'bg-blue-500/10 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800 hover:bg-blue-500/15'
             : isGuest
@@ -123,6 +140,11 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
           <>
             <CloudOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
             <span>{lang === 'ur' ? 'آف لائن (محفوظ)' : 'Offline (Saved)'}</span>
+          </>
+        ) : hasBlocked || syncState.status === 'error' ? (
+          <>
+            <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+            <span>{lang === 'ur' ? 'سنک انتباہ' : 'Sync Attention'}</span>
           </>
         ) : isSyncing ? (
           <>
@@ -161,6 +183,8 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
               <div className="flex items-center gap-2">
                 {isGuest ? (
                   <Database className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                ) : hasBlocked ? (
+                  <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
                 ) : (
                   <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 )}
@@ -196,7 +220,7 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
                     ? 'انٹرنیٹ بند ہے۔ تمام تبدیلیاں محفوظ ہیں اور انٹرنیٹ آتے ہی خودکار کلاؤڈ سے ہم آہنگ ہو جائیں گی۔'
                     : 'Device is offline. All changes are saved locally and will auto-sync once connected.')
                 : (lang === 'ur'
-                    ? 'آپ کا کھاتہ، گاڑیاں، ڈرائیورز اور بلٹیاں کلاؤڈ ڈیٹابیس کے ساتھ منسلک ہیں۔'
+                    ? 'آپ کا کھاتہ، گاڑیاں، ڈرائیورز اور دستاویزات کلاؤڈ ڈیٹابیس کے ساتھ منسلک ہیں۔'
                     : 'Your trips, vehicles, fuel logs, and ledger are backed up to cloud database.')}
             </p>
 
@@ -213,6 +237,12 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
                   <div className="flex items-center justify-between text-blue-600 dark:text-blue-400">
                     <span>{lang === 'ur' ? 'قطار میں موجود ریکارڈز:' : 'Pending in queue:'}</span>
                     <span className="font-mono font-bold">{syncState.pendingCount}</span>
+                  </div>
+                )}
+                {(syncState.blockedCount || 0) > 0 && (
+                  <div className="flex items-center justify-between text-rose-600 dark:text-rose-400">
+                    <span>{lang === 'ur' ? 'بلاک شدہ ریکارڈز:' : 'Permission blocked:'}</span>
+                    <span className="font-mono font-bold">{syncState.blockedCount}</span>
                   </div>
                 )}
               </div>

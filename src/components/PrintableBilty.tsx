@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { BiltyRecord, BiltyBranch, BiltyLanguage } from '../types';
+import { BiltyRecord, BiltyBranch, BiltyLanguage, BiltyColorTheme } from '../types';
 import { getCachedCompanyProfile } from '../utils/storage';
 import { biltyOfficialIconData } from '../assets/dashboardIcons';
+import { handleEmblemImgError } from '../utils/assetResolver';
 import { getLogoBase64 } from '../utils/pdfHelper';
 import { CompanyLogo } from './CompanyLogo';
 import {
@@ -19,13 +20,115 @@ interface PrintableBiltyProps {
   logoDataUrl?: string;
   branch?: BiltyBranch;
   language?: BiltyLanguage;
+  colorTheme?: BiltyColorTheme;
 }
+
+interface BiltyPalette {
+  id: BiltyColorTheme;
+  labelUr: string;
+  labelEn: string;
+  paperBg: string;
+  paperGrad: string;
+  headerGrad: string;
+  cellBg: string;
+  pastelRowA: string;
+  pastelRowB: string;
+  pastelRowC: string;
+  remarksGrad: string;
+  termsBg: string;
+  freightTotalGrad: string;
+  primaryColor: string;
+  secondaryColor: string;
+  emeraldAccent: string;
+  emeraldHighlight: string;
+  goldAccent: string;
+  headerStripGrad: string;
+  colGradLeft: string;
+  colGradRight: string;
+  lightRule: string;
+}
+
+export const BILTY_COLOR_THEMES: Record<BiltyColorTheme, BiltyPalette> = {
+  pink: {
+    id: 'pink',
+    labelUr: 'گلابی (Gulabi)',
+    labelEn: 'Rose Pink',
+    paperBg: '#fff0f5',
+    paperGrad: 'linear-gradient(180deg, #fff6f9 0%, #ffe4ef 52%, #fff3f7 100%)',
+    headerGrad: 'linear-gradient(135deg, #fff8fb 0%, #ffe3ee 55%, #fff3db 100%)',
+    cellBg: '#fff8fb',
+    pastelRowA: '#ffdce9',
+    pastelRowB: '#ffedd5',
+    pastelRowC: '#e6f6ef',
+    remarksGrad: 'linear-gradient(90deg, #fde68a 0%, #fbcfe8 50%, #fde68a 100%)',
+    termsBg: '#fffaf3',
+    freightTotalGrad: 'linear-gradient(90deg, #fde68a 0%, #fbcfe8 100%)',
+    primaryColor: '#881337',
+    secondaryColor: '#1a477a',
+    emeraldAccent: '#065f46',
+    emeraldHighlight: '#047857',
+    goldAccent: '#d97706',
+    headerStripGrad: 'linear-gradient(90deg, #9f1239 0%, #d97706 34%, #065f46 67%, #1a477a 100%)',
+    colGradLeft: 'linear-gradient(135deg, #881337 0%, #be123c 58%, #9f1239 100%)',
+    colGradRight: 'linear-gradient(135deg, #1a477a 0%, #0f2942 58%, #065f46 100%)',
+    lightRule: '#d8b4c4'
+  },
+  yellow: {
+    id: 'yellow',
+    labelUr: 'پیلا (Golden)',
+    labelEn: 'Golden Buff',
+    paperBg: '#fef9c3',
+    paperGrad: 'linear-gradient(180deg, #fffef2 0%, #fef0c7 52%, #fffbeb 100%)',
+    headerGrad: 'linear-gradient(135deg, #fffef6 0%, #fdecc2 54%, #eaf3ff 100%)',
+    cellBg: '#fffef5',
+    pastelRowA: '#fde68a',
+    pastelRowB: '#e0f2fe',
+    pastelRowC: '#dcfce7',
+    remarksGrad: 'linear-gradient(90deg, #fed7aa 0%, #fef08a 50%, #fed7aa 100%)',
+    termsBg: '#fffcf0',
+    freightTotalGrad: 'linear-gradient(90deg, #fed7aa 0%, #fef08a 100%)',
+    primaryColor: '#1a477a',
+    secondaryColor: '#9a3412',
+    emeraldAccent: '#065f46',
+    emeraldHighlight: '#047857',
+    goldAccent: '#c9972c',
+    headerStripGrad: 'linear-gradient(90deg, #9a3412 0%, #d97706 34%, #065f46 67%, #1a477a 100%)',
+    colGradLeft: 'linear-gradient(135deg, #1a477a 0%, #1e3a8a 58%, #0f2942 100%)',
+    colGradRight: 'linear-gradient(135deg, #9a3412 0%, #b45309 58%, #d97706 100%)',
+    lightRule: '#d4b483'
+  },
+  green: {
+    id: 'green',
+    labelUr: 'سبز (Green)',
+    labelEn: 'Emerald Green',
+    paperBg: '#dcfce7',
+    paperGrad: 'linear-gradient(180deg, #f2fdf7 0%, #dcfce7 52%, #ecfdf5 100%)',
+    headerGrad: 'linear-gradient(135deg, #f6fff9 0%, #d1fae5 54%, #fef3c7 100%)',
+    cellBg: '#f6fff9',
+    pastelRowA: '#bbf7d0',
+    pastelRowB: '#fef3c7',
+    pastelRowC: '#e0f2fe',
+    remarksGrad: 'linear-gradient(90deg, #a7f3d0 0%, #fde68a 50%, #a7f3d0 100%)',
+    termsBg: '#f3fcf6',
+    freightTotalGrad: 'linear-gradient(90deg, #a7f3d0 0%, #fde68a 100%)',
+    primaryColor: '#065f46',
+    secondaryColor: '#1a477a',
+    emeraldAccent: '#047857',
+    emeraldHighlight: '#065f46',
+    goldAccent: '#d97706',
+    headerStripGrad: 'linear-gradient(90deg, #065f46 0%, #10b981 33%, #d97706 67%, #9f1239 100%)',
+    colGradLeft: 'linear-gradient(135deg, #065f46 0%, #047857 58%, #064e3b 100%)',
+    colGradRight: 'linear-gradient(135deg, #1a477a 0%, #0f2942 56%, #9f1239 100%)',
+    lightRule: '#94c9b2'
+  }
+};
 
 export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
   record,
   qrDataUrl: propQrUrl,
   logoDataUrl: propLogoUrl,
-  language: propLanguage
+  language: propLanguage,
+  colorTheme: propColorTheme
 }) => {
   const [internalQrUrl, setInternalQrUrl] = useState<string>('');
   const [resolvedLogo, setResolvedLogo] = useState<string>(propLogoUrl || '');
@@ -34,6 +137,9 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
 
   const activeLang: BiltyLanguage = record.language || propLanguage || 'ur';
   const isEn = activeLang === 'en';
+  const activeColorKey: BiltyColorTheme = propColorTheme || record.colorTheme || 'pink';
+  const theme = BILTY_COLOR_THEMES[activeColorKey] || BILTY_COLOR_THEMES.pink;
+
   const branchInfo = BILTY_BRANCHES.samundri;
   const cleanUrduCompanyName = (company.nameUr || 'وڑائچ گڈز ٹرانسپورٹ کمپنی')
     .replace(/\s*\(رجسٹرڈ\)\s*/g, '')
@@ -71,7 +177,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
   }, [propQrUrl, record?.biltyNo, record?.vehicleNo]);
 
   const activeQrUrl = propQrUrl || internalQrUrl;
-  const activeLogoSrc = propLogoUrl || resolvedLogo || biltyOfficialIconData || './bilty-official-icon.png';
+  const activeLogoSrc = propLogoUrl || resolvedLogo || biltyOfficialIconData;
 
   const fmt = (n?: number) => (n !== undefined && n !== null ? n.toLocaleString('en-US') : '0');
   const formatAmount = (amount: number) => (isEn ? `Rs ${fmt(amount)}` : `${fmt(amount)} روپے`);
@@ -84,17 +190,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
 
   const termsList = isEn ? BILTY_TERMS_EN : BILTY_TERMS_UR;
 
-  const cellBg = '#ffffff';
-  const pastelSlate = '#f1f5f9';
-  const pastelMint = '#ecfdf5';
-  const pastelIvory = '#fffbeb';
-  const subtleTintBg = '#f8fafc';
-  const navyPrimary = '#0f2942';
-  const emeraldAccent = '#065f46';
-  const emeraldHighlight = '#047857';
-  const goldAccent = '#d97706';
-  const borderNavy = '1.5px solid #0f2942';
-  const borderLight = '1px solid #94a3b8';
+  const borderPrimary = `1.5px solid ${theme.primaryColor}`;
+  const borderLight = `1px solid ${theme.lightRule}`;
 
   const urBodyFont = "'Jameel Noori Nastaleeq', 'PDMS Nastaleeq Nafees', 'Noto Nastaliq Urdu', serif";
   const urTitleFont = "'Akbar', 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif";
@@ -105,11 +202,13 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
     <div
       dir={isEn ? 'ltr' : 'rtl'}
       id="printable-bilty-inner"
+      data-color-theme={theme.id}
       className="printable-bilty-container mx-auto box-border flex flex-col justify-between"
       style={{
-        backgroundColor: '#ffffff',
+        backgroundColor: theme.paperBg,
+        backgroundImage: theme.paperGrad,
         color: '#0f172a',
-        border: '2.5px solid #0f2942',
+        border: `2.5px solid ${theme.primaryColor}`,
         fontFamily: isEn ? enBodyFont : urBodyFont,
         lineHeight: isEn ? '1.3' : '1.55',
         width: '794px',
@@ -118,7 +217,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
         maxWidth: '794px',
         minHeight: '1120px',
         maxHeight: '1120px',
-        padding: '4px 14px 10px 14px',
+        padding: '6px 14px 10px 14px',
         boxSizing: 'border-box',
         overflow: 'hidden',
         position: 'relative',
@@ -140,7 +239,6 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             width: 210mm !important;
             height: 297mm !important;
             overflow: hidden !important;
-            background-color: #ffffff !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
@@ -149,8 +247,6 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             max-width: 210mm !important;
             height: 297mm !important;
             max-height: 297mm !important;
-            background-color: #ffffff !important;
-            border: 2.5px solid #0f2942 !important;
             box-shadow: none !important;
             margin: 0 auto !important;
             padding: 2mm 6mm 5mm 6mm !important;
@@ -165,6 +261,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
         }
         .printable-bilty-container * {
           box-sizing: border-box !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
       `}</style>
 
@@ -178,14 +276,15 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
           right: '3px',
           bottom: '3px',
           left: '3px',
-          border: `1.5px solid ${goldAccent}`,
+          border: `1.5px solid ${theme.goldAccent}`,
           pointerEvents: 'none',
           zIndex: 3
         }}
       />
 
-      {/* Main Content Layer on Clean White Background */}
+      {/* Full-Canvas Colored Pakistani Paper Layer */}
       <div
+        data-testid="bilty-colored-canvas"
         style={{
           position: 'relative',
           zIndex: 1,
@@ -193,20 +292,22 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
           flexDirection: 'column',
           justifyContent: 'space-between',
           height: '100%',
-          backgroundColor: '#ffffff'
+          backgroundColor: theme.paperBg,
+          backgroundImage: theme.paperGrad
         }}
       >
-        {/* 1. HEADER: Pure White Ornamental Pakistani Certificate Frame with Inside Logo & Fixed Top-Right NTN Stamp */}
+        {/* 1. HEADER: Pakistani Truck-Art / Offset Gradient Frame with Transparent Logo + Proprietor & Address */}
         <div
           dir={isEn ? 'ltr' : 'rtl'}
           data-testid="pakistani-header-frame"
           style={{
             width: '100%',
-            margin: '4px 0 6px 0',
-            border: `1.5px solid ${navyPrimary}`,
-            borderRadius: '4px',
+            margin: '3px 0 6px 0',
+            border: `2px solid ${theme.primaryColor}`,
+            borderRadius: '5px',
             padding: '3px',
-            backgroundColor: '#ffffff',
+            backgroundColor: theme.paperBg,
+            backgroundImage: theme.headerStripGrad,
             position: 'relative',
             display: 'flex'
           }}
@@ -214,75 +315,96 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
           <div
             style={{
               flex: '1 1 0%',
-              border: `1px solid ${goldAccent}`,
-              borderRadius: '2px',
-              backgroundColor: '#ffffff',
-              padding: '16px 16px 9px 14px',
+              border: `1.5px solid ${theme.goldAccent}`,
+              borderRadius: '3px',
+              backgroundColor: theme.cellBg,
+              backgroundImage: theme.headerGrad,
+              padding: '15px 14px 10px 14px',
               position: 'relative',
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              overflow: 'hidden'
             }}
           >
+            {/* Top Truck-Art Geometric Chamak-Patti Ribbon */}
+            <div
+              aria-hidden="true"
+              data-testid="truck-art-ribbon"
+              style={{
+                position: 'absolute',
+                top: '0',
+                left: '0',
+                right: '0',
+                height: '5px',
+                backgroundImage: theme.headerStripGrad,
+                zIndex: 1
+              }}
+            />
+
             {/* Top-Center Pakistani Geometric Crest Divider */}
             <div
               aria-hidden="true"
               style={{
                 position: 'absolute',
-                top: '-7px',
+                top: '1px',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                backgroundColor: '#ffffff',
-                padding: '0 6px',
+                backgroundColor: theme.cellBg,
+                padding: '1px 8px',
+                borderRadius: '0 0 8px 8px',
+                borderBottom: `1px solid ${theme.goldAccent}`,
                 lineHeight: 0,
                 zIndex: 2
               }}
             >
-              <svg width="76" height="14" viewBox="0 0 76 14" fill="none">
-                <path d="M2 7H25" stroke={navyPrimary} strokeWidth="1.4" />
-                <path d="M51 7H74" stroke={navyPrimary} strokeWidth="1.4" />
-                <polygon points="38,1 44,7 38,13 32,7" fill={goldAccent} stroke={navyPrimary} strokeWidth="1.2" />
-                <polygon points="28,3 31,7 28,11 25,7" fill={emeraldAccent} />
-                <polygon points="48,3 51,7 48,11 45,7" fill={emeraldAccent} />
-                <circle cx="38" cy="7" r="1.8" fill="#ffffff" />
+              <svg width="78" height="13" viewBox="0 0 78 13" fill="none">
+                <path d="M2 6.5H24" stroke={theme.primaryColor} strokeWidth="1.4" />
+                <path d="M54 6.5H76" stroke={theme.primaryColor} strokeWidth="1.4" />
+                <polygon points="39,1 45,6.5 39,12 33,6.5" fill={theme.goldAccent} stroke={theme.primaryColor} strokeWidth="1.2" />
+                <polygon points="28,2.5 31.5,6.5 28,10.5 24.5,6.5" fill={theme.emeraldAccent} />
+                <polygon points="50,2.5 53.5,6.5 50,10.5 46.5,6.5" fill={theme.secondaryColor} />
+                <circle cx="39" cy="6.5" r="1.7" fill="#ffffff" />
               </svg>
             </div>
 
-            {/* 4 Corner Pakistani Architectural Step-Brackets */}
+            {/* 4 Corner Pakistani Truck-Art Floral Step-Brackets */}
             {[
-              { top: '2px', left: '2px', transform: 'none' },
-              { top: '2px', right: '2px', transform: 'scaleX(-1)' },
-              { bottom: '2px', left: '2px', transform: 'scaleY(-1)' },
-              { bottom: '2px', right: '2px', transform: 'scale(-1, -1)' }
+              { top: '7px', left: '4px', transform: 'none' },
+              { top: '7px', right: '4px', transform: 'scaleX(-1)' },
+              { bottom: '4px', left: '4px', transform: 'scaleY(-1)' },
+              { bottom: '4px', right: '4px', transform: 'scale(-1, -1)' }
             ].map((cornerPos, idx) => (
               <svg
                 key={idx}
                 aria-hidden="true"
-                width="18"
-                height="18"
-                viewBox="0 0 18 18"
+                width="20"
+                height="20"
+                viewBox="0 0 20 20"
                 fill="none"
                 style={{
                   position: 'absolute',
                   ...cornerPos,
-                  pointerEvents: 'none'
+                  pointerEvents: 'none',
+                  zIndex: 2
                 }}
               >
-                <path d="M1 15V4C1 2.34315 2.34315 1 4 1H15" stroke={navyPrimary} strokeWidth="1.5" />
-                <path d="M4 13V5.5C4 4.67157 4.67157 4 5.5 4H13" stroke={goldAccent} strokeWidth="1.1" />
-                <polygon points="7,7 9.5,4.5 12,7 9.5,9.5" fill={emeraldAccent} />
+                <path d="M1 17V4.5C1 2.567 2.567 1 4.5 1H17" stroke={theme.primaryColor} strokeWidth="1.6" />
+                <path d="M4.5 14V6C4.5 5.17157 5.17157 4.5 6 4.5H14" stroke={theme.goldAccent} strokeWidth="1.2" />
+                <polygon points="8,8 10.5,5.5 13,8 10.5,10.5" fill={theme.emeraldAccent} />
+                <circle cx="15.5" cy="1.8" r="1.3" fill={theme.secondaryColor} />
               </svg>
             ))}
 
-            {/* Top-Right NTN Corner Stamp (Crisp White + Proper RTL/LTR BiDi Isolation) */}
+            {/* Top-Right NTN Corner Stamp (Crisp White Badge + BiDi Isolated Urdu Number) */}
             <div
               dir={isEn ? 'ltr' : 'rtl'}
               data-testid="ntn-corner-stamp"
               style={{
                 position: 'absolute',
-                top: '6px',
-                right: '24px',
-                border: `1.5px solid ${navyPrimary}`,
-                borderBottom: `2px solid ${goldAccent}`,
+                top: '10px',
+                right: '28px',
+                border: `1.5px solid ${theme.primaryColor}`,
+                borderBottom: `2px solid ${theme.goldAccent}`,
                 borderRadius: '3px',
                 padding: isEn ? '2px 9px' : '2px 10px',
                 display: 'inline-flex',
@@ -291,7 +413,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 fontSize: isEn ? '9.5px' : '10.5px',
                 fontWeight: 700,
                 fontFamily: isEn ? monoFont : "'Noto Sans Arabic', 'Jameel Noori Nastaleeq', sans-serif",
-                color: navyPrimary,
+                color: theme.primaryColor,
                 backgroundColor: '#ffffff',
                 letterSpacing: isEn ? '0.04em' : '0',
                 lineHeight: '1.35',
@@ -309,6 +431,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                       fontFamily: monoFont,
                       fontSize: '9.5px',
                       fontWeight: 800,
+                      color: theme.secondaryColor,
                       unicodeBidi: 'isolate'
                     }}
                   >
@@ -318,29 +441,30 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               )}
             </div>
 
-            {/* Inner Frame Flex Row: Left Company Logo + Right/Center Bold Masthead */}
+            {/* Inner Frame Flex Row: Transparent Official Logo + Proprietor & Address Panel */}
             <div
               dir="ltr"
               style={{
                 display: 'flex',
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: '12px',
-                width: '100%'
+                gap: '14px',
+                width: '100%',
+                marginTop: '4px'
               }}
             >
-              {/* Company Logo neatly enclosed inside the Pakistani White Frame */}
+              {/* Transparent Official Logo (already contains WG Truck Emblem + Urdu Company Title + Tagline) */}
               <div
                 data-testid="header-logo-inside-frame"
                 style={{
-                  width: '132px',
-                  height: '104px',
+                  width: isEn ? '210px' : '265px',
+                  height: isEn ? '106px' : '116px',
                   flexShrink: 0,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   overflow: 'hidden',
-                  backgroundColor: '#ffffff',
+                  backgroundColor: 'transparent',
                   margin: '0',
                   padding: '0'
                 }}
@@ -349,25 +473,14 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   <img
                     src={activeLogoSrc}
                     alt={isEn ? 'Warraich Goods Transport Company Emblem' : 'وڑائچ گڈز ٹرانسپورٹ کمپنی لوگو'}
-                    width={132}
-                    height={104}
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      if (!target.dataset.triedOfficialPng) {
-                        target.dataset.triedOfficialPng = '1';
-                        target.src = './bilty-official-icon.png';
-                      } else if (!target.dataset.triedBilty) {
-                        target.dataset.triedBilty = '1';
-                        target.src = './bilty-icon.png';
-                      } else {
-                        setLogoFailed(true);
-                      }
-                    }}
+                    width={isEn ? 210 : 265}
+                    height={isEn ? 106 : 116}
+                    onError={(e) => handleEmblemImgError(e.currentTarget, () => setLogoFailed(true))}
                     style={{
                       width: '100%',
                       height: '100%',
                       objectFit: 'contain',
-                      transform: 'scale(1.32)',
+                      transform: 'scale(1.06)',
                       transformOrigin: 'center center',
                       border: 'none',
                       backgroundColor: 'transparent',
@@ -391,7 +504,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 )}
               </div>
 
-              {/* Bold, Distinctive Company Masthead + Clean White Proprietor + Contact */}
+              {/* Right Panel: English Full Title OR Urdu Head Office Title + Clean Proprietor + Office Address & Phone */}
               <div
                 dir={isEn ? 'ltr' : 'rtl'}
                 style={{
@@ -401,34 +514,36 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  paddingTop: '10px',
-                  paddingRight: '8px'
+                  paddingTop: '14px',
+                  paddingRight: '8px',
+                  borderInlineStart: `1.5px dashed ${theme.goldAccent}`,
+                  paddingInlineStart: '12px'
                 }}
               >
-                {/* Distinctive Calligraphic / Engraved Company Name */}
+                {/* Title Band (English shows full engraved company title; Urdu shows regional office & service banner so logo's Urdu title isn't duplicated) */}
                 <div
                   data-testid="company-masthead-title"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '10px',
-                    borderBottom: `2px solid ${goldAccent}`,
+                    gap: '8px',
+                    borderBottom: `2px solid ${theme.goldAccent}`,
                     paddingBottom: '4px',
-                    marginBottom: '5px'
+                    marginBottom: '6px'
                   }}
                 >
-                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
-                    <polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill={emeraldAccent} stroke={goldAccent} strokeWidth="1" />
+                  <svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
+                    <polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill={theme.emeraldAccent} stroke={theme.goldAccent} strokeWidth="1" />
                   </svg>
                   {isEn ? (
                     <h1
                       style={{
                         fontFamily: "'Cinzel', 'Libre Baskerville', Georgia, 'Times New Roman', serif",
-                        fontSize: '20.5px',
+                        fontSize: '18.5px',
                         fontWeight: 900,
-                        letterSpacing: '0.035em',
-                        color: navyPrimary,
+                        letterSpacing: '0.03em',
+                        color: theme.primaryColor,
                         margin: '0',
                         lineHeight: '1.16',
                         textTransform: 'uppercase',
@@ -438,12 +553,12 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                       WARRAICH GOODS TRANSPORT COMPANY
                       <sup
                         style={{
-                          fontSize: '11.5px',
+                          fontSize: '11px',
                           fontWeight: 800,
                           verticalAlign: 'super',
                           marginLeft: '2px',
                           fontFamily: enBodyFont,
-                          color: emeraldAccent
+                          color: theme.emeraldAccent
                         }}
                       >
                         ®
@@ -453,59 +568,59 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     <h1
                       style={{
                         fontFamily: urTitleFont,
-                        fontSize: '27px',
+                        fontSize: '21px',
                         fontWeight: 800,
-                        color: navyPrimary,
+                        color: theme.primaryColor,
                         margin: '0',
-                        lineHeight: '1.52',
-                        textShadow: '0 1px 0 rgba(217, 119, 6, 0.22)'
+                        lineHeight: '1.48',
+                        textShadow: '0 1px 0 rgba(217, 119, 6, 0.24)'
                       }}
                     >
-                      {cleanUrduCompanyName}
+                      {logoFailed ? cleanUrduCompanyName : 'آل پاکستان گڈز ٹرانسپورٹ سروس'}
                       <sup
                         style={{
-                          fontSize: '12px',
+                          fontSize: '11.5px',
                           fontWeight: 800,
                           verticalAlign: 'super',
                           marginRight: '3px',
                           fontFamily: enBodyFont,
-                          color: emeraldAccent
+                          color: theme.emeraldAccent
                         }}
                       >
                         ®
                       </sup>
                     </h1>
                   )}
-                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
-                    <polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill={emeraldAccent} stroke={goldAccent} strokeWidth="1" />
+                  <svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
+                    <polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill={theme.emeraldAccent} stroke={theme.goldAccent} strokeWidth="1" />
                   </svg>
                 </div>
 
-                {/* Clean White-Background Proprietor Line (No Blue Strip) */}
+                {/* Strip-Free Proprietor Line directly on Coloured Header Canvas */}
                 <div
                   data-testid="proprietor-clean-line"
                   style={{
                     backgroundColor: 'transparent',
-                    color: navyPrimary,
-                    padding: isEn ? '2px 12px' : '1px 12px',
-                    fontSize: isEn ? '11.5px' : '13px',
+                    color: theme.secondaryColor,
+                    padding: isEn ? '2px 10px' : '1px 10px',
+                    fontSize: isEn ? '11.5px' : '13.5px',
                     fontWeight: 800,
                     fontFamily: isEn ? enBodyFont : urBodyFont,
-                    letterSpacing: isEn ? '0.06em' : '0',
+                    letterSpacing: isEn ? '0.05em' : '0',
                     textTransform: isEn ? 'uppercase' : 'none',
-                    borderBottom: '1px solid #cbd5e1',
+                    borderBottom: `1px solid ${theme.lightRule}`,
                     lineHeight: isEn ? '1.35' : '1.55'
                   }}
                 >
                   {isEn ? (
                     <>
-                      <span style={{ color: emeraldAccent, fontWeight: 800 }}>PROPRIETOR:</span>{' '}
-                      <span style={{ color: navyPrimary, fontWeight: 900 }}>ZAHDAN NASAR WARRAICH</span>
+                      <span style={{ color: theme.emeraldAccent, fontWeight: 800 }}>PROPRIETOR:</span>{' '}
+                      <span style={{ color: theme.primaryColor, fontWeight: 900 }}>ZAHDAN NASAR WARRAICH</span>
                     </>
                   ) : (
                     <>
-                      <span style={{ color: emeraldAccent, fontWeight: 800 }}>پروپرائیٹر:</span>{' '}
-                      <span style={{ color: navyPrimary, fontWeight: 900 }}>زاہدان نصر وڑائچ</span>
+                      <span style={{ color: theme.emeraldAccent, fontWeight: 800 }}>پروپرائیٹر:</span>{' '}
+                      <span style={{ color: theme.primaryColor, fontWeight: 900 }}>زاہدان نصر وڑائچ</span>
                     </>
                   )}
                 </div>
@@ -517,7 +632,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     fontSize: isEn ? '10.5px' : '11.5px',
                     fontWeight: 700,
                     fontFamily: isEn ? enBodyFont : urBodyFont,
-                    color: navyPrimary,
+                    color: theme.secondaryColor,
                     lineHeight: isEn ? '1.35' : '1.55'
                   }}
                 >
@@ -527,8 +642,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     style={{
                       fontFamily: isEn ? monoFont : urBodyFont,
                       fontSize: isEn ? '10.5px' : '11px',
-                      marginTop: '1px',
-                      color: emeraldAccent,
+                      marginTop: '2px',
+                      color: theme.emeraldAccent,
                       fontWeight: 700,
                       fontVariantNumeric: 'tabular-nums'
                     }}
@@ -538,7 +653,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     ) : (
                       <span>
                         فون نمبر:{' '}
-                        <span dir="ltr" style={{ fontFamily: monoFont, fontSize: '10px', color: navyPrimary, unicodeBidi: 'isolate' }}>
+                        <span dir="ltr" style={{ fontFamily: monoFont, fontSize: '10.5px', color: theme.primaryColor, fontWeight: 800, unicodeBidi: 'isolate' }}>
                           {branchInfo.phone}
                         </span>
                       </span>
@@ -553,41 +668,41 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
         {/* 2. MASTER DOCUMENT GRID */}
         <div
           style={{
-            border: `2px solid ${navyPrimary}`,
-            borderTop: `2.5px solid ${goldAccent}`,
-            backgroundColor: '#ffffff',
+            border: `2px solid ${theme.primaryColor}`,
+            borderTop: `3px solid ${theme.goldAccent}`,
+            backgroundColor: theme.cellBg,
             flex: '1 1 0%',
             display: 'flex',
             flexDirection: 'column'
           }}
         >
-          {/* Row A: Bilty No | Truck No | Date (Soft Slate Pastel Tint) */}
+          {/* Row A: Bilty No | Truck No | Date */}
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-              borderBottom: borderNavy,
-              backgroundColor: pastelSlate,
+              borderBottom: borderPrimary,
+              backgroundColor: theme.pastelRowA,
               fontSize: isEn ? '11.5px' : '12px'
             }}
           >
             <div
               style={{
                 padding: '5px 10px',
-                borderInlineEnd: borderNavy,
+                borderInlineEnd: borderPrimary,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px'
               }}
             >
-              <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Bilty No :' : 'بلٹی نمبر :'}</span>
+              <span style={{ fontWeight: 700, color: theme.primaryColor }}>{isEn ? 'Bilty No :' : 'بلٹی نمبر :'}</span>
               <span
                 dir="ltr"
                 style={{
                   fontWeight: 900,
                   fontFamily: monoFont,
-                  fontSize: '13px',
-                  color: emeraldAccent
+                  fontSize: '13.5px',
+                  color: theme.emeraldAccent
                 }}
               >
                 {record.biltyNo}
@@ -596,13 +711,13 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             <div
               style={{
                 padding: '5px 10px',
-                borderInlineEnd: borderNavy,
+                borderInlineEnd: borderPrimary,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px'
               }}
             >
-              <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Truck No :' : 'گاڑی نمبر :'}</span>
+              <span style={{ fontWeight: 700, color: theme.primaryColor }}>{isEn ? 'Truck No :' : 'گاڑی نمبر :'}</span>
               <span
                 dir="ltr"
                 style={{
@@ -624,7 +739,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 gap: '6px'
               }}
             >
-              <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Date :' : 'تاریخ :'}</span>
+              <span style={{ fontWeight: 700, color: theme.primaryColor }}>{isEn ? 'Date :' : 'تاریخ :'}</span>
               <span
                 dir="ltr"
                 style={{
@@ -639,23 +754,23 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             </div>
           </div>
 
-          {/* Row B: Driver Details 4 Boxes (Soft Mint Pastel Tint directly below Vehicle row & above From/To row) */}
+          {/* Row B: Driver Details 4 Boxes */}
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: '1.25fr 1fr',
-              borderBottom: borderNavy,
-              backgroundColor: pastelMint,
+              borderBottom: borderPrimary,
+              backgroundColor: theme.pastelRowB,
               fontSize: isEn ? '11px' : '11.5px'
             }}
           >
-            <div style={{ borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ borderInlineEnd: borderPrimary, display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '4px 10px', borderBottom: borderLight, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Driver Name :' : 'ڈرائیور کا نام :'}</span>
+                <span style={{ fontWeight: 700, color: theme.secondaryColor }}>{isEn ? 'Driver Name :' : 'ڈرائیور کا نام :'}</span>
                 <span style={{ fontWeight: 900, color: '#0f172a' }}>{record.driverName || emptyVal}</span>
               </div>
               <div style={{ padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Driver Mobile :' : 'ڈرائیور موبائل :'}</span>
+                <span style={{ fontWeight: 700, color: theme.secondaryColor }}>{isEn ? 'Driver Mobile :' : 'ڈرائیور موبائل :'}</span>
                 <span dir="ltr" style={{ fontFamily: monoFont, fontWeight: 800, color: '#0f172a' }}>
                   {sanitizeContactOrCnic(record.mobileNo, emptyVal)}
                 </span>
@@ -664,13 +779,13 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
 
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '4px 10px', borderBottom: borderLight, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'License No :' : 'لائسنس نمبر :'}</span>
+                <span style={{ fontWeight: 700, color: theme.secondaryColor }}>{isEn ? 'License No :' : 'لائسنس نمبر :'}</span>
                 <span dir="ltr" style={{ fontFamily: monoFont, fontWeight: 800, color: '#0f172a' }}>
                   {sanitizeContactOrCnic(record.driverLicense, emptyVal)}
                 </span>
               </div>
               <div style={{ padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'Driver CNIC :' : 'ڈرائیور شناختی کارڈ :'}</span>
+                <span style={{ fontWeight: 700, color: theme.secondaryColor }}>{isEn ? 'Driver CNIC :' : 'ڈرائیور شناختی کارڈ :'}</span>
                 <span dir="ltr" style={{ fontFamily: monoFont, fontWeight: 800, color: '#0f172a' }}>
                   {sanitizeContactOrCnic(record.driverCnic, emptyVal)}
                 </span>
@@ -683,19 +798,19 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-              borderBottom: borderNavy,
-              backgroundColor: cellBg,
+              borderBottom: borderPrimary,
+              backgroundColor: theme.cellBg,
               fontSize: isEn ? '11.5px' : '12px'
             }}
           >
-            <div style={{ padding: '5px 10px', borderInlineEnd: borderNavy, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'From :' : 'از مقام :'}</span>
+            <div style={{ padding: '5px 10px', borderInlineEnd: borderPrimary, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontWeight: 700, color: theme.primaryColor }}>{isEn ? 'From :' : 'از مقام :'}</span>
               <span style={{ fontWeight: 900, color: '#0f172a', fontSize: isEn ? '12px' : '12.5px' }}>
                 {record.sendingCity || (isEn ? branchInfo.nameEn : branchInfo.nameUr)}
               </span>
             </div>
             <div style={{ padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontWeight: 700, color: '#334155' }}>{isEn ? 'To :' : 'تا مقام :'}</span>
+              <span style={{ fontWeight: 700, color: theme.primaryColor }}>{isEn ? 'To :' : 'تا مقام :'}</span>
               <span style={{ fontWeight: 900, color: '#0f172a', fontSize: isEn ? '12px' : '12.5px' }}>
                 {record.receivingCity || emptyVal}
               </span>
@@ -707,23 +822,23 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-              borderBottom: borderNavy,
-              backgroundColor: cellBg,
+              borderBottom: borderPrimary,
+              backgroundColor: theme.cellBg,
               fontSize: isEn ? '11px' : '11.5px'
             }}
           >
             {/* Consignor (Sender) */}
-            <div style={{ padding: '6px 10px', borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', borderBottom: '1px solid #cbd5e1', paddingBottom: '3px' }}>
-                <span style={{ fontWeight: 700, color: '#334155', minWidth: '92px' }}>
+            <div style={{ padding: '6px 10px', borderInlineEnd: borderPrimary, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', borderBottom: borderLight, paddingBottom: '3px' }}>
+                <span style={{ fontWeight: 700, color: theme.secondaryColor, minWidth: '92px' }}>
                   {isEn ? 'Consignor :' : 'بھیجنے والا :'}
                 </span>
                 <span style={{ fontWeight: 900, color: '#0f172a', fontSize: isEn ? '12px' : '12.5px' }}>
                   {record.senderName || record.consignor || emptyVal}
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #cbd5e1', paddingBottom: '3px' }}>
-                <span style={{ fontWeight: 700, color: '#334155', minWidth: '92px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: borderLight, paddingBottom: '3px' }}>
+                <span style={{ fontWeight: 700, color: theme.secondaryColor, minWidth: '92px' }}>
                   {isEn ? 'Mobile :' : 'فون نمبر :'}
                 </span>
                 <span dir="ltr" style={{ fontWeight: 800, fontFamily: monoFont, color: '#0f172a' }}>
@@ -731,7 +846,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontWeight: 700, color: '#334155', minWidth: '92px' }}>
+                <span style={{ fontWeight: 700, color: theme.secondaryColor, minWidth: '92px' }}>
                   {isEn ? 'Sender CNIC :' : 'شناختی کارڈ :'}
                 </span>
                 <span dir="ltr" style={{ fontWeight: 700, fontFamily: monoFont, color: '#334155' }}>
@@ -742,16 +857,16 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
 
             {/* Consignee (Receiver) */}
             <div style={{ padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', borderBottom: '1px solid #cbd5e1', paddingBottom: '3px' }}>
-                <span style={{ fontWeight: 700, color: '#334155', minWidth: '96px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', borderBottom: borderLight, paddingBottom: '3px' }}>
+                <span style={{ fontWeight: 700, color: theme.secondaryColor, minWidth: '96px' }}>
                   {isEn ? 'Consignee :' : 'وصول کرنے والا :'}
                 </span>
                 <span style={{ fontWeight: 900, color: '#0f172a', fontSize: isEn ? '12px' : '12.5px' }}>
                   {record.receiverName || record.consignee || emptyVal}
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #cbd5e1', paddingBottom: '3px' }}>
-                <span style={{ fontWeight: 700, color: '#334155', minWidth: '96px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: borderLight, paddingBottom: '3px' }}>
+                <span style={{ fontWeight: 700, color: theme.secondaryColor, minWidth: '96px' }}>
                   {isEn ? 'Mobile :' : 'فون نمبر :'}
                 </span>
                 <span dir="ltr" style={{ fontWeight: 800, fontFamily: monoFont, color: '#0f172a' }}>
@@ -759,7 +874,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontWeight: 700, color: '#334155', minWidth: '96px' }}>
+                <span style={{ fontWeight: 700, color: theme.secondaryColor, minWidth: '96px' }}>
                   {isEn ? 'Receiver CNIC :' : 'شناختی کارڈ :'}
                 </span>
                 <span dir="ltr" style={{ fontWeight: 700, fontFamily: monoFont, color: '#334155' }}>
@@ -774,22 +889,23 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             style={{
               display: 'grid',
               gridTemplateColumns: '95px 1fr 110px 215px',
-              borderBottom: borderNavy,
+              borderBottom: borderPrimary,
               flex: '1 1 0%',
               minHeight: '150px',
-              backgroundColor: cellBg
+              backgroundColor: theme.cellBg
             }}
           >
-            {/* Col 1: No of Articles (Navy Header + Gold Rule) */}
-            <div style={{ borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column' }}>
+            {/* Col 1: No of Articles (Pakistani Offset Gradient Header + Gold Rule) */}
+            <div style={{ borderInlineEnd: borderPrimary, display: 'flex', flexDirection: 'column' }}>
               <div
                 style={{
                   padding: '6px 6px',
                   textAlign: 'center',
                   fontWeight: 700,
                   fontSize: isEn ? '11px' : '12px',
-                  borderBottom: `2px solid ${goldAccent}`,
-                  backgroundColor: navyPrimary,
+                  borderBottom: `2px solid ${theme.goldAccent}`,
+                  backgroundColor: theme.primaryColor,
+                  backgroundImage: theme.colGradLeft,
                   color: '#ffffff'
                 }}
               >
@@ -810,16 +926,17 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               </div>
             </div>
 
-            {/* Col 2: Nature of Goods (Emerald Header + Gold Rule + Scoped 6% Company Logo Watermark) */}
-            <div style={{ borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column' }}>
+            {/* Col 2: Nature of Goods (Rich Gradient Header + Scoped Transparent Logo Watermark) */}
+            <div style={{ borderInlineEnd: borderPrimary, display: 'flex', flexDirection: 'column' }}>
               <div
                 style={{
                   padding: '6px 10px',
                   textAlign: 'center',
                   fontWeight: 700,
                   fontSize: isEn ? '11px' : '12px',
-                  borderBottom: `2px solid ${goldAccent}`,
-                  backgroundColor: emeraldAccent,
+                  borderBottom: `2px solid ${theme.goldAccent}`,
+                  backgroundColor: theme.secondaryColor,
+                  backgroundImage: theme.colGradRight,
                   color: '#ffffff'
                 }}
               >
@@ -835,14 +952,14 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   flexDirection: 'column',
                   justifyContent: 'flex-start',
                   gap: '6px',
-                  backgroundColor: cellBg,
+                  backgroundColor: theme.cellBg,
                   fontSize: isEn ? '16px' : '18.5px',
                   lineHeight: isEn ? '1.45' : '1.78',
                   fontWeight: 800,
                   color: '#020617'
                 }}
               >
-                {/* Scoped 6% Opacity Company Logo Watermark exclusively inside Nature of Goods cell */}
+                {/* Scoped Transparent Company Logo Watermark inside Nature of Goods cell */}
                 <div
                   aria-hidden="true"
                   className="cargo-box-watermark"
@@ -854,7 +971,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                     pointerEvents: 'none',
-                    opacity: 0.06,
+                    opacity: 0.09,
                     zIndex: 0
                   }}
                 >
@@ -862,12 +979,12 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     <img
                       src={activeLogoSrc}
                       alt=""
+                      onError={(e) => handleEmblemImgError(e.currentTarget)}
                       style={{
-                        width: '220px',
-                        maxWidth: '88%',
+                        width: '260px',
+                        maxWidth: '90%',
                         maxHeight: '145px',
                         objectFit: 'contain',
-                        transform: 'scale(1.35)',
                         display: 'block'
                       }}
                     />
@@ -881,16 +998,17 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               </div>
             </div>
 
-            {/* Col 3: Weight (Navy Header + Gold Rule) */}
-            <div style={{ borderInlineEnd: borderNavy, display: 'flex', flexDirection: 'column' }}>
+            {/* Col 3: Weight (Gradient Header + Gold Rule) */}
+            <div style={{ borderInlineEnd: borderPrimary, display: 'flex', flexDirection: 'column' }}>
               <div
                 style={{
                   padding: '6px 6px',
                   textAlign: 'center',
                   fontWeight: 700,
                   fontSize: isEn ? '11px' : '12px',
-                  borderBottom: `2px solid ${goldAccent}`,
-                  backgroundColor: navyPrimary,
+                  borderBottom: `2px solid ${theme.goldAccent}`,
+                  backgroundColor: theme.primaryColor,
+                  backgroundImage: theme.colGradLeft,
                   color: '#ffffff'
                 }}
               >
@@ -913,7 +1031,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     style={{
                       fontSize: isEn ? '10px' : '11px',
                       fontWeight: 700,
-                      color: '#475569',
+                      color: theme.secondaryColor,
                       marginTop: '3px',
                       fontFamily: isEn ? enBodyFont : urBodyFont
                     }}
@@ -924,7 +1042,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               </div>
             </div>
 
-            {/* Col 4: Freight Summary (Top Freight beside Line 1 of Cargo + Bottom Conditional Total/Advance/Pending) */}
+            {/* Col 4: Freight Summary */}
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div
                 style={{
@@ -932,8 +1050,9 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   textAlign: 'center',
                   fontWeight: 700,
                   fontSize: isEn ? '11px' : '12px',
-                  borderBottom: `2px solid ${goldAccent}`,
-                  backgroundColor: emeraldAccent,
+                  borderBottom: `2px solid ${theme.goldAccent}`,
+                  backgroundColor: theme.secondaryColor,
+                  backgroundImage: theme.colGradRight,
                   color: '#ffffff'
                 }}
               >
@@ -950,18 +1069,18 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     alignItems: 'center',
                     padding: '12px 10px 8px 10px',
                     borderBottom: borderLight,
-                    backgroundColor: cellBg,
+                    backgroundColor: theme.cellBg,
                     fontSize: isEn ? '12px' : '13px',
                     fontWeight: 800,
                     color: '#0f172a'
                   }}
                 >
-                  <span style={{ fontWeight: 700, color: '#334155' }}>
+                  <span style={{ fontWeight: 700, color: theme.primaryColor }}>
                     {isEn ? 'Freight' : 'کرایہ'}
                   </span>
                   <span
                     dir={isEn ? 'ltr' : 'rtl'}
-                    style={{ fontFamily: isEn ? monoFont : urBodyFont, fontWeight: 800, color: navyPrimary }}
+                    style={{ fontFamily: isEn ? monoFont : urBodyFont, fontWeight: 800, color: theme.secondaryColor }}
                   >
                     {totalAmt > 0 ? formatAmount(totalAmt) : emptyVal}
                   </span>
@@ -979,10 +1098,10 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                           padding: '6px 10px',
                           borderTop: borderLight,
                           borderBottom: borderLight,
-                          backgroundColor: cellBg
+                          backgroundColor: theme.cellBg
                         }}
                       >
-                        <span style={{ fontWeight: 700, color: '#334155' }}>
+                        <span style={{ fontWeight: 700, color: theme.primaryColor }}>
                           {isEn ? 'Total Freight' : 'کل کرایہ'}
                         </span>
                         <span
@@ -999,15 +1118,15 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                           alignItems: 'center',
                           padding: '6px 10px',
                           borderBottom: borderLight,
-                          backgroundColor: pastelMint
+                          backgroundColor: theme.pastelRowC
                         }}
                       >
-                        <span style={{ fontWeight: 700, color: emeraldAccent }}>
+                        <span style={{ fontWeight: 700, color: theme.emeraldAccent }}>
                           {isEn ? 'Advance Paid' : 'پیشگی وصول'}
                         </span>
                         <span
                           dir={isEn ? 'ltr' : 'rtl'}
-                          style={{ fontFamily: isEn ? monoFont : urBodyFont, fontWeight: 700, color: emeraldHighlight }}
+                          style={{ fontFamily: isEn ? monoFont : urBodyFont, fontWeight: 700, color: theme.emeraldHighlight }}
                         >
                           {formatAmount(advanceAmt)}
                         </span>
@@ -1018,11 +1137,12 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                           justifyContent: 'space-between',
                           alignItems: 'center',
                           padding: '7px 10px',
-                          backgroundColor: pastelIvory,
-                          borderTop: `1.5px solid ${goldAccent}`,
+                          backgroundColor: theme.pastelRowB,
+                          backgroundImage: theme.freightTotalGrad,
+                          borderTop: `1.5px solid ${theme.goldAccent}`,
                           fontWeight: 700,
                           fontSize: isEn ? '11.5px' : '12.5px',
-                          color: navyPrimary
+                          color: theme.primaryColor
                         }}
                       >
                         <span>{isEn ? 'Pending Amount' : 'بقایا رقم'}</span>
@@ -1041,11 +1161,12 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         padding: '8px 10px',
-                        borderTop: `1.5px solid ${goldAccent}`,
-                        backgroundColor: pastelIvory,
+                        borderTop: `1.5px solid ${theme.goldAccent}`,
+                        backgroundColor: theme.pastelRowB,
+                        backgroundImage: theme.freightTotalGrad,
                         fontWeight: 700,
                         fontSize: isEn ? '11.5px' : '12.5px',
-                        color: navyPrimary
+                        color: theme.primaryColor
                       }}
                     >
                       <span>{isEn ? 'TOTAL FREIGHT' : 'کل کرایہ'}</span>
@@ -1062,20 +1183,21 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             </div>
           </div>
 
-          {/* Row F: Highlighted Bold Legal Remarks Row */}
+          {/* Row F: Highlighted Bold Legal Remarks Row with Pakistani Gradient Strip */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
               padding: '7px 12px',
-              borderTop: `1.5px solid ${goldAccent}`,
-              borderBottom: borderNavy,
-              backgroundColor: '#fef3c7',
+              borderTop: `1.5px solid ${theme.goldAccent}`,
+              borderBottom: borderPrimary,
+              backgroundColor: theme.pastelRowB,
+              backgroundImage: theme.remarksGrad,
               fontSize: isEn ? '12px' : '13px'
             }}
           >
-            <span style={{ fontWeight: 900, color: navyPrimary, whiteSpace: 'nowrap' }}>
+            <span style={{ fontWeight: 900, color: theme.primaryColor, whiteSpace: 'nowrap' }}>
               {isEn ? 'Remarks :' : 'ریمارکس :'}
             </span>
             <span style={{ fontWeight: 800, color: '#020617', flex: '1 1 0%' }}>
@@ -1088,12 +1210,12 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
             style={{
               display: 'grid',
               gridTemplateColumns: '1.36fr 1fr',
-              backgroundColor: cellBg,
+              backgroundColor: theme.cellBg,
               alignItems: 'stretch'
             }}
           >
             {/* Left/Main: Bold Highlighted Legal Terms & Conditions */}
-            <div style={{ padding: '7px 11px', borderInlineEnd: borderNavy, backgroundColor: '#fffdf5', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ padding: '7px 11px', borderInlineEnd: borderPrimary, backgroundColor: theme.termsBg, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
                 <div
                   style={{
@@ -1102,8 +1224,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                       : urBodyFont,
                     fontWeight: 900,
                     fontSize: isEn ? '12px' : '14.5px',
-                    color: navyPrimary,
-                    borderBottom: `2px solid ${goldAccent}`,
+                    color: theme.primaryColor,
+                    borderBottom: `2px solid ${theme.goldAccent}`,
                     paddingBottom: '3px',
                     marginBottom: '5px',
                     letterSpacing: isEn ? '0.04em' : '0',
@@ -1120,7 +1242,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     margin: '0',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: isEn ? '3px' : '3px',
+                    gap: '3px',
                     fontFamily: isEn ? enBodyFont : urBodyFont,
                     fontSize: isEn ? '9.4px' : '10.6px',
                     lineHeight: isEn ? '1.38' : '1.64',
@@ -1136,16 +1258,16 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               </div>
             </div>
 
-            {/* Right: 4 Verification Boxes in 2x2 Grid (1: QR Code aligned to opposite Driver Signature line + Caption, 2: Driver Sig, 3: Sender Sig, 4: Receiver Sig) */}
+            {/* Right: 4 Verification Boxes in 2x2 Grid */}
             <div
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
                 gridTemplateRows: 'repeat(2, minmax(0, 1fr))',
-                backgroundColor: '#ffffff'
+                backgroundColor: theme.cellBg
               }}
             >
-              {/* Box 1: QR Code resized cleanly to match opposite signature line level + QR purpose caption at bottom */}
+              {/* Box 1: QR Code on crisp white quiet-zone pad + purpose caption */}
               <div
                 style={{
                   borderInlineEnd: borderLight,
@@ -1210,12 +1332,12 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   data-testid="qr-purpose-caption"
                   style={{
                     width: '100%',
-                    borderTop: '1px solid #64748b',
+                    borderTop: `1px solid ${theme.primaryColor}`,
                     paddingTop: '4px',
                     textAlign: 'center',
                     fontSize: isEn ? '8.5px' : '10px',
                     fontWeight: 700,
-                    color: navyPrimary,
+                    color: theme.primaryColor,
                     lineHeight: '1.2'
                   }}
                 >
@@ -1233,10 +1355,10 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   justifyContent: 'flex-end',
                   alignItems: 'center',
                   textAlign: 'center',
-                  backgroundColor: subtleTintBg
+                  backgroundColor: theme.pastelRowC
                 }}
               >
-                <div style={{ width: '100%', borderTop: '1px solid #64748b', paddingTop: '4px', fontSize: isEn ? '9.5px' : '11px', fontWeight: 700, color: '#0f2942' }}>
+                <div style={{ width: '100%', borderTop: `1px solid ${theme.primaryColor}`, paddingTop: '4px', fontSize: isEn ? '9.5px' : '11px', fontWeight: 700, color: theme.primaryColor }}>
                   {isEn ? 'Driver Signature' : 'دستخط ڈرائیور'}
                 </div>
               </div>
@@ -1251,10 +1373,10 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   justifyContent: 'flex-end',
                   alignItems: 'center',
                   textAlign: 'center',
-                  backgroundColor: subtleTintBg
+                  backgroundColor: theme.pastelRowA
                 }}
               >
-                <div style={{ width: '100%', borderTop: '1px solid #64748b', paddingTop: '4px', fontSize: isEn ? '9.5px' : '11px', fontWeight: 700, color: '#0f2942' }}>
+                <div style={{ width: '100%', borderTop: `1px solid ${theme.primaryColor}`, paddingTop: '4px', fontSize: isEn ? '9.5px' : '11px', fontWeight: 700, color: theme.primaryColor }}>
                   {isEn ? 'Sender Signature' : 'دستخط بھیجنے والا'}
                 </div>
               </div>
@@ -1268,10 +1390,10 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   justifyContent: 'flex-end',
                   alignItems: 'center',
                   textAlign: 'center',
-                  backgroundColor: subtleTintBg
+                  backgroundColor: theme.pastelRowB
                 }}
               >
-                <div style={{ width: '100%', borderTop: '1px solid #64748b', paddingTop: '4px', fontSize: isEn ? '9.5px' : '11px', fontWeight: 700, color: '#0f2942' }}>
+                <div style={{ width: '100%', borderTop: `1px solid ${theme.primaryColor}`, paddingTop: '4px', fontSize: isEn ? '9.5px' : '11px', fontWeight: 700, color: theme.primaryColor }}>
                   {isEn ? 'Receiver Signature' : 'دستخط وصول کنندہ'}
                 </div>
               </div>
@@ -1279,23 +1401,40 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
           </div>
         </div>
 
-        {/* 3. COMPLETE SINGLE-LANGUAGE FOOTER WITH SUBTLE GOLD TRIM */}
+        {/* 3. TRUCK-ART GRADIENT ACCENT FOOTER */}
         <div
           style={{
-            textAlign: 'center',
             marginTop: '4px',
-            paddingTop: '4px',
-            borderTop: `1px solid ${goldAccent}`,
-            fontSize: isEn ? '10px' : '11.5px',
-            fontWeight: 700,
-            fontFamily: isEn ? enBodyFont : urBodyFont,
-            color: navyPrimary,
-            letterSpacing: isEn ? '0.02em' : '0'
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '3px'
           }}
         >
-          {isEn
-            ? 'This is a computer-generated Bilty, no signature required'
-            : 'یہ کمپیوٹر سے تیار کردہ بلٹی ہے، دستخط کی ضرورت نہیں'}
+          <div
+            style={{
+              textAlign: 'center',
+              paddingTop: '3px',
+              borderTop: `1.5px solid ${theme.goldAccent}`,
+              fontSize: isEn ? '10px' : '11.5px',
+              fontWeight: 700,
+              fontFamily: isEn ? enBodyFont : urBodyFont,
+              color: theme.primaryColor,
+              letterSpacing: isEn ? '0.02em' : '0'
+            }}
+          >
+            {isEn
+              ? 'This is a computer-generated Bilty, no signature required'
+              : 'یہ کمپیوٹر سے تیار کردہ بلٹی ہے، دستخط کی ضرورت نہیں'}
+          </div>
+          <div
+            aria-hidden="true"
+            style={{
+              height: '4px',
+              width: '100%',
+              borderRadius: '2px',
+              backgroundImage: theme.headerStripGrad
+            }}
+          />
         </div>
       </div>
     </div>

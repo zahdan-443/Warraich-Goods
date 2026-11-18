@@ -4,7 +4,7 @@
  * Transmits diagnostic telemetry directly to Firestore (/crashReports) with loop throttling.
  */
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from './firebase';
+import { auth, db } from './firebase';
 import { APP_VERSION } from '../constants/version';
 import { Capacitor } from '@capacitor/core';
 
@@ -153,7 +153,8 @@ export async function reportAppCrash(
 
     const reportId = `crash_${now}_${Math.random().toString(36).slice(2, 8)}`;
 
-    const payload: Record<string, any> = {
+    const currentUid = auth?.currentUser?.uid || null;
+    const payload: Record<string, unknown> = {
       errorName: safeErrorName,
       errorMessage: safeErrorMessage,
       stack: safeStack,
@@ -161,6 +162,7 @@ export async function reportAppCrash(
       deviceModel: safeDeviceModel,
       platform: diagnostics.platform.slice(0, 50),
       appVersion: APP_VERSION.slice(0, 50),
+      ...(currentUid ? { userUid: currentUid.slice(0, 128) } : {}),
       createdAt: serverTimestamp()
     };
 
@@ -174,12 +176,10 @@ export async function reportAppCrash(
       // ignore
     }
 
-    // Dlightek & Palm Store Rule 1.5 Compliance:
-    // Never upload crash reports to Firestore without explicit user consent.
-    // Default is strictly offline on-device storage.
+    // Never upload crash reports unauthenticated or without explicit user consent (#25)
     const hasConsent = typeof window !== 'undefined' && localStorage.getItem('wg_crash_reports_consent') === 'true';
 
-    if (db && hasConsent) {
+    if (db && hasConsent && currentUid) {
       const docRef = doc(db, 'crashReports', reportId);
       await setDoc(docRef, payload);
       return true;

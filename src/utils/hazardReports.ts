@@ -9,7 +9,9 @@ import {
   query, 
   where, 
   Timestamp,
-  serverTimestamp 
+  serverTimestamp,
+  arrayUnion,
+  increment
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
 import { PAKISTAN_CITIES_MASTER, MasterCity } from './pakistanCitiesData';
@@ -279,6 +281,8 @@ export async function submitHazardReport(params: {
       lat,
       lng,
       ...(cityNear ? { cityNear } : {}),
+      flags: 0,
+      flaggedBy: [],
       createdAt: serverTimestamp(),
       expiresAt: Timestamp.fromMillis(expiresAtMs),
       reporterUid
@@ -399,26 +403,25 @@ export async function flagHazardReport(
       return { success: false, message: 'Report no longer exists.' };
     }
     const data = snap.data();
-    const currentFlags = typeof data.flags === 'number' ? data.flags : 0;
     const flaggedBy: string[] = Array.isArray(data.flaggedBy) ? data.flaggedBy : [];
 
     if (flaggedBy.includes(uid)) {
       return { success: true, message: 'You have already flagged this report.' };
     }
 
-    flaggedBy.push(uid);
-    const updatedFlags = currentFlags + 1;
-
     await updateDoc(docRef, {
-      flags: updatedFlags,
-      flaggedBy,
-      flagReasons: [reason.slice(0, 100)]
+      flags: increment(1),
+      flaggedBy: arrayUnion(uid),
+      flagReasons: arrayUnion(reason.slice(0, 100))
     });
 
     return { success: true, message: 'Thank you! The report has been flagged for safety review.' };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[HazardReports] Error flagging hazard report:', err);
-    return { success: false, message: err?.message || 'Could not flag report.' };
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : 'Could not flag report.'
+    };
   }
 }
 

@@ -28,9 +28,11 @@ describe('Firestore Rules Security Audit & Structure', () => {
     expect(rulesContent).toMatch(/match \/bilties\/\{biltyId\} \{\s*allow read, write: if false;\s*\}/);
   });
 
-  it('should restrict publicBiltyVerifications writes to authorized accounts with strict 8-field whitelist and uppercase docId check', () => {
+  it('should restrict publicBiltyVerifications to single-doc get only publicly and list only for authorized accounts (#23)', () => {
     expect(rulesContent).toContain('match /publicBiltyVerifications/{docId}');
-    expect(rulesContent).toContain('allow read: if true;');
+    expect(rulesContent).toContain('allow get: if true;');
+    expect(rulesContent).toContain('allow list: if isBiltyAuthorized();');
+    expect(rulesContent).not.toMatch(/match \/publicBiltyVerifications\/\{docId\} \{[^}]*allow read: if true;/);
     expect(rulesContent).toContain('allow create, update: if isBiltyAuthorized()');
     expect(rulesContent).toContain('docId == docId.upper()');
     expect(rulesContent).toContain('request.resource.data.biltyNo == docId');
@@ -50,7 +52,7 @@ describe('Firestore Rules Security Audit & Structure', () => {
     expect(rulesContent).toContain('freight');
   });
 
-  it('should secure users collection and enforce strict user data isolation', () => {
+  it('should secure users and usersData collections and enforce strict user data isolation', () => {
     expect(rulesContent).toContain('match /usersData/{userId}');
     expect(rulesContent).toContain('match /users/{userId}');
     expect(rulesContent).toContain('allow read, write: if isSignedIn() && request.auth.uid == userId && isNotSelfPromoting();');
@@ -71,13 +73,30 @@ describe('Firestore Rules Security Audit & Structure', () => {
     expect(rulesContent).toContain("request.resource.data.keys().hasOnly(['currentValue', 'value', 'updatedAt'])");
   });
 
-  it('should enforce strict schema and GPS bounding on hazardReports', () => {
+  it('should enforce strict schema, GPS bounding, and atomic +1 unique-UID flagging on hazardReports (#24)', () => {
     expect(rulesContent).toContain('match /hazardReports/{reportId}');
     expect(rulesContent).toContain('allow read: if isSignedIn();');
     expect(rulesContent).toContain('request.resource.data.reporterUid == request.auth.uid');
     expect(rulesContent).toContain('request.resource.data.lat >= 23.0 && request.resource.data.lat <= 38.0');
     expect(rulesContent).toContain('request.resource.data.lng >= 60.0 && request.resource.data.lng <= 78.0');
     expect(rulesContent).toContain('request.resource.data.createdAt == request.time;');
-    expect(rulesContent).toContain('allow update: if false;');
+    expect(rulesContent).toContain('function isValidHazardFlagUpdate()');
+    expect(rulesContent).toContain('nextFlags == prevFlags + 1');
+    expect(rulesContent).toContain('!(request.auth.uid in resource.data.flaggedBy)');
+    expect(rulesContent).toContain('allow update: if isValidHazardFlagUpdate();');
+  });
+
+  it('should require authenticated userUid match on crashReports and validate accountDeletionRequests (#25, #18)', () => {
+    expect(rulesContent).toContain('match /crashReports/{reportId}');
+    expect(rulesContent).toContain('allow create: if isSignedIn() &&');
+    expect(rulesContent).toContain('request.resource.data.userUid == request.auth.uid');
+    expect(rulesContent).toContain('allow delete: if isOwner() || (isSignedIn() && resource.data.userUid == request.auth.uid);');
+
+    expect(rulesContent).toContain('match /accountDeletionRequests/{requestId}');
+    expect(rulesContent).toContain("request.resource.data.userEmail.matches('^[^@\\\\s]+@[^@\\\\s]+\\\\.[^@\\\\s]+$')");
+    expect(rulesContent).toContain("request.resource.data.requestedAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}.*$')");
+
+    expect(rulesContent).toContain('match /activityLog/{logId}');
+    expect(rulesContent).toContain('allow delete: if isOwner() || (isSignedIn() && resource.data.uid == request.auth.uid);');
   });
 });

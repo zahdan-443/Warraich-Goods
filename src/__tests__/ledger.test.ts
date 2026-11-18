@@ -50,7 +50,7 @@ describe('Digital Khata (کھاتہ) Unit Tests', () => {
       'dd_ledger_broker_transactions',
       'dd_ledger_vehicle_expenses',
       'dd_ledger_vehicle_income'
-    ].forEach(k => storageModule.safeStorage.removeItem(k));
+    ].forEach(k => storageModule.removeScopedItem(k));
   });
 
   describe('1. Balance Calculation Formula (Party & Broker)', () => {
@@ -528,9 +528,9 @@ describe('Digital Khata (کھاتہ) Unit Tests', () => {
       expect(backupStr).not.toContain('بلٹی');
 
       // Clear storage
-      storageModule.safeStorage.removeItem('dd_khata_accounts_v2');
-      storageModule.safeStorage.removeItem('dd_khata_entries_v2');
-      storageModule.safeStorage.removeItem('dd_khata_cashbook_v2');
+      storageModule.removeScopedItem('dd_khata_accounts_v2');
+      storageModule.removeScopedItem('dd_khata_entries_v2');
+      storageModule.removeScopedItem('dd_khata_cashbook_v2');
       expect(getLedgerAccounts().length).toBe(0);
 
       // Import back

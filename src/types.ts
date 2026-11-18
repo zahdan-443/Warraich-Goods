@@ -58,6 +58,7 @@ export interface KhataSettings {
   businessName?: string;
   pinHash?: string;
   pinSalt?: string;
+  pinLength?: number;
   pinLockoutUntil?: number;
   pinFailedAttempts?: number;
   schemaVersion?: number;
@@ -313,6 +314,7 @@ export interface Trip {
   month: string;
   origin?: string;
   dest?: string;
+  vehicleNo?: string;
 }
 
 export interface Vehicle {
@@ -355,6 +357,7 @@ export interface FuelLogItem {
 
 export type BiltyBranch = 'samundri' | 'kamalia';
 export type BiltyLanguage = 'ur' | 'en';
+export type BiltyColorTheme = 'pink' | 'yellow' | 'green';
 
 export interface PodConfirmation {
   receiverName: string;
@@ -415,6 +418,7 @@ export interface BiltyRecord {
   pendingOnlineNumber?: boolean;
   branch?: BiltyBranch;
   language?: BiltyLanguage;
+  colorTheme?: BiltyColorTheme;
   receivingPointId?: string;
   receivingPointName?: string;
   podConfirmation?: PodConfirmation;
@@ -448,9 +452,10 @@ export interface ExportPrivacyOptions {
 export interface SyncStatusState {
   status: 'online' | 'offline' | 'syncing' | 'error' | 'synced';
   pendingCount: number;
+  blockedCount?: number;
   lastSyncTime: string | null;
   lastError: string | null;
-  errorsList: Array<{ id: string; timestamp: string; message: string; retryCount?: number }>;
+  errorsList: Array<{ id: string; timestamp: string; message: string; retryCount?: number; status?: 'retrying' | 'blocked' }>;
 }
 
 export interface ActivityLogItem {
@@ -485,6 +490,9 @@ export interface OfflineAction {
   data: any;
   timestamp: string;
   retryCount?: number;
+  status?: 'pending' | 'retrying' | 'blocked';
+  lastError?: string;
+  nextRetryAt?: number;
 }
 
 export interface AppNotification {

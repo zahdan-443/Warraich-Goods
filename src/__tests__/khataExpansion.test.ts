@@ -30,13 +30,13 @@ import {
   saveOrUpdateLedgerAccount,
   saveOrUpdateLedgerEntry
 } from '../utils/ledgerStorage';
-import { safeStorage } from '../utils/storage';
+import { removeScopedItem, safeStorage } from '../utils/storage';
 import { BiltyRecord, Trip } from '../types';
 
 describe('Khata v1.3.0 Expansion Unit Tests', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    Object.values(KHATA_STORAGE_KEYS).forEach(k => safeStorage.removeItem(k));
+    Object.values(KHATA_STORAGE_KEYS).forEach(k => removeScopedItem(k));
   });
 
   describe('1. Bills Calculations, Payment Posting & Authorization Gate', () => {
@@ -353,7 +353,7 @@ describe('Khata v1.3.0 Expansion Unit Tests', () => {
       expect(parsed.receivingPoints.length).toBe(1);
 
       // Wipe and restore
-      Object.values(KHATA_STORAGE_KEYS).forEach(k => safeStorage.removeItem(k));
+      Object.values(KHATA_STORAGE_KEYS).forEach(k => removeScopedItem(k));
       expect(getAllBills().length).toBe(0);
 
       const res = importKhataBackup(json);

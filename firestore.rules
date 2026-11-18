@@ -80,6 +80,31 @@ service cloud.firestore {
              payload.status is string && payload.status.size() >= 1 && payload.status.size() <= 64;
     }
 
+    // Helper function to validate atomic single-increment unique-UID hazard flagging (#24)
+    function isValidHazardFlagUpdate() {
+      let prevFlags = ('flags' in resource.data && resource.data.flags is int) ? resource.data.flags : 0;
+      let hasPrevArray = ('flaggedBy' in resource.data && resource.data.flaggedBy is list);
+      let nextFlags = request.resource.data.flags;
+      let nextFlaggedBy = request.resource.data.flaggedBy;
+      return isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['flags', 'flaggedBy', 'flagReasons']) &&
+        nextFlags is int &&
+        nextFlags == prevFlags + 1 &&
+        nextFlags <= 100 &&
+        nextFlaggedBy is list &&
+        nextFlaggedBy.size() <= 100 &&
+        request.auth.uid in nextFlaggedBy &&
+        (
+          (!hasPrevArray && nextFlaggedBy.size() == 1) ||
+          (
+            hasPrevArray &&
+            !(request.auth.uid in resource.data.flaggedBy) &&
+            nextFlaggedBy.size() == resource.data.flaggedBy.size() + 1 &&
+            nextFlaggedBy.hasAll(resource.data.flaggedBy)
+          )
+        );
+    }
+
     // Global default deny catch-all
     match /{document=**} {
       allow read, write: if false;
@@ -99,14 +124,22 @@ service cloud.firestore {
       // Strictly authenticated request owners or Fleet Owner only (never expose deletion request PII publicly)
       allow read, update, delete: if isSignedIn() && (request.auth.uid == requestId || (resource != null && resource.data.userId == request.auth.uid) || isOwner());
 
-      // Allow creation by authenticated users (via in-app modal) OR unauthenticated users (via external deletion web form)
+      // Allow creation by authenticated users (via in-app modal) OR external deletion web form with strict email/timestamp regex validation (#25)
       allow create: if request.resource.data.keys().hasAll(['userEmail', 'requestedAt', 'scheduledFor', 'status', 'referenceId']) &&
                     request.resource.data.keys().hasOnly(['userId', 'userEmail', 'requestedAt', 'scheduledFor', 'status', 'referenceId', 'reason', 'source']) &&
-                    request.resource.data.userEmail is string && request.resource.data.userEmail.size() >= 3 && request.resource.data.userEmail.size() <= 100 &&
-                    request.resource.data.requestedAt is string && request.resource.data.requestedAt.size() <= 64 &&
+                    request.resource.data.userEmail is string &&
+                    request.resource.data.userEmail.size() >= 5 &&
+                    request.resource.data.userEmail.size() <= 100 &&
+                    request.resource.data.userEmail.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$') &&
+                    request.resource.data.requestedAt is string &&
+                    request.resource.data.requestedAt.size() >= 10 &&
+                    request.resource.data.requestedAt.size() <= 64 &&
+                    request.resource.data.requestedAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}.*$') &&
                     request.resource.data.scheduledFor is string && request.resource.data.scheduledFor.size() <= 64 &&
                     request.resource.data.status in ['pending_deletion', 'deleted'] &&
-                    request.resource.data.referenceId is string && request.resource.data.referenceId.size() <= 64 &&
+                    request.resource.data.referenceId is string &&
+                    request.resource.data.referenceId.size() >= 3 &&
+                    request.resource.data.referenceId.size() <= 64 &&
                     (!('reason' in request.resource.data) || (request.resource.data.reason is string && request.resource.data.reason.size() <= 300)) &&
                     (!('source' in request.resource.data) || (request.resource.data.source is string && request.resource.data.source.size() <= 64)) &&
                     (!('userId' in request.resource.data) || (isSignedIn() && request.resource.data.userId == request.auth.uid));
@@ -132,9 +165,10 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Public bilty verification records (doc ID = uppercase biltyNo, read allowed for anyone for QR verification; create/update/delete restricted to authorized bilty accounts)
+    // Public bilty verification records (#23: single-document get by QR code allowed; bulk collection list restricted to authorized accounts)
     match /publicBiltyVerifications/{docId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isBiltyAuthorized();
       allow create, update: if isBiltyAuthorized() &&
                                docId is string &&
                                docId.size() >= 1 &&
@@ -168,9 +202,9 @@ service cloud.firestore {
       allow read, write: if isOwner();
     }
 
-    // Activity Log (Owner can read and manage, signed-in users can create schema-validated entries for their own UID)
+    // Activity Log (Owner can read and manage, signed-in users can create schema-validated entries and delete their own on account deletion #18)
     match /activityLog/{logId} {
-      allow read: if isOwner();
+      allow read: if isOwner() || (isSignedIn() && resource.data.uid == request.auth.uid);
       allow create: if isSignedIn() &&
                     request.resource.data.keys().hasAll(['action', 'timestamp', 'uid', 'category']) &&
                     request.resource.data.keys().hasOnly(['id', 'timestamp', 'uid', 'email', 'action', 'details', 'category']) &&
@@ -181,10 +215,11 @@ service cloud.firestore {
                     (!('details' in request.resource.data) || (request.resource.data.details is string && request.resource.data.details.size() <= 600)) &&
                     (!('email' in request.resource.data) || (request.resource.data.email is string && request.resource.data.email.size() <= 160)) &&
                     (!('id' in request.resource.data) || (request.resource.data.id is string && request.resource.data.id.size() <= 128));
-      allow update, delete: if isOwner();
+      allow update: if isOwner();
+      allow delete: if isOwner() || (isSignedIn() && resource.data.uid == request.auth.uid);
     }
 
-    // Crowd-sourced road hazard reports (read for signed in users; create/delete restricted to reporter; community flagging supported)
+    // Crowd-sourced road hazard reports (#24: enforce zero-initialized flags & atomic +1 per-UID flagging)
     match /hazardReports/{reportId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() &&
@@ -194,23 +229,23 @@ service cloud.firestore {
                     request.resource.data.category in ['checkpoint', 'flooding', 'accident', 'closure', 'traffic'] &&
                     request.resource.data.lat is number && request.resource.data.lat >= 23.0 && request.resource.data.lat <= 38.0 &&
                     request.resource.data.lng is number && request.resource.data.lng >= 60.0 && request.resource.data.lng <= 78.0 &&
+                    (!('flags' in request.resource.data) || request.resource.data.flags == 0) &&
+                    (!('flaggedBy' in request.resource.data) || (request.resource.data.flaggedBy is list && request.resource.data.flaggedBy.size() == 0)) &&
                     request.resource.data.createdAt == request.time;
       allow delete: if isOwner() || (isSignedIn() && resource.data.reporterUid == request.auth.uid);
-      // Allow community drivers to flag inaccurate or inappropriate hazards (Play Store UGC requirement)
-      allow update: if isSignedIn() &&
-                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['flags', 'flaggedBy', 'flagReasons']) &&
-                    request.resource.data.flags is int &&
-                    request.resource.data.flags >= resource.data.flags &&
-                    request.resource.data.flags <= 100 &&
-                    request.resource.data.flaggedBy is list &&
-                    request.resource.data.flaggedBy.size() <= 100;
+      allow update: if isValidHazardFlagUpdate();
     }
 
-    // Automated Crash Diagnostics & Telemetry (Enforce strict size caps against Denial of Wallet; read/delete strictly Fleet Owner)
+    // Automated Crash Diagnostics & Telemetry (#25 require authenticated userUid match; #18 allow own delete)
     match /crashReports/{reportId} {
-      allow read, delete: if isOwner();
-      allow create: if request.resource.data.keys().hasAll(['errorMessage', 'appVersion', 'createdAt']) &&
+      allow read: if isOwner() || (isSignedIn() && resource.data.userUid == request.auth.uid);
+      allow delete: if isOwner() || (isSignedIn() && resource.data.userUid == request.auth.uid);
+      allow create: if isSignedIn() &&
+                    request.resource.data.keys().hasAll(['errorMessage', 'appVersion', 'userUid', 'createdAt']) &&
                     request.resource.data.keys().hasOnly(['errorName', 'errorMessage', 'stack', 'componentStack', 'deviceModel', 'platform', 'appVersion', 'url', 'userUid', 'createdAt']) &&
+                    request.resource.data.userUid is string &&
+                    request.resource.data.userUid == request.auth.uid &&
+                    request.resource.data.userUid.size() <= 128 &&
                     request.resource.data.errorMessage is string && request.resource.data.errorMessage.size() <= 500 &&
                     (!('stack' in request.resource.data) || (request.resource.data.stack is string && request.resource.data.stack.size() <= 1000)) &&
                     (!('componentStack' in request.resource.data) || (request.resource.data.componentStack is string && request.resource.data.componentStack.size() <= 500)) &&
@@ -218,7 +253,6 @@ service cloud.firestore {
                     (!('errorName' in request.resource.data) || (request.resource.data.errorName is string && request.resource.data.errorName.size() <= 100)) &&
                     (!('platform' in request.resource.data) || (request.resource.data.platform is string && request.resource.data.platform.size() <= 50)) &&
                     (!('url' in request.resource.data) || (request.resource.data.url is string && request.resource.data.url.size() <= 200)) &&
-                    (!('userUid' in request.resource.data) || (request.resource.data.userUid is string && request.resource.data.userUid.size() <= 128)) &&
                     request.resource.data.appVersion is string && request.resource.data.appVersion.size() <= 50 &&
                     request.resource.data.createdAt == request.time;
       allow update: if false;

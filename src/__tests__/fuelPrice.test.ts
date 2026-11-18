@@ -3,10 +3,15 @@ import {
   fetchLiveFuelPrices,
   getStoredFuelPrices,
   FUEL_CACHE_KEY,
+  MANUAL_FUEL_OVERRIDE_KEY,
   CURRENT_OFFICIAL_BENCHMARK,
   parseEklitrePayload,
   parseAutoonesPayload,
-  formatEffectiveDate
+  formatEffectiveDate,
+  setManualFuelPrices,
+  getManualFuelOverride,
+  clearManualFuelPrices,
+  computeFuelStaleness
 } from '../utils/fuelPrice';
 
 describe('Live Pakistan Fuel Prices Multi-Provider Sync', () => {
@@ -30,8 +35,8 @@ describe('Live Pakistan Fuel Prices Multi-Provider Sync', () => {
       get length() {
         return Object.keys(store).length;
       }
-    } as any;
-    (globalThis as any).window = {
+    } as unknown as Storage;
+    (globalThis as unknown as { window: unknown }).window = {
       dispatchEvent: vi.fn(),
       location: { origin: 'https://localhost', protocol: 'https:' }
     };
@@ -111,7 +116,7 @@ describe('Live Pakistan Fuel Prices Multi-Provider Sync', () => {
         );
       }
       return new Response('Not found', { status: 404 });
-    }) as any;
+    }) as unknown as typeof fetch;
 
     const live = await fetchLiveFuelPrices(false);
     expect(live.isFallback).toBe(false);
@@ -147,7 +152,7 @@ describe('Live Pakistan Fuel Prices Multi-Provider Sync', () => {
         );
       }
       return new Response('Not found', { status: 404 });
-    }) as any;
+    }) as unknown as typeof fetch;
 
     const live = await fetchLiveFuelPrices(true);
     expect(live.isFallback).toBe(false);
@@ -157,14 +162,87 @@ describe('Live Pakistan Fuel Prices Multi-Provider Sync', () => {
     expect(live.source).toContain('autoones');
   });
 
-  it('returns fallback benchmark with isFallback=true when offline', async () => {
+  it('returns fallback benchmark with isFallback=true when offline and no cache exists', async () => {
     globalThis.fetch = vi.fn(async () => {
       throw new Error('Network error');
-    }) as any;
+    }) as unknown as typeof fetch;
 
     const result = await fetchLiveFuelPrices(true);
     expect(result.isFallback).toBe(true);
     expect(result.diesel).toBe(CURRENT_OFFICIAL_BENCHMARK.diesel);
     expect(result.effectiveDate).toBe(CURRENT_OFFICIAL_BENCHMARK.effectiveDate);
+  });
+
+  it('preserves last-known-good cached fuel prices when network goes offline (#33)', async () => {
+    localStorage.setItem(
+      FUEL_CACHE_KEY,
+      JSON.stringify({
+        diesel: '365.50',
+        petrol: '334.25',
+        effectiveDate: '16-November-2026',
+        source: 'OGRA / PSO (eklitre.pk)',
+        cacheVersion: 2,
+        timestamp: Date.now()
+      })
+    );
+    globalThis.fetch = vi.fn(async () => {
+      throw new Error('Offline');
+    }) as unknown as typeof fetch;
+
+    const result = await fetchLiveFuelPrices(true);
+    expect(result.isFallback).toBe(true);
+    expect(result.diesel).toBe('365.50');
+    expect(result.petrol).toBe('334.25');
+  });
+
+  it('supports manual pump rate overrides and clean reset back to cached/official rates (#33)', () => {
+    const manual = setManualFuelPrices({ diesel: 372.5, petrol: 341 });
+    expect(manual.isManualOverride).toBe(true);
+    expect(manual.diesel).toBe('372.50');
+    expect(manual.petrol).toBe('341.00');
+    expect(getManualFuelOverride()?.diesel).toBe('372.50');
+    expect(getStoredFuelPrices().isManualOverride).toBe(true);
+    expect(localStorage.getItem(MANUAL_FUEL_OVERRIDE_KEY)).toBeTruthy();
+
+    expect(() => setManualFuelPrices({ diesel: 10, petrol: 340 })).toThrow();
+
+    const reset = clearManualFuelPrices();
+    expect(reset.isManualOverride).toBe(false);
+    expect(getManualFuelOverride()).toBeNull();
+  });
+
+  it('detects stale fuel prices when age exceeds 7 days (#33)', () => {
+    const refDate = new Date('2026-11-25T10:00:00Z');
+    const fresh = computeFuelStaleness('22-November-2026', undefined, refDate);
+    expect(fresh.isStale).toBe(false);
+    expect(fresh.stalenessDays).toBe(3);
+
+    const stale = computeFuelStaleness('10-November-2026', undefined, refDate);
+    expect(stale.isStale).toBe(true);
+    expect(stale.stalenessDays).toBe(15);
+  });
+
+  it('supports custom VITE_FUEL_API_URL provider when passed to fetchLiveFuelPrices (#33)', async () => {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === 'https://custom-fuel.example.com/latest.json') {
+        return new Response(
+          JSON.stringify({
+            diesel: 358.5,
+            petrol: 329.0,
+            effectiveDate: '2026-11-18',
+            source: 'Custom Fleet Feed'
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        );
+      }
+      return new Response('Not found', { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const live = await fetchLiveFuelPrices(true, 'https://custom-fuel.example.com/latest.json');
+    expect(live.isFallback).toBe(false);
+    expect(live.diesel).toBe('358.50');
+    expect(live.petrol).toBe('329.00');
+    expect(live.source).toBe('Custom Fleet Feed');
   });
 });

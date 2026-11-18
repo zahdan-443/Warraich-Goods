@@ -28,6 +28,7 @@ import {
   evaluateArithmetic,
   generatePinSalt,
   hashPin,
+  needsPinHashUpgrade,
   verifyPin,
   calculateLockoutDuration,
   isPinLocked,
@@ -37,7 +38,8 @@ import {
   importKhataBackup,
   getPendingDocumentBalances,
   importPendingDocumentToKhata,
-  PendingDocBalance
+  PendingDocBalance,
+  KhataBackupData
 } from '../../utils/ledgerStorage';
 import {
   generateAccountStatementPdf,
@@ -45,6 +47,7 @@ import {
   downloadOrSharePdf
 } from '../../utils/khataPdf';
 import { shareOrDownloadText } from '../../utils/nativeExport';
+import { getPakistanDateKey, shiftDateKey } from '../../utils/dateUtils';
 import {
   BookOpen,
   Users,
@@ -53,7 +56,6 @@ import {
   Phone,
   MessageCircle,
   Search,
-  Lock,
   KeyRound,
   Download,
   Upload,
@@ -68,14 +70,15 @@ import {
   ChevronRight,
   ChevronLeft,
   Smartphone,
-  Delete,
   Receipt,
   MapPin,
   Wallet,
   BarChart3
 } from 'lucide-react';
+import { GoogleAuthProvider, reauthenticateWithPopup, signInWithPopup } from 'firebase/auth';
 import { auth } from '../../utils/firebase';
 import { GuestSavePromptModal } from '../GuestSavePromptModal';
+import { KhataPinLockScreen } from './khata/KhataPinLockScreen';
 import { KhataBillsPanel } from './khata/KhataBillsPanel';
 import { KhataEmployeesPanel } from './khata/KhataEmployeesPanel';
 import { KhataReceivingPointsPanel } from './khata/KhataReceivingPointsPanel';
@@ -158,7 +161,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
   const [undoItem, setUndoItem] = useState<{
     type: 'entry';
     item: LedgerEntry;
-    timeoutId: any;
+    timeoutId: ReturnType<typeof setTimeout>;
   } | null>(null);
 
   // Security / PIN Lock State
@@ -252,7 +255,22 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
 
     const isMatch = await verifyPin(pinAttempt, currSettings.pinSalt, currSettings.pinHash);
     if (isMatch) {
-      saveKhataSettings({ pinFailedAttempts: 0, pinLockoutUntil: 0 });
+      if (needsPinHashUpgrade(currSettings.pinHash)) {
+        const upgradedHash = await hashPin(pinAttempt, currSettings.pinSalt);
+        saveKhataSettings({
+          pinHash: upgradedHash,
+          pinLength: pinAttempt.length,
+          pinFailedAttempts: 0,
+          pinLockoutUntil: 0
+        });
+      } else {
+        saveKhataSettings({
+          pinLength: currSettings.pinLength || pinAttempt.length,
+          pinFailedAttempts: 0,
+          pinLockoutUntil: 0
+        });
+      }
+      setSettings(getKhataSettings());
       setIsUnlocked(true);
       setPinError('');
       setPinInput('');
@@ -281,10 +299,57 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
     }
   };
 
+  const handleResetPinWithGoogleReauth = async (): Promise<{ success: boolean; error?: string }> => {
+    if (!auth.currentUser) {
+      return {
+        success: false,
+        error: isUrdu ? 'برائے مہربانی پہلے گوگل اکاؤنٹ سائن ان کریں۔' : 'Please sign in with Google first.'
+      };
+    }
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      try {
+        await reauthenticateWithPopup(auth.currentUser, provider);
+      } catch {
+        await signInWithPopup(auth, provider);
+      }
+      saveKhataSettings({
+        pinHash: '',
+        pinSalt: '',
+        pinLength: undefined,
+        pinFailedAttempts: 0,
+        pinLockoutUntil: 0
+      });
+      setSettings(getKhataSettings());
+      setPinError('');
+      setPinInput('');
+      setIsUnlocked(true);
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err || '');
+      return { success: false, error: msg };
+    }
+  };
+
+  const handleResetPinAsGuestConfirm = () => {
+    saveKhataSettings({
+      pinHash: '',
+      pinSalt: '',
+      pinLength: undefined,
+      pinFailedAttempts: 0,
+      pinLockoutUntil: 0
+    });
+    setSettings(getKhataSettings());
+    setPinError('');
+    setPinInput('');
+    setIsUnlocked(true);
+  };
+
   // Filtered Accounts - Unified list for all parties & brokers
   const filteredAccounts = useMemo(() => {
     let list = [...accounts];
-    const today = new Date().toISOString().split('T')[0];
+    const today = getPakistanDateKey();
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
@@ -401,109 +466,18 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
   // ----------------- RENDER: PIN LOCK SCREEN -----------------
   if (!isUnlocked && settings.pinHash) {
     return (
-      <div className="min-h-[85vh] flex items-center justify-center p-3 sm:p-4 font-serif">
-        <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[28px] sm:rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200 dark:border-slate-800 text-center font-serif">
-          <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-200 dark:border-emerald-800 shadow-inner">
-            <Lock className="w-8 h-8" />
-          </div>
-
-          <h2 className="text-base sm:text-lg font-bold font-serif text-slate-900 dark:text-white mb-1">
-            {isUrdu ? 'کھاتہ پن لاک' : 'Khata PIN Lock'}
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
-            {isUrdu ? 'محفوظ کھاتہ دیکھنے کے لیے 4 ہندسوں کا پن کوڈ درج کریں' : 'Enter 4-digit PIN to access private ledger'}
-          </p>
-
-          <div className="flex justify-center gap-3.5 mb-6">
-            {[0, 1, 2, 3].map(idx => (
-              <div
-                key={idx}
-                className={`w-4 h-4 rounded-full border-2 transition-all duration-150 ${
-                  pinInput.length > idx
-                    ? 'bg-emerald-500 border-emerald-500 scale-125'
-                    : 'border-slate-300 dark:border-slate-700 bg-transparent'
-                }`}
-              />
-            ))}
-          </div>
-
-          {pinError && (
-            <div className="mb-4 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 p-3 rounded-2xl border border-rose-200 dark:border-rose-900/50">
-              {pinError}
-            </div>
-          )}
-
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-3 mb-6 max-w-[280px] mx-auto select-none">
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
-              <button
-                key={num}
-                type="button"
-                disabled={lockoutRemaining > 0}
-                onClick={() => {
-                  if (pinInput.length < 4) {
-                    const next = pinInput + num;
-                    setPinInput(next);
-                    if (next.length === 4) handlePinSubmit(next);
-                  }
-                }}
-                className="h-12 sm:h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 text-base sm:text-lg font-bold font-serif text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 active:bg-emerald-100 dark:active:bg-emerald-950 transition-all disabled:opacity-40"
-              >
-                {num}
-              </button>
-            ))}
-            <button
-              type="button"
-              disabled={lockoutRemaining > 0 || pinInput.length === 0}
-              onClick={() => setPinInput('')}
-              className="h-12 sm:h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all disabled:opacity-40"
-            >
-              {isUrdu ? 'صاف' : 'Clear'}
-            </button>
-            <button
-              type="button"
-              disabled={lockoutRemaining > 0}
-              onClick={() => {
-                if (pinInput.length < 4) {
-                  const next = pinInput + '0';
-                  setPinInput(next);
-                  if (next.length === 4) handlePinSubmit(next);
-                }
-              }}
-              className="h-12 sm:h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 text-base sm:text-lg font-bold font-serif text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all disabled:opacity-40"
-            >
-              0
-            </button>
-            <button
-              type="button"
-              disabled={lockoutRemaining > 0 || pinInput.length === 0}
-              onClick={() => setPinInput(prev => prev.slice(0, -1))}
-              className="h-12 sm:h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all disabled:opacity-40 flex items-center justify-center"
-            >
-              <Delete className="w-5 h-5" />
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (auth.currentUser) {
-                if (window.confirm(isUrdu ? 'گوگل اکاؤنٹ کی تصدیق کے ساتھ پن لاک ختم کریں؟' : 'Reset PIN lock with Google authentication?')) {
-                  saveKhataSettings({ pinHash: '', pinSalt: '', pinFailedAttempts: 0, pinLockoutUntil: 0 });
-                  setIsUnlocked(true);
-                }
-              } else {
-                if (window.confirm(isUrdu ? 'کیا آپ اس ڈیوائس پر پن لاک غیر فعال کرنا چاہتے ہیں؟' : 'Disable Khata PIN lock on this device?')) {
-                  saveKhataSettings({ pinHash: '', pinSalt: '', pinFailedAttempts: 0, pinLockoutUntil: 0 });
-                  setIsUnlocked(true);
-                }
-              }
-            }}
-            className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold hover:underline min-h-[44px] flex items-center justify-center mx-auto"
-          >
-            {isUrdu ? 'پن کوڈ بھول گئے؟ ری سیٹ کریں' : 'Forgot PIN? Reset Lock'}
-          </button>
-        </div>
-      </div>
+      <KhataPinLockScreen
+        lang={lang}
+        pinInput={pinInput}
+        setPinInput={setPinInput}
+        pinError={pinError}
+        lockoutRemaining={lockoutRemaining}
+        expectedPinLength={settings.pinLength}
+        isSignedIn={Boolean(auth.currentUser)}
+        onSubmitPin={handlePinSubmit}
+        onResetPinWithGoogleReauth={handleResetPinWithGoogleReauth}
+        onResetPinAsGuestConfirm={handleResetPinAsGuestConfirm}
+      />
     );
   }
 
@@ -701,7 +675,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
           ) : (
             <div className="space-y-4">
               {groupedAccountEntries.map(group => {
-                const todayStr = new Date().toISOString().split('T')[0];
+                const todayStr = getPakistanDateKey();
                 const isToday = group.date === todayStr;
 
                 return (
@@ -901,7 +875,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
           { id: 'receiving_points', ur: 'ریسیونگ پوائنٹ', en: 'Points', icon: MapPin, activeCls: 'bg-blue-600 text-white border-blue-600' },
           { id: 'daily_expenses', ur: 'روزمرہ خرچ', en: 'Expenses', icon: Wallet, activeCls: 'bg-rose-600 text-white border-rose-600' },
           { id: 'reports', ur: 'رپورٹس', en: 'Reports', icon: BarChart3, activeCls: 'bg-emerald-700 text-white border-emerald-700' }
-        ] as Array<{ id: LedgerSubTab; ur: string; en: string; icon: React.ComponentType<any>; activeCls: string }>).map(mod => {
+        ] as Array<{ id: LedgerSubTab; ur: string; en: string; icon: React.ComponentType<{ className?: string }>; activeCls: string }>).map(mod => {
           const Icon = mod.icon;
           const isActive = activeModule === mod.id;
           return (
@@ -1122,7 +1096,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
         <div className="shrink-0 flex items-center gap-1">
           <select
             value={sortBy}
-            onChange={e => setSortBy(e.target.value as any)}
+            onChange={e => setSortBy(e.target.value as 'recent' | 'name' | 'balance')}
             aria-label={isUrdu ? 'کھاتہ جات کی ترتیب' : 'Sort Accounts'}
             className="min-h-[38px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-1 text-xs text-slate-700 dark:text-slate-300 font-semibold focus:outline-none cursor-pointer"
           >
@@ -1164,7 +1138,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
             const entries = allEntries.filter(e => e.accountId === account.id);
             const { balance } = calculateAccountBalance(account, entries);
             const cleanPhone = formatPhoneForDisplay(account.phone);
-            const today = new Date().toISOString().split('T')[0];
+            const today = getPakistanDateKey();
 
             let dueDateBadge = null;
             if (account.dueDate && balance > 0) {
@@ -1568,9 +1542,18 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
 
   const handleContactPicker = async () => {
     setPhoneError('');
-    if (typeof navigator !== 'undefined' && 'contacts' in navigator && (navigator as any).contacts?.select) {
+    type ContactSelectApi = {
+      contacts?: {
+        select?: (
+          props: string[],
+          opts: { multiple: boolean }
+        ) => Promise<Array<{ name?: string[]; tel?: string[] }>>;
+      };
+    };
+    const navWithContacts = typeof navigator !== 'undefined' ? (navigator as unknown as ContactSelectApi) : undefined;
+    if (navWithContacts?.contacts?.select) {
       try {
-        const contacts = await (navigator as any).contacts.select(['name', 'tel'], { multiple: false });
+        const contacts = await navWithContacts.contacts.select(['name', 'tel'], { multiple: false });
         if (contacts && contacts[0]) {
           const c = contacts[0];
           if (c.name && c.name[0] && (!name.trim() || name.trim() === '')) {
@@ -1893,7 +1876,7 @@ const EntryFormModal: React.FC<EntryFormModalProps> = ({
     initialEntry?.amount ? String(initialEntry.amount) : ''
   );
   const [date, setDate] = useState(
-    initialEntry?.date || new Date().toISOString().split('T')[0]
+    initialEntry?.date || getPakistanDateKey()
   );
   const [note, setNote] = useState(initialEntry?.note || '');
 
@@ -2021,7 +2004,7 @@ const EntryFormModal: React.FC<EntryFormModalProps> = ({
               <div className="flex gap-1">
                 <button
                   type="button"
-                  onClick={() => setDate(new Date().toISOString().split('T')[0])}
+                  onClick={() => setDate(getPakistanDateKey())}
                   className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 p-0.5 cursor-pointer"
                 >
                   {isUrdu ? 'آج' : 'Today'}
@@ -2030,9 +2013,7 @@ const EntryFormModal: React.FC<EntryFormModalProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    const d = new Date();
-                    d.setDate(d.getDate() - 1);
-                    setDate(d.toISOString().split('T')[0]);
+                    setDate(shiftDateKey(getPakistanDateKey(), -1));
                   }}
                   className="text-xs font-extrabold text-slate-500 p-0.5 cursor-pointer"
                 >
@@ -2128,25 +2109,40 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
   const [newPin, setNewPin] = useState('');
   const [pinMessage, setPinMessage] = useState('');
   const [backupMessage, setBackupMessage] = useState('');
+  const [pendingImport, setPendingImport] = useState<{
+    content: string;
+    accountsCount: number;
+    entriesCount: number;
+    cashCount: number;
+    billsCount: number;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
   const handleSaveBusinessName = () => {
-    saveKhataSettings({ businessName: businessName.trim() });
+    const updated = saveKhataSettings({ businessName: businessName.trim() });
+    setSettings(updated);
     onUpdated();
     setBackupMessage(isUrdu ? 'کاروبار کا نام محفوظ ہو گیا' : 'Business name saved');
     setTimeout(() => setBackupMessage(''), 3000);
   };
 
   const handleSetNewPin = async () => {
-    if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
-      setPinMessage(isUrdu ? '4 ہندسوں کا پن کوڈ درج کریں' : 'Enter 4-digit numeric PIN');
+    if (!/^\d{4,8}$/.test(newPin)) {
+      setPinMessage(isUrdu ? '4 سے 8 ہندسوں کا پن کوڈ درج کریں' : 'Enter 4–8 digit numeric PIN');
       return;
     }
     const salt = generatePinSalt();
     const hash = await hashPin(newPin, salt);
-    saveKhataSettings({ pinHash: hash, pinSalt: salt, pinFailedAttempts: 0, pinLockoutUntil: 0 });
+    const updated = saveKhataSettings({
+      pinHash: hash,
+      pinSalt: salt,
+      pinLength: newPin.length,
+      pinFailedAttempts: 0,
+      pinLockoutUntil: 0
+    });
+    setSettings(updated);
     setNewPin('');
     setPinMessage(isUrdu ? 'پن کوڈ محفوظ ہو گیا' : 'PIN saved successfully');
     onUpdated();
@@ -2154,7 +2150,14 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
   };
 
   const handleRemovePin = () => {
-    saveKhataSettings({ pinHash: '', pinSalt: '', pinFailedAttempts: 0, pinLockoutUntil: 0 });
+    const updated = saveKhataSettings({
+      pinHash: '',
+      pinSalt: '',
+      pinLength: undefined,
+      pinFailedAttempts: 0,
+      pinLockoutUntil: 0
+    });
+    setSettings(updated);
     setPinMessage(isUrdu ? 'پن لاک ختم کر دیا گیا' : 'PIN lock removed');
     onUpdated();
     setTimeout(() => setPinMessage(''), 3000);
@@ -2162,7 +2165,7 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
 
   const handleExportBackup = async () => {
     const jsonStr = exportKhataBackup();
-    const fileName = `driverdost-khata-${new Date().toISOString().split('T')[0]}.json`;
+    const fileName = `driverdost-khata-${getPakistanDateKey()}.json`;
     await shareOrDownloadText(jsonStr, fileName, 'application/json', {
       title: fileName,
       dialogTitle: fileName
@@ -2173,35 +2176,55 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = event => {
       const content = event.target?.result as string;
       if (!content) return;
-
-      const mode = window.confirm(
-        isUrdu
-          ? 'کیا آپ موجودہ ریکارڈز میں ضم (Merge) کرنا چاہتے ہیں؟ (OK = Merge, Cancel = Replace)'
-          : 'Merge with existing records? (OK = Merge, Cancel = Replace all)'
-      )
-        ? 'merge'
-        : 'replace';
-
-      const res = importKhataBackup(content, mode);
-      if (res.success) {
-        setBackupMessage(
-          isUrdu
-            ? `کامیابی! ${res.accountsCount} کھاتے اور ${res.entriesCount} ٹرانزیکشنز بحال ہو گئے۔`
-            : `Success! ${res.accountsCount} accounts restored.`
-        );
-        onUpdated();
-      } else {
-        setBackupMessage(isUrdu ? `خرابی: ${res.error}` : `Error: ${res.error}`);
+      try {
+        const parsed = JSON.parse(content) as KhataBackupData;
+        if (
+          !parsed ||
+          parsed.app !== 'Driver Dost' ||
+          parsed.module !== 'khata' ||
+          !Array.isArray(parsed.accounts) ||
+          !Array.isArray(parsed.entries) ||
+          !Array.isArray(parsed.cashEntries)
+        ) {
+          setBackupMessage(isUrdu ? 'غلط بیک اپ فائل فارمیٹ' : 'Invalid Khata backup format');
+          return;
+        }
+        setPendingImport({
+          content,
+          accountsCount: parsed.accounts.length,
+          entriesCount: parsed.entries.length,
+          cashCount: parsed.cashEntries.length,
+          billsCount: Array.isArray(parsed.bills) ? parsed.bills.length : 0
+        });
+      } catch {
+        setBackupMessage(isUrdu ? 'فائل پڑھنے میں خرابی' : 'Failed to parse JSON backup');
       }
-      setTimeout(() => setBackupMessage(''), 4000);
     };
     reader.readAsText(file);
+  };
+
+  const confirmImportMode = (mode: 'merge' | 'replace') => {
+    if (!pendingImport) return;
+    const res = importKhataBackup(pendingImport.content, mode);
+    setPendingImport(null);
+    if (res.success) {
+      setBackupMessage(
+        isUrdu
+          ? `کامیابی! ${res.accountsCount} کھاتے اور ${res.entriesCount} ٹرانزیکشنز بحال ہو گئے۔`
+          : `Success! ${res.accountsCount} accounts restored.`
+      );
+      onUpdated();
+    } else {
+      setBackupMessage(isUrdu ? `خرابی: ${res.error}` : `Error: ${res.error}`);
+    }
+    setTimeout(() => setBackupMessage(''), 4000);
   };
 
   return (
@@ -2267,10 +2290,11 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
           <div className="flex gap-2 mb-2">
             <input
               type="password"
-              maxLength={4}
+              inputMode="numeric"
+              maxLength={8}
               value={newPin}
-              onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
-              placeholder={isUrdu ? '4 ہندسوں کا نیا پن' : '4-digit PIN'}
+              onChange={e => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
+              placeholder={isUrdu ? '4–8 ہندسوں کا نیا پن' : '4–8 digit PIN'}
               className="flex-1 min-h-[44px] px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-center font-mono tracking-widest text-slate-900 dark:text-white focus:outline-none"
             />
             <button
@@ -2327,6 +2351,39 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
               className="hidden"
             />
           </div>
+
+          {pendingImport && (
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-slate-900 border border-amber-300 dark:border-amber-800 space-y-2 text-xs">
+              <p className="font-bold text-amber-950 dark:text-amber-200">
+                {isUrdu
+                  ? `بیک اپ میں ${pendingImport.accountsCount} کھاتے، ${pendingImport.entriesCount} انٹریز، ${pendingImport.cashCount} کیش بک ریکارڈز اور ${pendingImport.billsCount} بلز شامل ہیں۔`
+                  : `Backup verified: ${pendingImport.accountsCount} accounts, ${pendingImport.entriesCount} entries, ${pendingImport.cashCount} cashbook items, ${pendingImport.billsCount} bills.`}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => confirmImportMode('merge')}
+                  className="flex-1 py-2 rounded-lg bg-emerald-600 text-white font-bold cursor-pointer"
+                >
+                  {isUrdu ? 'ضم کریں (Merge)' : 'Merge'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => confirmImportMode('replace')}
+                  className="flex-1 py-2 rounded-lg bg-rose-600 text-white font-bold cursor-pointer"
+                >
+                  {isUrdu ? 'تبدیل کریں (Replace)' : 'Replace All'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPendingImport(null)}
+                  className="px-3 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold cursor-pointer"
+                >
+                  {isUrdu ? 'منسوخ' : 'Cancel'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {backupMessage && (
             <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{backupMessage}</p>

@@ -15,6 +15,7 @@ import { BiltyRecord } from '../types';
 import { getCachedCompanyProfile } from './storage';
 import { BILTY_BRANCHES, getBiltyVerificationUrl } from './biltyHelpers';
 import { biltyWatermarkBgData } from '../assets/dashboardIcons';
+import { buildPublicEmblemCandidates } from './assetResolver';
 
 /**
  * Escapes unsafe characters for HTML injection prevention.
@@ -34,7 +35,14 @@ export function escapeHtml(str: unknown): string {
  */
 export function sanitizeHtml(html: string): string {
   if (typeof window !== 'undefined' && DOMPurify) {
-    const purify = typeof DOMPurify.sanitize === 'function' ? DOMPurify : (DOMPurify as any)(window);
+    const domPurifyModule = DOMPurify as unknown as {
+      sanitize?: (dirty: string) => string;
+      (win: Window): { sanitize: (dirty: string) => string };
+    };
+    const purify =
+      typeof domPurifyModule.sanitize === 'function'
+        ? domPurifyModule
+        : domPurifyModule(window);
     if (purify && typeof purify.sanitize === 'function') {
       return purify.sanitize(html);
     }
@@ -57,18 +65,15 @@ export async function getLogoBase64(): Promise<string> {
   const base = typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL ? import.meta.env.BASE_URL : './';
   const cleanBase = base.endsWith('/') ? base : base + '/';
 
-  const candidates = [
-    `${cleanBase}bilty-official-icon.png`,
-    './bilty-official-icon.png',
-    '/bilty-official-icon.png',
-    `${origin}/bilty-official-icon.png`,
-    `${cleanBase}logo.png`,
-    './logo.png',
-    '/logo.png',
-    `${origin}/logo.png`,
-    `${cleanBase}bilty-icon.png`,
-    './bilty-icon.png'
-  ];
+  const candidates = Array.from(
+    new Set([
+      ...buildPublicEmblemCandidates(cleanBase, origin),
+      `${cleanBase}logo.png`,
+      './logo.png',
+      '/logo.png',
+      `${origin}/logo.png`
+    ])
+  );
 
   for (const url of candidates) {
     try {
@@ -170,9 +175,10 @@ export async function generatePdfFromElement(
   await preloadBiltyPdfAssets().catch(() => ({ logo: '', card: '' }));
 
   // Ensure all fonts are fully loaded and layout has stabilized before capturing
-  if (typeof document !== 'undefined' && (document as any).fonts?.ready) {
+  const fontDoc = typeof document !== 'undefined' ? (document as Document & { fonts?: FontFaceSet }) : null;
+  if (fontDoc?.fonts?.ready) {
     try {
-      await (document as any).fonts.ready;
+      await fontDoc.fonts.ready;
     } catch {
       // ignore font ready error
     }
@@ -201,14 +207,15 @@ export async function generatePdfFromElement(
   let imgDataUrl = '';
 
   // 1. Primary Engine: html-to-image (Uses native SVG foreignObject rasterization - completely immune to oklch / CSS parsing bugs)
+  const resolvedExportBg = element.style?.backgroundColor || '#ffffff';
   try {
     imgDataUrl = await toJpeg(element, {
       quality,
       pixelRatio: scale,
-      backgroundColor: '#ffffff',
+      backgroundColor: resolvedExportBg,
       cacheBust: true,
       style: {
-        backgroundColor: '#ffffff',
+        backgroundColor: resolvedExportBg,
         color: '#0f172a',
         transform: 'none',
         margin: '0',
@@ -352,8 +359,9 @@ export async function shareBiltyPdfOrWhatsApp(options: {
 
       if (onSuccess) onSuccess();
       return;
-    } catch (capErr: any) {
-      if (capErr?.name === 'AbortError' || capErr?.message?.includes('canceled')) {
+    } catch (capErr: unknown) {
+      const capObj = capErr as { name?: string; message?: string };
+      if (capObj?.name === 'AbortError' || capObj?.message?.includes('canceled')) {
         return;
       }
       console.warn('Capacitor native share failed, falling back to Web Share API:', capErr);
@@ -374,8 +382,9 @@ export async function shareBiltyPdfOrWhatsApp(options: {
         if (onSuccess) onSuccess();
         return;
       }
-    } catch (err: any) {
-      if (err?.name === 'AbortError') {
+    } catch (err: unknown) {
+      const errObj = err as { name?: string };
+      if (errObj?.name === 'AbortError') {
         return; // User cancelled share sheet
       }
       console.warn('Web Share API with file failed, falling back to download + WhatsApp link:', err);

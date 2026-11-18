@@ -13,6 +13,13 @@ import {
   MapPin,
   Compass
 } from 'lucide-react';
+import {
+  NEUTRAL_OFFICIAL_EMBLEM_FILE,
+  NEUTRAL_ICON_FILE,
+  LEGACY_OFFICIAL_EMBLEM_FILE,
+  LEGACY_ICON_FILE,
+  buildPublicEmblemCandidates
+} from '../utils/assetResolver';
 
 /**
  * Determine dynamic base URL for static assets (supporting GitHub Pages subpath, Capacitor, and root)
@@ -38,6 +45,16 @@ export function getBaseUrl(): string {
 export function getAssetCandidates(fileName: string): string[] {
   const clean = (fileName || '').replace(/^\.?\//, '');
   const baseUrl = getBaseUrl();
+
+  if ([
+    NEUTRAL_OFFICIAL_EMBLEM_FILE,
+    NEUTRAL_ICON_FILE,
+    LEGACY_OFFICIAL_EMBLEM_FILE,
+    LEGACY_ICON_FILE
+  ].includes(clean)) {
+    const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : '';
+    return buildPublicEmblemCandidates(baseUrl, origin);
+  }
 
   const list: string[] = [
     `${baseUrl}${clean}`,

@@ -1,4 +1,10 @@
 import { getBaseUrl } from '../components/PublicImage';
+import {
+  NEUTRAL_OFFICIAL_EMBLEM_FILE,
+  NEUTRAL_ICON_FILE,
+  LEGACY_OFFICIAL_EMBLEM_FILE,
+  LEGACY_ICON_FILE
+} from '../utils/assetResolver';
 import biltyWatermarkBgImported from './images/bilty_watermark_bg_1794821577675.jpg';
 export { PublicImage, getAssetCandidates, getBaseUrl } from '../components/PublicImage';
 export type { PublicImageProps } from '../components/PublicImage';
@@ -25,9 +31,12 @@ export const echallanIconData: string = './echallan-icon.png';
 export const safarDiaryIconData: string = './safar-diary-icon.png';
 export const quickOpsIconData: string = './quick-ops-icon.png';
 export const mapIconData: string = './map-icon.png';
-export const biltyOfficialIconData: string = './bilty-official-icon.png';
-export const biltyIconData: string = './bilty-official-icon.png';
-export const biltyIconLegacyData: string = './bilty-icon.png';
+export const docOfficialIconData: string = `./${NEUTRAL_OFFICIAL_EMBLEM_FILE}`;
+export const docIconData: string = `./${NEUTRAL_ICON_FILE}`;
+export const biltyOfficialIconData: string = docOfficialIconData;
+export const biltyIconData: string = docOfficialIconData;
+export const biltyIconLegacyData: string = `./${LEGACY_OFFICIAL_EMBLEM_FILE}`;
+export const biltyIconFallbackData: string = `./${LEGACY_ICON_FILE}`;
 export const logoIconData: string = './logo.png';
 export const appIconData: string = './app-icon.png';
 export const splashScreenData: string = './splash.png';

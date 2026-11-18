@@ -1,12 +1,16 @@
-import { BiltyRecord, OfflineAction, UserRole } from '../types';
+import { BiltyRecord, Driver, OfflineAction, Trip, UserRole } from '../types';
+import { OWNER_EMAIL, isOwnerEmail, verifyOwnerOrStaffClaim } from './authUtils';
 
-export const OWNER_EMAIL = 'warraichgoods43@gmail.com';
+export { OWNER_EMAIL };
 
 /**
  * Storage Scope Helper
  * Computes isolated scope identifier for localStorage keys (UID or 'guest').
  */
-export function getStorageScope(currentUser?: { uid?: string | null; email?: string | null } | null, localFallbackUser?: string | null): string {
+export function getStorageScope(
+  currentUser?: { uid?: string | null; email?: string | null } | null,
+  localFallbackUser?: string | null
+): string {
   if (currentUser?.uid) {
     return currentUser.uid;
   }
@@ -23,9 +27,54 @@ export function getScopedStorageKey(baseKey: string, scope: string = 'guest'): s
   return `wg_v2_${scope}_${baseKey}`;
 }
 
+// ---------------------------------------------------------------------------
+// Integer Paisa Precision Helpers (#22)
+// ---------------------------------------------------------------------------
+
 /**
- * Financial Number Validator
- * Ensures numeric value is valid, non-negative, finite, and rounded to proper decimal places.
+ * Converts a rupee number into integer paisa (1 PKR = 100 paisa)
+ * to eliminate IEEE-754 floating-point drift (e.g. 0.1 + 0.2 = 0.30000000000000004).
+ */
+export function toPaisa(amount: number): number {
+  if (!Number.isFinite(amount)) return 0;
+  return Math.round(amount * 100);
+}
+
+/**
+ * Converts integer paisa back to a rounded 2-decimal rupee number.
+ */
+export function fromPaisa(paisa: number): number {
+  if (!Number.isFinite(paisa)) return 0;
+  return Math.round(paisa) / 100;
+}
+
+export function sumRupees(...amounts: number[]): number {
+  let totalPaisa = 0;
+  for (const a of amounts) {
+    totalPaisa += toPaisa(Number.isFinite(a) ? a : 0);
+  }
+  return fromPaisa(totalPaisa);
+}
+
+export function subtractRupees(a: number, b: number): number {
+  return fromPaisa(toPaisa(a) - toPaisa(b));
+}
+
+export function multiplyRupees(qty: number, rate: number): number {
+  if (!Number.isFinite(qty) || !Number.isFinite(rate)) return 0;
+  return fromPaisa(Math.round(qty * toPaisa(rate)));
+}
+
+function safeFiniteNonNeg(val: unknown): number {
+  const num = typeof val === 'number' ? val : Number(val);
+  if (!Number.isFinite(num) || num <= 0) return 0;
+  return num;
+}
+
+/**
+ * Strict Financial Number Validator (#19)
+ * Accepts only valid decimal strings (optional commas) or finite numbers.
+ * Rejects partial parses ('12abc', '1.2.3', '50 000') and non-finite values.
  */
 export function validateFinancialNumber(
   val: unknown,
@@ -40,7 +89,34 @@ export function validateFinancialNumber(
     };
   }
 
-  const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/,/g, ''));
+  let num: number;
+  if (typeof val === 'number') {
+    num = val;
+  } else if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed === '') {
+      return {
+        isValid: Boolean(options.allowZero),
+        value: 0,
+        error: options.allowZero ? undefined : `${fieldName} is required`
+      };
+    }
+    const withoutCommas = trimmed.replace(/,/g, '');
+    if (!/^-?\d+(?:\.\d+)?$/.test(withoutCommas)) {
+      return {
+        isValid: false,
+        value: 0,
+        error: `${fieldName} must be a valid number (درست رقم درج کریں)`
+      };
+    }
+    num = Number(withoutCommas);
+  } else {
+    return {
+      isValid: false,
+      value: 0,
+      error: `${fieldName} must be a valid number (درست رقم درج کریں)`
+    };
+  }
 
   if (!Number.isFinite(num) || Number.isNaN(num)) {
     return {
@@ -76,13 +152,13 @@ export function validateFinancialNumber(
 
   return {
     isValid: true,
-    value: Number(num.toFixed(2))
+    value: fromPaisa(toPaisa(num))
   };
 }
 
 /**
- * Fuel Cost Calculation
- * Computes consumed liters and total fuel cost based on distance, mileage, price per liter, and round-trip status.
+ * Fuel Cost Calculation (#21)
+ * Safely handles NaN, Infinity, or non-positive inputs by returning 0.
  */
 export function calculateFuelCost(
   dist: number,
@@ -90,7 +166,14 @@ export function calculateFuelCost(
   pricePerLiter: number,
   isReturn: boolean = false
 ): { totalDist: number; consumedLiters: number; fuelCost: number } {
-  if (dist <= 0 || mileage <= 0 || pricePerLiter <= 0) {
+  if (
+    !Number.isFinite(dist) ||
+    !Number.isFinite(mileage) ||
+    !Number.isFinite(pricePerLiter) ||
+    dist <= 0 ||
+    mileage <= 0 ||
+    pricePerLiter <= 0
+  ) {
     return { totalDist: 0, consumedLiters: 0, fuelCost: 0 };
   }
 
@@ -98,12 +181,16 @@ export function calculateFuelCost(
   const consumedLiters = Number((totalDist / mileage).toFixed(2));
   const fuelCost = Math.round(consumedLiters * pricePerLiter);
 
-  return { totalDist, consumedLiters, fuelCost };
+  return {
+    totalDist,
+    consumedLiters: Number.isFinite(consumedLiters) ? consumedLiters : 0,
+    fuelCost: Number.isFinite(fuelCost) ? fuelCost : 0
+  };
 }
 
 /**
- * Round Trip Calculation
- * Doubles distance, doubles toll charges (if applicable), and computes complete round-trip expenses.
+ * Round Trip Calculation (#21)
+ * Guards all inputs against NaN / Infinity before doubling distance and tolls.
  */
 export function calculateRoundTrip(
   oneWayDist: number,
@@ -120,11 +207,21 @@ export function calculateRoundTrip(
   totalToll: number;
   totalExpense: number;
 } {
-  const roundTripDist = Math.max(0, oneWayDist) * 2;
-  const consumedLiters = mileage > 0 ? Number((roundTripDist / mileage).toFixed(2)) : 0;
-  const fuelCost = Math.round(consumedLiters * Math.max(0, pricePerLiter));
-  const totalToll = Math.max(0, oneWayToll) * 2;
-  const totalExpense = fuelCost + totalToll + Math.max(0, loading) + Math.max(0, driverKharcha) + Math.max(0, other);
+  const safeDist = safeFiniteNonNeg(oneWayDist);
+  const safeMileage = safeFiniteNonNeg(mileage);
+  const safePrice = safeFiniteNonNeg(pricePerLiter);
+  const safeToll = safeFiniteNonNeg(oneWayToll);
+  const safeLoading = safeFiniteNonNeg(loading);
+  const safeDriver = safeFiniteNonNeg(driverKharcha);
+  const safeOther = safeFiniteNonNeg(other);
+
+  const roundTripDist = safeDist * 2;
+  const consumedLiters = safeMileage > 0 ? Number((roundTripDist / safeMileage).toFixed(2)) : 0;
+  const fuelCost = Math.round(consumedLiters * safePrice);
+  const totalToll = safeToll * 2;
+  const totalExpense = Math.round(
+    sumRupees(fuelCost, totalToll, safeLoading, safeDriver, safeOther)
+  );
 
   return {
     roundTripDist,
@@ -137,8 +234,7 @@ export function calculateRoundTrip(
 
 /**
  * Advance / Total Freight Validation
- * Enforces that advance payment cannot be negative and cannot exceed total freight.
- * Computes the remaining payable balance.
+ * Uses integer paisa math and checks advance <= total.
  */
 export function validateBiltyFreight(
   totalFreight: number,
@@ -154,32 +250,37 @@ export function validateBiltyFreight(
   const advanceVal = validateFinancialNumber(advancePaid, 'Advance Paid', { allowZero: true });
 
   if (!totalVal.isValid) return { isValid: false, total: 0, advance: 0, payable: 0, error: totalVal.error };
-  if (!advanceVal.isValid) return { isValid: false, total: totalVal.value, advance: 0, payable: totalVal.value, error: advanceVal.error };
+  if (!advanceVal.isValid) {
+    return { isValid: false, total: totalVal.value, advance: 0, payable: totalVal.value, error: advanceVal.error };
+  }
 
-  const total = totalVal.value;
-  const advance = advanceVal.value;
+  const totalPaisa = toPaisa(totalVal.value);
+  const advancePaisa = toPaisa(advanceVal.value);
 
-  if (advance > total) {
+  if (advancePaisa > totalPaisa) {
     return {
       isValid: false,
-      total,
-      advance,
+      total: totalVal.value,
+      advance: advanceVal.value,
       payable: 0,
       error: 'Advance payment cannot exceed total freight amount (پیشگی رقم کل کرائے سے زیادہ نہیں ہو سکتی)'
     };
   }
 
-  const payable = Number((total - advance).toFixed(2));
+  const payable = fromPaisa(totalPaisa - advancePaisa);
   return {
     isValid: true,
-    total,
-    advance,
+    total: totalVal.value,
+    advance: advanceVal.value,
     payable
   };
 }
 
 /**
- * Extended Bilty Financials Validation with Surcharges & Commissions
+ * Extended Freight Financials Validation (#20, #22)
+ * - Base freight must be greater than zero.
+ * - Commission cannot exceed subtotal freight (base + labor + detention + cartage).
+ * - Uses integer paisa math for zero rounding drift.
  */
 export function validateBiltyFinancials(params: {
   baseFreight: number;
@@ -202,49 +303,76 @@ export function validateBiltyFinancials(params: {
   };
   error?: string;
 } {
-  const base = validateFinancialNumber(params.baseFreight, 'Base Freight');
+  const emptyBreakdown = { base: 0, labor: 0, detention: 0, cartage: 0, commission: 0 };
+  const base = validateFinancialNumber(params.baseFreight, 'Base Freight', { allowZero: false });
+  if (!base.isValid) {
+    return { isValid: false, totalFreight: 0, advance: 0, payable: 0, breakdown: emptyBreakdown, error: base.error };
+  }
+
   const adv = validateFinancialNumber(params.advance, 'Advance');
-  const labor = validateFinancialNumber(params.laborCharges || 0, 'Labor Charges');
-  const detention = validateFinancialNumber(params.detentionCharges || 0, 'Detention');
-  const cartage = validateFinancialNumber(params.cartageCharges || 0, 'Cartage');
-  const commission = validateFinancialNumber(params.commission || 0, 'Commission');
+  const labor = validateFinancialNumber(params.laborCharges ?? 0, 'Labor Charges');
+  const detention = validateFinancialNumber(params.detentionCharges ?? 0, 'Detention');
+  const cartage = validateFinancialNumber(params.cartageCharges ?? 0, 'Cartage');
+  const commission = validateFinancialNumber(params.commission ?? 0, 'Commission');
 
-  if (!base.isValid) return { isValid: false, totalFreight: 0, advance: 0, payable: 0, breakdown: { base: 0, labor: 0, detention: 0, cartage: 0, commission: 0 }, error: base.error };
-  if (!adv.isValid) return { isValid: false, totalFreight: base.value, advance: 0, payable: base.value, breakdown: { base: base.value, labor: 0, detention: 0, cartage: 0, commission: 0 }, error: adv.error };
+  const breakdown = {
+    base: base.value,
+    labor: labor.value,
+    detention: detention.value,
+    cartage: cartage.value,
+    commission: commission.value
+  };
 
-  const subTotal = base.value + labor.value + detention.value + cartage.value;
-  const totalFreight = Math.max(0, subTotal - commission.value);
+  for (const field of [adv, labor, detention, cartage, commission]) {
+    if (!field.isValid) {
+      return {
+        isValid: false,
+        totalFreight: base.value,
+        advance: 0,
+        payable: base.value,
+        breakdown,
+        error: field.error
+      };
+    }
+  }
 
-  if (adv.value > totalFreight) {
+  const subTotalPaisa =
+    toPaisa(base.value) + toPaisa(labor.value) + toPaisa(detention.value) + toPaisa(cartage.value);
+  const commissionPaisa = toPaisa(commission.value);
+
+  if (commissionPaisa > subTotalPaisa) {
+    return {
+      isValid: false,
+      totalFreight: fromPaisa(subTotalPaisa),
+      advance: adv.value,
+      payable: 0,
+      breakdown,
+      error: 'Commission cannot exceed subtotal freight (کمیشن کل کرائے سے زیادہ نہیں ہو سکتا)'
+    };
+  }
+
+  const totalPaisa = subTotalPaisa - commissionPaisa;
+  const totalFreight = fromPaisa(totalPaisa);
+  const advPaisa = toPaisa(adv.value);
+
+  if (advPaisa > totalPaisa) {
     return {
       isValid: false,
       totalFreight,
       advance: adv.value,
       payable: 0,
-      breakdown: {
-        base: base.value,
-        labor: labor.value,
-        detention: detention.value,
-        cartage: cartage.value,
-        commission: commission.value
-      },
+      breakdown,
       error: 'Advance payment cannot exceed computed total freight'
     };
   }
 
-  const payable = Number((totalFreight - adv.value).toFixed(2));
+  const payable = fromPaisa(totalPaisa - advPaisa);
   return {
     isValid: true,
     totalFreight,
     advance: adv.value,
     payable,
-    breakdown: {
-      base: base.value,
-      labor: labor.value,
-      detention: detention.value,
-      cartage: cartage.value,
-      commission: commission.value
-    }
+    breakdown
   };
 }
 
@@ -276,7 +404,7 @@ export function validateTripFinancials(trip: {
     };
   }
 
-  const computedTotal = Math.round(fc.value + tl.value + ld.value + dr.value + ot.value);
+  const computedTotal = Math.round(sumRupees(fc.value, tl.value, ld.value, dr.value, ot.value));
   const matchesExpected = trip.total !== undefined ? Math.abs(trip.total - computedTotal) <= 1 : true;
 
   return {
@@ -308,11 +436,11 @@ export function validateVehicleAccountFinancials(
   netProfit: number;
   error?: string;
 } {
-  let totalIncome = 0;
+  let totalIncomePaisa = 0;
   for (const inc of incomes) {
     const v = validateFinancialNumber(inc.amount, 'Income Entry');
     if (!v.isValid) return { isValid: false, totalIncome: 0, totalExpense: 0, netProfit: 0, error: v.error };
-    totalIncome += v.value;
+    totalIncomePaisa += toPaisa(v.value);
   }
 
   const dieselV = validateFinancialNumber(expenses.diesel, 'Diesel');
@@ -322,9 +450,18 @@ export function validateVehicleAccountFinancials(
   const chowkV = validateFinancialNumber(expenses.chowkidara, 'Chowkidara');
   const kaamV = validateFinancialNumber(expenses.gariKaam, 'Gari Kaam');
   const commV = validateFinancialNumber(expenses.driverCommission, 'Driver Commission');
-  const customV = validateFinancialNumber(expenses.customTotal || 0, 'Custom Expenses');
+  const customV = validateFinancialNumber(expenses.customTotal ?? 0, 'Custom Expenses');
 
-  if (!dieselV.isValid || !tollV.isValid || !challanV.isValid || !rotiV.isValid || !chowkV.isValid || !kaamV.isValid || !commV.isValid || !customV.isValid) {
+  if (
+    !dieselV.isValid ||
+    !tollV.isValid ||
+    !challanV.isValid ||
+    !rotiV.isValid ||
+    !chowkV.isValid ||
+    !kaamV.isValid ||
+    !commV.isValid ||
+    !customV.isValid
+  ) {
     return {
       isValid: false,
       totalIncome: 0,
@@ -334,14 +471,23 @@ export function validateVehicleAccountFinancials(
     };
   }
 
-  const totalExpense = dieselV.value + tollV.value + challanV.value + rotiV.value + chowkV.value + kaamV.value + commV.value + customV.value;
-  const netProfit = totalIncome - totalExpense;
+  const totalExpensePaisa =
+    toPaisa(dieselV.value) +
+    toPaisa(tollV.value) +
+    toPaisa(challanV.value) +
+    toPaisa(rotiV.value) +
+    toPaisa(chowkV.value) +
+    toPaisa(kaamV.value) +
+    toPaisa(commV.value) +
+    toPaisa(customV.value);
+
+  const netProfitPaisa = totalIncomePaisa - totalExpensePaisa;
 
   return {
     isValid: true,
-    totalIncome: Number(totalIncome.toFixed(2)),
-    totalExpense: Number(totalExpense.toFixed(2)),
-    netProfit: Number(netProfit.toFixed(2))
+    totalIncome: fromPaisa(totalIncomePaisa),
+    totalExpense: fromPaisa(totalExpensePaisa),
+    netProfit: fromPaisa(netProfitPaisa)
   };
 }
 
@@ -349,12 +495,12 @@ export function validateVehicleAccountFinancials(
  * Currency Formatter
  */
 export function formatSafeCurrencyPKR(amount: number): string {
-  if (!Number.isFinite(amount) || isNaN(amount)) return 'PKR 0';
+  if (!Number.isFinite(amount) || Number.isNaN(amount)) return 'PKR 0';
   return 'PKR ' + Math.round(amount).toLocaleString('en-PK');
 }
 
 export function formatPKR(amount: number): string {
-  if (!Number.isFinite(amount) || isNaN(amount)) return 'Rs 0';
+  if (!Number.isFinite(amount) || Number.isNaN(amount)) return 'Rs 0';
   return 'Rs ' + Math.round(amount).toLocaleString('en-US');
 }
 
@@ -373,7 +519,7 @@ export function isBiltyNumberUnique(
 }
 
 /**
- * Role & Access Permissions Check
+ * Role & Access Permissions Check (#28)
  */
 export function checkUserPermissions(params: {
   role?: UserRole | string;
@@ -388,26 +534,21 @@ export function checkUserPermissions(params: {
   canManageFleet: boolean;
   canManageAccess: boolean;
 } {
-  const email = (params.email || '').toLowerCase().trim();
-  const isOwner = email === OWNER_EMAIL.toLowerCase() || params.role === 'owner';
-
-  const allowedUIDs = params.allowedUIDs || [];
-  const allowedEmails = (params.allowedEmails || []).map(e => e.toLowerCase().trim());
-
-  const isUidAllowed = params.uid ? allowedUIDs.includes(params.uid) : false;
-  const isEmailAllowed = email ? allowedEmails.includes(email) : false;
-
-  const canAccessBilty = isOwner || isUidAllowed || isEmailAllowed;
-  const canEditCompanyProfile = isOwner;
-  const canManageAccess = isOwner;
-  const canManageFleet = true;
+  const isOwner = isOwnerEmail(params.email) || params.role === 'owner';
+  const canAccessBilty =
+    isOwner ||
+    verifyOwnerOrStaffClaim(
+      { uid: params.uid, email: params.email, role: params.role },
+      params.allowedUIDs || [],
+      params.allowedEmails || []
+    );
 
   return {
     isOwner,
     canAccessBilty,
-    canEditCompanyProfile,
-    canManageFleet,
-    canManageAccess
+    canEditCompanyProfile: isOwner,
+    canManageFleet: true,
+    canManageAccess: isOwner
   };
 }
 
@@ -479,14 +620,15 @@ export function verifyFirestoreDataIsolation(
     return { isAllowed: false, reason: 'Unauthenticated user cannot access private collections' };
   }
 
-  const userNestedPrefix = `users/${authenticatedUid}/collections/`;
+  const userNestedPrefix = `users/${authenticatedUid}/`;
   const userRootPrefix = `users/${authenticatedUid}`;
   const userDataPrefix = `usersData/${authenticatedUid}`;
 
   if (
     targetDocumentPath.startsWith(userNestedPrefix) ||
     targetDocumentPath === userRootPrefix ||
-    targetDocumentPath === userDataPrefix
+    targetDocumentPath === userDataPrefix ||
+    targetDocumentPath.startsWith(`${userDataPrefix}/`)
   ) {
     return { isAllowed: true, reason: 'Path matches authenticated user isolated boundary' };
   }
@@ -506,22 +648,15 @@ export function verifyFirestoreDataIsolation(
 // Export Privacy Controls & Data Masking Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Mask CNIC for privacy (e.g. 35201-1234567-1 -> 35201-*****67-1)
- */
 export function maskCNIC(cnic?: string): string {
   if (!cnic || typeof cnic !== 'string') return '';
   const trimmed = cnic.trim();
   if (trimmed.length < 9) return '*****';
-  // Keep first 5 and last 3 characters
   const start = trimmed.slice(0, 5);
   const end = trimmed.slice(-3);
   return `${start}-******${end}`;
 }
 
-/**
- * Mask Phone Number for privacy (e.g. 03001234567 -> 0300-***4567)
- */
 export function maskPhoneNumber(phone?: string): string {
   if (!phone || typeof phone !== 'string') return '';
   const clean = phone.trim();
@@ -531,9 +666,6 @@ export function maskPhoneNumber(phone?: string): string {
   return `${prefix}-***${suffix}`;
 }
 
-/**
- * Anonymize Person Name for public reports (e.g. Muhammad Ali -> M. A***)
- */
 export function anonymizePersonName(name?: string): string {
   if (!name || typeof name !== 'string') return '';
   const parts = name.trim().split(/\s+/);
@@ -544,15 +676,23 @@ export function anonymizePersonName(name?: string): string {
   return parts.map((p, idx) => (idx === 0 ? `${p[0]}.` : `${p[0]}***`)).join(' ');
 }
 
-/**
- * Sanitize Bilty record based on selected privacy options
- */
-export function sanitizeBiltyRecord(bilty: any, options: {
+export interface PrivacyExportOptions {
   maskCnic?: boolean;
   maskPhone?: boolean;
   includeFinancials?: boolean;
   anonymizeNames?: boolean;
-} = {}): any {
+}
+
+export type SanitizedBiltyRecord = Omit<Partial<BiltyRecord>, 'total' | 'advance' | 'payable'> & {
+  total?: number | string;
+  advance?: number | string;
+  payable?: number | string;
+};
+
+export function sanitizeBiltyRecord(
+  bilty: Partial<BiltyRecord>,
+  options: PrivacyExportOptions = {}
+): SanitizedBiltyRecord {
   const {
     maskCnic = true,
     maskPhone = false,
@@ -577,14 +717,10 @@ export function sanitizeBiltyRecord(bilty: any, options: {
   };
 }
 
-/**
- * Sanitize Driver record based on selected privacy options
- */
-export function sanitizeDriverRecord(driver: any, options: {
-  maskCnic?: boolean;
-  maskPhone?: boolean;
-  anonymizeNames?: boolean;
-} = {}): any {
+export function sanitizeDriverRecord(
+  driver: Partial<Driver>,
+  options: PrivacyExportOptions = {}
+): Partial<Driver> {
   const { maskCnic = true, maskPhone = false, anonymizeNames = false } = options;
   return {
     ...driver,
@@ -595,12 +731,24 @@ export function sanitizeDriverRecord(driver: any, options: {
   };
 }
 
-/**
- * Sanitize Trip record based on selected privacy options
- */
-export function sanitizeTripRecord(trip: any, options: {
-  includeFinancials?: boolean;
-} = {}): any {
+export type SanitizedTripRecord = Omit<
+  Partial<Trip>,
+  'fuelCost' | 'toll' | 'loading' | 'driver' | 'other' | 'total' | 'totalIncome' | 'netProfit'
+> & {
+  fuelCost?: number | string;
+  toll?: number | string;
+  loading?: number | string;
+  driver?: number | string;
+  other?: number | string;
+  total?: number | string;
+  totalIncome?: number | string;
+  netProfit?: number | string;
+};
+
+export function sanitizeTripRecord(
+  trip: Partial<Trip>,
+  options: PrivacyExportOptions = {}
+): SanitizedTripRecord {
   const { includeFinancials = true } = options;
   return {
     ...trip,

@@ -25,7 +25,20 @@ import {
   VehicleExpenseEntry,
   VehicleIncomeEntry
 } from '../types';
-import { safeStorage, getStoredBilties, getScopedItem, setScopedItem } from './storage';
+import {
+  getScopedItem,
+  getStoredBilties,
+  setScopedItem
+} from './storage';
+import { getActiveUserScope } from './storageCore';
+import {
+  getTombstones,
+  mergeTombstoneMaps,
+  saveTombstones,
+  TombstoneMap
+} from './storageSync';
+import { fromPaisa, toPaisa } from './calculator';
+import { getPakistanDateKey } from './dateUtils';
 import { auth, db } from './firebase';
 import {
   doc,
@@ -61,25 +74,23 @@ export const KHATA_STORAGE_KEYS = {
 
 // ----------------- PARSING & HELPER UTILITIES -----------------
 
+/**
+ * Strict scoped reader (#4): v2->v3 migration in storageCore runs once on scope switch;
+ * never falls back to unscoped keys afterward so deleted/emptied stores cannot refill.
+ */
 function getParsed<T>(key: string, fallback: T): T {
   try {
     const raw = getScopedItem(key);
-    if (!raw) {
-      // Check legacy unscoped key for migration if scoped key does not exist yet
-      const legacyRaw = safeStorage.getItem(key);
-      if (legacyRaw !== null) {
-        setScopedItem(key, legacyRaw);
-        return JSON.parse(legacyRaw);
-      }
+    if (raw === null || raw === '') {
       return fallback;
     }
-    return JSON.parse(raw);
+    return JSON.parse(raw) as T;
   } catch {
     return fallback;
   }
 }
 
-function setJson(key: string, value: any): void {
+function setJson(key: string, value: unknown): void {
   try {
     setScopedItem(key, JSON.stringify(value));
   } catch (err) {
@@ -262,12 +273,8 @@ export function evaluateArithmetic(expr: string): number | null {
 // ----------------- BALANCE CALCULATION -----------------
 
 /**
- * Balance rule:
+ * Balance rule (integer paisa precision #22):
  * balance = opening (+ if 'get', - if 'give') + sum(gave) - sum(got)
- * 
- * Positive = "You will get / آپ کو ملنا ہے" (Green/Emerald)
- * Negative = "You will give / آپ کو دینا ہے" (Red/Rose)
- * Zero = "Settled / بیباق"
  */
 export function calculateAccountBalance(
   account: Pick<LedgerAccount, 'openingAmount' | 'openingDirection'>,
@@ -278,32 +285,33 @@ export function calculateAccountBalance(
   totalGot: number;
   status: 'get' | 'give' | 'settled';
 } {
-  const opening = (account.openingDirection === 'get' ? 1 : -1) * (Number(account.openingAmount) || 0);
+  const openingPaisa =
+    (account.openingDirection === 'get' ? 1 : -1) * toPaisa(Number(account.openingAmount) || 0);
 
-  let totalGave = 0;
-  let totalGot = 0;
+  let totalGavePaisa = 0;
+  let totalGotPaisa = 0;
 
   for (const entry of entries) {
-    const amt = Number(entry.amount) || 0;
+    const amtPaisa = toPaisa(Number(entry.amount) || 0);
     if (entry.type === 'gave') {
-      totalGave += amt;
+      totalGavePaisa += amtPaisa;
     } else if (entry.type === 'got') {
-      totalGot += amt;
+      totalGotPaisa += amtPaisa;
     }
   }
 
-  const balance = Math.round((opening + totalGave - totalGot) * 100) / 100;
+  const balance = fromPaisa(openingPaisa + totalGavePaisa - totalGotPaisa);
 
   return {
     balance,
-    totalGave,
-    totalGot,
+    totalGave: fromPaisa(totalGavePaisa),
+    totalGot: fromPaisa(totalGotPaisa),
     status: balance > 0 ? 'get' : balance < 0 ? 'give' : 'settled'
   };
 }
 
 /**
- * Calculates totals for a list of accounts
+ * Calculates totals for a list of accounts using integer paisa & PKT dates (#15, #22)
  */
 export function calculateAccountsSummary(accounts: LedgerAccount[], allEntries: LedgerEntry[] = []): {
   totalWillGet: number;
@@ -312,10 +320,10 @@ export function calculateAccountsSummary(accounts: LedgerAccount[], allEntries: 
   accountsCount: number;
   overdueCount: number;
 } {
-  let totalWillGet = 0;
-  let totalWillGive = 0;
+  let totalWillGetPaisa = 0;
+  let totalWillGivePaisa = 0;
   let overdueCount = 0;
-  const today = new Date().toISOString().split('T')[0];
+  const today = getPakistanDateKey();
 
   const entriesByAccount = new Map<string, LedgerEntry[]>();
   for (const entry of allEntries) {
@@ -327,28 +335,36 @@ export function calculateAccountsSummary(accounts: LedgerAccount[], allEntries: 
   for (const acc of accounts) {
     const entries = entriesByAccount.get(acc.id) || [];
     const { balance } = calculateAccountBalance(acc, entries);
+    const balPaisa = toPaisa(balance);
 
-    if (balance > 0) {
-      totalWillGet += balance;
-    } else if (balance < 0) {
-      totalWillGive += Math.abs(balance);
+    if (balPaisa > 0) {
+      totalWillGetPaisa += balPaisa;
+    } else if (balPaisa < 0) {
+      totalWillGivePaisa += Math.abs(balPaisa);
     }
 
-    if (acc.dueDate && acc.dueDate < today && balance > 0) {
+    if (acc.dueDate && acc.dueDate < today && balPaisa > 0) {
       overdueCount++;
     }
   }
 
+  const totalWillGet = fromPaisa(totalWillGetPaisa);
+  const totalWillGive = fromPaisa(totalWillGivePaisa);
+  const netBalance = fromPaisa(totalWillGetPaisa - totalWillGivePaisa);
+
   return {
-    totalWillGet: Math.round(totalWillGet),
-    totalWillGive: Math.round(totalWillGive),
-    netBalance: Math.round(totalWillGet - totalWillGive),
+    totalWillGet,
+    totalWillGive,
+    netBalance,
     accountsCount: accounts.length,
     overdueCount
   };
 }
 
-// ----------------- PIN LOCK & SECURITY UTILITIES -----------------
+// ----------------- PIN LOCK & SECURITY UTILITIES (#27 PBKDF2-HMAC-SHA256) -----------------
+
+export const PIN_PBKDF2_PREFIX = 'v2_pbkdf2:';
+const PIN_PBKDF2_ITERATIONS = 100_000;
 
 export function generatePinSalt(): string {
   if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
@@ -359,16 +375,158 @@ export function generatePinSalt(): string {
   return `${Date.now()}_${Math.random().toString(36).substring(2)}`;
 }
 
-/**
- * SHA-256 hash of (salt + pin) using Web Crypto API with fallback
- */
-export async function hashPin(pin: string, salt: string): Promise<string> {
+// Pure-JS SHA-256 + HMAC-SHA-256 + PBKDF2 fallback producing identical output to Web Crypto
+const SHA256_K = new Uint32Array([
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+]);
+
+function sha256BytesPure(msg: Uint8Array): Uint8Array {
+  const bitLen = msg.length * 8;
+  const paddedLen = Math.ceil((msg.length + 9) / 64) * 64;
+  const padded = new Uint8Array(paddedLen);
+  padded.set(msg);
+  padded[msg.length] = 0x80;
+  const view = new DataView(padded.buffer);
+  view.setUint32(paddedLen - 8, Math.floor(bitLen / 0x100000000), false);
+  view.setUint32(paddedLen - 4, bitLen >>> 0, false);
+
+  let h0 = 0x6a09e667;
+  let h1 = 0xbb67ae85;
+  let h2 = 0x3c6ef372;
+  let h3 = 0xa54ff53a;
+  let h4 = 0x510e527f;
+  let h5 = 0x9b05688c;
+  let h6 = 0x1f83d9ab;
+  let h7 = 0x5be0cd19;
+
+  const w = new Uint32Array(64);
+  const rotr = (x: number, n: number) => (x >>> n) | (x << (32 - n));
+
+  for (let offset = 0; offset < paddedLen; offset += 64) {
+    for (let i = 0; i < 16; i++) {
+      w[i] = view.getUint32(offset + i * 4, false);
+    }
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+      const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+    }
+
+    let a = h0;
+    let b = h1;
+    let c = h2;
+    let d = h3;
+    let e = h4;
+    let f = h5;
+    let g = h6;
+    let h = h7;
+
+    for (let i = 0; i < 64; i++) {
+      const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+      const ch = (e & f) ^ (~e & g);
+      const temp1 = (h + S1 + ch + SHA256_K[i] + w[i]) >>> 0;
+      const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const temp2 = (S0 + maj) >>> 0;
+
+      h = g;
+      g = f;
+      f = e;
+      e = (d + temp1) >>> 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (temp1 + temp2) >>> 0;
+    }
+
+    h0 = (h0 + a) >>> 0;
+    h1 = (h1 + b) >>> 0;
+    h2 = (h2 + c) >>> 0;
+    h3 = (h3 + d) >>> 0;
+    h4 = (h4 + e) >>> 0;
+    h5 = (h5 + f) >>> 0;
+    h6 = (h6 + g) >>> 0;
+    h7 = (h7 + h) >>> 0;
+  }
+
+  const out = new Uint8Array(32);
+  const outView = new DataView(out.buffer);
+  outView.setUint32(0, h0, false);
+  outView.setUint32(4, h1, false);
+  outView.setUint32(8, h2, false);
+  outView.setUint32(12, h3, false);
+  outView.setUint32(16, h4, false);
+  outView.setUint32(20, h5, false);
+  outView.setUint32(24, h6, false);
+  outView.setUint32(28, h7, false);
+  return out;
+}
+
+function hmacSha256Pure(key: Uint8Array, data: Uint8Array): Uint8Array {
+  const blockSize = 64;
+  const normKey = key.length > blockSize ? sha256BytesPure(key) : key;
+  const ipad = new Uint8Array(blockSize + data.length);
+  const opad = new Uint8Array(blockSize + 32);
+
+  for (let i = 0; i < blockSize; i++) {
+    const kb = i < normKey.length ? normKey[i] : 0;
+    ipad[i] = kb ^ 0x36;
+    opad[i] = kb ^ 0x5c;
+  }
+  ipad.set(data, blockSize);
+  const inner = sha256BytesPure(ipad);
+  opad.set(inner, blockSize);
+  return sha256BytesPure(opad);
+}
+
+function pbkdf2Sha256HexPure(password: string, saltStr: string, iterations: number): string {
+  const enc = new TextEncoder();
+  const pwd = enc.encode(password);
+  const saltBytes = enc.encode(saltStr);
+  const block1Input = new Uint8Array(saltBytes.length + 4);
+  block1Input.set(saltBytes);
+  block1Input[saltBytes.length] = 0;
+  block1Input[saltBytes.length + 1] = 0;
+  block1Input[saltBytes.length + 2] = 0;
+  block1Input[saltBytes.length + 3] = 1;
+
+  let u = hmacSha256Pure(pwd, block1Input);
+  const dk = new Uint8Array(u);
+  for (let i = 1; i < iterations; i++) {
+    u = hmacSha256Pure(pwd, u);
+    for (let j = 0; j < 32; j++) {
+      dk[j] ^= u[j];
+    }
+  }
+  return Array.from(dk, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function constantTimeHexEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+async function computeLegacySha256Pin(pin: string, salt: string): Promise<string> {
   const data = new TextEncoder().encode(`${salt}__dd_pin__${pin}`);
   if (typeof crypto !== 'undefined' && crypto.subtle && crypto.subtle.digest) {
     const buffer = await crypto.subtle.digest('SHA-256', data);
     return Array.from(new Uint8Array(buffer), b => b.toString(16).padStart(2, '0')).join('');
   }
-  // Basic deterministic fallback for rare restricted environments
+  return Array.from(sha256BytesPure(data), b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function computeLegacyDJBHash(pin: string, salt: string): string {
   let hash = 0;
   const str = `${salt}:${pin}`;
   for (let i = 0; i < str.length; i++) {
@@ -379,19 +537,75 @@ export async function hashPin(pin: string, salt: string): Promise<string> {
   return `hash_${Math.abs(hash)}`;
 }
 
+/**
+ * PBKDF2-HMAC-SHA256 (100,000 iterations) PIN key derivation (#27).
+ * Uses Web Crypto `deriveBits` when available, with an identical pure-JS HMAC-SHA-256 fallback.
+ */
+export async function hashPin(pin: string, salt: string): Promise<string> {
+  const pepperedSalt = `${salt}__dd_pin_v2__`;
+  if (
+    typeof crypto !== 'undefined' &&
+    crypto.subtle &&
+    typeof crypto.subtle.importKey === 'function' &&
+    typeof crypto.subtle.deriveBits === 'function'
+  ) {
+    try {
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        enc.encode(pin),
+        'PBKDF2',
+        false,
+        ['deriveBits']
+      );
+      const derivedBits = await crypto.subtle.deriveBits(
+        {
+          name: 'PBKDF2',
+          salt: enc.encode(pepperedSalt),
+          iterations: PIN_PBKDF2_ITERATIONS,
+          hash: 'SHA-256'
+        },
+        keyMaterial,
+        256
+      );
+      const hex = Array.from(new Uint8Array(derivedBits), b => b.toString(16).padStart(2, '0')).join('');
+      return `${PIN_PBKDF2_PREFIX}${hex}`;
+    } catch {
+      // Fall through to pure-JS PBKDF2 producing exact same format
+    }
+  }
+  const pureHex = pbkdf2Sha256HexPure(pin, pepperedSalt, PIN_PBKDF2_ITERATIONS);
+  return `${PIN_PBKDF2_PREFIX}${pureHex}`;
+}
+
+export function needsPinHashUpgrade(storedHash?: string | null): boolean {
+  if (!storedHash) return false;
+  return !storedHash.startsWith(PIN_PBKDF2_PREFIX);
+}
+
+/**
+ * Verifies PIN against v2 PBKDF2 hashes AND legacy SHA-256 / DJB hashes transparently (#27).
+ */
 export async function verifyPin(pin: string, salt: string, expectedHash: string): Promise<boolean> {
-  const computed = await hashPin(pin, salt);
-  return computed === expectedHash;
+  if (!expectedHash) return false;
+
+  if (expectedHash.startsWith(PIN_PBKDF2_PREFIX)) {
+    const computed = await hashPin(pin, salt);
+    return constantTimeHexEqual(computed, expectedHash);
+  }
+
+  if (expectedHash.startsWith('hash_')) {
+    return constantTimeHexEqual(computeLegacyDJBHash(pin, salt), expectedHash);
+  }
+
+  // Legacy SHA-256 64-char hex hash
+  const legacySha = await computeLegacySha256Pin(pin, salt);
+  return constantTimeHexEqual(legacySha, expectedHash);
 }
 
 /**
  * Exponential lockout calculation:
- * 0 to 4 attempts: 0s
- * 5 attempts: 30s
- * 6 attempts: 60s
- * 7 attempts: 120s
- * 8 attempts: 240s
- * capped at 3600s
+ * 0 to 4 attempts: 0s, 5: 30s, 6: 60s, 7: 120s, 8: 240s (capped at 3600s)
  */
 export function calculateLockoutDuration(failedAttempts: number): number {
   if (failedAttempts < 5) return 0;
@@ -405,17 +619,72 @@ export function isPinLocked(lockoutUntil?: number): boolean {
   return Date.now() < lockoutUntil;
 }
 
-// ----------------- OFFLINE PER-DOCUMENT SYNC QUEUE -----------------
+// ----------------- KHATA TOMBSTONES & OFFLINE PER-DOCUMENT SYNC QUEUE (#1, #9, #10) -----------------
 
 export interface KhataDocQueueItem {
   id: string;
   action: 'upsert' | 'delete';
-  collectionPath: string; // e.g. 'ledgerAccounts' | 'entries' | 'cashbookEntries' | 'khataSettings'
+  collectionPath: string;
   docId: string;
-  subPath?: string; // e.g. accountId for nested entries
-  data?: any;
+  subPath?: string;
+  data?: Record<string, unknown>;
   timestamp: string;
   retryCount: number;
+  status?: 'pending' | 'retrying' | 'blocked';
+  lastError?: string;
+  nextRetryAt?: number;
+}
+
+function isPermissionDeniedSyncError(err: unknown): boolean {
+  const code = typeof err === 'object' && err !== null && 'code' in err ? String((err as { code?: unknown }).code) : '';
+  const msg = err instanceof Error ? err.message : String(err || '');
+  return (
+    code === 'permission-denied' ||
+    msg.includes('Missing or insufficient permissions') ||
+    msg.includes('permission-denied')
+  );
+}
+
+function computeKhataBackoffMs(retryCount: number): number {
+  const exp = Math.min(Math.max(retryCount, 1), 8);
+  return Math.min(2000 * Math.pow(2, exp - 1), 5 * 60 * 1000);
+}
+
+export function recordKhataDeletionTombstone(
+  collectionPath: string,
+  docId: string,
+  timestampIso: string = new Date().toISOString()
+): void {
+  const scope = getActiveUserScope();
+  const key = `khata_${collectionPath}`;
+  const map = getTombstones(key, scope);
+  map[docId] = timestampIso;
+  saveTombstones(key, map, scope);
+}
+
+export function clearKhataDeletionTombstone(collectionPath: string, docId: string): void {
+  const scope = getActiveUserScope();
+  const key = `khata_${collectionPath}`;
+  const map = getTombstones(key, scope);
+  if (map[docId]) {
+    delete map[docId];
+    saveTombstones(key, map, scope);
+  }
+}
+
+export function isKhataDocTombstoned(
+  collectionPath: string,
+  docId: string,
+  cloudUpdatedAt?: string
+): boolean {
+  const scope = getActiveUserScope();
+  const map: TombstoneMap = getTombstones(`khata_${collectionPath}`, scope);
+  const deletedAt = map[docId];
+  if (!deletedAt) return false;
+  const delMs = new Date(deletedAt).getTime();
+  if (Number.isNaN(delMs)) return false;
+  const entityMs = cloudUpdatedAt ? new Date(cloudUpdatedAt).getTime() : 0;
+  return delMs >= (Number.isNaN(entityMs) ? 0 : entityMs);
 }
 
 function getStoredKhataQueue(): KhataDocQueueItem[] {
@@ -426,21 +695,38 @@ function saveStoredKhataQueue(queue: KhataDocQueueItem[]): void {
   setJson(KHATA_STORAGE_KEYS.OFFLINE_QUEUE, queue);
 }
 
-export function enqueueKhataDocSync(item: Omit<KhataDocQueueItem, 'id' | 'timestamp' | 'retryCount'>): void {
+export function getKhataQueueStats(): {
+  pendingCount: number;
+  blockedCount: number;
+  items: KhataDocQueueItem[];
+} {
+  const items = getStoredKhataQueue();
+  const blockedCount = items.filter(i => i.status === 'blocked').length;
+  return {
+    pendingCount: items.length - blockedCount,
+    blockedCount,
+    items
+  };
+}
+
+export function enqueueKhataDocSync(
+  item: Omit<KhataDocQueueItem, 'id' | 'timestamp' | 'retryCount'>
+): void {
   try {
     const queue = getStoredKhataQueue();
     const newItem: KhataDocQueueItem = {
       ...item,
       id: `khata_doc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       timestamp: new Date().toISOString(),
-      retryCount: 0
+      retryCount: 0,
+      status: 'pending'
     };
 
-    // Filter duplicate pending syncs for same doc
     const filtered = queue.filter(
       q => !(q.collectionPath === item.collectionPath && q.docId === item.docId && q.subPath === item.subPath)
     );
-    saveStoredKhataQueue([newItem, ...filtered].slice(0, 100));
+    // Do NOT silently drop overflowed offline mutations (#9)
+    saveStoredKhataQueue([newItem, ...filtered]);
   } catch (err) {
     console.warn('[KhataQueue] Failed to enqueue:', err);
   }
@@ -456,145 +742,203 @@ const KHATA_FLAT_COLLECTIONS = [
 ] as const;
 
 /**
- * Processes queued per-document sync actions when online
+ * Processes queued per-document sync actions when online (#9, #10):
+ * - Preserves all failed items with exponential backoff (never drops after 5 retries).
+ * - Separates permission-denied failures as `blocked` rather than counting them as processed.
  */
-export async function processKhataDocQueue(): Promise<{ processed: number; remaining: number }> {
+export async function processKhataDocQueue(): Promise<{
+  processed: number;
+  remaining: number;
+  blocked: number;
+}> {
   const queue = getStoredKhataQueue();
-  if (queue.length === 0) return { processed: 0, remaining: 0 };
+  if (queue.length === 0) return { processed: 0, remaining: 0, blocked: 0 };
 
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
-  if (!isOnline) return { processed: 0, remaining: queue.length };
+  if (!isOnline) {
+    const blockedCount = queue.filter(i => i.status === 'blocked').length;
+    return { processed: 0, remaining: queue.length, blocked: blockedCount };
+  }
 
   const user = auth.currentUser;
-  if (!user || !db) return { processed: 0, remaining: queue.length };
+  if (!user || !db) {
+    const blockedCount = queue.filter(i => i.status === 'blocked').length;
+    return { processed: 0, remaining: queue.length, blocked: blockedCount };
+  }
 
   const remaining: KhataDocQueueItem[] = [];
   let processed = 0;
+  let blocked = 0;
+  const now = Date.now();
 
   for (const item of queue) {
+    if (item.nextRetryAt && item.nextRetryAt > now && item.status !== 'blocked') {
+      remaining.push(item);
+      continue;
+    }
+
     try {
       if (item.collectionPath === 'ledgerAccounts') {
         const ref = doc(db, 'users', user.uid, 'ledgerAccounts', item.docId);
         if (item.action === 'upsert') {
-          await setDoc(ref, item.data, { merge: true });
+          await setDoc(ref, item.data || {}, { merge: true });
         } else {
           await deleteDoc(ref);
         }
       } else if (item.collectionPath === 'entries' && item.subPath) {
         const ref = doc(db, 'users', user.uid, 'ledgerAccounts', item.subPath, 'entries', item.docId);
         if (item.action === 'upsert') {
-          await setDoc(ref, item.data, { merge: true });
+          await setDoc(ref, item.data || {}, { merge: true });
         } else {
           await deleteDoc(ref);
         }
       } else if (item.collectionPath === 'cashbookEntries') {
         const ref = doc(db, 'users', user.uid, 'cashbookEntries', item.docId);
         if (item.action === 'upsert') {
-          await setDoc(ref, item.data, { merge: true });
+          await setDoc(ref, item.data || {}, { merge: true });
         } else {
           await deleteDoc(ref);
         }
       } else if ((KHATA_FLAT_COLLECTIONS as readonly string[]).includes(item.collectionPath)) {
         const ref = doc(db, 'users', user.uid, item.collectionPath, item.docId);
         if (item.action === 'upsert') {
-          await setDoc(ref, item.data, { merge: true });
+          await setDoc(ref, item.data || {}, { merge: true });
         } else {
           await deleteDoc(ref);
         }
       } else if (item.collectionPath === 'khataSettings') {
         const ref = doc(db, 'users', user.uid, 'khataSettings', item.docId);
-        await setDoc(ref, item.data, { merge: true });
+        await setDoc(ref, item.data || {}, { merge: true });
       }
       processed++;
-    } catch {
-      item.retryCount++;
-      if (item.retryCount < 5) {
-        remaining.push(item);
-      }
+    } catch (err: unknown) {
+      const nextRetryCount = (item.retryCount || 0) + 1;
+      const permDenied = isPermissionDeniedSyncError(err);
+      if (permDenied) blocked++;
+      remaining.push({
+        ...item,
+        retryCount: nextRetryCount,
+        status: permDenied ? 'blocked' : 'retrying',
+        lastError: err instanceof Error ? err.message : String(err || 'Sync failed'),
+        nextRetryAt: permDenied ? undefined : now + computeKhataBackoffMs(nextRetryCount)
+      });
     }
   }
 
   saveStoredKhataQueue(remaining);
-  return { processed, remaining: remaining.length };
+  return { processed, remaining: remaining.length, blocked };
 }
 
 // ----------------- FIRESTORE PER-DOCUMENT MIRRORING -----------------
 
 async function mirrorAccountToFirestore(account: LedgerAccount, action: 'upsert' | 'delete'): Promise<void> {
   const user = auth.currentUser;
+  const payload = account as unknown as Record<string, unknown>;
   if (!user || !db) {
-    if (user) enqueueKhataDocSync({ action, collectionPath: 'ledgerAccounts', docId: account.id, data: account });
+    if (user) enqueueKhataDocSync({ action, collectionPath: 'ledgerAccounts', docId: account.id, data: payload });
     return;
   }
 
   try {
     const ref = doc(db, 'users', user.uid, 'ledgerAccounts', account.id);
     if (action === 'upsert') {
-      await setDoc(ref, account, { merge: true });
+      await setDoc(ref, payload, { merge: true });
     } else {
       await deleteDoc(ref);
     }
-  } catch {
-    enqueueKhataDocSync({ action, collectionPath: 'ledgerAccounts', docId: account.id, data: account });
+  } catch (err: unknown) {
+    enqueueKhataDocSync({
+      action,
+      collectionPath: 'ledgerAccounts',
+      docId: account.id,
+      data: payload,
+      status: isPermissionDeniedSyncError(err) ? 'blocked' : 'pending',
+      lastError: err instanceof Error ? err.message : undefined
+    });
   }
 }
 
 async function mirrorEntryToFirestore(entry: LedgerEntry, action: 'upsert' | 'delete'): Promise<void> {
   const user = auth.currentUser;
+  const payload = entry as unknown as Record<string, unknown>;
   if (!user || !db) {
-    if (user) enqueueKhataDocSync({ action, collectionPath: 'entries', docId: entry.id, subPath: entry.accountId, data: entry });
+    if (user) enqueueKhataDocSync({ action, collectionPath: 'entries', docId: entry.id, subPath: entry.accountId, data: payload });
     return;
   }
 
   try {
     const ref = doc(db, 'users', user.uid, 'ledgerAccounts', entry.accountId, 'entries', entry.id);
     if (action === 'upsert') {
-      await setDoc(ref, entry, { merge: true });
+      await setDoc(ref, payload, { merge: true });
     } else {
       await deleteDoc(ref);
     }
-  } catch {
-    enqueueKhataDocSync({ action, collectionPath: 'entries', docId: entry.id, subPath: entry.accountId, data: entry });
+  } catch (err: unknown) {
+    enqueueKhataDocSync({
+      action,
+      collectionPath: 'entries',
+      docId: entry.id,
+      subPath: entry.accountId,
+      data: payload,
+      status: isPermissionDeniedSyncError(err) ? 'blocked' : 'pending',
+      lastError: err instanceof Error ? err.message : undefined
+    });
   }
 }
 
 async function mirrorCashEntryToFirestore(entry: CashEntry, action: 'upsert' | 'delete'): Promise<void> {
   const user = auth.currentUser;
+  const payload = entry as unknown as Record<string, unknown>;
   if (!user || !db) {
-    if (user) enqueueKhataDocSync({ action, collectionPath: 'cashbookEntries', docId: entry.id, data: entry });
+    if (user) enqueueKhataDocSync({ action, collectionPath: 'cashbookEntries', docId: entry.id, data: payload });
     return;
   }
 
   try {
     const ref = doc(db, 'users', user.uid, 'cashbookEntries', entry.id);
     if (action === 'upsert') {
-      await setDoc(ref, entry, { merge: true });
+      await setDoc(ref, payload, { merge: true });
     } else {
       await deleteDoc(ref);
     }
-  } catch {
-    enqueueKhataDocSync({ action, collectionPath: 'cashbookEntries', docId: entry.id, data: entry });
+  } catch (err: unknown) {
+    enqueueKhataDocSync({
+      action,
+      collectionPath: 'cashbookEntries',
+      docId: entry.id,
+      data: payload,
+      status: isPermissionDeniedSyncError(err) ? 'blocked' : 'pending',
+      lastError: err instanceof Error ? err.message : undefined
+    });
   }
 }
 
 async function mirrorSettingsToFirestore(settings: KhataSettings): Promise<void> {
   const user = auth.currentUser;
+  const payload = settings as unknown as Record<string, unknown>;
   if (!user || !db) {
-    if (user) enqueueKhataDocSync({ action: 'upsert', collectionPath: 'khataSettings', docId: 'config', data: settings });
+    if (user) enqueueKhataDocSync({ action: 'upsert', collectionPath: 'khataSettings', docId: 'config', data: payload });
     return;
   }
 
   try {
     const ref = doc(db, 'users', user.uid, 'khataSettings', 'config');
-    await setDoc(ref, settings, { merge: true });
-  } catch {
-    enqueueKhataDocSync({ action: 'upsert', collectionPath: 'khataSettings', docId: 'config', data: settings });
+    await setDoc(ref, payload, { merge: true });
+  } catch (err: unknown) {
+    enqueueKhataDocSync({
+      action: 'upsert',
+      collectionPath: 'khataSettings',
+      docId: 'config',
+      data: payload,
+      status: isPermissionDeniedSyncError(err) ? 'blocked' : 'pending',
+      lastError: err instanceof Error ? err.message : undefined
+    });
   }
 }
 
 export async function mirrorFlatKhataDocToFirestore(
   collectionPath: (typeof KHATA_FLAT_COLLECTIONS)[number],
-  docData: { id: string; [key: string]: any },
+  docData: { id: string; [key: string]: unknown },
   action: 'upsert' | 'delete'
 ): Promise<void> {
   const user = auth.currentUser;
@@ -610,8 +954,15 @@ export async function mirrorFlatKhataDocToFirestore(
     } else {
       await deleteDoc(ref);
     }
-  } catch {
-    enqueueKhataDocSync({ action, collectionPath, docId: docData.id, data: docData });
+  } catch (err: unknown) {
+    enqueueKhataDocSync({
+      action,
+      collectionPath,
+      docId: docData.id,
+      data: docData,
+      status: isPermissionDeniedSyncError(err) ? 'blocked' : 'pending',
+      lastError: err instanceof Error ? err.message : undefined
+    });
   }
 }
 
@@ -664,6 +1015,7 @@ export async function fetchKhataFromFirestore(): Promise<void> {
       const mergedMap = new Map<string, LedgerAccount>();
       for (const a of localAccounts) mergedMap.set(a.id, a);
       for (const ca of cloudAccounts) {
+        if (isKhataDocTombstoned('ledgerAccounts', ca.id, ca.updatedAt)) continue;
         const existing = mergedMap.get(ca.id);
         if (!existing || new Date(ca.updatedAt).getTime() >= new Date(existing.updatedAt).getTime()) {
           mergedMap.set(ca.id, ca);
@@ -677,6 +1029,7 @@ export async function fetchKhataFromFirestore(): Promise<void> {
       const mergedEntryMap = new Map<string, LedgerEntry>();
       for (const e of localEntries) mergedEntryMap.set(e.id, e);
       for (const ce of cloudEntries) {
+        if (isKhataDocTombstoned('entries', ce.id, ce.updatedAt)) continue;
         const existing = mergedEntryMap.get(ce.id);
         if (!existing || new Date(ce.updatedAt).getTime() >= new Date(existing.updatedAt).getTime()) {
           mergedEntryMap.set(ce.id, ce);
@@ -698,6 +1051,7 @@ export async function fetchKhataFromFirestore(): Promise<void> {
       const cashMap = new Map<string, CashEntry>();
       for (const c of localCash) cashMap.set(c.id, c);
       for (const cc of cloudCash) {
+        if (isKhataDocTombstoned('cashbookEntries', cc.id, cc.updatedAt)) continue;
         const existing = cashMap.get(cc.id);
         if (!existing || new Date(cc.updatedAt).getTime() >= new Date(existing.updatedAt).getTime()) {
           cashMap.set(cc.id, cc);
@@ -721,6 +1075,7 @@ export async function fetchKhataFromFirestore(): Promise<void> {
           const merged = new Map<string, { id: string; updatedAt?: string }>();
           for (const li of localItems) merged.set(li.id, li);
           for (const ci of cloudItems) {
+            if (isKhataDocTombstoned(coll, ci.id, ci.updatedAt)) continue;
             const existing = merged.get(ci.id);
             const ciTime = ci.updatedAt ? new Date(ci.updatedAt).getTime() : 0;
             const exTime = existing?.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
@@ -738,9 +1093,16 @@ export async function fetchKhataFromFirestore(): Promise<void> {
     // 4. Fetch Settings
     const setSnap = await getDoc(doc(db, 'users', user.uid, 'khataSettings', 'config'));
     if (setSnap.exists()) {
-      const sdata = setSnap.data() as KhataSettings;
+      const sdata = setSnap.data() as KhataSettings & { tombstones?: Record<string, TombstoneMap> };
       const localSettings = getKhataSettings();
       setJson(KHATA_STORAGE_KEYS.SETTINGS, { ...localSettings, ...sdata });
+      if (sdata.tombstones && typeof sdata.tombstones === 'object') {
+        const scope = getActiveUserScope();
+        for (const [collKey, cloudMap] of Object.entries(sdata.tombstones)) {
+          const mergedMap = mergeTombstoneMaps(getTombstones(collKey, scope), cloudMap || {});
+          saveTombstones(collKey, mergedMap, scope);
+        }
+      }
     }
   } catch (err) {
     console.warn('[KhataStorage] Cloud fetch notice:', err);
@@ -860,8 +1222,9 @@ export function saveOrUpdateLedgerAccount(
     accounts.unshift(target);
   }
 
+  clearKhataDeletionTombstone('ledgerAccounts', target.id);
   setJson(KHATA_STORAGE_KEYS.ACCOUNTS, accounts);
-  mirrorAccountToFirestore(target, 'upsert');
+  void mirrorAccountToFirestore(target, 'upsert');
   return target;
 }
 
@@ -872,13 +1235,19 @@ export function deleteLedgerAccount(id: string): boolean {
 
   const filtered = accounts.filter(a => a.id !== id);
   setJson(KHATA_STORAGE_KEYS.ACCOUNTS, filtered);
+  recordKhataDeletionTombstone('ledgerAccounts', id);
 
-  // Also remove associated entries locally
+  // Also remove associated entries locally & record tombstones
   const allEntries = getAllLedgerEntries();
+  const removedEntries = allEntries.filter(e => e.accountId === id);
   const remainingEntries = allEntries.filter(e => e.accountId !== id);
   setJson(KHATA_STORAGE_KEYS.ENTRIES, remainingEntries);
+  removedEntries.forEach(en => {
+    recordKhataDeletionTombstone('entries', en.id);
+    void mirrorEntryToFirestore(en, 'delete');
+  });
 
-  mirrorAccountToFirestore(target, 'delete');
+  void mirrorAccountToFirestore(target, 'delete');
   return true;
 }
 
@@ -908,7 +1277,7 @@ export function saveOrUpdateLedgerEntry(
     target = {
       ...entries[existingIdx],
       ...data,
-      amount: Math.abs(Number(data.amount)),
+      amount: Math.abs(fromPaisa(toPaisa(Number(data.amount) || 0))),
       updatedAt: now
     };
     entries[existingIdx] = target;
@@ -917,7 +1286,7 @@ export function saveOrUpdateLedgerEntry(
       id: data.id || `entry_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       accountId: data.accountId,
       type: data.type,
-      amount: Math.abs(Number(data.amount)),
+      amount: Math.abs(fromPaisa(toPaisa(Number(data.amount) || 0))),
       date: data.date,
       note: data.note || '',
       source: data.source || 'manual',
@@ -928,6 +1297,7 @@ export function saveOrUpdateLedgerEntry(
     entries.unshift(target);
   }
 
+  clearKhataDeletionTombstone('entries', target.id);
   setJson(KHATA_STORAGE_KEYS.ENTRIES, entries);
 
   // Update account's updatedAt timestamp
@@ -938,7 +1308,7 @@ export function saveOrUpdateLedgerEntry(
     setJson(KHATA_STORAGE_KEYS.ACCOUNTS, accounts);
   }
 
-  mirrorEntryToFirestore(target, 'upsert');
+  void mirrorEntryToFirestore(target, 'upsert');
   return target;
 }
 
@@ -949,17 +1319,20 @@ export function deleteLedgerEntry(id: string): LedgerEntry | null {
 
   const filtered = entries.filter(e => e.id !== id);
   setJson(KHATA_STORAGE_KEYS.ENTRIES, filtered);
+  recordKhataDeletionTombstone('entries', id);
 
-  mirrorEntryToFirestore(target, 'delete');
+  void mirrorEntryToFirestore(target, 'delete');
   return target;
 }
 
 export function restoreLedgerEntry(entry: LedgerEntry): void {
   const entries = getAllLedgerEntries();
   if (!entries.some(e => e.id === entry.id)) {
-    entries.unshift(entry);
+    const restored = { ...entry, updatedAt: new Date().toISOString() };
+    entries.unshift(restored);
+    clearKhataDeletionTombstone('entries', restored.id);
     setJson(KHATA_STORAGE_KEYS.ENTRIES, entries);
-    mirrorEntryToFirestore(entry, 'upsert');
+    void mirrorEntryToFirestore(restored, 'upsert');
   }
 }
 
@@ -1025,22 +1398,26 @@ export function saveOrUpdateCashEntry(
     cashList.unshift(target);
   }
 
+  clearKhataDeletionTombstone('cashbookEntries', target.id);
   setJson(KHATA_STORAGE_KEYS.CASHBOOK, cashList);
-  mirrorCashEntryToFirestore(target, 'upsert');
+  void mirrorCashEntryToFirestore(target, 'upsert');
 
   // Bi-directional sync with Daily Expenses if this CashEntry is linked to a daily expense
   if (!options?.skipExpenseSync && (target.linkedExpenseId || target.sourceModule === 'daily_expense')) {
-    const expenses = getParsed<any[]>(KHATA_STORAGE_KEYS.DAILY_EXPENSES, []);
+    const expenses = getParsed<Array<{ id: string; linkedCashEntryId?: string; notes?: string }>>(
+      KHATA_STORAGE_KEYS.DAILY_EXPENSES,
+      []
+    );
     const expIdx = expenses.findIndex(
       e => e.id === target.linkedExpenseId || e.linkedCashEntryId === target.id
     );
     if (expIdx >= 0) {
       if (target.type === 'in') {
-        // Changed to Cash In -> detach or delete linked expense
         const removed = expenses[expIdx];
         const nextExps = expenses.filter((_, i) => i !== expIdx);
         setJson(KHATA_STORAGE_KEYS.DAILY_EXPENSES, nextExps);
-        mirrorFlatKhataDocToFirestore('khataDailyExpenses', removed, 'delete');
+        recordKhataDeletionTombstone('khataDailyExpenses', removed.id);
+        void mirrorFlatKhataDocToFirestore('khataDailyExpenses', removed, 'delete');
       } else {
         const updatedExp = {
           ...expenses[expIdx],
@@ -1053,7 +1430,7 @@ export function saveOrUpdateCashEntry(
         };
         expenses[expIdx] = updatedExp;
         setJson(KHATA_STORAGE_KEYS.DAILY_EXPENSES, expenses);
-        mirrorFlatKhataDocToFirestore('khataDailyExpenses', updatedExp, 'upsert');
+        void mirrorFlatKhataDocToFirestore('khataDailyExpenses', updatedExp, 'upsert');
       }
     }
   }
@@ -1068,18 +1445,23 @@ export function deleteCashEntry(id: string, options?: { skipExpenseSync?: boolea
 
   const filtered = cashList.filter(c => c.id !== id);
   setJson(KHATA_STORAGE_KEYS.CASHBOOK, filtered);
+  recordKhataDeletionTombstone('cashbookEntries', id);
 
-  mirrorCashEntryToFirestore(target, 'delete');
+  void mirrorCashEntryToFirestore(target, 'delete');
 
   if (!options?.skipExpenseSync && (target.linkedExpenseId || target.sourceModule === 'daily_expense')) {
-    const expenses = getParsed<any[]>(KHATA_STORAGE_KEYS.DAILY_EXPENSES, []);
+    const expenses = getParsed<Array<{ id: string; linkedCashEntryId?: string }>>(
+      KHATA_STORAGE_KEYS.DAILY_EXPENSES,
+      []
+    );
     const linked = expenses.find(
       e => e.id === target.linkedExpenseId || e.linkedCashEntryId === target.id
     );
     if (linked) {
       const nextExps = expenses.filter(e => e.id !== linked.id);
       setJson(KHATA_STORAGE_KEYS.DAILY_EXPENSES, nextExps);
-      mirrorFlatKhataDocToFirestore('khataDailyExpenses', linked, 'delete');
+      recordKhataDeletionTombstone('khataDailyExpenses', linked.id);
+      void mirrorFlatKhataDocToFirestore('khataDailyExpenses', linked, 'delete');
     }
   }
 
@@ -1089,14 +1471,16 @@ export function deleteCashEntry(id: string, options?: { skipExpenseSync?: boolea
 export function restoreCashEntry(entry: CashEntry): void {
   const cashList = getAllCashEntries();
   if (!cashList.some(c => c.id === entry.id)) {
-    cashList.unshift(entry);
+    const restored = { ...entry, updatedAt: new Date().toISOString() };
+    cashList.unshift(restored);
+    clearKhataDeletionTombstone('cashbookEntries', restored.id);
     setJson(KHATA_STORAGE_KEYS.CASHBOOK, cashList);
-    mirrorCashEntryToFirestore(entry, 'upsert');
+    void mirrorCashEntryToFirestore(restored, 'upsert');
   }
 }
 
 /**
- * Calculates day cash summary
+ * Calculates day cash summary with integer paisa precision (#22)
  */
 export function calculateDayCashSummary(targetDate: string, allCash: CashEntry[] = []): {
   openingBalance: number;
@@ -1104,28 +1488,28 @@ export function calculateDayCashSummary(targetDate: string, allCash: CashEntry[]
   totalOut: number;
   closingBalance: number;
 } {
-  let openingBalance = 0;
-  let totalIn = 0;
-  let totalOut = 0;
+  let openingBalancePaisa = 0;
+  let totalInPaisa = 0;
+  let totalOutPaisa = 0;
 
   for (const entry of allCash) {
-    const amt = Number(entry.amount) || 0;
+    const amtPaisa = toPaisa(Number(entry.amount) || 0);
     if (entry.date < targetDate) {
-      if (entry.type === 'in') openingBalance += amt;
-      else openingBalance -= amt;
+      if (entry.type === 'in') openingBalancePaisa += amtPaisa;
+      else openingBalancePaisa -= amtPaisa;
     } else if (entry.date === targetDate) {
-      if (entry.type === 'in') totalIn += amt;
-      else totalOut += amt;
+      if (entry.type === 'in') totalInPaisa += amtPaisa;
+      else totalOutPaisa += amtPaisa;
     }
   }
 
-  const closingBalance = openingBalance + totalIn - totalOut;
+  const closingBalancePaisa = openingBalancePaisa + totalInPaisa - totalOutPaisa;
 
   return {
-    openingBalance: Math.round(openingBalance),
-    totalIn: Math.round(totalIn),
-    totalOut: Math.round(totalOut),
-    closingBalance: Math.round(closingBalance)
+    openingBalance: fromPaisa(openingBalancePaisa),
+    totalIn: fromPaisa(totalInPaisa),
+    totalOut: fromPaisa(totalOutPaisa),
+    closingBalance: fromPaisa(closingBalancePaisa)
   };
 }
 
@@ -1511,7 +1895,7 @@ export function getPendingDocumentBalances(isAuthorized: boolean): PendingDocBal
             name: String(b.receiverName).trim(),
             phone: b.receiverMobile ? String(b.receiverMobile).trim() : undefined,
             amount: payable,
-            date: b.date || new Date().toISOString().split('T')[0],
+            date: b.date || getPakistanDateKey(),
             route: `${b.sendingCity || ''} -> ${b.receivingCity || ''}`
           });
         }
@@ -1633,11 +2017,12 @@ export function calculateVehicleProfitLoss(
   _incomes: any,
   trips: Trip[]
 ) {
-  const vLower = vehicleFilter ? vehicleFilter.toLowerCase() : 'all';
+  const filterUpper = vehicleFilter ? vehicleFilter.toLowerCase() : 'all';
+  const vLower = filterUpper;
   const filteredTrips = trips.filter(t => {
     const matchVehicle =
       vLower === 'all' ||
-      (t as any).vehicleNo?.toLowerCase() === vLower ||
+      t.vehicleNo?.toLowerCase() === vLower ||
       t.name?.toLowerCase().includes(vLower) ||
       !t.fuelTypeRaw ||
       t.fuelTypeRaw === vehicleFilter;
@@ -1676,7 +2061,6 @@ export function calculateVehicleProfitLoss(
 
 export function syncFreightRecordsToLedger(isAuthorized: boolean): void {
   if (!isAuthorized) return;
-  // Legacy freight sync
   const bilties = getStoredBilties();
   if (!bilties || bilties.length === 0) return;
 
@@ -1718,7 +2102,7 @@ export function syncFreightRecordsToLedger(isAuthorized: boolean): void {
         currentTxs.push({
           id: txDebitId,
           partyId: party.id,
-          date: b.date || new Date().toISOString().split('T')[0],
+          date: b.date || getPakistanDateKey(),
           type: 'debit',
           amount: totalFreight,
           description: `Freight: ${b.sendingCity || ''} to ${b.receivingCity || ''}`,
@@ -1739,7 +2123,7 @@ export function syncFreightRecordsToLedger(isAuthorized: boolean): void {
           currentTxs.push({
             id: txCreditId,
             partyId: party.id,
-            date: b.date || new Date().toISOString().split('T')[0],
+            date: b.date || getPakistanDateKey(),
             type: 'credit',
             amount: advancePaid,
             description: `Advance received: ${b.biltyNo || b.id}`,
@@ -1780,7 +2164,7 @@ export function syncFreightRecordsToLedger(isAuthorized: boolean): void {
         currentIncomes.push({
           id: vincId,
           vehicleNo: b.vehicleNo,
-          date: b.date || new Date().toISOString().split('T')[0],
+          date: b.date || getPakistanDateKey(),
           amount: totalFreight,
           partyName: senderName || receiverName,
           description: `Freight: ${b.biltyNo || b.id}`,

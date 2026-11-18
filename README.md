@@ -137,6 +137,8 @@ VITE_FIREBASE_APP_ID=your_firebase_app_id
 
 # Optional
 VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
+VITE_FIREBASE_APPCHECK_SITE_KEY=your_recaptcha_v3_site_key
+VITE_FUEL_API_URL=https://your-api.example.com/fuel-prices
 ```
 
 Start the development server:
@@ -152,7 +154,7 @@ npm run validate
 npm run pipeline
 ```
 
-> **Firebase security:** Firebase web configuration keys are not server secrets. Keep Firestore security rules (`firestore.rules`) restrictive and deployed correctly. Never commit private credentials, keystores or passwords.
+> **Firebase security & API key hardening:** Firebase Web API keys identify your Firebase project on the client; they are not server secrets. Restrict the browser API key in Google Cloud Console by HTTP referrers (`zahdan-443.github.io/*` and `localhost/*`), restrict Android keys by package name + SHA-1 (`com.warraichgoods.driverdost`), enable **Firebase App Check** (reCAPTCHA v3 / Play Integrity), and keep `firestore.rules` deployed. Never commit private keystores or service account credentials.
 
 ## 🤖 Android APK Release
 

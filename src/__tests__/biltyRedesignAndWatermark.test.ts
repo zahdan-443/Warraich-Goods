@@ -19,17 +19,18 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(printableSrc).not.toContain('Receiving Point');
     expect(printableSrc).not.toContain('ریسیونگ پوائنٹ');
 
-    // 2. Pure white Pakistani header frame enclosing frameless company logo, fixed Urdu NTN stamp, distinct company title & strip-free proprietor
+    // 2. Coloured Pakistani header frame enclosing transparent WG logo + Proprietor & Address panel, fixed Urdu NTN stamp, no Bismillah header
     expect(printableSrc).toContain('header-logo-inside-frame');
-    expect(printableSrc).toContain("width: '132px'");
-    expect(printableSrc).toContain("height: '104px'");
+    expect(printableSrc).toContain("width: isEn ? '210px' : '265px'");
     expect(printableSrc).toContain("border: 'none'");
     expect(printableSrc).not.toContain("borderRadius: '50%'");
+    expect(printableSrc).not.toContain('بسم اللہ');
     expect(printableSrc).toContain('ntn-corner-stamp');
     expect(printableSrc).toContain('این ٹی این نمبر:');
     expect(printableSrc).toContain("unicodeBidi: 'isolate'");
     expect(printableSrc).toContain('company-masthead-title');
     expect(printableSrc).toContain('proprietor-clean-line');
+    expect(printableSrc).toContain('truck-art-ribbon');
 
     // 3. Complete single-language footer sentence
     expect(printableSrc).toContain('This is a computer-generated Bilty, no signature required');
@@ -96,26 +97,24 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(rowBPos).toBeGreaterThan(rowAPos);
     expect(rowCPos).toBeGreaterThan(rowBPos);
 
-    // Pure crisp white canvas with Double Outer Frame, Pakistani Header Frame, Navy/Gold/Emerald accents, Soft Pastel Row Tints, and Scoped 6% Cargo Watermark
-    expect(printableSrc).toContain("const cellBg = '#ffffff'");
-    expect(printableSrc).toContain("const pastelSlate = '#f1f5f9'");
-    expect(printableSrc).toContain("const pastelMint = '#ecfdf5'");
-    expect(printableSrc).toContain("const pastelIvory = '#fffbeb'");
-    expect(printableSrc).toContain("const emeraldAccent = '#065f46'");
-    expect(printableSrc).toContain("const goldAccent = '#d97706'");
+    // 10. Pakistani Coloured Bilty Themes (Pink / Yellow / Green), Truck-Art Gradients, and Scoped Transparent Cargo Watermark
+    expect(printableSrc).toContain('BILTY_COLOR_THEMES');
+    expect(printableSrc).toContain("paperBg: '#fff0f5'");
+    expect(printableSrc).toContain("paperBg: '#fef9c3'");
+    expect(printableSrc).toContain("paperBg: '#dcfce7'");
+    expect(printableSrc).toContain('bilty-colored-canvas');
+    expect(printableSrc).toContain('headerStripGrad');
+    expect(printableSrc).toContain('remarksGrad');
     expect(printableSrc).toContain('bilty-double-inner-frame');
     expect(printableSrc).toContain('pakistani-header-frame');
     expect(printableSrc).toContain('cargo-box-watermark');
-    expect(printableSrc).toContain('opacity: 0.06');
-    expect(printableSrc).toContain("backgroundColor: '#ffffff'");
-    expect(printableSrc).not.toContain('#fffdf7');
+    expect(printableSrc).toContain('opacity: 0.09');
     expect(printableSrc).not.toContain('printable-bilty-watermark');
     expect(printableSrc).not.toContain('نگ / بوریاں');
     expect(printableSrc).not.toContain('Pkgs / Bags');
     expect(printableSrc).toContain('freight-top-line');
     expect(printableSrc).toContain("isEn ? 'Freight' : 'کرایہ'");
     expect(printableSrc).toContain("fontSize: isEn ? '16px' : '18.5px'");
-    expect(printableSrc).toContain("backgroundColor: '#fef3c7'");
     expect(printableSrc).toContain('qr-purpose-caption');
     expect(printableSrc).toContain('Scan to verify Bilty');
     expect(printableSrc).toContain('تصدیقِ بلٹی کیلئے اسکین کریں');
@@ -212,5 +211,11 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(biltyViewSrc).not.toContain('Balance Due');
     expect(biltyViewSrc).not.toContain('To-Pay');
     expect(biltyViewSrc).not.toContain('ٹو پے (بقایا)');
+
+    // 1-Click Pink / Yellow / Green Pakistani Copy Color Selector wired in BiltyView
+    expect(biltyViewSrc).toContain('bilty-color-selector');
+    expect(biltyViewSrc).toContain('گلابی کاپی');
+    expect(biltyViewSrc).toContain('پیلی کاپی');
+    expect(biltyViewSrc).toContain('سبز کاپی');
   });
 });

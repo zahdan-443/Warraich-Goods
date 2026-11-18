@@ -33,4 +33,4 @@ public/assets/**
 .aistudio/
 firebase-export-*
 android/app/src/debug/google-services.json
-
+android/local.properties

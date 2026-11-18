@@ -58,6 +58,7 @@ import {
   quickOpsIconData,
   mapIconData,
   biltyIconData,
+  biltyOfficialIconData,
   dashcamIconData,
   ledgerIconData
 } from '../../assets/dashboardIcons';
@@ -253,10 +254,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {isBiltyAuthorized && (
           <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/90 dark:bg-[#1a1c22] border-2 border-amber-400/80 dark:border-amber-600/50 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 animate-in fade-in">
             <div className="flex items-center gap-2.5">
-              <img
-                src="./bilty-official-icon.png"
-                alt="Official Bilty Seal"
-                className="w-8 h-8 rounded-xl object-contain border border-amber-400/50 p-0.5 bg-white dark:bg-[#252216] shadow-2xs shrink-0"
+              <PublicImage
+                fileName={biltyOfficialIconData}
+                alt={lang === 'ur' ? 'آفیشل دستاویز مہر' : 'Official Document Seal'}
+                fallbackIcon={<Receipt className="w-5 h-5 text-amber-700" />}
+                fitMode="contain"
+                className="w-8 h-8 rounded-xl border border-amber-400/50 p-0.5 bg-white dark:bg-[#252216] shadow-2xs shrink-0"
+                imgClassName="rounded-lg"
               />
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs sm:text-sm font-bold text-amber-950 dark:text-amber-100 font-serif">

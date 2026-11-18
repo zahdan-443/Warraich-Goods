@@ -1,26 +1,70 @@
 /**
  * Driver Dost - High Performance Persistent Storage & IndexedDB Engine
- * 
- * Enhancements:
- * 1. Persistent Storage Mode: Requests `navigator.storage.persist()` so Android & modern browsers
- *    never evict Driver Dost cache or offline user data during low disk space sweeps.
- * 2. Extended Quota: Increases capacity from browser localStorage 5MB limit to Gigabytes (up to 60% of free disk space)
- *    using native IndexedDB with zero external dependencies.
- * 3. Transparent Fallback: Automatically mirrors `safeStorage` into IndexedDB and keeps local state resilient.
- * 4. 100% Play Store / PWA / TWA Compliant: Standard W3C Storage API that accelerates cold launch
- *    and delivers 100/100 Lighthouse & Android Vitals performance scores without triggering any test issues.
+ *
+ * Guarantees:
+ * 1. Persistent Storage Mode (`navigator.storage.persist()`).
+ * 2. Extended Quota via native IndexedDB.
+ * 3. Hydration Tombstone Registry (`wg_v3_deleted_keys`): deleted keys are NEVER
+ *    resurrected from stale IndexedDB copies on app restart (#6).
  */
 
 const DB_NAME = 'driver_dost_persistent_db';
 const DB_VERSION = 1;
 const STORE_NAME = 'driver_dost_store';
+const HYDRATION_TOMBSTONES_KEY = 'wg_v3_deleted_keys';
 
 let dbInstance: IDBDatabase | null = null;
 let dbInitPromise: Promise<IDBDatabase | null> | null = null;
 
-/**
- * Initializes native IndexedDB
- */
+// In-memory cache of keys explicitly deleted so IDB hydration skips them even if async IDB delete lags
+const deletedKeySet = new Set<string>();
+
+function loadLocalDeletedKeySet(): Set<string> {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = window.localStorage.getItem(HYDRATION_TOMBSTONES_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          for (const k of parsed) {
+            if (typeof k === 'string') deletedKeySet.add(k);
+          }
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return deletedKeySet;
+}
+
+function persistLocalDeletedKeySet(): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      // Keep last 500 deleted key markers so this list never grows unbounded
+      const list = Array.from(deletedKeySet).slice(-500);
+      window.localStorage.setItem(HYDRATION_TOMBSTONES_KEY, JSON.stringify(list));
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export function markKeyDeletedForHydration(key: string): void {
+  if (!key || key === HYDRATION_TOMBSTONES_KEY) return;
+  loadLocalDeletedKeySet();
+  deletedKeySet.add(key);
+  persistLocalDeletedKeySet();
+}
+
+export function clearKeyDeletedForHydration(key: string): void {
+  if (!key || key === HYDRATION_TOMBSTONES_KEY) return;
+  loadLocalDeletedKeySet();
+  if (deletedKeySet.delete(key)) {
+    persistLocalDeletedKeySet();
+  }
+}
+
 export function getIndexedDB(): Promise<IDBDatabase | null> {
   if (typeof window === 'undefined' || !('indexedDB' in window)) {
     return Promise.resolve(null);
@@ -63,10 +107,8 @@ export function getIndexedDB(): Promise<IDBDatabase | null> {
   return dbInitPromise;
 }
 
-/**
- * Store a key-value pair in IndexedDB (Supports gigabytes of user data)
- */
 export async function idbSet(key: string, value: string): Promise<boolean> {
+  clearKeyDeletedForHydration(key);
   try {
     const db = await getIndexedDB();
     if (!db) return false;
@@ -84,9 +126,6 @@ export async function idbSet(key: string, value: string): Promise<boolean> {
   }
 }
 
-/**
- * Get a value from IndexedDB by key
- */
 export async function idbGet(key: string): Promise<string | null> {
   try {
     const db = await getIndexedDB();
@@ -107,10 +146,8 @@ export async function idbGet(key: string): Promise<string | null> {
   }
 }
 
-/**
- * Delete a key from IndexedDB
- */
 export async function idbDelete(key: string): Promise<boolean> {
+  markKeyDeletedForHydration(key);
   try {
     const db = await getIndexedDB();
     if (!db) return false;
@@ -128,9 +165,38 @@ export async function idbDelete(key: string): Promise<boolean> {
   }
 }
 
-/**
- * Get all stored entries from IndexedDB for recovery / hydration
- */
+export async function idbDeleteMany(keys: string[]): Promise<number> {
+  const uniqueKeys = Array.from(new Set(keys.filter(Boolean)));
+  uniqueKeys.forEach(markKeyDeletedForHydration);
+  if (uniqueKeys.length === 0) return 0;
+
+  try {
+    const db = await getIndexedDB();
+    if (!db) return 0;
+
+    return new Promise((resolve) => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      let count = 0;
+
+      for (const key of uniqueKeys) {
+        try {
+          store.delete(key);
+          count++;
+        } catch {
+          // ignore individual failure
+        }
+      }
+
+      transaction.oncomplete = () => resolve(count);
+      transaction.onerror = () => resolve(count);
+      transaction.onabort = () => resolve(count);
+    });
+  } catch {
+    return 0;
+  }
+}
+
 export async function idbGetAllEntries(): Promise<Record<string, string>> {
   try {
     const db = await getIndexedDB();
@@ -160,10 +226,6 @@ export async function idbGetAllEntries(): Promise<Record<string, string>> {
   }
 }
 
-/**
- * Requests permanent storage permission from the Android OS / browser.
- * This guarantees the system will NOT evict offline data or cache during storage cleanup.
- */
 export async function requestPersistentStorage(): Promise<{
   persisted: boolean;
   quotaMB: number;
@@ -177,14 +239,12 @@ export async function requestPersistentStorage(): Promise<{
 
   try {
     if (typeof navigator !== 'undefined' && navigator.storage) {
-      // 1. Request persistence
       if (typeof navigator.storage.persist === 'function') {
         isPersisted = await navigator.storage.persist();
       } else if (typeof navigator.storage.persisted === 'function') {
         isPersisted = await navigator.storage.persisted();
       }
 
-      // 2. Query actual device storage quota allocated to Driver Dost
       if (typeof navigator.storage.estimate === 'function') {
         const estimate = await navigator.storage.estimate();
         const quotaBytes = estimate.quota || 0;
@@ -208,27 +268,40 @@ export async function requestPersistentStorage(): Promise<{
 }
 
 /**
- * Hydrates any missing localStorage items from IndexedDB on startup
+ * Hydrates missing localStorage items from IndexedDB on startup,
+ * while strictly respecting deleted key tombstones and purging stale IDB copies.
  */
 export async function hydrateStorageFromIndexedDB(
   onHydrated?: (count: number) => void
 ): Promise<void> {
   try {
+    const deletedKeys = loadLocalDeletedKeySet();
     const entries = await idbGetAllEntries();
     let hydratedCount = 0;
+    const staleIdbKeysToPurge: string[] = [];
 
     for (const [key, val] of Object.entries(entries)) {
+      if (key === HYDRATION_TOMBSTONES_KEY) continue;
+      if (deletedKeys.has(key)) {
+        staleIdbKeysToPurge.push(key);
+        continue;
+      }
+
       if (typeof window !== 'undefined' && window.localStorage) {
         try {
           const current = window.localStorage.getItem(key);
-          if (!current && val) {
+          if (current === null && val) {
             window.localStorage.setItem(key, val);
             hydratedCount++;
           }
         } catch {
-          // localStorage might be full, IndexedDB holds it safely
+          // localStorage might be full; IndexedDB holds it safely
         }
       }
+    }
+
+    if (staleIdbKeysToPurge.length > 0) {
+      void idbDeleteMany(staleIdbKeysToPurge);
     }
 
     if (onHydrated && hydratedCount > 0) {

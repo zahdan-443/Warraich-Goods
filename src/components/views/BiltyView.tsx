@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { BiltyRecord, ContactItem, DICTIONARY, Language, BiltyBranch, BiltyLanguage, LegalRecordingItem, KhataReceivingPoint } from '../../types';
+import { BiltyRecord, ContactItem, DICTIONARY, Language, BiltyBranch, BiltyLanguage, BiltyColorTheme, LegalRecordingItem, KhataReceivingPoint } from '../../types';
 import { getAllReceivingPoints } from '../../utils/khataModulesStorage';
 import {
   Receipt,
   Search,
   Download,
   FileText,
-  MapPin,
   Share2,
-  Phone,
   FileSpreadsheet,
   Printer,
   Loader2,
@@ -17,33 +15,22 @@ import {
   CheckCircle2,
   Globe,
   Settings,
-  Sparkles,
   Building2,
   Check,
-  Eye,
-  Trash2,
   Plus,
-  Filter,
-  ArrowUpDown,
   X,
   Layers,
-  Truck,
   User,
-  Calendar,
-  RefreshCw,
   PackageCheck,
-  Clock,
   ShieldCheck,
   FileArchive,
   ChevronDown,
   ChevronUp,
   Camera,
   Upload,
-  PhoneCall,
-  Pencil
+  PhoneCall
 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import QRCode from 'qrcode';
 import { VoiceInputButton } from '../VoiceInputButton';
 import { CameraOcrInput } from '../CameraOcrInput';
 import { PrintableBilty } from '../PrintableBilty';
@@ -55,17 +42,26 @@ import {
   exportAllBiltiesCSV,
   saveStoredBilties
 } from '../../utils/storage';
-import { validateBiltyFreight } from '../../utils/calculator';
+import { validateBiltyFreight, validateFinancialNumber } from '../../utils/calculator';
 import { generatePdfFromElement, preloadBiltyPdfAssets, shareBiltyPdfOrWhatsApp } from '../../utils/pdfHelper';
 import { downloadBiltyLegalZip } from '../../utils/zipHelper';
 import { PublicImage } from '../PublicImage';
+import { biltyOfficialIconData } from '../../assets/dashboardIcons';
 import {
   generateBiltyVerificationQrDataUrl,
-  getBiltyVerificationUrl,
   BILTY_BRANCHES,
   formatBiltyMobile
 } from '../../utils/biltyHelpers';
 import { BiltyLegalVault } from '../../types';
+import { BiltyDeleteModal } from './bilty/BiltyDeleteModal';
+import { BiltyAllRecordsTab } from './bilty/BiltyAllRecordsTab';
+import { countLegalVaultAttachments, LegalVaultImageKey } from './bilty/biltyVaultUtils';
+
+interface AndroidPrinterWindow extends Window {
+  AndroidPrinter?: {
+    print?: () => void;
+  };
+}
 
 const getQrDataUrl = async (record: BiltyRecord): Promise<string> => {
   if (!record?.biltyNo) return '';
@@ -142,6 +138,14 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       if (stored === 'ur' || stored === 'en') return stored;
     } catch {}
     return 'ur';
+  });
+
+  const [selectedColorTheme, setSelectedColorTheme] = useState<BiltyColorTheme>(() => {
+    try {
+      const stored = localStorage.getItem('ah-bilty-color-theme');
+      if (stored === 'pink' || stored === 'yellow' || stored === 'green') return stored;
+    } catch {}
+    return 'pink';
   });
 
   // Prompt user on open: Modal is initially open
@@ -265,6 +269,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setRemarks(record.remarks || '');
     setCreationLegalVault(record.legalVault || {});
     if (record.language) setSelectedLanguage(record.language);
+    if (record.colorTheme) setSelectedColorTheme(record.colorTheme);
     setIsConfigModalOpen(false);
     setSelectedModalBilty(null);
     setLastBilty(record);
@@ -361,6 +366,28 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     }
   };
 
+  const handleChangeColorTheme = (colorTheme: BiltyColorTheme, targetRecord?: BiltyRecord) => {
+    setSelectedColorTheme(colorTheme);
+    try {
+      localStorage.setItem('ah-bilty-color-theme', colorTheme);
+    } catch {}
+    if (targetRecord) {
+      const updated = { ...targetRecord, colorTheme };
+      if (lastBilty && lastBilty.id === targetRecord.id) {
+        setLastBilty(updated);
+      }
+      if (selectedModalBilty && selectedModalBilty.id === targetRecord.id) {
+        setSelectedModalBilty(updated);
+      }
+      if (searchResult && searchResult.id === targetRecord.id) {
+        setSearchResult(updated);
+      }
+      if (onUpdateBilty && bilties.some((b) => b.id === targetRecord.id)) {
+        onUpdateBilty(updated);
+      }
+    }
+  };
+
   const handlePrintBuilty = async (record: BiltyRecord) => {
     const [qrUrl, assets] = await Promise.all([
       getQrDataUrl(record),
@@ -373,7 +400,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setActivePrintRecord({
       ...record,
       branch: record.branch || selectedBranch,
-      language: record.language || selectedLanguage
+      language: record.language || selectedLanguage,
+      colorTheme: record.colorTheme || selectedColorTheme
     });
     setTimeout(async () => {
       const target = document.getElementById('printable-bilty-dom');
@@ -394,8 +422,9 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           })
         );
       }
-      if (typeof (window as any).AndroidPrinter?.print === 'function') {
-        (window as any).AndroidPrinter.print();
+      const androidWin = window as AndroidPrinterWindow;
+      if (typeof androidWin.AndroidPrinter?.print === 'function') {
+        androidWin.AndroidPrinter.print();
       } else {
         window.print();
       }
@@ -408,10 +437,31 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const totalNum = parseFloat(total) || 0;
-    const advanceNum = parseFloat(advance) || 0;
-
     setFormError(null);
+
+    const totalValidation = validateFinancialNumber(
+      total,
+      selectedLanguage === 'en' ? 'Total Freight' : 'کل کرایہ',
+      { allowZero: true }
+    );
+    if (!totalValidation.isValid) {
+      setFormError(totalValidation.error || (selectedLanguage === 'en' ? 'Please enter a valid total freight amount.' : 'براہ کرم درست کل کرایہ درج کریں۔'));
+      return;
+    }
+
+    const advanceValidation = validateFinancialNumber(
+      advance,
+      selectedLanguage === 'en' ? 'Advance Paid' : 'پیشگی رقم',
+      { allowZero: true }
+    );
+    if (!advanceValidation.isValid) {
+      setFormError(advanceValidation.error || (selectedLanguage === 'en' ? 'Please enter a valid advance amount.' : 'براہ کرم درست پیشگی رقم درج کریں۔'));
+      return;
+    }
+
+    const totalNum = totalValidation.value;
+    const advanceNum = advanceValidation.value;
+
     const validation = validateBiltyFreight(totalNum, advanceNum);
     if (!validation.isValid) {
       setFormError(validation.error || (selectedLanguage === 'en' ? 'Please enter valid freight & advance amount.' : 'درست کرایہ اور پیشگی رقم درج کریں۔'));
@@ -423,6 +473,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         ...editingBilty,
         branch: selectedBranch,
         language: selectedLanguage,
+        colorTheme: selectedColorTheme,
         vehicleNo: vehicleNo.trim(),
         date: date.trim() || getTodayFormatted(),
         driverName: driverName.trim(),
@@ -478,6 +529,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       pendingOnlineNumber: isPendingOnline ? true : undefined,
       branch: selectedBranch,
       language: selectedLanguage,
+      colorTheme: selectedColorTheme,
       vehicleNo: vehicleNo.trim(),
       date: date.trim() || getTodayFormatted(),
       driverName: driverName.trim(),
@@ -525,7 +577,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setActivePrintRecord({
       ...record,
       branch: record.branch || selectedBranch,
-      language: record.language || selectedLanguage
+      language: record.language || selectedLanguage,
+      colorTheme: record.colorTheme || selectedColorTheme
     });
     // Allow React state to update DOM and QR code generation
     await new Promise((r) => setTimeout(r, 450));
@@ -630,6 +683,12 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
 
   const renderBiltyPreview = (record: BiltyRecord) => {
     const previewLang = record.language || selectedLanguage;
+    const previewColor: BiltyColorTheme = record.colorTheme || selectedColorTheme || 'pink';
+    const colorOptions: Array<{ id: BiltyColorTheme; labelUr: string; labelEn: string; swatch: string; activeBg: string }> = [
+      { id: 'pink', labelUr: 'گلابی کاپی', labelEn: 'Pink Copy', swatch: 'bg-rose-600', activeBg: 'bg-rose-50 border-rose-500 text-rose-900' },
+      { id: 'yellow', labelUr: 'پیلی کاپی', labelEn: 'Yellow Copy', swatch: 'bg-amber-500', activeBg: 'bg-amber-50 border-amber-500 text-amber-900' },
+      { id: 'green', labelUr: 'سبز کاپی', labelEn: 'Green Copy', swatch: 'bg-emerald-600', activeBg: 'bg-emerald-50 border-emerald-500 text-emerald-900' }
+    ];
 
     return (
       <div className="space-y-4">
@@ -674,7 +733,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           </div>
         )}
 
-        <div className="flex items-center justify-between pb-2 border-b border-[#ecece0]">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#ecece0]">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-black uppercase tracking-wider font-mono bg-slate-900 text-white px-3 py-1 rounded-xs">
               {record.biltyNo}
@@ -692,7 +751,36 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
               🌐 {previewLang === 'en' ? '100% English' : 'مکمل اردو'}
             </span>
           </div>
-          <BiltyQrCode record={record} className="w-12 h-12 rounded border border-slate-300 bg-white object-contain" />
+
+          <div className="flex items-center gap-2">
+            {/* 1-Click Pakistani Copy Color Selector (Pink / Yellow / Green) */}
+            <div
+              role="group"
+              aria-label={previewLang === 'en' ? 'Bilty Paper Color' : 'بلٹی کا رنگ'}
+              data-testid="bilty-color-selector"
+              className="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200"
+            >
+              {colorOptions.map((opt) => {
+                const isSelected = previewColor === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => handleChangeColorTheme(opt.id, record)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer whitespace-nowrap ${
+                      isSelected
+                        ? `${opt.activeBg} shadow-2xs`
+                        : 'bg-white/70 border-transparent text-slate-600 hover:bg-white hover:text-slate-900'
+                    }`}
+                  >
+                    <span className={`w-2.5 h-2.5 rounded-full ${opt.swatch} shrink-0`} />
+                    <span>{previewLang === 'en' ? opt.labelEn : opt.labelUr}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <BiltyQrCode record={record} className="w-12 h-12 rounded border border-slate-300 bg-white object-contain" />
+          </div>
         </div>
 
         <div className="bg-slate-100/70 p-2 sm:p-4 rounded-xl border border-slate-200 overflow-x-auto">
@@ -702,6 +790,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             logoDataUrl={preloadedAssets.logo}
             branch="samundri"
             language={previewLang}
+            colorTheme={previewColor}
           />
         </div>
 
@@ -771,7 +860,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             <span>{previewLang === 'en' ? 'Manage Legal Vault' : 'دستاویزات والٹ کھولیں'}</span>
             {record.legalVault && (
               <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-bold">
-                {Object.keys(record.legalVault).filter((k) => k !== 'updatedAt' && k !== 'recordings' && Boolean((record.legalVault as any)[k])).length + (record.legalVault.recordings?.length || 0)}
+                {countLegalVaultAttachments(record.legalVault)}
               </span>
             )}
           </button>
@@ -905,9 +994,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white border-2 border-[#0f2942]/20 p-1 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
               <PublicImage
-                fileName="bilty-official-icon.png"
-                src="./bilty-official-icon.png"
-                alt="Official Bilty Seal"
+                fileName={biltyOfficialIconData}
+                alt="Official Document Seal"
                 className="w-full h-full object-contain rounded-xl"
               />
             </div>
@@ -1074,569 +1162,36 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
 
         {/* ALL BILTIES ARCHIVE / LEDGER */}
         {subTab === 'all' && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            {/* 1. Operational Dispatch Summary Cards (No financial ledger balances in Bilty section) */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              {/* Total Bilties */}
-              <div className="p-4 rounded-2xl bg-[#0f2942] text-white border border-[#1a3a5c] shadow-xs flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">
-                    {isUrdu ? 'کل بلٹیاں' : 'Total Bilties'}
-                  </span>
-                  <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-amber-400">
-                    <Receipt className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="text-2xl sm:text-3xl font-black font-mono text-white">
-                    {dispatchStats.count}
-                  </div>
-                  <div className="text-[11px] text-slate-300 mt-0.5">
-                    {isUrdu ? 'تمام محفوظ شدہ بلٹی ریکارڈز' : 'All saved bilty records'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Samundri Office */}
-              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                    {isUrdu ? 'سمندری آفس' : 'Samundri Office'}
-                  </span>
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                    <MapPin className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="text-2xl sm:text-3xl font-black font-mono text-slate-800">
-                    {dispatchStats.count}
-                  </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
-                    {isUrdu ? branchObj.addressUr : branchObj.addressEn}
-                  </div>
-                </div>
-              </div>
-
-              {/* Delivered (POD) */}
-              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                    {isUrdu ? 'مکمل ڈلیوری (POD)' : 'Delivered'}
-                  </span>
-                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center">
-                    <PackageCheck className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="text-2xl sm:text-3xl font-black font-mono text-indigo-700">
-                    {dispatchStats.deliveredCount}
-                  </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
-                    {isUrdu ? 'تصدیق شدہ ترسیل' : 'Confirmed deliveries'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Controls Toolbar */}
-            <div className="bg-[#fdfbf7] p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-[#ecece0] space-y-3.5">
-              {/* Row 1: Search & Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                {/* Search Box */}
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={allFilterQuery}
-                    onChange={(e) => setAllFilterQuery(e.target.value)}
-                    placeholder={isUrdu ? 'بلٹی نمبر، گاڑی نمبر، ڈرائیور، یا کسٹمر تلاش کریں...' : 'Search Bilty #, vehicle plate, driver, city...'}
-                    className="w-full bg-white border border-slate-300 rounded-xl pr-10 pl-9 py-2.5 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#0f2942] focus:outline-none transition-all"
-                  />
-                  {allFilterQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setAllFilterQuery('')}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Fast Action Buttons */}
-                <div className="flex items-center gap-2 self-end sm:self-auto">
-                  <button
-                    type="button"
-                    onClick={() => exportAllBiltiesCSV()}
-                    className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                    title={isUrdu ? 'تمام بلٹیوں کی مکمل ایکسل شیٹ ڈاؤن لوڈ کریں' : 'Export all bilties to CSV'}
-                  >
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                    <span>{isUrdu ? 'ایکسل شیٹ (CSV)' : 'Export CSV'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSubTab('create')}
-                    className="px-3.5 py-2 bg-[#0f2942] hover:bg-[#1a3a5c] text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                  >
-                    <Plus className="w-4 h-4 text-amber-400" />
-                    <span>{isUrdu ? 'نئی بلٹی بنائیں' : 'New Bilty'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Row 2: Delivery POD Filters & Sorting */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200/80">
-                {/* Delivery / POD Status Filters */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] font-bold text-slate-500 ml-1">
-                    {isUrdu ? 'وصولی (POD):' : 'Delivery:'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setDeliveryFilter('all')}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      deliveryFilter === 'all'
-                        ? 'bg-slate-800 text-white'
-                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {isUrdu ? 'تمام' : 'All'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeliveryFilter('delivered')}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                      deliveryFilter === 'delivered'
-                        ? 'bg-blue-700 text-white shadow-2xs'
-                        : 'bg-white border border-blue-200 text-blue-800 hover:bg-blue-50'
-                    }`}
-                  >
-                    <PackageCheck className="w-3 h-3" />
-                    <span>{isUrdu ? 'پہنچ گیا (POD)' : 'Delivered'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeliveryFilter('pending')}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                      deliveryFilter === 'pending'
-                        ? 'bg-amber-600 text-white shadow-2xs'
-                        : 'bg-white border border-amber-200 text-amber-800 hover:bg-amber-50'
-                    }`}
-                  >
-                    <Clock className="w-3 h-3" />
-                    <span>{isUrdu ? 'جاری شدہ' : 'Issued'}</span>
-                  </button>
-                </div>
-
-                {/* Sort Selector */}
-                <div className="flex items-center gap-1.5">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest')}
-                    className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
-                  >
-                    <option value="newest">{isUrdu ? 'تازہ ترین پہلے' : 'Newest First'}</option>
-                    <option value="oldest">{isUrdu ? 'پرانی بلٹیاں پہلے' : 'Oldest First'}</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Bilty Records Content: Empty State OR Dispatch Table */}
-            {filteredBilties.length === 0 ? (
-              <div className="p-10 text-center bg-[#fdfbf7] rounded-3xl border-2 border-dashed border-[#ecece0] space-y-3">
-                <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
-                  <FileText className="w-7 h-7" />
-                </div>
-                <h3 className="font-bold text-base text-slate-800">
-                  {bilties.length === 0
-                    ? (isUrdu ? 'ابھی تک کوئی بلٹی جنریٹ نہیں ہوئی' : 'No Bilties Generated Yet')
-                    : (isUrdu ? 'فلٹر کے مطابق کوئی بلٹی نہیں ملی' : 'No Bilties Match Your Filters')}
-                </h3>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  {bilties.length === 0
-                    ? (isUrdu ? 'نئی بلٹی بنائیں کے بٹن پر کلک کر کے اپنی پہلی آفیشل بلٹی رسید تیار کریں۔' : 'Click "New Bilty" to create your first official consignment bilty.')
-                    : (isUrdu ? 'براہ کرم سرچ کیورڈ یا فلٹرز تبدیل کر کے دوبارہ کوشش کریں۔' : 'Try clearing your search query or adjusting your filters.')}
-                </p>
-                {bilties.length === 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setSubTab('create')}
-                    className="px-5 py-2.5 bg-[#0f2942] hover:bg-[#1a3a5c] text-white rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-2 cursor-pointer transition-all shadow-xs"
-                  >
-                    <Plus className="w-4 h-4 text-amber-400" />
-                    <span>{isUrdu ? 'پہلی بلٹی بنائیں' : 'Create First Bilty'}</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAllFilterQuery('');
-                      setDeliveryFilter('all');
-                    }}
-                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-full text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-all"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>{isUrdu ? 'فلٹرز ری سیٹ کریں' : 'Reset Filters'}</span>
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Desktop & Tablet Dispatch Table */}
-                <div className="hidden lg:block overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
-                  <table className="w-full text-right text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                        <th className="py-3 px-3.5 text-right">{isUrdu ? 'بلٹی نمبر و تاریخ' : 'Bilty # & Date'}</th>
-                        <th className="py-3 px-3 text-right">{isUrdu ? 'آفس / زبان' : 'Office / Lang'}</th>
-                        <th className="py-3 px-3 text-right">{isUrdu ? 'گاڑی و ڈرائیور' : 'Vehicle & Driver'}</th>
-                        <th className="py-3 px-3 text-right">{isUrdu ? 'روٹ (از ➔ تا)' : 'Route'}</th>
-                        <th className="py-3 px-3 text-right">{isUrdu ? 'پارٹیاں (بھیجنے/وصول کنندہ)' : 'Parties'}</th>
-                        <th className="py-3 px-3 text-right">{isUrdu ? 'تفصیل مال' : 'Cargo'}</th>
-                        <th className="py-3 px-3 text-center">{isUrdu ? 'سٹیٹس' : 'Status'}</th>
-                        <th className="py-3 px-3.5 text-center">{isUrdu ? 'کارروائی' : 'Actions'}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {filteredBilties.map((b) => {
-                        return (
-                          <tr key={b.id || b.biltyNo} className="hover:bg-amber-50/40 transition-colors">
-                            {/* Bilty No & Date */}
-                            <td className="py-3 px-3.5 font-mono">
-                              <div className="font-black text-slate-900 flex items-center gap-1.5">
-                                <span className="bg-slate-900 text-white px-2 py-0.5 rounded text-[11px]">
-                                  {b.biltyNo}
-                                </span>
-                                {b.pendingOnlineNumber && (
-                                  <span title="آن لائن نمبر التواء">
-                                    <AlertTriangle className="w-3 h-3 text-amber-500" />
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-[10px] text-slate-500 font-sans mt-0.5">
-                                📅 {b.date || '—'}
-                              </div>
-                            </td>
-
-                            {/* Office & Language */}
-                            <td className="py-3 px-3 whitespace-nowrap">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#0f2942] text-white">
-                                📍 سمندری
-                              </span>
-                              <div className="text-[10px] text-slate-500 mt-0.5">
-                                {b.language === 'en' ? 'English' : 'اردو'}
-                              </div>
-                            </td>
-
-                            {/* Vehicle & Driver */}
-                            <td className="py-3 px-3">
-                              <div className="font-bold text-slate-800 uppercase font-mono">
-                                🚛 {b.vehicleNo}
-                              </div>
-                              {b.driverName && (
-                                <div className="text-[11px] text-slate-600 mt-0.5">
-                                  {b.driverName} {b.mobileNo ? `(${b.mobileNo})` : ''}
-                                </div>
-                              )}
-                            </td>
-
-                            {/* Route */}
-                            <td className="py-3 px-3">
-                              <div className="font-semibold text-slate-800">
-                                {b.sendingCity || 'سمندری'} <span className="text-slate-400">➔</span> {b.receivingCity || 'منزل'}
-                              </div>
-                            </td>
-
-                            {/* Parties */}
-                            <td className="py-3 px-3 max-w-[180px]">
-                              <div className="text-[11px] text-slate-800 truncate" title={`بھیجنے والا: ${b.senderName || b.consignor || '—'}`}>
-                                <strong className="text-slate-500">از:</strong> {b.senderName || b.consignor || '—'}
-                              </div>
-                              <div className="text-[11px] text-slate-800 truncate" title={`وصول کنندہ: ${b.receiverName || b.consignee || '—'}`}>
-                                <strong className="text-slate-500">تا:</strong> {b.receiverName || b.consignee || '—'}
-                              </div>
-                            </td>
-
-                            {/* Cargo */}
-                            <td className="py-3 px-3 max-w-[150px]">
-                              <div className="font-semibold text-slate-800 truncate" title={b.itemDescription || '—'}>
-                                {b.itemDescription || '—'}
-                              </div>
-                              <div className="text-[10px] text-slate-500 mt-0.5">
-                                {b.qty ? `${b.qty} • ` : ''}{b.weight ? `${b.weight} kg` : ''}
-                              </div>
-                            </td>
-
-                            {/* Status (Dispatch / Delivery POD only) */}
-                            <td className="py-3 px-3 text-center whitespace-nowrap">
-                              <div className="flex flex-col items-center gap-1">
-                                {b.isDelivered || b.podConfirmation ? (
-                                  <span
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300"
-                                    title={b.podConfirmation ? `وصول کنندہ: ${b.podConfirmation.receiverName}` : 'پہنچ گیا'}
-                                  >
-                                    <PackageCheck className="w-3 h-3 text-blue-600" />
-                                    <span>{isUrdu ? 'پہنچ گیا' : 'Delivered'}</span>
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                                    <Clock className="w-3 h-3 text-slate-500" />
-                                    <span>{isUrdu ? 'جاری شدہ' : 'Issued'}</span>
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* Actions */}
-                            <td className="py-3 px-3.5 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedModalBilty(b)}
-                                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-                                  title={isUrdu ? 'بلٹی دیکھیں' : 'View Bilty'}
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handlePrintBuilty(b)}
-                                  className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 transition-colors cursor-pointer"
-                                  title={isUrdu ? 'پرنٹ بلٹی' : 'Print Bilty'}
-                                >
-                                  <Printer className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDownloadPDF(b)}
-                                  className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors cursor-pointer"
-                                  title={isUrdu ? 'PDF ڈاؤن لوڈ' : 'Download PDF'}
-                                >
-                                  <Download className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleWhatsAppShare(b)}
-                                  className="p-1.5 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white transition-colors cursor-pointer"
-                                  title={isUrdu ? 'واٹس ایپ PDF شیئر' : 'WhatsApp'}
-                                >
-                                  <Share2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setVaultModalBilty(b);
-                                    setIsVaultModalOpen(true);
-                                  }}
-                                  className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors cursor-pointer relative"
-                                  title={isUrdu ? 'قانونی والٹ (دستاویزات و کالز)' : 'Legal Vault'}
-                                >
-                                  <ShieldCheck className="w-3.5 h-3.5" />
-                                  {b.legalVault && (
-                                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-blue-600 text-white text-[8px] rounded-full flex items-center justify-center font-bold">
-                                      {Object.keys(b.legalVault).filter((k) => k !== 'updatedAt' && k !== 'recordings' && Boolean((b.legalVault as any)[k])).length + (b.legalVault.recordings?.length || 0)}
-                                    </span>
-                                  )}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartEditBilty(b)}
-                                  className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors cursor-pointer"
-                                  title={isUrdu ? 'بلٹی ترمیم کریں' : 'Edit Bilty'}
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDownloadZip(b)}
-                                  className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 transition-colors cursor-pointer"
-                                  title={isUrdu ? 'ZIP والٹ ڈاؤن لوڈ کریں' : 'Download ZIP Vault'}
-                                >
-                                  <FileArchive className="w-3.5 h-3.5" />
-                                </button>
-                                {onDeleteBilty && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setBiltyToDelete(b)}
-                                    className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
-                                    title={isUrdu ? 'حذف کریں' : 'Delete'}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile Responsive Cards */}
-                <div className="lg:hidden space-y-3">
-                  {filteredBilties.map((b) => {
-                    return (
-                      <div
-                        key={b.id || b.biltyNo}
-                        className="bg-white dark:bg-[#1a1c22] rounded-2xl border border-slate-200 dark:border-[#2d313b] p-4 space-y-3 shadow-xs"
-                      >
-                        {/* Header */}
-                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#2d313b] pb-2.5">
-                          <div className="flex items-center gap-2">
-                            <span className="bg-slate-900 dark:bg-slate-950 text-white font-mono text-xs font-black px-2.5 py-1 rounded border border-slate-700">
-                              {b.biltyNo}
-                            </span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0f2942] text-white">
-                              📍 سمندری
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                            {b.isDelivered || b.podConfirmation ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950/70 text-blue-900 dark:text-blue-300 border border-blue-300 dark:border-blue-800 flex items-center gap-1">
-                                <PackageCheck className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                                <span>{isUrdu ? 'پہنچ گیا' : 'Delivered'}</span>
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-[#22252c] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#2d313b] flex items-center gap-1">
-                                <Clock className="w-3 h-3 text-slate-500 dark:text-slate-400" />
-                                <span>{isUrdu ? 'جاری شدہ' : 'Issued'}</span>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Vehicle, Driver & Route */}
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">{isUrdu ? 'گاڑی و ڈرائیور' : 'Vehicle & Driver'}</div>
-                            <div className="font-mono font-bold text-slate-900 dark:text-slate-100 uppercase">{b.vehicleNo}</div>
-                            {b.driverName && <div className="text-slate-600 dark:text-slate-300 text-[11px] truncate">{b.driverName}</div>}
-                          </div>
-                          <div>
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">{isUrdu ? 'روٹ' : 'Route'}</div>
-                            <div className="font-semibold text-slate-800 dark:text-slate-200">
-                              {b.sendingCity || 'سمندری'} ➔ {b.receivingCity || 'منزل'}
-                            </div>
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400">{b.date || '—'}</div>
-                          </div>
-                        </div>
-
-                        {/* Parties & Cargo */}
-                        <div className="bg-slate-50 dark:bg-[#121316] rounded-xl p-2.5 text-[11px] space-y-1 border border-slate-200/50 dark:border-[#2d313b] text-slate-800 dark:text-slate-200">
-                          <div className="truncate">
-                            <strong className="text-slate-500 dark:text-slate-400">بھیجنے والا:</strong> {b.senderName || b.consignor || '—'}
-                          </div>
-                          <div className="truncate">
-                            <strong className="text-slate-500 dark:text-slate-400">وصول کنندہ:</strong> {b.receiverName || b.consignee || '—'}
-                          </div>
-                          <div className="truncate text-slate-700 dark:text-slate-300">
-                            <strong className="text-slate-500 dark:text-slate-400">مال:</strong> {b.itemDescription || '—'} {b.weight ? `(${b.weight} kg)` : ''}
-                          </div>
-                        </div>
-
-                        {/* Mobile Action Buttons */}
-                        <div className="space-y-1.5 pt-1">
-                          <div className="grid grid-cols-4 gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedModalBilty(b)}
-                              className="py-2 bg-slate-100 hover:bg-slate-200 dark:bg-[#22252c] dark:hover:bg-[#2c3038] text-slate-800 dark:text-slate-200 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors border border-slate-200/60 dark:border-[#2d313b]"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>دیکھیں</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handlePrintBuilty(b)}
-                              className="py-2 bg-slate-900 dark:bg-slate-950 text-amber-400 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors border border-amber-400/30"
-                            >
-                              <Printer className="w-3.5 h-3.5" />
-                              <span>پرنٹ</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadPDF(b)}
-                              className="py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors border border-emerald-200 dark:border-emerald-800"
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                              <span>پی ڈی ایف</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleWhatsAppShare(b)}
-                              className="py-2 bg-[#25D366] text-white rounded-xl text-[11px] font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shadow-xs"
-                            >
-                              <Share2 className="w-3.5 h-3.5" />
-                              <span>واٹس ایپ PDF</span>
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-4 gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleStartEditBilty(b)}
-                              className="py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors border border-indigo-200 dark:border-indigo-800"
-                            >
-                              <Pencil className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                              <span>{isUrdu ? 'ترمیم' : 'Edit'}</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setVaultModalBilty(b);
-                                setIsVaultModalOpen(true);
-                              }}
-                              className="py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-800 dark:text-blue-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors relative border border-blue-200 dark:border-blue-800"
-                            >
-                              <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                              <span>والٹ</span>
-                              {b.legalVault && (
-                                <span className="bg-blue-600 text-white text-[9px] px-1 rounded-full font-bold">
-                                  {Object.keys(b.legalVault).filter((k) => k !== 'updatedAt' && k !== 'recordings' && Boolean((b.legalVault as any)[k])).length + (b.legalVault.recordings?.length || 0)}
-                                </span>
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadZip(b)}
-                              className="py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors border border-amber-200 dark:border-amber-800"
-                            >
-                              <FileArchive className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                              <span>ZIP</span>
-                            </button>
-                            {onDeleteBilty ? (
-                              <button
-                                type="button"
-                                onClick={() => setBiltyToDelete(b)}
-                                className="py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors border border-rose-200 dark:border-rose-800"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                                <span>حذف</span>
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setSelectedModalBilty(b)}
-                                className="py-2 bg-slate-100 dark:bg-[#22252c] text-slate-700 dark:text-slate-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>تصدیق</span>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+          <BiltyAllRecordsTab
+            isUrdu={isUrdu}
+            bilties={bilties}
+            filteredBilties={filteredBilties}
+            dispatchStats={dispatchStats}
+            branchAddress={isUrdu ? branchObj.addressUr : branchObj.addressEn}
+            allFilterQuery={allFilterQuery}
+            deliveryFilter={deliveryFilter}
+            sortBy={sortBy}
+            onChangeFilterQuery={setAllFilterQuery}
+            onChangeDeliveryFilter={setDeliveryFilter}
+            onChangeSortBy={setSortBy}
+            onExportCsv={() => exportAllBiltiesCSV()}
+            onNavigateToCreate={() => setSubTab('create')}
+            onResetFilters={() => {
+              setAllFilterQuery('');
+              setDeliveryFilter('all');
+            }}
+            onInspectBilty={setSelectedModalBilty}
+            onPrintBilty={handlePrintBuilty}
+            onDownloadPdf={handleDownloadPDF}
+            onShareWhatsApp={handleWhatsAppShare}
+            onOpenVault={(b) => {
+              setVaultModalBilty(b);
+              setIsVaultModalOpen(true);
+            }}
+            onEditBilty={handleStartEditBilty}
+            onDownloadZip={handleDownloadZip}
+            onRequestDelete={onDeleteBilty ? setBiltyToDelete : undefined}
+          />
         )}
 
         {subTab === 'create' && (
@@ -2011,9 +1566,9 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {Object.keys(creationLegalVault).filter(k => k !== 'recordings' && Boolean((creationLegalVault as any)[k])).length + (creationLegalVault.recordings?.length || 0) > 0 && (
+                    {countLegalVaultAttachments(creationLegalVault) > 0 && (
                       <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                        {Object.keys(creationLegalVault).filter(k => k !== 'recordings' && Boolean((creationLegalVault as any)[k])).length + (creationLegalVault.recordings?.length || 0)} فائلز
+                        {countLegalVaultAttachments(creationLegalVault)} فائلز
                       </span>
                     )}
                     {isLegalVaultExpanded ? (
@@ -2033,7 +1588,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     </p>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                      {[
+                      {([
                         { key: 'driverPhoto', label: isEnForm ? 'Driver Photo' : 'ڈرائیور تصویر' },
                         { key: 'driverLicense', label: isEnForm ? 'Driver License' : 'ڈرائیور لائسنس' },
                         { key: 'driverCnic', label: isEnForm ? 'Driver CNIC' : 'ڈرائیور CNIC' },
@@ -2042,8 +1597,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                         { key: 'senderCnic', label: isEnForm ? 'Sender CNIC' : 'بھیجنے والا CNIC' },
                         { key: 'receiverPhoto', label: isEnForm ? 'Receiver Photo' : 'وصول کنندہ تصویر' },
                         { key: 'receiverCnic', label: isEnForm ? 'Receiver CNIC' : 'وصول کنندہ CNIC' },
-                      ].map((item) => {
-                        const val = (creationLegalVault as any)[item.key];
+                      ] as Array<{ key: LegalVaultImageKey; label: string }>).map((item) => {
+                        const val = creationLegalVault[item.key];
                         return (
                           <div key={item.key} className="border border-slate-200 rounded-xl p-2 bg-white text-center flex flex-col justify-between">
                             <span className="text-[10px] font-bold text-slate-700 block mb-1 truncate">{item.label}</span>
@@ -2052,9 +1607,9 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                                 <img src={val} alt={item.label} className="w-full h-full object-cover" />
                                 <button
                                   type="button"
-                                  onClick={() => setCreationLegalVault(prev => {
-                                    const next = { ...prev };
-                                    delete (next as any)[item.key];
+                                  onClick={() => setCreationLegalVault((prev) => {
+                                    const next: BiltyLegalVault = { ...prev };
+                                    delete next[item.key];
                                     return next;
                                   })}
                                   className="absolute top-1 right-1 w-5 h-5 rounded bg-rose-600 text-white flex items-center justify-center text-[10px]"
@@ -2250,49 +1805,16 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       )}
 
       {/* 5. Delete Confirmation Modal */}
-      {biltyToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border-2 border-rose-500 space-y-4 text-right" dir="rtl">
-            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
-              <Trash2 className="w-6 h-6" />
-            </div>
-            <div className="text-center space-y-1">
-              <h3 className="text-lg font-black text-slate-900">
-                {isUrdu ? 'کیا آپ واقعی یہ بلٹی حذف کرنا چاہتے ہیں؟' : 'Are you sure you want to delete this bilty?'}
-              </h3>
-              <p className="text-xs text-slate-500 font-mono">
-                {biltyToDelete.biltyNo} • {biltyToDelete.vehicleNo}
-              </p>
-            </div>
-            <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 text-xs text-rose-900 text-center">
-              {isUrdu
-                ? 'یہ کارروائی مستقل ہے اور یہ بلٹی لیجر سے حذف ہو جائے گی۔'
-                : 'This action is irreversible and will remove this bilty from your ledger.'}
-            </div>
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setBiltyToDelete(null)}
-                className="py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 transition-all cursor-pointer"
-              >
-                {isUrdu ? 'منسوخ کریں' : 'Cancel'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (onDeleteBilty && biltyToDelete.id) {
-                    onDeleteBilty(biltyToDelete.id);
-                  }
-                  setBiltyToDelete(null);
-                }}
-                className="py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
-              >
-                {isUrdu ? 'ہاں، ڈیلیٹ کریں' : 'Yes, Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <BiltyDeleteModal
+        bilty={biltyToDelete}
+        isUrdu={isUrdu}
+        onCancel={() => setBiltyToDelete(null)}
+        onConfirmDelete={(id) => {
+          if (onDeleteBilty) {
+            onDeleteBilty(id);
+          }
+        }}
+      />
 
       {/* Legal Vault Modal for viewing, editing, and uploading attachments */}
       {vaultModalBilty && (
@@ -2321,6 +1843,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             logoDataUrl={preloadedAssets.logo}
             branch="samundri"
             language={activePrintRecord.language || selectedLanguage}
+            colorTheme={activePrintRecord.colorTheme || selectedColorTheme}
           />
         </div>
       )}
