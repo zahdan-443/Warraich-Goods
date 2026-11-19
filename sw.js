@@ -10,8 +10,9 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v24';
+const CACHE_NAME = 'driver-dost-1.3.1-mwnjfb1n';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
+const MAX_CACHED_TILES = 350;
 
 // Core static assets always available locally
 const CORE_STATIC_ASSETS = [
@@ -44,32 +45,32 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/BiltyView-CrX4fRLY.js',
-  './assets/DashcamView-B8sIQuTH.js',
-  './assets/DriversView-UcUWjai-.js',
-  './assets/FuelLogView-DzjZFBA6.js',
-  './assets/LedgerView-CFKwMCKU.js',
+    './assets/BiltyView-KdUp-ONi.js',
+  './assets/DashcamView-XkrRfmXv.js',
+  './assets/DriversView-B6V6PNua.js',
+  './assets/FuelLogView-Di7rUSKx.js',
+  './assets/LedgerView-BDPyp82_.js',
   './assets/MapView-CIGW-MKW.css',
-  './assets/MapView-DGtEM1BE.js',
-  './assets/NavigationView-_1v0OY5n.js',
-  './assets/RoutesView-DS4oexsV.js',
-  './assets/TollPlazaView-DQXKeUpi.js',
-  './assets/TripCostView-5W9bIBAg.js',
-  './assets/VehicleAccountView-D-EtPZ3b.js',
-  './assets/VehiclesView-BvfN4IM1.js',
-  './assets/VerifyView-ClTQtnHh.js',
-  './assets/biltyHelpers-Bpp6WETh.js',
+  './assets/MapView-DW4Y_RPw.js',
+  './assets/NavigationView-e6g-kUi1.js',
+  './assets/RoutesView-HJJXXxR2.js',
+  './assets/TollPlazaView-azK4S6mK.js',
+  './assets/TripCostView-CtcGh-M9.js',
+  './assets/VehicleAccountView-PD7SqdxY.js',
+  './assets/VehiclesView-DC60ZcyX.js',
+  './assets/VerifyView-CmBrd4LQ.js',
+  './assets/biltyHelpers-MBn1nsl-.js',
   './assets/bilty_watermark_bg_1794821577675-BFAqost0.jpg',
-  './assets/index-DgHoSTFY.css',
-  './assets/index-DvUgWYG5.js',
-  './assets/pdfHelper-LXw97FFc.js',
-  './assets/vendor-firebase-Cfestj6C.js',
-  './assets/vendor-pdf-B9aqIgyI.js',
-  './assets/vendor-react-B1GFQ6xX.js',
-  './assets/web-BbnvOy6v.js',
-  './assets/web-CPODb0_A.js',
-  './assets/web-DFrdAAId.js',
-  './assets/web-DliDD-ib.js'
+  './assets/index-DonnXUEI.css',
+  './assets/index-o68sbefy.js',
+  './assets/pdfHelper-BQJYR32q.js',
+  './assets/vendor-firebase-CIhkivAp.js',
+  './assets/vendor-pdf-C_00KF73.js',
+  './assets/vendor-react-DBna6sz6.js',
+  './assets/web-BFned5k-.js',
+  './assets/web-BX2BdMlO.js',
+  './assets/web-DuMV63fX.js',
+  './assets/web-jwPn4hHg.js'
 ];
 
 // 1. Install Event: Precache All Shell Assets + Parse HTML for Vite Bundles
@@ -173,23 +174,19 @@ self.addEventListener('fetch', (event) => {
   // Cross-origin network pass-through:
   // External APIs (Google OAuth, Firebase APIs, fonts, telemetry) must ALWAYS bypass the Service Worker
   // and go directly to network, EXCEPT for third-party map tile servers for offline map support.
-  if (url.origin !== self.location.origin) {
-    const isMapTile =
-      url.hostname.includes('tile.openstreetmap.org') ||
-      url.hostname.includes('basemaps.cartocdn.com') ||
-      (url.pathname.endsWith('.png') && url.pathname.includes('/tiles/'));
-
-    if (!isMapTile) {
-      return; // Direct network pass-through for Firebase, Google OAuth, and external APIs
-    }
-  }
-
-  // Handle OpenStreetMap / CartoDB / Tile Server requests
-  if (
+  const isMapTile =
     url.hostname.includes('tile.openstreetmap.org') ||
     url.hostname.includes('basemaps.cartocdn.com') ||
-    (url.pathname.endsWith('.png') && url.pathname.includes('/tiles/'))
-  ) {
+    url.hostname.includes('tile.opentopomap.org') ||
+    url.hostname.includes('server.arcgisonline.com') ||
+    (url.pathname.endsWith('.png') && url.pathname.includes('/tiles/'));
+
+  if (url.origin !== self.location.origin && !isMapTile) {
+    return; // Direct network pass-through for Firebase, Google OAuth, and external APIs
+  }
+
+  // Handle OpenStreetMap / CartoDB / OpenTopoMap / ArcGIS Tile Server requests
+  if (isMapTile) {
     event.respondWith(
       (async () => {
         const tileCache = await caches.open(TILE_CACHE_NAME);
@@ -199,7 +196,14 @@ self.addEventListener('fetch', (event) => {
         try {
           const res = await fetch(event.request);
           if (res && res.status === 200) {
-            tileCache.put(event.request, res.clone());
+            await tileCache.put(event.request, res.clone());
+            const keys = await tileCache.keys();
+            if (keys.length > MAX_CACHED_TILES) {
+              const excess = keys.length - MAX_CACHED_TILES;
+              for (let i = 0; i < excess; i++) {
+                await tileCache.delete(keys[i]);
+              }
+            }
           }
           return res;
         } catch (e) {
@@ -214,8 +218,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle SPA Navigation requests (HTML)
+  // Handle HTML Navigation requests: isolate standalone static pages from SPA shell
   if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
+    const isStandaloneHtml = /(?:^|\/)(privacy|terms|delete-account|404)\.html$/i.test(url.pathname);
     event.respondWith(
       (async () => {
         // Attempt network first with snappy 2-second timeout
@@ -228,12 +233,19 @@ self.addEventListener('fetch', (event) => {
           if (networkResponse && networkResponse.status === 200) {
             const cache = await caches.open(CACHE_NAME);
             cache.put(event.request, networkResponse.clone());
-            cache.put('index.html', networkResponse.clone());
-            cache.put('./', networkResponse.clone());
+            if (!isStandaloneHtml) {
+              cache.put('index.html', networkResponse.clone());
+              cache.put('./', networkResponse.clone());
+            }
             return networkResponse;
           }
         } catch (e) {
-          // Network failed or offline - fall through immediately to cached app shell
+          // Network failed or offline - fall through immediately to cached response
+        }
+
+        if (isStandaloneHtml) {
+          const exactStatic = await caches.match(event.request, { ignoreSearch: true });
+          if (exactStatic) return exactStatic;
         }
 
         // Return cached app shell with ignoreSearch: true for query parameters (?utm_source, etc.)
