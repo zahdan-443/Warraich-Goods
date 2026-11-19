@@ -296,7 +296,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
           backgroundImage: theme.paperGrad
         }}
       >
-        {/* 1. HEADER: Pakistani Truck-Art / Offset Gradient Frame with Transparent Logo + Proprietor & Address */}
+        {/* 1. HEADER: Pakistani Truck-Art Frame with Right Company Name | Center Shield Logo | Left Proprietor & Phones */}
         <div
           dir={isEn ? 'ltr' : 'rtl'}
           data-testid="pakistani-header-frame"
@@ -441,111 +441,49 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               )}
             </div>
 
-            {/* Inner Frame Flex Row: Transparent Official Logo + Proprietor & Address Panel */}
+            {/* Inner Frame 3-Column Row: Right Company Name & Address | Center Logo | Left Proprietor & Phones */}
             <div
-              dir="ltr"
+              dir={isEn ? 'ltr' : 'rtl'}
               style={{
-                display: 'flex',
-                flexDirection: 'row',
+                display: 'grid',
+                gridTemplateColumns: '1.45fr 0.75fr 1.25fr',
                 alignItems: 'center',
-                gap: '14px',
+                gap: '12px',
                 width: '100%',
-                marginTop: '4px'
+                marginTop: '14px'
               }}
             >
-              {/* Transparent Official Logo (already contains WG Truck Emblem + Urdu Company Title + Tagline) */}
+              {/* Column 1 (Right in Urdu / Left in English): Company Name & Head Office Address */}
               <div
-                data-testid="header-logo-inside-frame"
                 style={{
-                  width: isEn ? '210px' : '265px',
-                  height: isEn ? '106px' : '116px',
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                  backgroundColor: 'transparent',
-                  margin: '0',
-                  padding: '0'
-                }}
-              >
-                {!logoFailed ? (
-                  <img
-                    src={activeLogoSrc}
-                    alt={isEn ? 'Warraich Goods Transport Company Emblem' : 'وڑائچ گڈز ٹرانسپورٹ کمپنی لوگو'}
-                    width={isEn ? 210 : 265}
-                    height={isEn ? 106 : 116}
-                    onError={(e) => handleEmblemImgError(e.currentTarget, () => setLogoFailed(true))}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain',
-                      transform: 'scale(1.06)',
-                      transformOrigin: 'center center',
-                      border: 'none',
-                      backgroundColor: 'transparent',
-                      padding: '0',
-                      display: 'block'
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: '104px',
-                      height: '104px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: 'transparent'
-                    }}
-                  >
-                    <CompanyLogo className="w-24 h-24" />
-                  </div>
-                )}
-              </div>
-
-              {/* Right Panel: English Full Title OR Urdu Head Office Title + Clean Proprietor + Office Address & Phone */}
-              <div
-                dir={isEn ? 'ltr' : 'rtl'}
-                style={{
-                  flex: '1 1 0%',
-                  textAlign: 'center',
+                  textAlign: isEn ? 'left' : 'right',
                   display: 'flex',
                   flexDirection: 'column',
-                  alignItems: 'center',
                   justifyContent: 'center',
-                  paddingTop: '14px',
-                  paddingRight: '8px',
-                  borderInlineStart: `1.5px dashed ${theme.goldAccent}`,
-                  paddingInlineStart: '12px'
+                  paddingInlineStart: '6px'
                 }}
               >
-                {/* Title Band (English shows full engraved company title; Urdu shows regional office & service banner so logo's Urdu title isn't duplicated) */}
                 <div
                   data-testid="company-masthead-title"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
+                    gap: '6px',
                     borderBottom: `2px solid ${theme.goldAccent}`,
                     paddingBottom: '4px',
-                    marginBottom: '6px'
+                    marginBottom: '5px'
                   }}
                 >
-                  <svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
-                    <polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill={theme.emeraldAccent} stroke={theme.goldAccent} strokeWidth="1" />
-                  </svg>
                   {isEn ? (
                     <h1
                       style={{
                         fontFamily: "'Cinzel', 'Libre Baskerville', Georgia, 'Times New Roman', serif",
-                        fontSize: '18.5px',
+                        fontSize: '16.5px',
                         fontWeight: 900,
-                        letterSpacing: '0.03em',
+                        letterSpacing: '0.02em',
                         color: theme.primaryColor,
                         margin: '0',
-                        lineHeight: '1.16',
+                        lineHeight: '1.18',
                         textTransform: 'uppercase',
                         textShadow: '0 1px 0 rgba(217, 119, 6, 0.25)'
                       }}
@@ -553,7 +491,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                       WARRAICH GOODS TRANSPORT COMPANY
                       <sup
                         style={{
-                          fontSize: '11px',
+                          fontSize: '10px',
                           fontWeight: 800,
                           verticalAlign: 'super',
                           marginLeft: '2px',
@@ -572,14 +510,14 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                         fontWeight: 800,
                         color: theme.primaryColor,
                         margin: '0',
-                        lineHeight: '1.48',
+                        lineHeight: '1.42',
                         textShadow: '0 1px 0 rgba(217, 119, 6, 0.24)'
                       }}
                     >
-                      {logoFailed ? cleanUrduCompanyName : 'آل پاکستان گڈز ٹرانسپورٹ سروس'}
+                      {cleanUrduCompanyName}
                       <sup
                         style={{
-                          fontSize: '11.5px',
+                          fontSize: '11px',
                           fontWeight: 800,
                           verticalAlign: 'super',
                           marginRight: '3px',
@@ -591,25 +529,101 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                       </sup>
                     </h1>
                   )}
-                  <svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
-                    <polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill={theme.emeraldAccent} stroke={theme.goldAccent} strokeWidth="1" />
-                  </svg>
                 </div>
 
-                {/* Strip-Free Proprietor Line directly on Coloured Header Canvas */}
+                {/* Head Office Address neatly placed directly below Company Name */}
+                <div
+                  style={{
+                    fontSize: isEn ? '10.5px' : '11.5px',
+                    fontWeight: 700,
+                    fontFamily: isEn ? enBodyFont : urBodyFont,
+                    color: theme.secondaryColor,
+                    lineHeight: isEn ? '1.35' : '1.5'
+                  }}
+                >
+                  {isEn ? branchInfo.addressEn : branchInfo.addressUr}
+                </div>
+              </div>
+
+              {/* Column 2 (Center): Official Emblem / Shield Logo */}
+              <div
+                data-testid="header-logo-inside-frame"
+                style={{
+                  width: '100%',
+                  height: '92px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  backgroundColor: 'transparent',
+                  margin: '0',
+                  padding: '0'
+                }}
+              >
+                {!logoFailed ? (
+                  <img
+                    src={activeLogoSrc}
+                    alt={isEn ? 'Warraich Goods Transport Company Emblem' : 'وڑائچ گڈز ٹرانسپورٹ کمپنی لوگو'}
+                    width={96}
+                    height={92}
+                    onError={(e) => handleEmblemImgError(e.currentTarget, () => setLogoFailed(true))}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      maxWidth: '96px',
+                      maxHeight: '92px',
+                      objectFit: 'contain',
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      padding: '0',
+                      display: 'block'
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '84px',
+                      height: '84px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: 'transparent'
+                    }}
+                  >
+                    <CompanyLogo className="w-20 h-20" />
+                  </div>
+                )}
+              </div>
+
+              {/* Column 3 (Left in Urdu / Right in English): Proprietor & Phone Numbers */}
+              <div
+                style={{
+                  textAlign: isEn ? 'right' : 'left',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: isEn ? 'flex-end' : 'flex-start',
+                  borderInlineStart: `1.5px dashed ${theme.goldAccent}`,
+                  paddingInlineStart: '12px',
+                  paddingInlineEnd: '6px'
+                }}
+              >
+                {/* Proprietor Line */}
                 <div
                   data-testid="proprietor-clean-line"
                   style={{
                     backgroundColor: 'transparent',
                     color: theme.secondaryColor,
-                    padding: isEn ? '2px 10px' : '1px 10px',
-                    fontSize: isEn ? '11.5px' : '13.5px',
+                    paddingBottom: '4px',
+                    marginBottom: '4px',
+                    fontSize: isEn ? '11.5px' : '13px',
                     fontWeight: 800,
                     fontFamily: isEn ? enBodyFont : urBodyFont,
-                    letterSpacing: isEn ? '0.05em' : '0',
+                    letterSpacing: isEn ? '0.03em' : '0',
                     textTransform: isEn ? 'uppercase' : 'none',
                     borderBottom: `1px solid ${theme.lightRule}`,
-                    lineHeight: isEn ? '1.35' : '1.55'
+                    lineHeight: isEn ? '1.35' : '1.5',
+                    width: '100%'
                   }}
                 >
                   {isEn ? (
@@ -625,40 +639,37 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   )}
                 </div>
 
-                {/* Single Samundri Office Address & Phone Numbers */}
+                {/* Mobile Numbers */}
                 <div
+                  dir={isEn ? 'ltr' : 'rtl'}
                   style={{
-                    marginTop: '4px',
+                    fontFamily: isEn ? monoFont : urBodyFont,
                     fontSize: isEn ? '10.5px' : '11.5px',
+                    color: theme.emeraldAccent,
                     fontWeight: 700,
-                    fontFamily: isEn ? enBodyFont : urBodyFont,
-                    color: theme.secondaryColor,
-                    lineHeight: isEn ? '1.35' : '1.55'
+                    fontVariantNumeric: 'tabular-nums',
+                    lineHeight: '1.45'
                   }}
                 >
-                  <div>{isEn ? branchInfo.addressEn : branchInfo.addressUr}</div>
-                  <div
-                    dir={isEn ? 'ltr' : 'rtl'}
-                    style={{
-                      fontFamily: isEn ? monoFont : urBodyFont,
-                      fontSize: isEn ? '10.5px' : '11px',
-                      marginTop: '2px',
-                      color: theme.emeraldAccent,
-                      fontWeight: 700,
-                      fontVariantNumeric: 'tabular-nums'
-                    }}
-                  >
-                    {isEn ? (
-                      <span>Mobile: {branchInfo.phone}</span>
-                    ) : (
-                      <span>
-                        فون نمبر:{' '}
-                        <span dir="ltr" style={{ fontFamily: monoFont, fontSize: '10.5px', color: theme.primaryColor, fontWeight: 800, unicodeBidi: 'isolate' }}>
-                          {branchInfo.phone}
-                        </span>
+                  {isEn ? (
+                    <span>☎ {branchInfo.phone}</span>
+                  ) : (
+                    <span>
+                      فون نمبر:{' '}
+                      <span
+                        dir="ltr"
+                        style={{
+                          fontFamily: monoFont,
+                          fontSize: '10.5px',
+                          color: theme.primaryColor,
+                          fontWeight: 800,
+                          unicodeBidi: 'isolate'
+                        }}
+                      >
+                        {branchInfo.phone}
                       </span>
-                    )}
-                  </div>
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
