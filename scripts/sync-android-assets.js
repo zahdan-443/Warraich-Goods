@@ -7,7 +7,7 @@ const androidAssetsDir = path.resolve('android/app/src/main/assets');
 
 if (fs.existsSync(distDir)) {
   try {
-    // 1. Inject compiled Vite build chunks into dist/sw.js for complete offline PWA precaching
+    // 1. Inject compiled Vite build chunks + dynamic cache version into dist/sw.js for complete offline PWA precaching
     const distSw = path.join(distDir, 'sw.js');
     const distAssetsDir = path.join(distDir, 'assets');
     if (fs.existsSync(distSw) && fs.existsSync(distAssetsDir)) {
@@ -15,14 +15,25 @@ if (fs.existsSync(distDir)) {
         .filter(f => !f.endsWith('.map') && fs.statSync(path.join(distAssetsDir, f)).isFile())
         .map(f => `./assets/${f}`);
 
+      const pkgPath = path.resolve('package.json');
+      const pkgVersion = fs.existsSync(pkgPath)
+        ? (JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version || '1.3.1')
+        : '1.3.1';
+      const buildStamp = Date.now().toString(36);
+      const dynamicCacheName = `driver-dost-${pkgVersion}-${buildStamp}`;
+
       let swContent = fs.readFileSync(distSw, 'utf8');
+      swContent = swContent.replace(
+        /const CACHE_NAME = ['"][^'"]+['"];/,
+        `const CACHE_NAME = '${dynamicCacheName}';`
+      );
       const injectionString = chunkFiles.map(f => `  '${f}'`).join(',\n');
       swContent = swContent.replace(
         '/* __BUILD_ASSETS_INJECTION__ */',
         injectionString
       );
       fs.writeFileSync(distSw, swContent, 'utf8');
-      console.log(`✅ Injected ${chunkFiles.length} production build chunks into Service Worker precache`);
+      console.log(`✅ Injected ${chunkFiles.length} production build chunks into Service Worker precache (${dynamicCacheName})`);
     }
 
     // 2. Synchronize to Android assets if android directory exists

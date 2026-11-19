@@ -26,6 +26,7 @@ import {
   getLedgerAccounts,
   normalizePakistaniPhone
 } from '../../../utils/ledgerStorage';
+import { validateFinancialNumber } from '../../../utils/calculator';
 import { downloadOrSharePdf, generateEmployeeStatementPdf } from '../../../utils/khataPdf';
 import {
   ChevronLeft,
@@ -561,13 +562,15 @@ const EmployeeFormModal: React.FC<{
           onSubmit={e => {
             e.preventDefault();
             if (!name.trim()) return;
+            const rateCheck = validateFinancialNumber(rateAmount, isUrdu ? 'تنخواہ / ریٹ' : 'Rate', { allowZero: true });
+            if (!rateCheck.isValid) return;
             onSave({
               id: initialEmployee?.id,
               name: name.trim(),
               role,
               phone: phone.trim(),
               payBasis,
-              rateAmount: Math.max(0, parseFloat(rateAmount) || 0),
+              rateAmount: rateCheck.value,
               joiningDate,
               active,
               linkedDriverId: linkedDriverId ? Number(linkedDriverId) : undefined
@@ -750,6 +753,7 @@ const EmployeeEntryModal: React.FC<{
   );
   const [date, setDate] = useState(getTodayIsoDate());
   const [notes, setNotes] = useState('');
+  const [entryError, setEntryError] = useState<string | null>(null);
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -766,9 +770,13 @@ const EmployeeEntryModal: React.FC<{
         <form
           onSubmit={e => {
             e.preventDefault();
-            const val = parseFloat(amount) || 0;
-            if (val <= 0) return;
-            onSave({ employeeId: employee.id, type, amount: val, date, notes: notes.trim() });
+            const valCheck = validateFinancialNumber(amount, isUrdu ? 'رقم' : 'Amount', { allowZero: false });
+            if (!valCheck.isValid) {
+              setEntryError(valCheck.error || (isUrdu ? 'درست مثبت رقم درج کریں۔' : 'Enter a valid positive amount.'));
+              return;
+            }
+            setEntryError(null);
+            onSave({ employeeId: employee.id, type, amount: valCheck.value, date, notes: notes.trim() });
           }}
           className="space-y-3"
         >
@@ -826,6 +834,12 @@ const EmployeeEntryModal: React.FC<{
               className="w-full min-h-[42px] px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"
             />
           </div>
+
+          {entryError && (
+            <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+              {entryError}
+            </p>
+          )}
 
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose} className="flex-1 min-h-[46px] rounded-2xl bg-slate-100 dark:bg-slate-800 text-xs font-bold cursor-pointer">

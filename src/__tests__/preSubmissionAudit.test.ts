@@ -89,14 +89,15 @@ describe('Pre-Submission APK Audit & Security Hardening Suite', () => {
       expect(mocks.writeFile).toHaveBeenCalledTimes(1);
       expect(mocks.writeFile).toHaveBeenCalledWith(
         expect.objectContaining({
-          path: 'fleet_backup_2026.csv',
-          directory: 'CACHE'
+          path: 'exports/fleet_backup_2026.csv',
+          directory: 'CACHE',
+          recursive: true
         })
       );
       expect(mocks.share).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Export Fleet CSV',
-          url: 'file:///cache/fleet_backup_2026.csv'
+          url: 'file:///cache/exports/fleet_backup_2026.csv'
         })
       );
     });

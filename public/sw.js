@@ -10,8 +10,9 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-v24';
+const CACHE_NAME = 'driver-dost-1.3.1';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
+const MAX_CACHED_TILES = 350;
 
 // Core static assets always available locally
 const CORE_STATIC_ASSETS = [
@@ -148,23 +149,19 @@ self.addEventListener('fetch', (event) => {
   // Cross-origin network pass-through:
   // External APIs (Google OAuth, Firebase APIs, fonts, telemetry) must ALWAYS bypass the Service Worker
   // and go directly to network, EXCEPT for third-party map tile servers for offline map support.
-  if (url.origin !== self.location.origin) {
-    const isMapTile =
-      url.hostname.includes('tile.openstreetmap.org') ||
-      url.hostname.includes('basemaps.cartocdn.com') ||
-      (url.pathname.endsWith('.png') && url.pathname.includes('/tiles/'));
-
-    if (!isMapTile) {
-      return; // Direct network pass-through for Firebase, Google OAuth, and external APIs
-    }
-  }
-
-  // Handle OpenStreetMap / CartoDB / Tile Server requests
-  if (
+  const isMapTile =
     url.hostname.includes('tile.openstreetmap.org') ||
     url.hostname.includes('basemaps.cartocdn.com') ||
-    (url.pathname.endsWith('.png') && url.pathname.includes('/tiles/'))
-  ) {
+    url.hostname.includes('tile.opentopomap.org') ||
+    url.hostname.includes('server.arcgisonline.com') ||
+    (url.pathname.endsWith('.png') && url.pathname.includes('/tiles/'));
+
+  if (url.origin !== self.location.origin && !isMapTile) {
+    return; // Direct network pass-through for Firebase, Google OAuth, and external APIs
+  }
+
+  // Handle OpenStreetMap / CartoDB / OpenTopoMap / ArcGIS Tile Server requests
+  if (isMapTile) {
     event.respondWith(
       (async () => {
         const tileCache = await caches.open(TILE_CACHE_NAME);
@@ -174,7 +171,14 @@ self.addEventListener('fetch', (event) => {
         try {
           const res = await fetch(event.request);
           if (res && res.status === 200) {
-            tileCache.put(event.request, res.clone());
+            await tileCache.put(event.request, res.clone());
+            const keys = await tileCache.keys();
+            if (keys.length > MAX_CACHED_TILES) {
+              const excess = keys.length - MAX_CACHED_TILES;
+              for (let i = 0; i < excess; i++) {
+                await tileCache.delete(keys[i]);
+              }
+            }
           }
           return res;
         } catch (e) {
@@ -189,8 +193,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle SPA Navigation requests (HTML)
+  // Handle HTML Navigation requests: isolate standalone static pages from SPA shell
   if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
+    const isStandaloneHtml = /(?:^|\/)(privacy|terms|delete-account|404)\.html$/i.test(url.pathname);
     event.respondWith(
       (async () => {
         // Attempt network first with snappy 2-second timeout
@@ -203,12 +208,19 @@ self.addEventListener('fetch', (event) => {
           if (networkResponse && networkResponse.status === 200) {
             const cache = await caches.open(CACHE_NAME);
             cache.put(event.request, networkResponse.clone());
-            cache.put('index.html', networkResponse.clone());
-            cache.put('./', networkResponse.clone());
+            if (!isStandaloneHtml) {
+              cache.put('index.html', networkResponse.clone());
+              cache.put('./', networkResponse.clone());
+            }
             return networkResponse;
           }
         } catch (e) {
-          // Network failed or offline - fall through immediately to cached app shell
+          // Network failed or offline - fall through immediately to cached response
+        }
+
+        if (isStandaloneHtml) {
+          const exactStatic = await caches.match(event.request, { ignoreSearch: true });
+          if (exactStatic) return exactStatic;
         }
 
         // Return cached app shell with ignoreSearch: true for query parameters (?utm_source, etc.)

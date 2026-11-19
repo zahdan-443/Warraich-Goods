@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DICTIONARY, Language, RoutePreset } from '../../types';
-import { MapPin, Plus, Trash2, ArrowRight, Navigation, ArrowLeft } from 'lucide-react';
+import { MapPin, Plus, Trash2, ArrowRight, Navigation } from 'lucide-react';
+import { validateFinancialNumber } from '../../utils/calculator';
 
 interface RoutesViewProps {
   lang: Language;
@@ -28,15 +29,31 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
   const [toCity, setToCity] = useState('');
   const [dist, setDist] = useState('');
   const [toll, setToll] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fromCity.trim() || !toCity.trim()) return;
+    if (!fromCity.trim() || !toCity.trim()) {
+      setFormError(isUrdu ? 'شروع اور منزل کا شہر درج کریں۔' : 'Origin and destination cities are required.');
+      return;
+    }
+    const distVal = validateFinancialNumber(dist, isUrdu ? 'فاصلہ' : 'Distance', { allowZero: false });
+    if (!distVal.isValid) {
+      setFormError(distVal.error || (isUrdu ? 'درست فاصلہ (km) درج کریں۔' : 'Enter a valid positive distance.'));
+      return;
+    }
+    const tollVal = validateFinancialNumber(toll, isUrdu ? 'ٹول ٹیکس' : 'Toll', { allowZero: true });
+    if (!tollVal.isValid) {
+      setFormError(tollVal.error || (isUrdu ? 'ٹول ٹیکس درست درج کریں۔' : 'Enter a valid toll amount.'));
+      return;
+    }
+
+    setFormError(null);
     onAddRoute({
       from: fromCity.trim(),
       to: toCity.trim(),
-      dist: parseFloat(dist) || 300,
-      toll: parseFloat(toll) || 1000
+      dist: distVal.value,
+      toll: tollVal.value
     });
     setFromCity('');
     setToCity('');
@@ -168,8 +185,14 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
                 <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">{t.distance}</label>
                 <input
                   type="number"
+                  required
+                  min="1"
+                  step="any"
                   value={dist}
-                  onChange={(e) => setDist(e.target.value)}
+                  onChange={(e) => {
+                    setDist(e.target.value);
+                    if (formError) setFormError(null);
+                  }}
                   placeholder="340"
                   className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-4 py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono"
                 />
@@ -179,13 +202,24 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
                 <label className="block text-xs font-bold uppercase tracking-wider text-[#8e8e75] mb-1.5">{t.toll}</label>
                 <input
                   type="number"
+                  min="0"
+                  step="any"
                   value={toll}
-                  onChange={(e) => setToll(e.target.value)}
-                  placeholder="1100"
+                  onChange={(e) => {
+                    setToll(e.target.value);
+                    if (formError) setFormError(null);
+                  }}
+                  placeholder="0"
                   className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-4 py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none font-mono"
                 />
               </div>
             </div>
+
+            {formError && (
+              <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+                {formError}
+              </p>
+            )}
 
             <div className="flex items-center gap-3 pt-3">
               <button

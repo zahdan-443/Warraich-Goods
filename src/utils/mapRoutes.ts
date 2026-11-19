@@ -56,8 +56,58 @@ export function findPakistanCity(query: string): CityCoords | undefined {
   );
 }
 
+const OSRM_DIST_CACHE_KEY = 'wg_osrm_distance_cache_v1';
+const OSRM_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const OSRM_MAX_CACHED_PAIRS = 250;
+
+interface CachedRouteDistEntry {
+  km: number;
+  ts: number;
+}
+
+function getRouteCacheKey(c1: CityCoords, c2: CityCoords): string {
+  const k1 = (c1.id || c1.nameEn).toLowerCase().trim();
+  const k2 = (c2.id || c2.nameEn).toLowerCase().trim();
+  return k1 < k2 ? `${k1}__${k2}` : `${k2}__${k1}`;
+}
+
+function readCachedRouteDistance(key: string): number | null {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    const raw = localStorage.getItem(OSRM_DIST_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, CachedRouteDistEntry>;
+    const hit = parsed[key];
+    if (hit && typeof hit.km === 'number' && Number.isFinite(hit.km) && Date.now() - hit.ts < OSRM_CACHE_TTL_MS) {
+      return hit.km;
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return null;
+}
+
+function writeCachedRouteDistance(key: string, km: number): void {
+  try {
+    if (typeof localStorage === 'undefined' || !Number.isFinite(km) || km <= 0) return;
+    const raw = localStorage.getItem(OSRM_DIST_CACHE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as Record<string, CachedRouteDistEntry>) : {};
+    const now = Date.now();
+    parsed[key] = { km, ts: now };
+
+    const entries = Object.entries(parsed).filter(([, v]) => v && now - v.ts < OSRM_CACHE_TTL_MS);
+    if (entries.length > OSRM_MAX_CACHED_PAIRS) {
+      entries.sort((a, b) => b[1].ts - a[1].ts);
+      entries.length = OSRM_MAX_CACHED_PAIRS;
+    }
+    localStorage.setItem(OSRM_DIST_CACHE_KEY, JSON.stringify(Object.fromEntries(entries)));
+  } catch {
+    // ignore storage quota errors
+  }
+}
+
 /**
- * Get road driving distance using free OpenStreetMap OSRM API with Haversine fallback
+ * Get road driving distance using free OpenStreetMap OSRM API with 30-day local cache & Haversine fallback
  */
 export async function fetchOSRMRouteDistance(
   originName: string,
@@ -70,6 +120,12 @@ export async function fetchOSRMRouteDistance(
 
   if (!originCity || !destCity) return null;
 
+  const pairKey = getRouteCacheKey(originCity, destCity);
+  const cachedKm = readCachedRouteDistance(pairKey);
+  if (cachedKm !== null) {
+    return cachedKm;
+  }
+
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${originCity.lng},${originCity.lat};${destCity.lng},${destCity.lat}?overview=false`;
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -80,8 +136,9 @@ export async function fetchOSRMRouteDistance(
       if (res.ok) {
         const data = await res.json();
         if (data && data.routes && data.routes.length > 0 && data.routes[0].distance) {
-          const meters = data.routes[0].distance;
-          return Math.round(meters / 1000);
+          const km = Math.round(data.routes[0].distance / 1000);
+          writeCachedRouteDistance(pairKey, km);
+          return km;
         }
       }
     } finally {

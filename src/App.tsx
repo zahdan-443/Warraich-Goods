@@ -35,6 +35,10 @@ import {
   fetchAccountDeletionStatus,
   cancelAccountDeletion,
   purgeExpiredAccountData,
+  findNextAvailableBiltySeq,
+  inspectGuestScopeData,
+  importGuestDataIntoScope,
+  type GuestScopeSummary,
   type AccountDeletionRequest
 } from './utils/storage';
 import { OWNER_EMAIL, DEFAULT_AUTHORIZED_EMAILS, isOwnerEmail } from './utils/authUtils';
@@ -73,6 +77,7 @@ import { ViewHeader } from './components/ViewHeader';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
 import { GuestSavePromptModal } from './components/GuestSavePromptModal';
+import { GuestImportPromptModal } from './components/GuestImportPromptModal';
 import { Home, ArrowLeft } from 'lucide-react';
 import { checkExpiringDocuments, processExpiryNotifications } from './utils/documentExpiry';
 import { dispatchDailyDigestNotification } from './utils/dailyDigestNotification';
@@ -241,6 +246,7 @@ export default function App() {
   const [showGuestSaveModal, setShowGuestSaveModal] = useState<boolean>(false);
   const [pendingGuestSaveAction, setPendingGuestSaveAction] = useState<(() => void) | null>(null);
   const [guestSavePromptDesc, setGuestSavePromptDesc] = useState<string>('');
+  const [pendingGuestImport, setPendingGuestImport] = useState<GuestScopeSummary | null>(null);
 
   const triggerGuestSaveCheck = (action: () => void, description?: string) => {
     if (!auth.currentUser && !userEmail) {
@@ -645,6 +651,15 @@ export default function App() {
         console.warn("Firestore user profile save warning (fallback to local cache):", profileError);
       }
 
+      // Check if this device has Guest-mode records and prompt user before merging
+      try {
+        localStorage.removeItem(`wg_v3_guest_import_deferred_${uid}`);
+        const guestSummary = inspectGuestScopeData();
+        if (guestSummary.hasGuestData) {
+          setPendingGuestImport(guestSummary);
+        }
+      } catch {}
+
       // Auto-reconcile all local/offline data to this user's cloud Firestore
       autoReconcileAllLocalToCloud(uid).then(() => {
         setBilties(getStoredBilties());
@@ -659,9 +674,15 @@ export default function App() {
   };
 
   const handleSignOut = () => {
+    if (currentUid) {
+      try {
+        localStorage.removeItem(`wg_v3_guest_import_deferred_${currentUid}`);
+      } catch {}
+    }
     logoutUser();
     setUserEmail(null);
     setCurrentUid(null);
+    setPendingGuestImport(null);
     localStorage.removeItem('ah-gmail-user');
     localStorage.removeItem('ah-user-role');
     setRole('driver');
@@ -1158,21 +1179,32 @@ export default function App() {
   };
 
   // Handlers for Bilty
-  const handleAddBilty = (recordObj: Omit<BiltyRecord, 'id'>) => {
+  const handleAddBilty = (recordObj: Omit<BiltyRecord, 'id'>): BiltyRecord => {
     const current = getStoredBilties();
     let finalBiltyNo = recordObj.biltyNo;
 
-    // Check if an existing record already has this exact biltyNo
-    const existingSameNo = current.find((b) => b.biltyNo === finalBiltyNo);
+    // Check if an existing record already has this exact biltyNo (including wrap-around collisions)
+    const existingSameNo = current.find(
+      (b) => b.biltyNo?.trim().toUpperCase() === finalBiltyNo.trim().toUpperCase()
+    );
     if (existingSameNo) {
-      // Re-allocate next available unique sequential bilty number so existing bilty is never overwritten
-      finalBiltyNo = getNextBiltyNo();
+      try {
+        const rawDigits = String(finalBiltyNo).replace(/\D/g, '');
+        const seqNum = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10) || 1001;
+        const nextSeq = findNextAvailableBiltySeq(seqNum + 1);
+        finalBiltyNo = `WG-${nextSeq}`;
+      } catch {
+        finalBiltyNo = `WG-${Date.now().toString().slice(-6)}`;
+      }
     }
 
+    const nowIso = new Date().toISOString();
     const newRecord: BiltyRecord = {
       ...recordObj,
       biltyNo: finalBiltyNo,
-      id: Date.now()
+      id: Date.now(),
+      createdAt: recordObj.createdAt || nowIso,
+      updatedAt: nowIso
     };
 
     // Filter only if same record ID or colliding biltyNo
@@ -1187,6 +1219,7 @@ export default function App() {
       lang === 'ur' ? `بلٹی نمبر ${newRecord.biltyNo} (${newRecord.senderName || ''}) محفوظ ہو گئی۔` : `Bilty #${newRecord.biltyNo} saved.`,
       'system'
     );
+    return newRecord;
   };
 
   const handleUpdateBilty = (updatedRecord: BiltyRecord) => {
@@ -1590,6 +1623,49 @@ export default function App() {
           }}
           lang={lang}
           saveDescription={guestSavePromptDesc}
+        />
+
+        <GuestImportPromptModal
+          isOpen={Boolean(pendingGuestImport && currentUid)}
+          lang={lang}
+          userEmail={userEmail}
+          summary={pendingGuestImport}
+          onMerge={async () => {
+            if (!currentUid) return;
+            const res = importGuestDataIntoScope(currentUid, 'merge');
+            setTrips(getStoredTrips());
+            setVehicles(getStoredVehicles());
+            setDrivers(getStoredDrivers());
+            setRoutes(getStoredRoutes());
+            setFuelLogs(getStoredFuelLog());
+            setBilties(getStoredBilties());
+            setPendingGuestImport(null);
+            window.dispatchEvent(new CustomEvent('driverdost:storage_hydrated'));
+            if (navigator.onLine) {
+              autoReconcileAllLocalToCloud(currentUid).catch(() => {});
+            }
+            pushAppNotification(
+              lang === 'ur' ? 'گیسٹ ریکارڈز شامل ہو گئے' : 'Guest Records Merged',
+              lang === 'ur'
+                ? `${res.mergedCount} ریکارڈز کامیابی سے آپ کے اکاؤنٹ میں منتقل ہو گئے۔`
+                : `${res.mergedCount} guest record(s) imported into your signed-in account.`,
+              'system'
+            );
+          }}
+          onKeepSeparate={() => {
+            if (currentUid) {
+              try {
+                localStorage.setItem(`wg_v3_guest_import_deferred_${currentUid}`, '1');
+              } catch {}
+            }
+            setPendingGuestImport(null);
+          }}
+          onDiscard={() => {
+            if (currentUid) {
+              importGuestDataIntoScope(currentUid, 'discard');
+            }
+            setPendingGuestImport(null);
+          }}
         />
       </React.Suspense>
 

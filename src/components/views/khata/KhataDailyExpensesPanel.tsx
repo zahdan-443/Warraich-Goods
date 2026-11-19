@@ -12,6 +12,7 @@ import {
   getTodayIsoDate,
   saveOrUpdateDailyExpense
 } from '../../../utils/khataModulesStorage';
+import { validateFinancialNumber } from '../../../utils/calculator';
 import {
   CheckCircle2,
   Pencil,
@@ -104,6 +105,7 @@ export const KhataDailyExpensesPanel: React.FC<KhataDailyExpensesPanelProps> = (
   const [filterCat, setFilterCat] = useState<'all' | KhataExpenseCategory>('all');
   const [filterVehicle, setFilterVehicle] = useState<string>('all');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const reload = () => {
     setExpenses(getAllDailyExpenses());
@@ -142,14 +144,18 @@ export const KhataDailyExpensesPanel: React.FC<KhataDailyExpensesPanelProps> = (
 
   const handleQuickAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    const num = parseFloat(amount) || 0;
-    if (num <= 0) return;
+    const valCheck = validateFinancialNumber(amount, isUrdu ? 'رقم' : 'Amount', { allowZero: false });
+    if (!valCheck.isValid) {
+      setFormError(valCheck.error || (isUrdu ? 'درست مثبت رقم درج کریں۔' : 'Please enter a valid positive amount.'));
+      return;
+    }
+    setFormError(null);
 
     saveOrUpdateDailyExpense({
       id: editingExpense?.id,
       date: date || getTodayIsoDate(),
       category,
-      amount: num,
+      amount: valCheck.value,
       vehicleNo: vehicleNo.trim() || undefined,
       notes: notes.trim()
     });
@@ -308,6 +314,12 @@ export const KhataDailyExpensesPanel: React.FC<KhataDailyExpensesPanelProps> = (
             className="min-h-[42px] px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"
           />
         </div>
+
+        {formError && (
+          <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+            {formError}
+          </p>
+        )}
 
         <button
           type="submit"

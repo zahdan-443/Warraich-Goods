@@ -32,6 +32,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { fetchOSRMRouteDistance, PAKISTAN_CITIES } from '../../utils/mapRoutes';
 import { getLogoBase64, sharePdfFileOrWhatsApp, escapeHtml, sanitizeHtml } from '../../utils/pdfHelper';
+import { shareOrDownloadBlob } from '../../utils/nativeExport';
 import { validateFinancialNumber, validateTripFinancials } from '../../utils/calculator';
 import { getStoredFuelPrices, fetchLiveFuelPrices } from '../../utils/fuelPrice';
 import { getRouteComparisonOptions, RouteComparisonResult, RouteOptionComparison } from '../../utils/routeComparison';
@@ -200,9 +201,17 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   useEffect(() => {
     let isMounted = true;
     if (showRouteComparison && originCity && destCity && originCity !== destCity) {
+      const fVal = validateFinancialNumber(fuelPrice, 'Fuel', { allowZero: false });
+      const benchVal = validateFinancialNumber(liveDieselBenchmark, 'Fuel', { allowZero: false });
+      const mVal = validateFinancialNumber(mileage, 'Mileage', { allowZero: false });
+      const fPriceNum = fVal.isValid ? fVal.value : (benchVal.isValid ? benchVal.value : 0);
+      const mileageNum = mVal.isValid ? mVal.value : 0;
+      if (fPriceNum <= 0 || mileageNum <= 0) {
+        setComparisonResult(null);
+        return;
+      }
+
       setIsLoadingComparison(true);
-      const fPriceNum = parseFloat(fuelPrice) || 340;
-      const mileageNum = parseFloat(mileage) || 7;
       const activeRoutes = routes && routes.length > 0 ? routes : getStoredRoutes();
 
       getRouteComparisonOptions({
@@ -301,7 +310,17 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       total: Math.round(totalCostVal)
     });
 
-    const expIncNum = Math.max(0, parseFloat(expectedIncome) || 0);
+    const incomeVal = validateFinancialNumber(expectedIncome, 'Expected Income', { allowZero: true });
+    if (!incomeVal.isValid) {
+      setError(
+        isUrdu
+          ? 'متوقع کرایہ / آمدن درست مثبت عدد میں درج کریں۔'
+          : incomeVal.error || 'Please enter a valid expected income.'
+      );
+      return;
+    }
+
+    const expIncNum = incomeVal.value;
     const netProfitVal = expIncNum > 0 ? (expIncNum - tripFinCheck.computedTotal) : undefined;
     const profitPerKmVal: number | 'N/A' | undefined = expIncNum > 0
       ? (effDist > 0 ? Number(((expIncNum - tripFinCheck.computedTotal) / effDist).toFixed(2)) : 'N/A')
@@ -582,7 +601,10 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     try {
       const result = await generateTripCostPdf();
       if (result) {
-        result.pdf.save(result.fileName);
+        await shareOrDownloadBlob(result.pdfBlob, result.fileName, {
+          title: result.fileName,
+          preferDownloadOnDesktop: true
+        });
       } else {
         setPdfError(isUrdu ? 'پی ڈی ایف بنانے میں مسئلہ آیا، دوبارہ کوشش کریں۔' : 'Could not generate PDF receipt. Please retry.');
       }
@@ -1087,12 +1109,17 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                   </span>
                 </div>
 
-                {parseFloat(expectedIncome) > 0 && (() => {
-                  const effDist = (parseFloat(distance) || 0) * (isReturn ? 2 : 1);
-                  const p = parseFloat(fuelPrice) || 0;
-                  const m = parseFloat(mileage) || 7;
-                  const exp = parseFloat(combinedExpenses) || 0;
-                  const expInc = parseFloat(expectedIncome) || 0;
+                {validateFinancialNumber(expectedIncome, 'Income', { allowZero: true }).value > 0 && (() => {
+                  const dVal = validateFinancialNumber(distance, 'Distance', { allowZero: false });
+                  const fVal = validateFinancialNumber(fuelPrice, 'Fuel', { allowZero: false });
+                  const mVal = validateFinancialNumber(mileage, 'Mileage', { allowZero: false });
+                  const eVal = validateFinancialNumber(combinedExpenses, 'Expenses', { allowZero: true });
+                  const incVal = validateFinancialNumber(expectedIncome, 'Income', { allowZero: true });
+                  const effDist = (dVal.isValid ? dVal.value : 0) * (isReturn ? 2 : 1);
+                  const p = fVal.isValid ? fVal.value : 0;
+                  const m = mVal.isValid ? mVal.value : 0;
+                  const exp = eVal.isValid ? eVal.value : 0;
+                  const expInc = incVal.isValid ? incVal.value : 0;
                   const consumedL = m > 0 ? effDist / m : 0;
                   const fuelCost = consumedL * p;
                   const totalExp = Math.round(fuelCost + exp);

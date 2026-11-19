@@ -228,6 +228,34 @@ class DashcamPlugin : Plugin() {
         }
     }
 
+    private fun getDashcamRootDir(): File {
+        return File(context.getExternalFilesDir(null), "dashcam").canonicalFile
+    }
+
+    private fun resolveDashcamClipFile(path: String?, filename: String?): File? {
+        return try {
+            val rootDir = getDashcamRootDir()
+            val candidate = if (!path.isNullOrBlank()) {
+                File(path)
+            } else if (!filename.isNullOrBlank()) {
+                File(rootDir, filename)
+            } else {
+                return null
+            }
+            val canonicalTarget = candidate.canonicalFile
+            val rootPrefix = rootDir.canonicalPath.trimEnd(File.separatorChar) + File.separatorChar
+            if (!canonicalTarget.canonicalPath.startsWith(rootPrefix)) {
+                return null
+            }
+            if (!canonicalTarget.name.endsWith(".mp4", ignoreCase = true)) {
+                return null
+            }
+            canonicalTarget
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     @PluginMethod
     fun deleteClip(call: PluginCall) {
         val path = call.getString("path")
@@ -238,13 +266,13 @@ class DashcamPlugin : Plugin() {
             return
         }
 
-        try {
-            val file = if (!path.isNullOrEmpty()) {
-                File(path)
-            } else {
-                File(File(context.getExternalFilesDir(null), "dashcam"), filename!!)
-            }
+        val file = resolveDashcamClipFile(path, filename)
+        if (file == null) {
+            call.reject("INVALID_PATH", "Invalid dashcam clip path.")
+            return
+        }
 
+        try {
             if (file.exists() && file.delete()) {
                 call.resolve(JSObject().apply { put("success", true) })
             } else {
@@ -260,11 +288,7 @@ class DashcamPlugin : Plugin() {
         val path = call.getString("path")
         val filename = call.getString("filename")
 
-        val targetFile = if (!path.isNullOrEmpty()) {
-            File(path)
-        } else if (!filename.isNullOrEmpty()) {
-            File(File(context.getExternalFilesDir(null), "dashcam"), filename)
-        } else null
+        val targetFile = resolveDashcamClipFile(path, filename)
 
         if (targetFile == null || !targetFile.exists()) {
             call.reject("FILE_NOT_FOUND", "Video file not found")
@@ -296,11 +320,7 @@ class DashcamPlugin : Plugin() {
         val path = call.getString("path")
         val filename = call.getString("filename")
 
-        val targetFile = if (!path.isNullOrEmpty()) {
-            File(path)
-        } else if (!filename.isNullOrEmpty()) {
-            File(File(context.getExternalFilesDir(null), "dashcam"), filename)
-        } else null
+        val targetFile = resolveDashcamClipFile(path, filename)
 
         if (targetFile == null || !targetFile.exists()) {
             call.reject("FILE_NOT_FOUND", "Video file not found")

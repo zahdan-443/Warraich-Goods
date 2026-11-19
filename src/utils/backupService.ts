@@ -24,8 +24,9 @@ import {
 import { auth, db } from './firebase';
 import { APP_VERSION } from '../constants/version';
 import { getPakistanDateKey, getPakistanTimestampIso } from './dateUtils';
-import { idbSet } from './persistentStorage';
+import { idbDelete, idbGet, idbSet } from './persistentStorage';
 import {
+  applyRestoredCollection,
   getActiveUserScope,
   getStoredBilties,
   getStoredDrivers,
@@ -33,28 +34,28 @@ import {
   getStoredRoutes,
   getStoredTrips,
   getStoredVehicles,
-  saveStoredBilties,
-  saveStoredDrivers,
-  saveStoredFuelLog,
-  saveStoredRoutes,
-  saveStoredTrips,
-  saveStoredVehicles,
+  safeStorage,
   setScopedItem
 } from './storage';
 import {
   KHATA_STORAGE_KEYS,
+  getAllCashEntries,
+  getAllLedgerEntries,
+  getLedgerAccounts,
   getStoredBrokerTransactions,
   getStoredBrokers,
   getStoredParties,
   getStoredPartyTransactions,
   getStoredVehicleExpenses,
   getStoredVehicleIncomes,
+  restoreKhataCollection,
   saveStoredBrokerTransactions,
   saveStoredBrokers,
   saveStoredParties,
   saveStoredPartyTransactions,
   saveStoredVehicleExpenses,
-  saveStoredVehicleIncomes
+  saveStoredVehicleIncomes,
+  syncAllKhataToFirestore
 } from './ledgerStorage';
 import {
   getAllBills,
@@ -120,6 +121,7 @@ export interface BackupPreviewSummary {
   backupDate?: string;
   totalRecords: number;
   counts: Record<string, number>;
+  newerLocalCount?: number;
   errors: string[];
   rawPayload?: Record<string, unknown>;
 }
@@ -460,6 +462,34 @@ export async function runScheduledDailyCloudBackup(): Promise<{
   }
 }
 
+function countNewerLocalRecords(backupDateIso?: string): number {
+  if (!backupDateIso) return 0;
+  const backupMs = new Date(backupDateIso).getTime();
+  if (Number.isNaN(backupMs)) return 0;
+
+  let newerCount = 0;
+  const checkList = (items: Array<{ updatedAt?: unknown; createdAt?: unknown }>) => {
+    for (const item of items) {
+      const tsRaw = item?.updatedAt || item?.createdAt;
+      if (!tsRaw) continue;
+      const ms = new Date(String(tsRaw)).getTime();
+      if (!Number.isNaN(ms) && ms > backupMs) {
+        newerCount++;
+      }
+    }
+  };
+
+  checkList(getStoredTrips() as unknown as Array<{ updatedAt?: unknown; createdAt?: unknown }>);
+  checkList(getStoredVehicles() as unknown as Array<{ updatedAt?: unknown; createdAt?: unknown }>);
+  checkList(getStoredDrivers() as unknown as Array<{ updatedAt?: unknown; createdAt?: unknown }>);
+  checkList(getStoredBilties() as unknown as Array<{ updatedAt?: unknown; createdAt?: unknown }>);
+  checkList(getAllBills() as unknown as Array<{ updatedAt?: unknown; createdAt?: unknown }>);
+  checkList(getAllDailyExpenses() as unknown as Array<{ updatedAt?: unknown; createdAt?: unknown }>);
+  checkList(getLedgerAccounts() as unknown as Array<{ updatedAt?: unknown; createdAt?: unknown }>);
+  checkList(getAllLedgerEntries() as unknown as Array<{ updatedAt?: unknown; createdAt?: unknown }>);
+  return newerCount;
+}
+
 /**
  * Validates and previews a local JSON fleet backup before mutating device data (#14).
  */
@@ -517,6 +547,7 @@ export function previewJsonBackup(jsonStr: string): BackupPreviewSummary {
       backupDate: backupDateRaw,
       totalRecords,
       counts,
+      newerLocalCount: errors.length === 0 ? countNewerLocalRecords(backupDateRaw) : 0,
       errors,
       rawPayload: payload
     };
@@ -703,6 +734,7 @@ export async function previewCloudBackup(backupId = 'latestIndex'): Promise<Back
       backupDate: fetched.backupDate,
       totalRecords,
       counts,
+      newerLocalCount: fetched.valid ? countNewerLocalRecords(fetched.backupDate) : 0,
       errors: fetched.errors
     };
   } catch (err: unknown) {
@@ -716,13 +748,81 @@ export async function previewCloudBackup(backupId = 'latestIndex'): Promise<Back
   }
 }
 
+export function hasPreRestoreSnapshot(): boolean {
+  const scope = getActiveUserScope();
+  return Boolean(
+    safeStorage.getItem(`wg_v3_prerestore_available_${scope}`) ||
+      safeStorage.getItem(`wg_v3_prerestore_snapshot_${scope}`)
+  );
+}
+
 /**
- * Restores local data from a validated chunked cloud backup with pre-restore rollback protection (#14).
+ * Undoes the most recent JSON or Cloud backup restore using the captured pre-restore snapshot.
  */
-export async function restoreFromCloudBackup(backupId = 'latestIndex'): Promise<boolean> {
+export async function undoLastRestore(): Promise<{ success: boolean; message: string }> {
+  const scope = getActiveUserScope();
+  const key = `wg_v3_prerestore_snapshot_${scope}`;
+
+  try {
+    const raw = (await idbGet(key).catch(() => null)) || safeStorage.getItem(key);
+    if (!raw) {
+      return { success: false, message: 'No pre-restore snapshot found for this account.' };
+    }
+
+    const snap = JSON.parse(raw) as Record<string, unknown>;
+    if (Array.isArray(snap.trips)) applyRestoredCollection('trips', snap.trips as Array<Record<string, unknown>>, 'overwrite');
+    if (Array.isArray(snap.vehicles)) applyRestoredCollection('vehicles', snap.vehicles as Array<Record<string, unknown>>, 'overwrite');
+    if (Array.isArray(snap.drivers)) applyRestoredCollection('drivers', snap.drivers as Array<Record<string, unknown>>, 'overwrite');
+    if (Array.isArray(snap.routes)) applyRestoredCollection('routes', snap.routes as Array<Record<string, unknown>>, 'overwrite');
+    if (Array.isArray(snap.fuelLogs)) applyRestoredCollection('fuel', snap.fuelLogs as Array<Record<string, unknown>>, 'overwrite');
+    if (Array.isArray(snap.bilties)) applyRestoredCollection('bilties', snap.bilties as Array<Record<string, unknown>>, 'overwrite');
+
+    if (Array.isArray(snap.parties)) saveStoredParties(snap.parties as FullFleetBackup['data']['parties']);
+    if (Array.isArray(snap.partyTransactions)) saveStoredPartyTransactions(snap.partyTransactions as FullFleetBackup['data']['partyTransactions']);
+    if (Array.isArray(snap.brokers)) saveStoredBrokers(snap.brokers as FullFleetBackup['data']['brokers']);
+    if (Array.isArray(snap.brokerTransactions)) saveStoredBrokerTransactions(snap.brokerTransactions as FullFleetBackup['data']['brokerTransactions']);
+    if (Array.isArray(snap.vehicleExpenses)) saveStoredVehicleExpenses(snap.vehicleExpenses as FullFleetBackup['data']['vehicleExpenses']);
+    if (Array.isArray(snap.vehicleIncomes)) saveStoredVehicleIncomes(snap.vehicleIncomes as FullFleetBackup['data']['vehicleIncomes']);
+
+    if (Array.isArray(snap.ledgerAccounts)) restoreKhataCollection(KHATA_STORAGE_KEYS.ACCOUNTS, 'ledgerAccounts', snap.ledgerAccounts as Array<{ id: string }>, 'overwrite');
+    if (Array.isArray(snap.ledgerEntries)) restoreKhataCollection(KHATA_STORAGE_KEYS.ENTRIES, 'entries', snap.ledgerEntries as Array<{ id: string }>, 'overwrite');
+    if (Array.isArray(snap.cashbookEntries)) restoreKhataCollection(KHATA_STORAGE_KEYS.CASHBOOK, 'cashbookEntries', snap.cashbookEntries as Array<{ id: string }>, 'overwrite');
+    if (Array.isArray(snap.bills)) restoreKhataCollection(KHATA_STORAGE_KEYS.BILLS, 'khataBills', snap.bills as Array<{ id: string }>, 'overwrite');
+    if (Array.isArray(snap.employees)) restoreKhataCollection(KHATA_STORAGE_KEYS.EMPLOYEES, 'khataEmployees', snap.employees as Array<{ id: string }>, 'overwrite');
+    if (Array.isArray(snap.employeeEntries)) restoreKhataCollection(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, 'khataEmployeeEntries', snap.employeeEntries as Array<{ id: string }>, 'overwrite');
+    if (Array.isArray(snap.receivingPoints)) restoreKhataCollection(KHATA_STORAGE_KEYS.RECEIVING_POINTS, 'khataReceivingPoints', snap.receivingPoints as Array<{ id: string }>, 'overwrite');
+    if (Array.isArray(snap.receivingEntries)) restoreKhataCollection(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, 'khataReceivingEntries', snap.receivingEntries as Array<{ id: string }>, 'overwrite');
+    if (Array.isArray(snap.dailyExpenses)) restoreKhataCollection(KHATA_STORAGE_KEYS.DAILY_EXPENSES, 'khataDailyExpenses', snap.dailyExpenses as Array<{ id: string }>, 'overwrite');
+
+    await syncAllKhataToFirestore().catch(() => {});
+
+    safeStorage.removeItem(key);
+    safeStorage.removeItem(`wg_v3_prerestore_available_${scope}`);
+    await idbDelete(key).catch(() => {});
+
+    return { success: true, message: 'Previous device data has been restored successfully.' };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : 'Failed to undo restore'
+    };
+  }
+}
+
+/**
+ * Restores local data from a validated chunked cloud backup cleanly:
+ * - Clears deletion tombstones for restored keys so sync never re-deletes them.
+ * - Captures pre-restore rollback snapshot in IndexedDB & localStorage.
+ * - Supports both 'merge' (preserve newer local records) and 'overwrite'.
+ */
+export async function restoreFromCloudBackup(
+  backupId = 'latestIndex',
+  mode: 'merge' | 'overwrite' = 'merge'
+): Promise<boolean> {
   const user = auth.currentUser;
   if (!user || !db) return false;
 
+  const scope = getActiveUserScope();
   const preRestoreSnapshot = {
     capturedAt: getPakistanTimestampIso(),
     trips: getStoredTrips(),
@@ -737,6 +837,9 @@ export async function restoreFromCloudBackup(backupId = 'latestIndex'): Promise<
     brokerTransactions: getStoredBrokerTransactions(),
     vehicleExpenses: getStoredVehicleExpenses(),
     vehicleIncomes: getStoredVehicleIncomes(),
+    ledgerAccounts: getLedgerAccounts(),
+    ledgerEntries: getAllLedgerEntries(),
+    cashbookEntries: getAllCashEntries(),
     bills: getAllBills(),
     employees: getAllEmployees(),
     employeeEntries: getAllEmployeeEntries(),
@@ -752,22 +855,24 @@ export async function restoreFromCloudBackup(backupId = 'latestIndex'): Promise<
       return false;
     }
 
-    // Persist safety snapshot in IndexedDB prior to applying overwrite (#14)
+    // Persist safety snapshot in IndexedDB + safeStorage fallback prior to applying changes (#14)
     try {
-      const scope = getActiveUserScope();
-      await idbSet(`wg_v3_prerestore_snapshot_${scope}`, JSON.stringify(preRestoreSnapshot));
+      const snapStr = JSON.stringify(preRestoreSnapshot);
+      await idbSet(`wg_v3_prerestore_snapshot_${scope}`, snapStr);
+      safeStorage.setItem(`wg_v3_prerestore_snapshot_${scope}`, snapStr);
+      safeStorage.setItem(`wg_v3_prerestore_available_${scope}`, preRestoreSnapshot.capturedAt);
     } catch {
       // in-memory snapshot remains ready for catch rollback
     }
 
     const d = fetched.datasets;
 
-    if (Array.isArray(d.trips)) saveStoredTrips(d.trips as FullFleetBackup['data']['trips']);
-    if (Array.isArray(d.vehicles)) saveStoredVehicles(d.vehicles as FullFleetBackup['data']['vehicles']);
-    if (Array.isArray(d.drivers)) saveStoredDrivers(d.drivers as FullFleetBackup['data']['drivers']);
-    if (Array.isArray(d.routes)) saveStoredRoutes(d.routes as FullFleetBackup['data']['routes']);
-    if (Array.isArray(d.fuelLogs)) saveStoredFuelLog(d.fuelLogs as FullFleetBackup['data']['fuelLogs']);
-    if (Array.isArray(d.bilties)) saveStoredBilties(d.bilties as FullFleetBackup['data']['bilties']);
+    if (Array.isArray(d.trips)) applyRestoredCollection('trips', d.trips as Array<Record<string, unknown>>, mode);
+    if (Array.isArray(d.vehicles)) applyRestoredCollection('vehicles', d.vehicles as Array<Record<string, unknown>>, mode);
+    if (Array.isArray(d.drivers)) applyRestoredCollection('drivers', d.drivers as Array<Record<string, unknown>>, mode);
+    if (Array.isArray(d.routes)) applyRestoredCollection('routes', d.routes as Array<Record<string, unknown>>, mode);
+    if (Array.isArray(d.fuelLogs)) applyRestoredCollection('fuel', d.fuelLogs as Array<Record<string, unknown>>, mode);
+    if (Array.isArray(d.bilties)) applyRestoredCollection('bilties', d.bilties as Array<Record<string, unknown>>, mode);
 
     if (Array.isArray(d.parties)) saveStoredParties(d.parties as FullFleetBackup['data']['parties']);
     if (Array.isArray(d.partyTransactions)) {
@@ -784,33 +889,36 @@ export async function restoreFromCloudBackup(backupId = 'latestIndex'): Promise<
       saveStoredVehicleIncomes(d.vehicleIncomes as FullFleetBackup['data']['vehicleIncomes']);
     }
 
-    if (Array.isArray(d.bills)) setScopedItem(KHATA_STORAGE_KEYS.BILLS, JSON.stringify(d.bills));
+    if (Array.isArray(d.bills)) {
+      restoreKhataCollection(KHATA_STORAGE_KEYS.BILLS, 'khataBills', d.bills as Array<{ id: string }>, mode);
+    }
     if (Array.isArray(d.employees)) {
-      setScopedItem(KHATA_STORAGE_KEYS.EMPLOYEES, JSON.stringify(d.employees));
+      restoreKhataCollection(KHATA_STORAGE_KEYS.EMPLOYEES, 'khataEmployees', d.employees as Array<{ id: string }>, mode);
     }
     if (Array.isArray(d.employeeEntries)) {
-      setScopedItem(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, JSON.stringify(d.employeeEntries));
+      restoreKhataCollection(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, 'khataEmployeeEntries', d.employeeEntries as Array<{ id: string }>, mode);
     }
     if (Array.isArray(d.receivingPoints)) {
-      setScopedItem(KHATA_STORAGE_KEYS.RECEIVING_POINTS, JSON.stringify(d.receivingPoints));
+      restoreKhataCollection(KHATA_STORAGE_KEYS.RECEIVING_POINTS, 'khataReceivingPoints', d.receivingPoints as Array<{ id: string }>, mode);
     }
     if (Array.isArray(d.receivingEntries)) {
-      setScopedItem(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, JSON.stringify(d.receivingEntries));
+      restoreKhataCollection(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, 'khataReceivingEntries', d.receivingEntries as Array<{ id: string }>, mode);
     }
     if (Array.isArray(d.dailyExpenses)) {
-      setScopedItem(KHATA_STORAGE_KEYS.DAILY_EXPENSES, JSON.stringify(d.dailyExpenses));
+      restoreKhataCollection(KHATA_STORAGE_KEYS.DAILY_EXPENSES, 'khataDailyExpenses', d.dailyExpenses as Array<{ id: string }>, mode);
     }
 
+    await syncAllKhataToFirestore().catch(() => {});
     return true;
   } catch (err) {
     console.error('[BackupService] Cloud restore error — rolling back to pre-restore snapshot:', err);
     try {
-      saveStoredTrips(preRestoreSnapshot.trips);
-      saveStoredVehicles(preRestoreSnapshot.vehicles);
-      saveStoredDrivers(preRestoreSnapshot.drivers);
-      saveStoredRoutes(preRestoreSnapshot.routes);
-      saveStoredFuelLog(preRestoreSnapshot.fuelLogs);
-      saveStoredBilties(preRestoreSnapshot.bilties);
+      applyRestoredCollection('trips', preRestoreSnapshot.trips as unknown as Array<Record<string, unknown>>, 'overwrite');
+      applyRestoredCollection('vehicles', preRestoreSnapshot.vehicles as unknown as Array<Record<string, unknown>>, 'overwrite');
+      applyRestoredCollection('drivers', preRestoreSnapshot.drivers as unknown as Array<Record<string, unknown>>, 'overwrite');
+      applyRestoredCollection('routes', preRestoreSnapshot.routes as unknown as Array<Record<string, unknown>>, 'overwrite');
+      applyRestoredCollection('fuel', preRestoreSnapshot.fuelLogs as unknown as Array<Record<string, unknown>>, 'overwrite');
+      applyRestoredCollection('bilties', preRestoreSnapshot.bilties as unknown as Array<Record<string, unknown>>, 'overwrite');
       saveStoredParties(preRestoreSnapshot.parties);
       saveStoredPartyTransactions(preRestoreSnapshot.partyTransactions);
       saveStoredBrokers(preRestoreSnapshot.brokers);

@@ -23,6 +23,7 @@ import {
   Vehicle
 } from '../types';
 import { auth, db } from './firebase';
+import * as firestoreModule from 'firebase/firestore';
 import {
   collection,
   deleteDoc,
@@ -41,13 +42,7 @@ import {
   normalizeEmail,
   verifyOwnerOrStaffClaim
 } from './authUtils';
-import {
-  getActiveUserScope,
-  getScopedItem,
-  removeScopedItem,
-  safeStorage,
-  setScopedItem
-} from './storageCore';
+import { getActiveUserScope, getScopedItem, removeScopedItem, safeStorage, setScopedItem } from './storageCore';
 
 export type SyncCollectionName = 'bilties' | 'trips' | 'vehicles' | 'drivers' | 'fuel' | 'routes';
 
@@ -62,11 +57,15 @@ export const SYNC_COLLECTION_TO_DOC_SUBCOLL: Record<SyncCollectionName, string> 
 
 export const TOMBSTONE_TTL_DAYS = 90;
 const MAX_LEGACY_DOC_BYTES = 600_000;
+const MAX_TOMBSTONES_PER_COLL = 500;
+const FIRESTORE_BATCH_LIMIT = 400;
+const MIN_AMBIENT_SYNC_COOLDOWN_MS = 30_000;
+const KILLSWITCH_CACHE_MS = 5 * 60 * 1000;
 
 export type TombstoneMap = Record<string, string>; // entityKey -> deletedAt ISO string
 
 // ---------------------------------------------------------------------------
-// Generic Timeout & Permission Classification Helpers
+// Generic Timeout, Batch Write & Permission Classification Helpers
 // ---------------------------------------------------------------------------
 
 export function withTimeout<T>(promise: Promise<T>, timeoutMs = 8000): Promise<T> {
@@ -86,6 +85,49 @@ function isPermissionDeniedError(err: unknown): boolean {
     msg.includes('Missing or insufficient permissions') ||
     msg.includes('permission-denied')
   );
+}
+
+interface BatchWriteOp {
+  type: 'set' | 'delete';
+  ref: ReturnType<typeof doc>;
+  data?: Record<string, unknown>;
+  merge?: boolean;
+}
+
+async function commitBatchOps(ops: BatchWriteOp[], timeoutMs = 10000): Promise<void> {
+  if (ops.length === 0 || !db) return;
+
+  const writeBatchFn = (firestoreModule as unknown as { writeBatch?: typeof firestoreModule.writeBatch }).writeBatch;
+  if (typeof writeBatchFn === 'function') {
+    for (let i = 0; i < ops.length; i += FIRESTORE_BATCH_LIMIT) {
+      const chunk = ops.slice(i, i + FIRESTORE_BATCH_LIMIT);
+      const batch = writeBatchFn(db);
+      for (const op of chunk) {
+        if (op.type === 'set') {
+          batch.set(op.ref, op.data || {}, op.merge ? { merge: true } : undefined);
+        } else {
+          batch.delete(op.ref);
+        }
+      }
+      await withTimeout(batch.commit(), timeoutMs);
+    }
+    return;
+  }
+
+  // Fallback for partial unit-test mocks that do not stub `writeBatch`
+  for (let i = 0; i < ops.length; i += 25) {
+    const chunk = ops.slice(i, i + 25);
+    await withTimeout(
+      Promise.all(
+        chunk.map(op =>
+          op.type === 'set'
+            ? setDoc(op.ref, op.data || {}, op.merge ? { merge: true } : undefined)
+            : deleteDoc(op.ref)
+        )
+      ),
+      timeoutMs
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -109,13 +151,17 @@ export function getEntitySyncKey(collName: SyncCollectionName, item: Record<stri
   return idStr || JSON.stringify(item);
 }
 
-function parseEntityTimeMs(item: Record<string, unknown>): number {
+/**
+ * Parses strictly real mutation timestamps (`updatedAt` / `createdAt`), NEVER business `item.date`.
+ * Prevents deleted records with future-dated business entries from beating deletion tombstones.
+ */
+export function parseEntityMutationTimeMs(item: Record<string, unknown>): number {
   const parse = (v: unknown): number => {
     if (!v) return 0;
     const ms = new Date(String(v)).getTime();
     return Number.isNaN(ms) ? 0 : ms;
   };
-  return Math.max(parse(item.updatedAt), parse(item.createdAt), parse(item.date));
+  return Math.max(parse(item.updatedAt), parse(item.createdAt));
 }
 
 function getTombstonesKey(collName: string, scope: string = getActiveUserScope()): string {
@@ -124,13 +170,21 @@ function getTombstonesKey(collName: string, scope: string = getActiveUserScope()
 
 export function pruneTombstoneMap(map: TombstoneMap, nowMs = Date.now()): TombstoneMap {
   const cutoffMs = nowMs - TOMBSTONE_TTL_DAYS * 24 * 60 * 60 * 1000;
-  const pruned: TombstoneMap = {};
+  const validEntries: Array<[string, string, number]> = [];
   for (const [key, deletedAt] of Object.entries(map)) {
     if (!key || !deletedAt) continue;
     const ts = new Date(deletedAt).getTime();
     if (!Number.isNaN(ts) && ts >= cutoffMs) {
-      pruned[key] = deletedAt;
+      validEntries.push([key, deletedAt, ts]);
     }
+  }
+  if (validEntries.length > MAX_TOMBSTONES_PER_COLL) {
+    validEntries.sort((a, b) => b[2] - a[2]);
+    validEntries.length = MAX_TOMBSTONES_PER_COLL;
+  }
+  const pruned: TombstoneMap = {};
+  for (const [key, deletedAt] of validEntries) {
+    pruned[key] = deletedAt;
   }
   return pruned;
 }
@@ -175,7 +229,8 @@ export function mergeTombstoneMaps(localMap: TombstoneMap, cloudMap: TombstoneMa
 }
 
 /**
- * Checks if a record is killed by a tombstone (tombstone timestamp >= entity timestamp).
+ * Checks if a record is killed by a tombstone (tombstone timestamp >= entity mutation timestamp).
+ * Strictly ignores business `item.date` so future-dated entries cannot resurrect deleted records.
  */
 export function isEntityTombstoned(
   collName: SyncCollectionName,
@@ -188,7 +243,7 @@ export function isEntityTombstoned(
   if (!deletedAt) return false;
   const deletedMs = new Date(deletedAt).getTime();
   if (Number.isNaN(deletedMs)) return false;
-  const entityMs = parseEntityTimeMs(item);
+  const entityMs = parseEntityMutationTimeMs(item);
   // Tombstone wins unless the item was genuinely recreated/updated AFTER deletedAt
   return deletedMs >= entityMs;
 }
@@ -216,7 +271,7 @@ export function recordCollectionMutations<T extends Record<string, unknown>>(
     // If an item is freshly added/updated, clear any older tombstone
     const existingDel = tombstones[k];
     if (existingDel) {
-      const itemMs = parseEntityTimeMs(item);
+      const itemMs = parseEntityMutationTimeMs(item);
       const delMs = new Date(existingDel).getTime();
       if (itemMs > delMs || Number.isNaN(delMs)) {
         delete tombstones[k];
@@ -239,12 +294,80 @@ export function recordCollectionMutations<T extends Record<string, unknown>>(
 }
 
 /**
- * Deterministic Timestamp-Based Last-Write-Wins (LWW) Conflict Resolver
+ * Compares previous vs next collection items and advances `updatedAt = nowIso`
+ * on every newly inserted or content-modified record while keeping untouched records' timestamps stable.
+ */
+function stampMutatedEntities<T extends Record<string, unknown>>(
+  collName: SyncCollectionName,
+  previousItems: T[],
+  nextItems: T[],
+  nowIso: string
+): { stamped: T[]; changedKeys: string[] } {
+  const prevByKey = new Map<string, T>();
+  for (const prev of previousItems) {
+    prevByKey.set(getEntitySyncKey(collName, prev), prev);
+  }
+
+  const stripTimestamps = (obj: Record<string, unknown>): string => {
+    const clone: Record<string, unknown> = {};
+    for (const k of Object.keys(obj).sort()) {
+      if (k === 'updatedAt') continue;
+      clone[k] = obj[k];
+    }
+    return JSON.stringify(clone);
+  };
+
+  const changedKeys: string[] = [];
+  const stamped = nextItems.map(item => {
+    const key = getEntitySyncKey(collName, item);
+    const prev = prevByKey.get(key);
+    const existingUpdatedAt = typeof item.updatedAt === 'string' && item.updatedAt ? item.updatedAt : undefined;
+    if (!prev) {
+      changedKeys.push(key);
+      return {
+        ...item,
+        updatedAt: existingUpdatedAt && new Date(existingUpdatedAt).getTime() > new Date(nowIso).getTime()
+          ? existingUpdatedAt
+          : nowIso
+      } as T;
+    }
+
+    const prevBody = stripTimestamps(prev);
+    const nextBody = stripTimestamps(item);
+    if (prevBody !== nextBody || !existingUpdatedAt) {
+      changedKeys.push(key);
+      return {
+        ...item,
+        updatedAt: nowIso
+      } as T;
+    }
+
+    return {
+      ...item,
+      updatedAt: existingUpdatedAt
+    } as T;
+  });
+
+  return { stamped, changedKeys };
+}
+
+/**
+ * Deterministic Timestamp-Based Last-Write-Wins (LWW) Conflict Resolver.
+ * Uses `updatedAt` / `createdAt` strictly; falls back to business `date` ONLY when
+ * neither record carries any mutation timestamp.
  */
 export function resolveEntityLWW<T extends Record<string, any>>(local: T, cloud: T): T {
-  const localTime = parseEntityTimeMs(local);
-  const cloudTime = parseEntityTimeMs(cloud);
-  return localTime >= cloudTime ? local : cloud;
+  const localTime = parseEntityMutationTimeMs(local);
+  const cloudTime = parseEntityMutationTimeMs(cloud);
+  if (localTime > 0 || cloudTime > 0) {
+    return localTime >= cloudTime ? local : cloud;
+  }
+  const parseDate = (v: unknown): number => {
+    if (!v) return 0;
+    const ms = new Date(String(v)).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  };
+  return parseDate(local.date) >= parseDate(cloud.date) ? local : cloud;
 }
 
 // ---------------------------------------------------------------------------
@@ -430,62 +553,150 @@ function normalizeCollectionKey(rawType: string): SyncCollectionName | null {
   return null;
 }
 
+interface PerDocWriteOptions {
+  changedKeys?: string[] | null;
+  cloudSubDocMap?: Map<string, Record<string, unknown>>;
+  cloudSubDocTombstones?: TombstoneMap;
+  cloudTombstonesForColl?: TombstoneMap;
+  hasCloudTombstonesSnapshot?: boolean;
+  existingLegacyData?: Record<string, unknown> | null;
+  hasLegacySnapshot?: boolean;
+}
+
+function stableEntityDigest(item: Record<string, unknown>): string {
+  const clone: Record<string, unknown> = {};
+  for (const k of Object.keys(item).sort()) {
+    if (k === '_deleted' || k === 'deletedAt') continue;
+    clone[k] = item[k];
+  }
+  return JSON.stringify(clone);
+}
+
 async function writePerDocCollectionToFirestore(
   uid: string,
   collName: SyncCollectionName,
   items: Array<Record<string, unknown>>,
-  deletedKeys: string[] = []
-): Promise<void> {
+  deletedKeys: string[] = [],
+  options: PerDocWriteOptions = {}
+): Promise<number> {
   const subColl = SYNC_COLLECTION_TO_DOC_SUBCOLL[collName];
   const nowIso = new Date().toISOString();
+  const ops: BatchWriteOp[] = [];
+  const changedKeySet = Array.isArray(options.changedKeys) ? new Set(options.changedKeys) : null;
+  const localTombstones = getTombstones(collName, uid);
 
-  // 1. Upsert individual documents into users/{uid}/{coll}Docs/{docId} (#8)
+  // 1. Upsert ONLY changed/missing documents into users/{uid}/{coll}Docs/{docId} (#8 + delta)
   for (const item of items) {
     const entityKey = getEntitySyncKey(collName, item);
+    if (changedKeySet !== null && !changedKeySet.has(entityKey)) {
+      continue;
+    }
+    if (options.cloudSubDocMap) {
+      const cloudDoc = options.cloudSubDocMap.get(entityKey);
+      if (cloudDoc && stableEntityDigest(cloudDoc) === stableEntityDigest(item)) {
+        continue;
+      }
+    }
     const docId = toSafeFirestoreDocId(entityKey);
     const docRef = doc(db, 'users', uid, subColl, docId);
-    await withTimeout(
-      setDoc(docRef, { ...item, _deleted: false, deletedAt: null, updatedAt: item.updatedAt || nowIso }, { merge: true }),
-      8000
-    );
+    ops.push({
+      type: 'set',
+      ref: docRef,
+      data: { ...item, _deleted: false, deletedAt: null, updatedAt: item.updatedAt || nowIso },
+      merge: true
+    });
   }
 
-  // 2. Write explicit tombstone markers on deleted docs (#1, #2)
+  // 2. Write explicit tombstone markers on newly deleted or un-marked deleted docs (#1, #2)
   if (deletedKeys.length > 0) {
     for (const delKey of deletedKeys) {
+      const expectedDeletedAt = localTombstones[delKey] || nowIso;
+      if (
+        options.cloudSubDocTombstones &&
+        options.cloudSubDocTombstones[delKey] === expectedDeletedAt &&
+        !options.cloudSubDocMap?.has(delKey)
+      ) {
+        continue;
+      }
       const docId = toSafeFirestoreDocId(delKey);
       const docRef = doc(db, 'users', uid, subColl, docId);
-      await withTimeout(
-        setDoc(docRef, { _deleted: true, deletedAt: nowIso, updatedAt: nowIso, id: delKey }, { merge: true }),
-        8000
-      );
+      ops.push({
+        type: 'set',
+        ref: docRef,
+        data: { _deleted: true, deletedAt: expectedDeletedAt, updatedAt: expectedDeletedAt, id: delKey },
+        merge: true
+      });
     }
   }
 
-  // 3. Push tombstones map for this collection (#1)
-  const localTombstones = getTombstones(collName, uid);
-  if (Object.keys(localTombstones).length > 0 || deletedKeys.length > 0) {
+  // 3. Push tombstones map for this collection ONLY if changed vs cloud (#1)
+  const cloudTombsJson = options.hasCloudTombstonesSnapshot
+    ? JSON.stringify(options.cloudTombstonesForColl || {})
+    : null;
+  const localTombsJson = JSON.stringify(localTombstones);
+  const tombsChanged = cloudTombsJson === null
+    ? (Object.keys(localTombstones).length > 0 || deletedKeys.length > 0)
+    : cloudTombsJson !== localTombsJson;
+
+  if (tombsChanged) {
     const tombRef = doc(db, 'users', uid, 'collections', 'tombstones');
-    await withTimeout(setDoc(tombRef, { [collName]: localTombstones, updatedAt: nowIso }, { merge: true }), 8000);
+    ops.push({
+      type: 'set',
+      ref: tombRef,
+      data: { [collName]: localTombstones, updatedAt: nowIso },
+      merge: true
+    });
   }
 
-  // 4. Maintain legacy doc if payload fits comfortably under 600KB; otherwise store migration marker (#2, #8)
+  // 4. Maintain legacy doc if payload fits under 600KB; skip redundant rewrites if unchanged (#2, #8)
   const legacyRef = doc(db, 'users', uid, 'collections', collName);
   const serializedSize = JSON.stringify(items).length;
+  const existingLegacy = options.existingLegacyData;
+
   if (serializedSize <= MAX_LEGACY_DOC_BYTES) {
-    await withTimeout(setDoc(legacyRef, { items, updatedAt: nowIso, perDocSynced: true }, { merge: true }), 8000);
+    const legacyUnchanged =
+      options.hasLegacySnapshot &&
+      existingLegacy &&
+      existingLegacy.migratedToPerDoc !== true &&
+      Array.isArray(existingLegacy.items) &&
+      JSON.stringify(existingLegacy.items) === JSON.stringify(items);
+
+    if (!legacyUnchanged) {
+      ops.push({
+        type: 'set',
+        ref: legacyRef,
+        data: { items, updatedAt: nowIso, perDocSynced: true },
+        merge: true
+      });
+    }
   } else {
-    await withTimeout(
-      setDoc(legacyRef, { items: [], migratedToPerDoc: true, itemsCount: items.length, updatedAt: nowIso }, { merge: true }),
-      8000
-    );
+    const markerUnchanged =
+      options.hasLegacySnapshot &&
+      existingLegacy &&
+      existingLegacy.migratedToPerDoc === true &&
+      existingLegacy.itemsCount === items.length;
+
+    if (!markerUnchanged) {
+      ops.push({
+        type: 'set',
+        ref: legacyRef,
+        data: { items: [], migratedToPerDoc: true, itemsCount: items.length, updatedAt: nowIso },
+        merge: true
+      });
+    }
   }
+
+  if (ops.length > 0) {
+    await commitBatchOps(ops, 10000);
+  }
+  return ops.length;
 }
 
 export async function syncToFirestore<T>(
   key: string,
   data: T,
-  deletedKeys: string[] = []
+  deletedKeys: string[] = [],
+  changedKeys?: string[]
 ): Promise<boolean> {
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     enqueueOfflineAction(key as OfflineAction['type'], data);
@@ -498,11 +709,15 @@ export async function syncToFirestore<T>(
 
     const collName = normalizeCollectionKey(key);
     if (collName && Array.isArray(data)) {
+      if (Array.isArray(changedKeys) && changedKeys.length === 0 && deletedKeys.length === 0) {
+        return true;
+      }
       await writePerDocCollectionToFirestore(
         user.uid,
         collName,
         data as Array<Record<string, unknown>>,
-        deletedKeys
+        deletedKeys,
+        changedKeys !== undefined ? { changedKeys } : {}
       );
       return true;
     }
@@ -705,16 +920,20 @@ export async function processOfflineQueue(): Promise<{
     }
 
     try {
-      const tombstones = getTombstones('bilties', user.uid);
+      const biltyTombstones = getTombstones('bilties', user.uid);
 
       if ((action.type === 'bilty' || action.type === 'bilties') && Array.isArray(action.data)) {
+        const filteredBilties = (action.data as Array<Record<string, unknown>>).filter(
+          b => !isEntityTombstoned('bilties', b, biltyTombstones)
+        );
         await writePerDocCollectionToFirestore(
           user.uid,
           'bilties',
-          action.data as Array<Record<string, unknown>>
+          filteredBilties,
+          Object.keys(biltyTombstones)
         );
-        for (const b of action.data) {
-          if (b?.biltyNo && !isEntityTombstoned('bilties', b, tombstones)) {
+        for (const b of filteredBilties) {
+          if (b?.biltyNo) {
             const safeData = extractPublicBiltyVerification(b);
             const pubRef = doc(db, 'publicBiltyVerifications', safeData.biltyNo);
             await withTimeout(setDoc(pubRef, safeData), 8000);
@@ -722,7 +941,7 @@ export async function processOfflineQueue(): Promise<{
         }
         processedCount++;
       } else if (action.type === 'public_bilty' && action.data?.biltyNo) {
-        if (!isEntityTombstoned('bilties', action.data, tombstones)) {
+        if (!isEntityTombstoned('bilties', action.data, biltyTombstones)) {
           const safeData = extractPublicBiltyVerification(action.data);
           const pubRef = doc(db, 'publicBiltyVerifications', safeData.biltyNo);
           await withTimeout(setDoc(pubRef, safeData), 8000);
@@ -736,7 +955,7 @@ export async function processOfflineQueue(): Promise<{
         }
         processedCount++;
       } else if ((action.type === 'bilty' || action.type === 'bilties') && !Array.isArray(action.data)) {
-        if (action.data?.biltyNo && !isEntityTombstoned('bilties', action.data, tombstones)) {
+        if (action.data?.biltyNo && !isEntityTombstoned('bilties', action.data, biltyTombstones)) {
           const safeData = extractPublicBiltyVerification(action.data);
           const pubRef = doc(db, 'publicBiltyVerifications', safeData.biltyNo);
           await withTimeout(setDoc(pubRef, safeData), 8000);
@@ -745,8 +964,17 @@ export async function processOfflineQueue(): Promise<{
       } else {
         const collName = normalizeCollectionKey(action.type);
         if (collName) {
-          const items = Array.isArray(action.data) ? action.data : [action.data];
-          await writePerDocCollectionToFirestore(user.uid, collName, items);
+          const collTombstones = getTombstones(collName, user.uid);
+          const rawItems = Array.isArray(action.data) ? action.data : [action.data];
+          const safeItems = (rawItems as Array<Record<string, unknown>>).filter(
+            item => !isEntityTombstoned(collName, item, collTombstones)
+          );
+          await writePerDocCollectionToFirestore(
+            user.uid,
+            collName,
+            safeItems,
+            Object.keys(collTombstones)
+          );
           processedCount++;
         } else if (action.type === 'settings') {
           if (!isOwnerEmail(user.email)) {
@@ -756,13 +984,15 @@ export async function processOfflineQueue(): Promise<{
           await withTimeout(setDoc(docRef, action.data, { merge: true }), 8000);
           processedCount++;
         } else if (action.type === 'pod_confirmation' && action.data?.biltyNo) {
-          const safeData = extractPublicBiltyVerification({
-            ...action.data,
-            isDelivered: true,
-            status: 'Delivered'
-          });
-          const pubRef = doc(db, 'publicBiltyVerifications', safeData.biltyNo);
-          await withTimeout(setDoc(pubRef, safeData), 8000);
+          if (!isEntityTombstoned('bilties', action.data, biltyTombstones)) {
+            const safeData = extractPublicBiltyVerification({
+              ...action.data,
+              isDelivered: true,
+              status: 'Delivered'
+            });
+            const pubRef = doc(db, 'publicBiltyVerifications', safeData.biltyNo);
+            await withTimeout(setDoc(pubRef, safeData), 8000);
+          }
           processedCount++;
         } else {
           processedCount++;
@@ -815,10 +1045,69 @@ export async function processOfflineQueue(): Promise<{
   };
 }
 
+// ---------------------------------------------------------------------------
+// Remote Sync Kill-Switch, Digest Tracking & Single-Flight Lock
+// ---------------------------------------------------------------------------
+
+let killSwitchCache: { checkedAt: number; disabled: boolean } | null = null;
+const activeReconcilePromises = new Map<
+  string,
+  Promise<{ synced: boolean; count: number; blockedCount?: number }>
+>();
+
+async function isAmbientSyncKilledRemotely(): Promise<boolean> {
+  if (!db) return false;
+  const now = Date.now();
+  if (killSwitchCache && now - killSwitchCache.checkedAt < KILLSWITCH_CACHE_MS) {
+    return killSwitchCache.disabled;
+  }
+  try {
+    const snap = await withTimeout(getDoc(doc(db, 'settings', 'syncConfig')), 2500);
+    const disabled = Boolean(snap && snap.exists() && snap.data()?.disableAmbientSyncV3 === true);
+    killSwitchCache = { checkedAt: now, disabled };
+    return disabled;
+  } catch {
+    return killSwitchCache?.disabled ?? false;
+  }
+}
+
+function getPublicBiltyDigestCache(uid: string): Record<string, string> {
+  try {
+    const raw = safeStorage.getItem(`wg_v3_pub_bilty_digest_${uid}`);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePublicBiltyDigestCache(uid: string, map: Record<string, string>): void {
+  safeStorage.setItem(`wg_v3_pub_bilty_digest_${uid}`, JSON.stringify(map));
+}
+
+function getDeletedPublicBiltyCache(uid: string): Record<string, true> {
+  try {
+    const raw = safeStorage.getItem(`wg_v3_pub_bilty_deleted_${uid}`);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveDeletedPublicBiltyCache(uid: string, map: Record<string, true>): void {
+  safeStorage.setItem(`wg_v3_pub_bilty_deleted_${uid}`, JSON.stringify(map));
+}
+
 /**
- * Bi-directional Reconciliation & Auto-Sync Engine (#1, #2, #3, #8, #10)
+ * Bi-directional Reconciliation & Delta Auto-Sync Engine (#1, #2, #3, #8, #10)
  */
-export async function autoReconcileAllLocalToCloud(targetUid?: string): Promise<{
+export async function autoReconcileAllLocalToCloud(
+  targetUid?: string,
+  options: { bypassKillSwitch?: boolean } = {}
+): Promise<{
   synced: boolean;
   count: number;
   blockedCount?: number;
@@ -830,196 +1119,246 @@ export async function autoReconcileAllLocalToCloud(targetUid?: string): Promise<
   const uid = targetUid || user?.uid;
   if (!uid) return { synced: false, count: 0 };
 
-  let totalSynced = 0;
-
-  // 1. Process offline action queue first (and preserve any remaining/blocked items!)
-  const queueResult = await processOfflineQueue().catch(() => ({
-    processed: 0,
-    remaining: 0,
-    blocked: 0,
-    errors: ['Queue execution failed']
-  }));
-
-  // 2. Fetch cloud tombstones map once
-  let cloudAllTombstones: Record<string, TombstoneMap> = {};
-  try {
-    const tombSnap = await withTimeout(getDoc(doc(db, 'users', uid, 'collections', 'tombstones')), 8000).catch(
-      () => null
-    );
-    if (tombSnap && tombSnap.exists()) {
-      cloudAllTombstones = (tombSnap.data() || {}) as Record<string, TombstoneMap>;
-    }
-  } catch {
-    cloudAllTombstones = {};
+  const existingInFlight = activeReconcilePromises.get(uid);
+  if (existingInFlight) {
+    return existingInFlight;
   }
 
-  const syncCollections: SyncCollectionName[] = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel', 'routes'];
-  let syncErrors = queueResult.errors.length;
-  const updatedCloudTombstones: Record<string, TombstoneMap> = {};
+  const runPromise = (async (): Promise<{ synced: boolean; count: number; blockedCount?: number }> => {
+    if (!options.bypassKillSwitch && (await isAmbientSyncKilledRemotely())) {
+      return { synced: true, count: 0, blockedCount: 0 };
+    }
 
-  for (const collName of syncCollections) {
+    let totalSynced = 0;
+
+    // 1. Process offline action queue first (and preserve any remaining/blocked items!)
+    const queueResult = await processOfflineQueue().catch(() => ({
+      processed: 0,
+      remaining: 0,
+      blocked: 0,
+      errors: ['Queue execution failed']
+    }));
+
+    // 2. Fetch cloud tombstones map once
+    let cloudAllTombstones: Record<string, TombstoneMap> = {};
+    let hasCloudTombstonesSnapshot = false;
     try {
-      const scopedKey = getScopedStorageKey(collName, uid);
-      const rawLocal = safeStorage.getItem(scopedKey);
-      const localItems: Array<Record<string, unknown>> = rawLocal ? JSON.parse(rawLocal) : [];
-
-      const localTombstones = getTombstones(collName, uid);
-      const remoteCollTombstones: TombstoneMap =
-        cloudAllTombstones[collName] && typeof cloudAllTombstones[collName] === 'object'
-          ? cloudAllTombstones[collName]
-          : {};
-
-      // Dual-read: per-document subcollection AND legacy array document (#8)
-      const subColl = SYNC_COLLECTION_TO_DOC_SUBCOLL[collName];
-      const [legacySnap, docsSnap] = await Promise.all([
-        withTimeout(getDoc(doc(db, 'users', uid, 'collections', collName)), 8000).catch(() => null),
-        withTimeout(getDocs(collection(db, 'users', uid, subColl)), 8000).catch(() => null)
-      ]);
-
-      const legacyItems: Array<Record<string, unknown>> =
-        legacySnap && legacySnap.exists() && Array.isArray(legacySnap.data()?.items)
-          ? legacySnap.data().items
-          : [];
-
-      const subDocItems: Array<Record<string, unknown>> = [];
-      const subDocTombstones: TombstoneMap = {};
-      if (docsSnap) {
-        docsSnap.forEach(d => {
-          const data = d.data() as Record<string, unknown>;
-          if (data?._deleted === true && typeof data.deletedAt === 'string') {
-            const key = getEntitySyncKey(collName, data);
-            subDocTombstones[key] = data.deletedAt;
-          } else if (data && !data._deleted) {
-            const cleaned = { ...data };
-            delete cleaned._deleted;
-            delete cleaned.deletedAt;
-            subDocItems.push(cleaned);
-          }
-        });
-      }
-
-      const mergedTombstones = mergeTombstoneMaps(
-        mergeTombstoneMaps(localTombstones, remoteCollTombstones),
-        subDocTombstones
+      const tombSnap = await withTimeout(getDoc(doc(db, 'users', uid, 'collections', 'tombstones')), 8000).catch(
+        () => null
       );
-
-      // Merge cloud (legacy + per-doc) + local via LWW
-      const mergedMap = new Map<string, Record<string, unknown>>();
-      for (const item of [...legacyItems, ...subDocItems]) {
-        const key = getEntitySyncKey(collName, item);
-        const prev = mergedMap.get(key);
-        mergedMap.set(key, prev ? resolveEntityLWW(prev, item) : item);
-      }
-      for (const item of localItems) {
-        const key = getEntitySyncKey(collName, item);
-        const prev = mergedMap.get(key);
-        mergedMap.set(key, prev ? resolveEntityLWW(item, prev) : item);
-      }
-
-      // Apply tombstones (#1): suppress deleted items unless recreated AFTER deletion timestamp
-      const mergedList: Array<Record<string, unknown>> = [];
-      for (const [key, item] of mergedMap.entries()) {
-        if (isEntityTombstoned(collName, item, mergedTombstones)) {
-          continue;
+      if (tombSnap) {
+        hasCloudTombstonesSnapshot = true;
+        if (tombSnap.exists()) {
+          cloudAllTombstones = (tombSnap.data() || {}) as Record<string, TombstoneMap>;
         }
-        // Item survived or is newer than tombstone -> ensure stale tombstone cleared
-        if (mergedTombstones[key]) {
-          delete mergedTombstones[key];
-        }
-        mergedList.push(item);
       }
+    } catch {
+      cloudAllTombstones = {};
+    }
 
-      // Persist reconciled list (even when empty []) & tombstones (#1, #2)
-      safeStorage.setItem(scopedKey, JSON.stringify(mergedList));
-      saveTombstones(collName, mergedTombstones, uid);
-      updatedCloudTombstones[collName] = mergedTombstones;
+    const syncCollections: SyncCollectionName[] = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel', 'routes'];
+    let syncErrors = queueResult.errors.length;
 
-      // Push reconciled state even if mergedList.length === 0 (#2)!
-      const deletedToPush = Object.keys(mergedTombstones);
-      await writePerDocCollectionToFirestore(uid, collName, mergedList, deletedToPush);
-      totalSynced += mergedList.length;
+    for (const collName of syncCollections) {
+      try {
+        const scopedKey = getScopedStorageKey(collName, uid);
+        const rawLocal = safeStorage.getItem(scopedKey);
+        const localItems: Array<Record<string, unknown>> = rawLocal ? JSON.parse(rawLocal) : [];
 
-      // For bilties: delete public verifications of tombstoned entries, never recreate (#3)
-      if (collName === 'bilties') {
-        for (const tombKey of Object.keys(mergedTombstones)) {
-          await deletePublicBiltyVerification(tombKey).catch(() => {});
+        const localTombstones = getTombstones(collName, uid);
+        const remoteCollTombstones: TombstoneMap =
+          cloudAllTombstones[collName] && typeof cloudAllTombstones[collName] === 'object'
+            ? cloudAllTombstones[collName]
+            : {};
+
+        // Dual-read: per-document subcollection AND legacy array document (#8)
+        const subColl = SYNC_COLLECTION_TO_DOC_SUBCOLL[collName];
+        const [legacySnap, docsSnap] = await Promise.all([
+          withTimeout(getDoc(doc(db, 'users', uid, 'collections', collName)), 8000).catch(() => null),
+          withTimeout(getDocs(collection(db, 'users', uid, subColl)), 8000).catch(() => null)
+        ]);
+
+        const hasLegacySnapshot = Boolean(legacySnap);
+        const existingLegacyData =
+          legacySnap && legacySnap.exists() ? (legacySnap.data() as Record<string, unknown>) : null;
+        const legacyItems: Array<Record<string, unknown>> =
+          existingLegacyData && Array.isArray(existingLegacyData.items)
+            ? (existingLegacyData.items as Array<Record<string, unknown>>)
+            : [];
+
+        const subDocItems: Array<Record<string, unknown>> = [];
+        const cloudSubDocMap = new Map<string, Record<string, unknown>>();
+        const subDocTombstones: TombstoneMap = {};
+        if (docsSnap) {
+          docsSnap.forEach(d => {
+            const data = d.data() as Record<string, unknown>;
+            if (data?._deleted === true && typeof data.deletedAt === 'string') {
+              const key = getEntitySyncKey(collName, data);
+              subDocTombstones[key] = data.deletedAt;
+            } else if (data && !data._deleted) {
+              const cleaned = { ...data };
+              delete cleaned._deleted;
+              delete cleaned.deletedAt;
+              subDocItems.push(cleaned);
+              cloudSubDocMap.set(getEntitySyncKey(collName, cleaned), cleaned);
+            }
+          });
         }
-        let highestBiltySeq = 1000;
-        for (const b of mergedList) {
-          if (b?.biltyNo) {
-            await syncPublicBiltyVerification(b as Partial<BiltyRecord>).catch(() => {});
-            const numPart = parseInt(String(b.biltyNo).replace(/\D/g, ''), 10);
-            if (!Number.isNaN(numPart) && numPart > highestBiltySeq) {
-              highestBiltySeq = numPart;
+
+        const mergedTombstones = mergeTombstoneMaps(
+          mergeTombstoneMaps(localTombstones, remoteCollTombstones),
+          subDocTombstones
+        );
+
+        // Merge cloud (legacy + per-doc) + local via LWW
+        const mergedMap = new Map<string, Record<string, unknown>>();
+        for (const item of [...legacyItems, ...subDocItems]) {
+          const key = getEntitySyncKey(collName, item);
+          const prev = mergedMap.get(key);
+          mergedMap.set(key, prev ? resolveEntityLWW(prev, item) : item);
+        }
+        for (const item of localItems) {
+          const key = getEntitySyncKey(collName, item);
+          const prev = mergedMap.get(key);
+          mergedMap.set(key, prev ? resolveEntityLWW(item, prev) : item);
+        }
+
+        // Apply tombstones (#1): suppress deleted items unless recreated AFTER deletion timestamp
+        const mergedList: Array<Record<string, unknown>> = [];
+        for (const [key, item] of mergedMap.entries()) {
+          if (isEntityTombstoned(collName, item, mergedTombstones)) {
+            continue;
+          }
+          if (mergedTombstones[key]) {
+            delete mergedTombstones[key];
+          }
+          mergedList.push(item);
+        }
+
+        // Persist reconciled list (even when empty []) & tombstones (#1, #2)
+        safeStorage.setItem(scopedKey, JSON.stringify(mergedList));
+        saveTombstones(collName, mergedTombstones, uid);
+
+        // Delta-push reconciled state (#2 + Spark write reduction)
+        const deletedToPush = Object.keys(mergedTombstones);
+        await writePerDocCollectionToFirestore(uid, collName, mergedList, deletedToPush, {
+          cloudSubDocMap,
+          cloudSubDocTombstones: subDocTombstones,
+          cloudTombstonesForColl: remoteCollTombstones,
+          hasCloudTombstonesSnapshot,
+          existingLegacyData,
+          hasLegacySnapshot
+        });
+        totalSynced += mergedList.length;
+
+        // For bilties: delta-sync public verifications & clean up deleted (#3)
+        if (collName === 'bilties') {
+          const pubDigest = getPublicBiltyDigestCache(uid);
+          const pubDeleted = getDeletedPublicBiltyCache(uid);
+          let digestDirty = false;
+          let deletedDirty = false;
+
+          for (const tombKey of Object.keys(mergedTombstones)) {
+            const cleanNo = String(tombKey || '').trim().toUpperCase();
+            if (cleanNo && !pubDeleted[cleanNo]) {
+              const delOk = await deletePublicBiltyVerification(cleanNo).catch(() => false);
+              if (delOk) {
+                pubDeleted[cleanNo] = true;
+                deletedDirty = true;
+              }
+            }
+            if (cleanNo && pubDigest[cleanNo]) {
+              delete pubDigest[cleanNo];
+              digestDirty = true;
             }
           }
-        }
-        try {
-          const counterRef = doc(db, 'counters', 'biltyCounter');
-          const counterSnap = await withTimeout(getDoc(counterRef), 5000).catch(() => null);
-          const currentCloudVal =
-            counterSnap && counterSnap.exists()
-              ? (counterSnap.data()?.currentValue ?? counterSnap.data()?.value ?? 1000)
-              : 1000;
-          if (highestBiltySeq > currentCloudVal) {
-            await setDoc(
-              counterRef,
-              { currentValue: highestBiltySeq, value: highestBiltySeq, updatedAt: new Date().toISOString() },
-              { merge: true }
-            ).catch(() => {});
+
+          let highestBiltySeq = 1000;
+          for (const b of mergedList) {
+            if (b?.biltyNo) {
+              const safePublic = extractPublicBiltyVerification(b as Partial<BiltyRecord> & Record<string, unknown>);
+              const serializedPub = JSON.stringify(safePublic);
+              if (safePublic.biltyNo) {
+                if (pubDeleted[safePublic.biltyNo]) {
+                  delete pubDeleted[safePublic.biltyNo];
+                  deletedDirty = true;
+                }
+                if (pubDigest[safePublic.biltyNo] !== serializedPub) {
+                  const ok = await syncPublicBiltyVerification(b as Partial<BiltyRecord>).catch(() => false);
+                  if (ok) {
+                    pubDigest[safePublic.biltyNo] = serializedPub;
+                    digestDirty = true;
+                  }
+                }
+              }
+              const numPart = parseInt(String(b.biltyNo).replace(/\D/g, ''), 10);
+              if (!Number.isNaN(numPart) && numPart > highestBiltySeq && numPart <= 9999) {
+                highestBiltySeq = numPart;
+              }
+            }
           }
-        } catch {
-          // non-critical counter sync
+
+          if (digestDirty) savePublicBiltyDigestCache(uid, pubDigest);
+          if (deletedDirty) saveDeletedPublicBiltyCache(uid, pubDeleted);
+
+          try {
+            const counterRef = doc(db, 'counters', 'biltyCounter');
+            const counterSnap = await withTimeout(getDoc(counterRef), 5000).catch(() => null);
+            const currentCloudVal =
+              counterSnap && counterSnap.exists()
+                ? (counterSnap.data()?.currentValue ?? counterSnap.data()?.value ?? 1000)
+                : 1000;
+            if (highestBiltySeq > currentCloudVal) {
+              await setDoc(
+                counterRef,
+                { currentValue: highestBiltySeq, value: highestBiltySeq, updatedAt: new Date().toISOString() },
+                { merge: true }
+              ).catch(() => {});
+            }
+          } catch {
+            // non-critical counter sync
+          }
         }
+      } catch (e) {
+        syncErrors++;
+        if (isPermissionDeniedError(e)) {
+          safeStorage.setItem('ah-last-sync-error', `Permission denied syncing ${collName}`);
+        }
+        console.warn(`Reconciliation notice for ${collName}:`, e);
       }
-    } catch (e) {
-      syncErrors++;
-      if (isPermissionDeniedError(e)) {
-        safeStorage.setItem('ah-last-sync-error', `Permission denied syncing ${collName}`);
-      }
-      console.warn(`Reconciliation notice for ${collName}:`, e);
     }
-  }
 
-  // Push consolidated tombstones doc
-  if (Object.keys(updatedCloudTombstones).length > 0) {
+    // 4. Reconcile Khata / Ledger
     try {
-      await withTimeout(
-        setDoc(
-          doc(db, 'users', uid, 'collections', 'tombstones'),
-          { ...updatedCloudTombstones, updatedAt: new Date().toISOString() },
-          { merge: true }
-        ),
-        8000
+      const { fetchKhataFromFirestore, syncAllKhataToFirestore, processKhataDocQueue } = await import(
+        './ledgerStorage'
       );
-    } catch {
-      // non-fatal
+      await syncAllKhataToFirestore().catch(() => {});
+      await fetchKhataFromFirestore().catch(() => {});
+      await processKhataDocQueue().catch(() => {});
+    } catch (kErr) {
+      console.warn('[KhataSync] reconciliation notice:', kErr);
     }
-  }
 
-  // 4. Reconcile Khata / Ledger
+    safeStorage.setItem('ah-last-sync-time', new Date().toISOString());
+    if (syncErrors === 0 && queueResult.remaining === 0 && queueResult.blocked === 0) {
+      safeStorage.removeItem('ah-last-sync-error');
+    }
+    notifySyncListeners();
+
+    return {
+      synced: syncErrors === 0 && queueResult.blocked === 0,
+      count: totalSynced,
+      blockedCount: queueResult.blocked
+    };
+  })();
+
+  activeReconcilePromises.set(uid, runPromise);
   try {
-    const { fetchKhataFromFirestore, syncAllKhataToFirestore, processKhataDocQueue } = await import(
-      './ledgerStorage'
-    );
-    await syncAllKhataToFirestore().catch(() => {});
-    await fetchKhataFromFirestore().catch(() => {});
-    await processKhataDocQueue().catch(() => {});
-  } catch (kErr) {
-    console.warn('[KhataSync] reconciliation notice:', kErr);
+    return await runPromise;
+  } finally {
+    activeReconcilePromises.delete(uid);
   }
-
-  safeStorage.setItem('ah-last-sync-time', new Date().toISOString());
-  if (syncErrors === 0 && queueResult.remaining === 0 && queueResult.blocked === 0) {
-    safeStorage.removeItem('ah-last-sync-error');
-  }
-  notifySyncListeners();
-
-  return {
-    synced: syncErrors === 0 && queueResult.blocked === 0,
-    count: totalSynced,
-    blockedCount: queueResult.blocked
-  };
 }
 
 export async function loadFromFirestore(uid: string) {
@@ -1057,18 +1396,15 @@ export function getStoredTrips(): Trip[] {
 export function saveStoredTrips(trips: Trip[]): void {
   const prev = getStoredTrips();
   const nowIso = new Date().toISOString();
-  const stamped = trips.map(t => ({
-    ...t,
-    updatedAt: (t as Trip & { updatedAt?: string }).updatedAt || nowIso
-  }));
-  const { deletedKeys } = recordCollectionMutations(
+  const { stamped, changedKeys } = stampMutatedEntities(
     'trips',
     prev as unknown as Array<Record<string, unknown>>,
-    stamped as unknown as Array<Record<string, unknown>>,
+    trips as unknown as Array<Record<string, unknown>>,
     nowIso
   );
+  const { deletedKeys } = recordCollectionMutations('trips', prev as unknown as Array<Record<string, unknown>>, stamped, nowIso);
   setScopedItem('trips', JSON.stringify(stamped));
-  void syncToFirestore('trips', stamped, deletedKeys);
+  void syncToFirestore('trips', stamped, deletedKeys, changedKeys);
   scheduleAmbientSync();
 }
 
@@ -1084,18 +1420,15 @@ export function getStoredVehicles(): Vehicle[] {
 export function saveStoredVehicles(vehicles: Vehicle[]): void {
   const prev = getStoredVehicles();
   const nowIso = new Date().toISOString();
-  const stamped = vehicles.map(v => ({
-    ...v,
-    updatedAt: (v as Vehicle & { updatedAt?: string }).updatedAt || nowIso
-  }));
-  const { deletedKeys } = recordCollectionMutations(
+  const { stamped, changedKeys } = stampMutatedEntities(
     'vehicles',
     prev as unknown as Array<Record<string, unknown>>,
-    stamped as unknown as Array<Record<string, unknown>>,
+    vehicles as unknown as Array<Record<string, unknown>>,
     nowIso
   );
+  const { deletedKeys } = recordCollectionMutations('vehicles', prev as unknown as Array<Record<string, unknown>>, stamped, nowIso);
   setScopedItem('vehicles', JSON.stringify(stamped));
-  void syncToFirestore('vehicles', stamped, deletedKeys);
+  void syncToFirestore('vehicles', stamped, deletedKeys, changedKeys);
   scheduleAmbientSync();
 }
 
@@ -1111,18 +1444,15 @@ export function getStoredDrivers(): Driver[] {
 export function saveStoredDrivers(drivers: Driver[]): void {
   const prev = getStoredDrivers();
   const nowIso = new Date().toISOString();
-  const stamped = drivers.map(d => ({
-    ...d,
-    updatedAt: (d as Driver & { updatedAt?: string }).updatedAt || nowIso
-  }));
-  const { deletedKeys } = recordCollectionMutations(
+  const { stamped, changedKeys } = stampMutatedEntities(
     'drivers',
     prev as unknown as Array<Record<string, unknown>>,
-    stamped as unknown as Array<Record<string, unknown>>,
+    drivers as unknown as Array<Record<string, unknown>>,
     nowIso
   );
+  const { deletedKeys } = recordCollectionMutations('drivers', prev as unknown as Array<Record<string, unknown>>, stamped, nowIso);
   setScopedItem('drivers', JSON.stringify(stamped));
-  void syncToFirestore('drivers', stamped, deletedKeys);
+  void syncToFirestore('drivers', stamped, deletedKeys, changedKeys);
   scheduleAmbientSync();
 }
 
@@ -1138,18 +1468,15 @@ export function getStoredRoutes(): RoutePreset[] {
 export function saveStoredRoutes(routes: RoutePreset[]): void {
   const prev = getStoredRoutes();
   const nowIso = new Date().toISOString();
-  const stamped = routes.map(r => ({
-    ...r,
-    updatedAt: (r as RoutePreset & { updatedAt?: string }).updatedAt || nowIso
-  }));
-  const { deletedKeys } = recordCollectionMutations(
+  const { stamped, changedKeys } = stampMutatedEntities(
     'routes',
     prev as unknown as Array<Record<string, unknown>>,
-    stamped as unknown as Array<Record<string, unknown>>,
+    routes as unknown as Array<Record<string, unknown>>,
     nowIso
   );
+  const { deletedKeys } = recordCollectionMutations('routes', prev as unknown as Array<Record<string, unknown>>, stamped, nowIso);
   setScopedItem('routes', JSON.stringify(stamped));
-  void syncToFirestore('routes', stamped, deletedKeys);
+  void syncToFirestore('routes', stamped, deletedKeys, changedKeys);
   scheduleAmbientSync();
 }
 
@@ -1165,18 +1492,15 @@ export function getStoredFuelLog(): FuelLogItem[] {
 export function saveStoredFuelLog(items: FuelLogItem[]): void {
   const prev = getStoredFuelLog();
   const nowIso = new Date().toISOString();
-  const stamped = items.map(f => ({
-    ...f,
-    updatedAt: (f as FuelLogItem & { updatedAt?: string }).updatedAt || nowIso
-  }));
-  const { deletedKeys } = recordCollectionMutations(
+  const { stamped, changedKeys } = stampMutatedEntities(
     'fuel',
     prev as unknown as Array<Record<string, unknown>>,
-    stamped as unknown as Array<Record<string, unknown>>,
+    items as unknown as Array<Record<string, unknown>>,
     nowIso
   );
+  const { deletedKeys } = recordCollectionMutations('fuel', prev as unknown as Array<Record<string, unknown>>, stamped, nowIso);
   setScopedItem('fuel', JSON.stringify(stamped));
-  void syncToFirestore('fuel', stamped, deletedKeys);
+  void syncToFirestore('fuel', stamped, deletedKeys, changedKeys);
   scheduleAmbientSync();
 }
 
@@ -1220,8 +1544,18 @@ export function getStoredBilties(): BiltyRecord[] {
     for (const rec of deduped) {
       let bNo = rec.biltyNo ? String(rec.biltyNo).trim().toUpperCase() : '';
       if (!bNo || usedNumbers.has(bNo)) {
-        highestSequence = Math.max(highestSequence, 1000) + 1;
-        bNo = `WG-${String(highestSequence).padStart(4, '0')}`;
+        let candidate = Math.max(highestSequence, 1000) + 1;
+        while (candidate <= 9999 && usedNumbers.has(`WG-${String(candidate).padStart(4, '0')}`)) {
+          candidate++;
+        }
+        if (candidate > 9999) {
+          candidate = 1001;
+          while (candidate <= 9999 && usedNumbers.has(`WG-${String(candidate).padStart(4, '0')}`)) {
+            candidate++;
+          }
+        }
+        highestSequence = candidate;
+        bNo = `WG-${String(candidate).padStart(4, '0')}`;
       } else {
         const rawDigits = bNo.replace(/\D/g, '');
         const numPart = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10);
@@ -1247,10 +1581,12 @@ export function getStoredBilties(): BiltyRecord[] {
 export function saveStoredBilties(bilties: BiltyRecord[]): void {
   const prevBilties = getStoredBilties();
   const nowIso = new Date().toISOString();
-  const stamped = bilties.map(b => ({
-    ...b,
-    updatedAt: b.updatedAt || nowIso
-  }));
+  const { stamped, changedKeys } = stampMutatedEntities(
+    'bilties',
+    prevBilties as unknown as Array<Record<string, unknown>>,
+    bilties as unknown as Array<Record<string, unknown>>,
+    nowIso
+  );
 
   const { deletedKeys } = recordCollectionMutations(
     'bilties',
@@ -1261,7 +1597,7 @@ export function saveStoredBilties(bilties: BiltyRecord[]): void {
 
   // Strictly scoped save (#7): no shadow owner copies
   setScopedItem('bilties', JSON.stringify(stamped));
-  void syncToFirestore('bilties', stamped, deletedKeys);
+  void syncToFirestore('bilties', stamped, deletedKeys, changedKeys);
   scheduleAmbientSync();
 
   const prevPublicMap = new Map<string, string>();
@@ -1277,14 +1613,15 @@ export function saveStoredBilties(bilties: BiltyRecord[]): void {
   const currentBiltyNos = new Set<string>();
   for (const b of stamped) {
     if (!b?.biltyNo) continue;
-    const safeCurr = extractPublicBiltyVerification(b as Partial<BiltyRecord> & Record<string, unknown>);
+    const typedB = b as unknown as BiltyRecord;
+    const safeCurr = extractPublicBiltyVerification(b);
     if (!safeCurr.biltyNo) continue;
     currentBiltyNos.add(safeCurr.biltyNo);
 
     const prevJson = prevPublicMap.get(safeCurr.biltyNo);
     const currJson = JSON.stringify(safeCurr);
     if (prevJson !== currJson) {
-      syncPublicBiltyVerification(b).catch(() => {});
+      syncPublicBiltyVerification(typedB).catch(() => {});
     }
   }
 
@@ -1297,6 +1634,88 @@ export function saveStoredBilties(bilties: BiltyRecord[]): void {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('driverdost:bilties_updated', { detail: stamped }));
   }
+}
+
+/**
+ * Applies a restored collection cleanly while clearing tombstones for restored items
+ * and updating timestamps so subsequent cloud sync preserves restored state instead of deleting it.
+ */
+export function applyRestoredCollection(
+  collName: SyncCollectionName,
+  restoredItems: Array<Record<string, unknown>>,
+  mode: 'merge' | 'overwrite' = 'merge'
+): Array<Record<string, unknown>> {
+  const scope = getActiveUserScope();
+  const nowIso = new Date().toISOString();
+  const rawPrev = getScopedItem(collName);
+  let prevItems: Array<Record<string, unknown>> = [];
+  try {
+    prevItems = rawPrev ? JSON.parse(rawPrev) : [];
+    if (!Array.isArray(prevItems)) prevItems = [];
+  } catch {
+    prevItems = [];
+  }
+
+  const tombstones = getTombstones(collName, scope);
+  const stampedRestored = restoredItems.map(item => {
+    const key = getEntitySyncKey(collName, item);
+    if (tombstones[key]) delete tombstones[key];
+    if (item.id !== undefined && item.id !== null && tombstones[String(item.id)]) {
+      delete tombstones[String(item.id)];
+    }
+    return {
+      ...item,
+      updatedAt: nowIso
+    };
+  });
+
+  saveTombstones(collName, tombstones, scope);
+
+  let finalItems: Array<Record<string, unknown>> = [];
+  let deletedKeys: string[] = [];
+
+  if (mode === 'overwrite') {
+    const res = recordCollectionMutations(collName, prevItems, stampedRestored, nowIso);
+    deletedKeys = res.deletedKeys;
+    finalItems = stampedRestored;
+  } else {
+    const mergedMap = new Map<string, Record<string, unknown>>();
+    for (const prev of prevItems) {
+      mergedMap.set(getEntitySyncKey(collName, prev), prev);
+    }
+    for (const rest of stampedRestored) {
+      const k = getEntitySyncKey(collName, rest);
+      const existing = mergedMap.get(k);
+      if (!existing) {
+        mergedMap.set(k, rest);
+      } else {
+        // Keep whichever has newer mutation timestamp, or restored if identical
+        const existingMs = parseEntityMutationTimeMs(existing);
+        const restMs = parseEntityMutationTimeMs(rest);
+        mergedMap.set(k, existingMs > restMs ? existing : rest);
+      }
+    }
+    finalItems = Array.from(mergedMap.values());
+  }
+
+  setScopedItem(collName, JSON.stringify(finalItems));
+  void syncToFirestore(collName, finalItems, deletedKeys);
+
+  if (collName === 'bilties') {
+    for (const b of finalItems) {
+      if (b?.biltyNo) {
+        void syncPublicBiltyVerification(b as Partial<BiltyRecord>).catch(() => {});
+      }
+    }
+    for (const delKey of deletedKeys) {
+      void deletePublicBiltyVerification(delKey).catch(() => {});
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('driverdost:bilties_updated', { detail: finalItems }));
+    }
+  }
+
+  return finalItems;
 }
 
 export async function confirmBiltyDelivery(
@@ -1338,7 +1757,7 @@ export async function confirmBiltyDelivery(
     });
     if (stored.some(b => String(b.biltyNo).trim().toUpperCase() === cleanBiltyNo || String(b.id) === String(bilty.id))) {
       setScopedItem('bilties', JSON.stringify(updated));
-      syncToFirestore('bilties', updated).catch(() => {});
+      syncToFirestore('bilties', updated, [], cleanBiltyNo ? [cleanBiltyNo] : undefined).catch(() => {});
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('driverdost:bilties_updated', { detail: updated }));
       }
@@ -1379,7 +1798,7 @@ export async function confirmBiltyDelivery(
 }
 
 // ---------------------------------------------------------------------------
-// Bilty Sequence Counter Helpers
+// Bilty Sequence Counter Helpers (WG-xxxx collision-safe)
 // ---------------------------------------------------------------------------
 
 export function persistBiltyCounterLocally(seq: number): void {
@@ -1422,6 +1841,57 @@ export function getStoredHighestBiltySeq(): number {
   return highest;
 }
 
+export function findNextAvailableBiltySeq(startCandidate: number): number {
+  const activeNums = new Set<number>();
+  for (const b of getStoredBilties()) {
+    if (!b?.biltyNo) continue;
+    const rawDigits = String(b.biltyNo).replace(/\D/g, '');
+    const parsed = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10);
+    if (!Number.isNaN(parsed) && parsed >= 1001 && parsed <= 9999) {
+      activeNums.add(parsed);
+    }
+  }
+
+  const first = startCandidate >= 1001 && startCandidate <= 9999 ? startCandidate : 1001;
+  for (let n = first; n <= 9999; n++) {
+    if (!activeNums.has(n)) return n;
+  }
+  for (let n = 1001; n < first; n++) {
+    if (!activeNums.has(n)) return n;
+  }
+  throw new Error('WG-xxxx capacity reached (all 8999 active numbers in use). Please archive/delete old records.');
+}
+
+export async function checkBiltyNoConflict(
+  biltyNo: string,
+  excludeId?: number | string
+): Promise<{ conflict: boolean; source?: 'local' | 'cloud' }> {
+  const normalized = String(biltyNo || '').trim().toUpperCase();
+  if (!normalized) return { conflict: false };
+
+  const localDup = getStoredBilties().some(
+    b =>
+      String(b.biltyNo || '').trim().toUpperCase() === normalized &&
+      (excludeId === undefined || String(b.id) !== String(excludeId))
+  );
+  if (localDup) {
+    return { conflict: true, source: 'local' };
+  }
+
+  const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+  if (isOnline && db && auth.currentUser) {
+    try {
+      const snap = await withTimeout(getDoc(doc(db, 'publicBiltyVerifications', normalized)), 2500);
+      if (snap && snap.exists()) {
+        return { conflict: true, source: 'cloud' };
+      }
+    } catch {
+      // Fail open offline/timeout
+    }
+  }
+  return { conflict: false };
+}
+
 export async function allocateNextBiltyNumber(_userUid?: string): Promise<string> {
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
   const user = auth.currentUser;
@@ -1442,10 +1912,7 @@ export async function allocateNextBiltyNumber(_userUid?: string): Promise<string
               cloudCurrent = parsed;
             }
           }
-          let next = Math.max(cloudCurrent, baseline) + 1;
-          if (next > 9999) {
-            next = 1001;
-          }
+          const next = findNextAvailableBiltySeq(Math.max(cloudCurrent, baseline) + 1);
           transaction.set(
             counterDocRef,
             {
@@ -1467,10 +1934,7 @@ export async function allocateNextBiltyNumber(_userUid?: string): Promise<string
     }
   }
 
-  let nextLocalSeq = baseline + 1;
-  if (nextLocalSeq > 9999) {
-    nextLocalSeq = 1001;
-  }
+  const nextLocalSeq = findNextAvailableBiltySeq(baseline + 1);
   persistBiltyCounterLocally(nextLocalSeq);
 
   return `WG-${String(nextLocalSeq).padStart(4, '0')}`;
@@ -1478,8 +1942,7 @@ export async function allocateNextBiltyNumber(_userUid?: string): Promise<string
 
 export function getNextBiltyNo(): string {
   const baseline = getStoredHighestBiltySeq();
-  let nextNo = baseline + 1;
-  if (nextNo > 9999) nextNo = 1001;
+  const nextNo = findNextAvailableBiltySeq(baseline + 1);
   persistBiltyCounterLocally(nextNo);
   return `WG-${String(nextNo).padStart(4, '0')}`;
 }
@@ -1490,6 +1953,7 @@ export function getNextBiltyNo(): string {
 
 let ambientSyncTimer: ReturnType<typeof setTimeout> | null = null;
 let isReconcilingAmbient = false;
+let lastAmbientRunAtMs = 0;
 
 export function scheduleAmbientSync(delayMs = 350): void {
   if (typeof window === 'undefined') return;
@@ -1503,6 +1967,12 @@ export function scheduleAmbientSync(delayMs = 350): void {
       return;
     }
 
+    const nowMs = Date.now();
+    const pendingQueue = getStoredOfflineQueue().length;
+    if (pendingQueue === 0 && lastAmbientRunAtMs > 0 && nowMs - lastAmbientRunAtMs < MIN_AMBIENT_SYNC_COOLDOWN_MS) {
+      return;
+    }
+
     isReconcilingAmbient = true;
     notifySyncListeners();
 
@@ -1510,12 +1980,12 @@ export function scheduleAmbientSync(delayMs = 350): void {
       const user = auth.currentUser;
       if (user) {
         const res = await autoReconcileAllLocalToCloud(user.uid);
+        lastAmbientRunAtMs = Date.now();
         if (res.synced) {
           safeStorage.setItem('ah-last-sync-time', new Date().toISOString());
           safeStorage.removeItem('ah-last-sync-error');
         }
       } else {
-        // Guest mode: do not discard failed state silently if user hasn't signed in; queue only holds guest actions if created
         safeStorage.setItem('ah-last-sync-time', new Date().toISOString());
       }
     } catch (e) {

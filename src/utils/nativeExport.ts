@@ -64,11 +64,27 @@ export async function shareOrDownloadBlob(
   // 1. Native Android / iOS Capacitor platform
   if (Capacitor.isNativePlatform()) {
     try {
+      // Opportunistically clean up temporary exported files older than 1 hour
+      try {
+        const listed = await Filesystem.readdir({ path: 'exports', directory: Directory.Cache });
+        const cutoff = Date.now() - 60 * 60 * 1000;
+        for (const entry of listed.files || []) {
+          const mtime = typeof entry.mtime === 'number' ? entry.mtime : 0;
+          if (mtime > 0 && mtime < cutoff) {
+            await Filesystem.deleteFile({ path: `exports/${entry.name}`, directory: Directory.Cache }).catch(() => {});
+          }
+        }
+      } catch {
+        // exports directory may not exist yet on first run
+      }
+
       const base64Data = await blobToBase64(blob);
+      const exportPath = `exports/${safeName}`;
       const writeResult = await Filesystem.writeFile({
-        path: safeName,
+        path: exportPath,
         data: base64Data,
-        directory: Directory.Cache
+        directory: Directory.Cache,
+        recursive: true
       });
 
       await Share.share({

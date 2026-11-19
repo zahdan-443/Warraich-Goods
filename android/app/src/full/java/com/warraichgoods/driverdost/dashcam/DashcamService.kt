@@ -34,6 +34,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
+import android.os.StatFs
 import android.util.Log
 import androidx.camera.core.CameraSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -155,7 +156,6 @@ class DashcamService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        acquireWakeLock()
     }
 
     private var stopSelfPending = false
@@ -167,12 +167,21 @@ class DashcamService : Service() {
                 stopSelfPending = false
                 startForegroundServiceNotification()
                 startSingleRearRecording()
+                return START_STICKY
             }
             ACTION_STOP -> {
                 stopDashcamRecording(stopSelfAfter = true)
+                return START_NOT_STICKY
+            }
+            else -> {
+                if (!isRecording) {
+                    cleanUpRecordingResources()
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
+                return START_NOT_STICKY
             }
         }
-        return START_STICKY
     }
 
     fun setStatusListener(listener: ((Boolean, Long, String?, String?, Boolean, String?) -> Unit)?) {
@@ -290,6 +299,26 @@ class DashcamService : Service() {
     private fun startSingleRearRecording() {
         if (isRecording) return
 
+        // Verify at least 200 MB of free storage before starting continuous video recording
+        val videosDir = File(getExternalFilesDir(null), "dashcam").apply {
+            if (!exists()) mkdirs()
+        }
+        val availableBytes = try {
+            StatFs(videosDir.absolutePath).availableBytes
+        } catch (_: Exception) {
+            Long.MAX_VALUE
+        }
+        val minRequiredBytes = 200L * 1024L * 1024L
+        if (availableBytes < minRequiredBytes) {
+            Log.w(TAG, "Insufficient storage for dashcam recording: ${availableBytes / (1024 * 1024)} MB available")
+            isRecording = false
+            cleanUpRecordingResources()
+            statusListener?.invoke(false, 0L, null, null, false, "INSUFFICIENT_STORAGE")
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return
+        }
+
         acquireWakeLock()
         startForegroundServiceNotification()
 
@@ -364,9 +393,10 @@ class DashcamService : Service() {
             } catch (e: Exception) {
                 Log.e(TAG, "CameraX initialization failed", e)
                 isRecording = false
-                cameraLifecycleOwner?.stopAndDestroy()
-                cameraLifecycleOwner = null
+                cleanUpRecordingResources()
                 statusListener?.invoke(false, 0L, null, null, false, e.message)
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
             }
         }, ContextCompat.getMainExecutor(this))
     }

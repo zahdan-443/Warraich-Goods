@@ -70,6 +70,10 @@ export const AccountDeletionModal: React.FC<AccountDeletionModalProps> = ({
       } else {
         // 30-Day Grace Period Deletion Request
         const res = await requestAccountDeletion(effectiveUid, userEmail, reason);
+        if (!res.success) {
+          setErrorMessage(res.message);
+          return;
+        }
         const formattedDate = new Date(res.scheduledFor).toLocaleDateString(isUrdu ? 'ur-PK' : 'en-PK', {
           day: '2-digit',
           month: 'long',

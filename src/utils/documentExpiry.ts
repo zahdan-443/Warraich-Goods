@@ -189,6 +189,12 @@ export async function processExpiryNotifications(
   const todayStr = new Date().toISOString().split('T')[0];
   const isUrdu = lang === 'ur';
 
+  const pendingNotifications: Array<{
+    item: ExpiringDocumentItem;
+    milestone: '30' | '15' | '7' | 'expired';
+    cacheKey: string;
+  }> = [];
+
   for (const item of items) {
     let milestone: '30' | '15' | '7' | 'expired' | null = null;
 
@@ -213,8 +219,19 @@ export async function processExpiryNotifications(
       // ignore
     }
 
-    let title = '';
-    let body = '';
+    pendingNotifications.push({ item, milestone, cacheKey });
+  }
+
+  if (pendingNotifications.length === 0) return;
+
+  let title = '';
+  let body = '';
+  let tag = '';
+  let subSection = pendingNotifications[0].item.inAppSubSection;
+
+  if (pendingNotifications.length === 1) {
+    const { item, milestone } = pendingNotifications[0];
+    tag = `doc-exp-${item.id}-${milestone}`;
 
     if (milestone === 'expired') {
       title = isUrdu ? `⚠️ الرٹ: ${item.docNameUr} کی میعاد ختم!` : `⚠️ Alert: ${item.docNameEn} Expired!`;
@@ -235,7 +252,7 @@ export async function processExpiryNotifications(
       body = isUrdu
         ? `${item.identifier} کی میعاد ${item.expiryDateStr} کو ختم ہو رہی ہے (${item.daysLeft} دن باقی)۔`
         : `${item.identifier} is expiring on ${item.expiryDateStr} (${item.daysLeft} days left).`;
-    } else if (milestone === '30') {
+    } else {
       title = isUrdu
         ? `📋 30 روزہ پیشگی الرٹ: ${item.docNameUr}`
         : `📋 30-Day Reminder: ${item.docNameEn}`;
@@ -243,17 +260,36 @@ export async function processExpiryNotifications(
         ? `${item.identifier} کی میعاد اگلے ماہ ختم ہو رہی ہے۔ برائے مہربانی تیاری مکمل رکھیں۔`
         : `${item.identifier} is due for renewal next month (${item.daysLeft} days remaining).`;
     }
+  } else {
+    tag = `doc-exp-batch-${todayStr}`;
+    const expiredCount = pendingNotifications.filter((p) => p.milestone === 'expired').length;
+    const previewList = pendingNotifications
+      .slice(0, 2)
+      .map((p) => `${p.item.identifier} (${isUrdu ? p.item.docNameUr : p.item.docNameEn})`)
+      .join(' • ');
+    title = isUrdu
+      ? `⚠️ ${pendingNotifications.length} گاڑی/ڈرائیور کاغذات کی میعاد الرٹ`
+      : `⚠️ ${pendingNotifications.length} Document Expiry Alerts`;
+    body = isUrdu
+      ? `${expiredCount > 0 ? `${expiredCount} میعاد ختم، ` : ''}${previewList} — چالان سے بچنے کے لیے تفصیل دیکھیں۔`
+      : `${expiredCount > 0 ? `${expiredCount} expired, ` : ''}${previewList} — Tap to review & renew.`;
+  }
 
-    try {
-      const sent = await sendSystemNotification(title, body, {
-        tag: `doc-exp-${item.id}-${milestone}`,
-        data: { url: './#verify', subSection: item.inAppSubSection }
-      });
-      if (sent) {
-        localStorage.setItem(cacheKey, 'true');
+  try {
+    const sent = await sendSystemNotification(title, body, {
+      tag,
+      data: { url: './#verify', subSection }
+    });
+    if (sent) {
+      for (const entry of pendingNotifications) {
+        try {
+          localStorage.setItem(entry.cacheKey, 'true');
+        } catch {
+          // ignore
+        }
       }
-    } catch (err) {
-      console.warn('Document expiry notification error:', err);
     }
+  } catch (err) {
+    console.warn('Document expiry notification error:', err);
   }
 }

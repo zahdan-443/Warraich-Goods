@@ -31,9 +31,12 @@ import { DEFAULT_AUTHORIZED_EMAILS, OWNER_EMAIL, isOwnerEmail, normalizeEmail } 
 import { getPakistanDateKey } from './dateUtils';
 import { shareOrDownloadText } from './nativeExport';
 import {
+  GuestScopeSummary,
   V3_MIGRATION_FLAG_PREFIX,
   getActiveUserScope,
   getScopedItem,
+  importGuestDataIntoScope,
+  inspectGuestScopeData,
   removeScopedItem,
   runOneTimeV2ToV3Migration,
   safeStorage,
@@ -47,13 +50,16 @@ import {
   TOMBSTONE_TTL_DAYS,
   TombstoneMap,
   allocateNextBiltyNumber,
+  applyRestoredCollection,
   autoReconcileAllLocalToCloud,
+  checkBiltyNoConflict,
   clearErrorLogs,
   clearOfflineQueue,
   confirmBiltyDelivery,
   deletePublicBiltyVerification,
   enqueueOfflineAction,
   extractPublicBiltyVerification,
+  findNextAvailableBiltySeq,
   getBiltyAccessConfig,
   getErrorLogs,
   getNextBiltyNo,
@@ -116,8 +122,10 @@ export {
   USER_FIRESTORE_SUBCOLLECTIONS,
   V3_MIGRATION_FLAG_PREFIX,
   allocateNextBiltyNumber,
+  applyRestoredCollection,
   autoReconcileAllLocalToCloud,
   cancelAccountDeletion,
+  checkBiltyNoConflict,
   clearErrorLogs,
   clearLocalAndIndexedDbForUser,
   clearOfflineQueue,
@@ -127,6 +135,7 @@ export {
   executeImmediateAccountDeletion,
   extractPublicBiltyVerification,
   fetchAccountDeletionStatus,
+  findNextAvailableBiltySeq,
   getAccountDeletionStatus,
   getActiveUserScope,
   getBiltyAccessConfig,
@@ -143,7 +152,9 @@ export {
   getStoredVehicles,
   getSyncStatus,
   getTombstones,
+  importGuestDataIntoScope,
   initAmbientSyncEngine,
+  inspectGuestScopeData,
   isEntityTombstoned,
   loadFromFirestore,
   mergeTombstoneMaps,
@@ -181,6 +192,7 @@ export {
 export type {
   AccountDeletionRequest,
   BiltyAccessConfigData,
+  GuestScopeSummary,
   PublicBiltyVerification,
   SyncCollectionName,
   TombstoneMap
@@ -754,9 +766,12 @@ export function exportAllTripsCSV(privacyOptions?: ExportPrivacyOptions): boolea
  * Supports both FullFleetBackup ({ metadata, data: { ... } }) and legacy flat JSON backups.
  */
 export function restoreFullBackupFromJson(
-  jsonString: string
+  jsonString: string,
+  mode: 'merge' | 'overwrite' = 'merge'
 ): { success: boolean; message: string; count: number } {
+  const scope = getActiveUserScope();
   const snapshot = {
+    capturedAt: new Date().toISOString(),
     bilties: getStoredBilties(),
     trips: getStoredTrips(),
     vehicles: getStoredVehicles(),
@@ -800,50 +815,52 @@ export function restoreFullBackupFromJson(
       }
     }
 
+    // Save Undo Restore pre-snapshot before modifying local data
+    try {
+      const snapStr = JSON.stringify(snapshot);
+      safeStorage.setItem(`wg_v3_prerestore_snapshot_${scope}`, snapStr);
+      safeStorage.setItem(`wg_v3_prerestore_available_${scope}`, snapshot.capturedAt);
+    } catch {
+      // ignore quota issues on secondary fallback
+    }
+
     let restoredCount = 0;
 
     if (Array.isArray(payload.bilties)) {
-      const incomingBilties = payload.bilties as BiltyRecord[];
-      const map = new Map<string, BiltyRecord>();
-      snapshot.bilties.forEach(b => {
-        if (b.biltyNo) map.set(String(b.biltyNo).trim().toUpperCase(), b);
-      });
-      incomingBilties.forEach(b => {
-        if (b && b.biltyNo) {
-          map.set(String(b.biltyNo).trim().toUpperCase(), b);
-          restoredCount++;
-        }
-      });
-      saveStoredBilties(Array.from(map.values()));
+      const incomingBilties = (payload.bilties as Array<Record<string, unknown>>).filter(
+        b => b && b.biltyNo
+      );
+      applyRestoredCollection('bilties', incomingBilties, mode);
+      restoredCount += incomingBilties.length;
     }
 
     if (Array.isArray(payload.trips)) {
-      const incomingTrips = payload.trips as typeof snapshot.trips;
-      saveStoredTrips(incomingTrips);
+      const incomingTrips = payload.trips as Array<Record<string, unknown>>;
+      applyRestoredCollection('trips', incomingTrips, mode);
       restoredCount += incomingTrips.length;
     }
 
     if (Array.isArray(payload.vehicles)) {
-      const incomingVehicles = payload.vehicles as typeof snapshot.vehicles;
-      saveStoredVehicles(incomingVehicles);
+      const incomingVehicles = payload.vehicles as Array<Record<string, unknown>>;
+      applyRestoredCollection('vehicles', incomingVehicles, mode);
       restoredCount += incomingVehicles.length;
     }
 
     if (Array.isArray(payload.drivers)) {
-      const incomingDrivers = payload.drivers as typeof snapshot.drivers;
-      saveStoredDrivers(incomingDrivers);
+      const incomingDrivers = payload.drivers as Array<Record<string, unknown>>;
+      applyRestoredCollection('drivers', incomingDrivers, mode);
       restoredCount += incomingDrivers.length;
     }
 
     if (Array.isArray(payload.routes)) {
-      const incomingRoutes = payload.routes as typeof snapshot.routes;
-      saveStoredRoutes(incomingRoutes);
+      const incomingRoutes = payload.routes as Array<Record<string, unknown>>;
+      applyRestoredCollection('routes', incomingRoutes, mode);
       restoredCount += incomingRoutes.length;
     }
 
     if (Array.isArray(payload.fuelLogs)) {
-      const incomingFuel = payload.fuelLogs as typeof snapshot.fuelLogs;
-      saveStoredFuelLog(incomingFuel);
+      const incomingFuel = payload.fuelLogs as Array<Record<string, unknown>>;
+      applyRestoredCollection('fuel', incomingFuel, mode);
       restoredCount += incomingFuel.length;
     }
 
@@ -851,17 +868,17 @@ export function restoreFullBackupFromJson(
       safeStorage.setItem('ah-company-profile', JSON.stringify(payload.company));
     }
 
-    void logActivity('Backup Restored', `Restored ${restoredCount} records from backup`, 'settings');
+    void logActivity('Backup Restored', `Restored ${restoredCount} records from backup (${mode})`, 'settings');
     return { success: true, message: 'Backup successfully restored!', count: restoredCount };
   } catch (err: unknown) {
     // Roll back pre-restore state on failure
     try {
-      setScopedItem('bilties', JSON.stringify(snapshot.bilties));
-      setScopedItem('trips', JSON.stringify(snapshot.trips));
-      setScopedItem('vehicles', JSON.stringify(snapshot.vehicles));
-      setScopedItem('drivers', JSON.stringify(snapshot.drivers));
-      setScopedItem('routes', JSON.stringify(snapshot.routes));
-      setScopedItem('fuel', JSON.stringify(snapshot.fuelLogs));
+      applyRestoredCollection('bilties', snapshot.bilties as unknown as Array<Record<string, unknown>>, 'overwrite');
+      applyRestoredCollection('trips', snapshot.trips as unknown as Array<Record<string, unknown>>, 'overwrite');
+      applyRestoredCollection('vehicles', snapshot.vehicles as unknown as Array<Record<string, unknown>>, 'overwrite');
+      applyRestoredCollection('drivers', snapshot.drivers as unknown as Array<Record<string, unknown>>, 'overwrite');
+      applyRestoredCollection('routes', snapshot.routes as unknown as Array<Record<string, unknown>>, 'overwrite');
+      applyRestoredCollection('fuel', snapshot.fuelLogs as unknown as Array<Record<string, unknown>>, 'overwrite');
       safeStorage.setItem('ah-company-profile', JSON.stringify(snapshot.company));
     } catch {
       // ignore rollback error

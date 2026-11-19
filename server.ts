@@ -22,14 +22,62 @@ if (hostArgIndex !== -1 && process.argv[hostArgIndex + 1]) {
 }
 
 // Security & CORS middleware for cross-origin client requests (PWA, mobile, preview, GitHub Pages)
+const ALLOWED_CORS_ORIGINS = new Set(
+  [
+    'https://zahdan-443.github.io',
+    'capacitor://localhost',
+    'https://localhost',
+    'http://localhost',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim()) : [])
+  ].filter(Boolean)
+);
+
+function isAllowedOrigin(origin: string): boolean {
+  if (ALLOWED_CORS_ORIGINS.has(origin)) return true;
+  if (/^https:\/\/[a-z0-9-]+\.run\.app$/i.test(origin)) return true;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
+  return false;
+}
+
 app.use((req, res, next) => {
   res.header('X-Content-Type-Options', 'nosniff');
   res.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.header('Access-Control-Allow-Origin', '*');
+
+  const origin = typeof req.headers.origin === 'string' ? req.headers.origin : '';
+  if (origin && isAllowedOrigin(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Vary', 'Origin');
+  }
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
+    return res.sendStatus(origin && !isAllowedOrigin(origin) ? 403 : 200);
+  }
+  next();
+});
+
+// Lightweight per-IP rate limiter for /api/* proxy endpoints
+const apiRateMap = new Map<string, { count: number; resetAt: number }>();
+const API_RATE_WINDOW_MS = 60 * 1000;
+const API_RATE_MAX = 60;
+
+app.use('/api', (req, res, next) => {
+  const clientIp = (req.ip || req.socket?.remoteAddress || 'unknown').toString();
+  const now = Date.now();
+  let bucket = apiRateMap.get(clientIp);
+  if (!bucket || now >= bucket.resetAt) {
+    bucket = { count: 0, resetAt: now + API_RATE_WINDOW_MS };
+    if (apiRateMap.size >= 2000) {
+      const oldestKey = apiRateMap.keys().next().value;
+      if (oldestKey !== undefined) apiRateMap.delete(oldestKey);
+    }
+    apiRateMap.set(clientIp, bucket);
+  }
+  bucket.count += 1;
+  if (bucket.count > API_RATE_MAX) {
+    return res.status(429).json({ error: 'Too many requests, please retry shortly.' });
   }
   next();
 });
@@ -69,9 +117,31 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// Weather API Proxy Endpoint (Server-Side Proxy with in-memory cache to prevent CORS & rate-limiting)
+// Weather API Proxy Endpoint (Server-Side Proxy with bounded LRU/FIFO in-memory cache)
 const weatherCache = new Map<string, { timestamp: number; data: unknown }>();
 const WEATHER_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const WEATHER_CACHE_MAX_ENTRIES = 500;
+
+function setWeatherCache(key: string, data: unknown): void {
+  const now = Date.now();
+  if (weatherCache.has(key)) {
+    weatherCache.delete(key);
+  }
+  weatherCache.set(key, { timestamp: now, data });
+  if (weatherCache.size > WEATHER_CACHE_MAX_ENTRIES) {
+    for (const [k, entry] of weatherCache.entries()) {
+      if (now - entry.timestamp >= WEATHER_CACHE_TTL) {
+        weatherCache.delete(k);
+      }
+      if (weatherCache.size <= WEATHER_CACHE_MAX_ENTRIES) break;
+    }
+    while (weatherCache.size > WEATHER_CACHE_MAX_ENTRIES) {
+      const oldest = weatherCache.keys().next().value;
+      if (oldest === undefined) break;
+      weatherCache.delete(oldest);
+    }
+  }
+}
 
 app.get('/api/weather', async (req, res) => {
   const lat = Number(req.query.latitude);
@@ -107,7 +177,7 @@ app.get('/api/weather', async (req, res) => {
     }
 
     const data: unknown = await apiRes.json();
-    weatherCache.set(cacheKey, { timestamp: Date.now(), data });
+    setWeatherCache(cacheKey, data);
     return res.json(data);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -180,7 +250,7 @@ async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, allowedHosts: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);

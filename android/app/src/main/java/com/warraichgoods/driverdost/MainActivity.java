@@ -54,15 +54,17 @@ public class MainActivity extends BridgeActivity {
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
         }
 
-        // Apply system bar insets (status bar at top, nav bar at bottom) cleanly to root content view
-        // so that the WebView fits precisely between system bars with ZERO cropping or cut-off content
+        // Apply system bar & keyboard (IME) insets cleanly to root content view
+        // so that the WebView fits precisely between system bars and open soft keyboard with ZERO cropping
         View rootContent = findViewById(android.R.id.content);
         if (rootContent != null) {
             ViewCompat.setOnApplyWindowInsetsListener(rootContent, (v, windowInsets) -> {
-                Insets insets = windowInsets.getInsets(
+                Insets systemInsets = windowInsets.getInsets(
                     WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout()
                 );
-                v.setPadding(insets.left, insets.top, insets.right, insets.bottom);
+                Insets imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime());
+                int bottomInset = Math.max(systemInsets.bottom, imeInsets.bottom);
+                v.setPadding(systemInsets.left, systemInsets.top, systemInsets.right, bottomInset);
                 return WindowInsetsCompat.CONSUMED;
             });
         }

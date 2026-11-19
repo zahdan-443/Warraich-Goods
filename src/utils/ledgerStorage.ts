@@ -30,7 +30,7 @@ import {
   getStoredBilties,
   setScopedItem
 } from './storage';
-import { getActiveUserScope } from './storageCore';
+import { getActiveUserScope, safeStorage } from './storageCore';
 import {
   getTombstones,
   mergeTombstoneMaps,
@@ -40,6 +40,7 @@ import {
 import { fromPaisa, toPaisa } from './calculator';
 import { getPakistanDateKey } from './dateUtils';
 import { auth, db } from './firebase';
+import * as firestoreModule from 'firebase/firestore';
 import {
   doc,
   getDoc,
@@ -1110,7 +1111,75 @@ export async function fetchKhataFromFirestore(): Promise<void> {
 }
 
 /**
- * Pushes all locally created Khata accounts, ledger entries, cashbook records, v1.3.0 collections, and settings to Firestore
+ * Restores a Khata collection cleanly: clears deletion tombstones for restored IDs,
+ * re-stamps updatedAt, supports merge vs overwrite, and triggers immediate cloud sync.
+ */
+export function restoreKhataCollection<T extends { id: string; updatedAt?: string }>(
+  storageKey: string,
+  collectionPath: string,
+  incomingItems: T[],
+  mode: 'merge' | 'overwrite' = 'merge'
+): T[] {
+  const nowIso = new Date().toISOString();
+  const prevItems = getParsed<T[]>(storageKey, []);
+  const stampedIncoming = incomingItems
+    .filter(item => item && item.id)
+    .map(item => {
+      clearKhataDeletionTombstone(collectionPath, item.id);
+      return {
+        ...item,
+        updatedAt: nowIso
+      };
+    });
+
+  let finalItems: T[];
+  if (mode === 'overwrite') {
+    const incomingIds = new Set(stampedIncoming.map(i => i.id));
+    for (const prev of prevItems) {
+      if (prev?.id && !incomingIds.has(prev.id)) {
+        recordKhataDeletionTombstone(collectionPath, prev.id, nowIso);
+      }
+    }
+    finalItems = stampedIncoming;
+  } else {
+    const map = new Map<string, T>();
+    for (const prev of prevItems) {
+      if (prev?.id) map.set(prev.id, prev);
+    }
+    for (const item of stampedIncoming) {
+      const existing = map.get(item.id);
+      if (!existing) {
+        map.set(item.id, item);
+      } else {
+        const exMs = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+        const inMs = item.updatedAt ? new Date(item.updatedAt).getTime() : 0;
+        map.set(item.id, exMs > inMs ? existing : item);
+      }
+    }
+    finalItems = Array.from(map.values());
+  }
+
+  setJson(storageKey, finalItems);
+  return finalItems;
+}
+
+function getKhataSyncDigest(uid: string): Record<string, string> {
+  try {
+    const raw = safeStorage.getItem(`wg_v3_khata_digest_${uid}`);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveKhataSyncDigest(uid: string, map: Record<string, string>): void {
+  safeStorage.setItem(`wg_v3_khata_digest_${uid}`, JSON.stringify(map));
+}
+
+/**
+ * Pushes changed Khata documents, cashbook records, v1.3.0 collections, and settings to Firestore in batches.
  */
 export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: number; pushedEntries: number; pushedCash: number }> {
   const user = auth.currentUser;
@@ -1121,55 +1190,131 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
   const cashEntries = getAllCashEntries();
   const settings = getKhataSettings();
 
+  const digestCache = getKhataSyncDigest(user.uid);
+  const nextDigest: Record<string, string> = { ...digestCache };
+
+  type PendingOp = {
+    pathKey: string;
+    digest: string;
+    ref: ReturnType<typeof doc>;
+    data: Record<string, unknown>;
+    kind: 'account' | 'entry' | 'cash' | 'other';
+  };
+  const ops: PendingOp[] = [];
+
+  const settingsPayload = { ...settings, schemaVersion: 3 };
+  const settingsDigest = JSON.stringify(settingsPayload);
+  if (digestCache['khataSettings/config'] !== settingsDigest) {
+    ops.push({
+      pathKey: 'khataSettings/config',
+      digest: settingsDigest,
+      ref: doc(db, 'users', user.uid, 'khataSettings', 'config'),
+      data: settingsPayload,
+      kind: 'other'
+    });
+  }
+
+  for (const acc of accounts) {
+    const pathKey = `ledgerAccounts/${acc.id}`;
+    const d = String(acc.updatedAt || acc.name || '');
+    if (digestCache[pathKey] !== d) {
+      ops.push({
+        pathKey,
+        digest: d,
+        ref: doc(db, 'users', user.uid, 'ledgerAccounts', acc.id),
+        data: acc as unknown as Record<string, unknown>,
+        kind: 'account'
+      });
+    }
+  }
+
+  for (const entry of entries) {
+    const pathKey = `ledgerAccounts/${entry.accountId}/entries/${entry.id}`;
+    const d = String(entry.updatedAt || entry.amount || '');
+    if (digestCache[pathKey] !== d) {
+      ops.push({
+        pathKey,
+        digest: d,
+        ref: doc(db, 'users', user.uid, 'ledgerAccounts', entry.accountId, 'entries', entry.id),
+        data: entry as unknown as Record<string, unknown>,
+        kind: 'entry'
+      });
+    }
+  }
+
+  for (const cash of cashEntries) {
+    const pathKey = `cashbookEntries/${cash.id}`;
+    const d = String(cash.updatedAt || cash.amount || '');
+    if (digestCache[pathKey] !== d) {
+      ops.push({
+        pathKey,
+        digest: d,
+        ref: doc(db, 'users', user.uid, 'cashbookEntries', cash.id),
+        data: cash as unknown as Record<string, unknown>,
+        kind: 'cash'
+      });
+    }
+  }
+
+  for (const { key, coll } of FLAT_KEY_TO_COLLECTION) {
+    const items = getParsed<Array<{ id: string; updatedAt?: string }>>(key, []);
+    for (const item of items) {
+      if (!item?.id) continue;
+      const pathKey = `${coll}/${item.id}`;
+      const d = String(item.updatedAt || JSON.stringify(item).length);
+      if (digestCache[pathKey] !== d) {
+        ops.push({
+          pathKey,
+          digest: d,
+          ref: doc(db, 'users', user.uid, coll, item.id),
+          data: item as unknown as Record<string, unknown>,
+          kind: 'other'
+        });
+      }
+    }
+  }
+
+  if (ops.length === 0) {
+    return { pushedAccounts: 0, pushedEntries: 0, pushedCash: 0 };
+  }
+
   let pushedAccounts = 0;
   let pushedEntries = 0;
   let pushedCash = 0;
 
-  // 1. Push settings
-  try {
-    const setRef = doc(db, 'users', user.uid, 'khataSettings', 'config');
-    await setDoc(setRef, { ...settings, schemaVersion: 3 }, { merge: true });
-  } catch {}
-
-  // 2. Push accounts
-  for (const acc of accounts) {
-    try {
-      const ref = doc(db, 'users', user.uid, 'ledgerAccounts', acc.id);
-      await setDoc(ref, acc, { merge: true });
-      pushedAccounts++;
-    } catch {}
-  }
-
-  // 3. Push entries
-  for (const entry of entries) {
-    try {
-      const ref = doc(db, 'users', user.uid, 'ledgerAccounts', entry.accountId, 'entries', entry.id);
-      await setDoc(ref, entry, { merge: true });
-      pushedEntries++;
-    } catch {}
-  }
-
-  // 4. Push cashbook
-  for (const cash of cashEntries) {
-    try {
-      const ref = doc(db, 'users', user.uid, 'cashbookEntries', cash.id);
-      await setDoc(ref, cash, { merge: true });
-      pushedCash++;
-    } catch {}
-  }
-
-  // 5. Push v1.3.0 collections
-  for (const { key, coll } of FLAT_KEY_TO_COLLECTION) {
-    const items = getParsed<Array<{ id: string }>>(key, []);
-    for (const item of items) {
-      if (!item?.id) continue;
+  const writeBatchFn = (firestoreModule as unknown as { writeBatch?: typeof firestoreModule.writeBatch }).writeBatch;
+  if (typeof writeBatchFn === 'function') {
+    for (let i = 0; i < ops.length; i += 400) {
+      const chunk = ops.slice(i, i + 400);
       try {
-        const ref = doc(db, 'users', user.uid, coll, item.id);
-        await setDoc(ref, item, { merge: true });
+        const batch = writeBatchFn(db);
+        for (const op of chunk) {
+          batch.set(op.ref, op.data, { merge: true });
+        }
+        await batch.commit();
+        for (const op of chunk) {
+          nextDigest[op.pathKey] = op.digest;
+          if (op.kind === 'account') pushedAccounts++;
+          else if (op.kind === 'entry') pushedEntries++;
+          else if (op.kind === 'cash') pushedCash++;
+        }
+      } catch {
+        // Fallback per doc in chunk if batch fails
+      }
+    }
+  } else {
+    for (const op of ops) {
+      try {
+        await setDoc(op.ref, op.data, { merge: true });
+        nextDigest[op.pathKey] = op.digest;
+        if (op.kind === 'account') pushedAccounts++;
+        else if (op.kind === 'entry') pushedEntries++;
+        else if (op.kind === 'cash') pushedCash++;
       } catch {}
     }
   }
 
+  saveKhataSyncDigest(user.uid, nextDigest);
   return { pushedAccounts, pushedEntries, pushedCash };
 }
 

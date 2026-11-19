@@ -24,6 +24,18 @@ let channelCreated = false;
 export const NOTIFICATION_CHANNEL_ID = 'driver_dost_channel';
 
 /**
+ * Computes a deterministic positive 31-bit integer notification ID from a string tag.
+ */
+export function hashStringToNotifId(tag: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < tag.length; i++) {
+    hash ^= tag.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (Math.abs(hash) % 2147483000) + 1;
+}
+
+/**
  * Ensures the Android Notification Channel exists with High Importance.
  * Android 8.0+ (API 26+) REQUIRES a notification channel, otherwise notifications are silently ignored.
  */
@@ -129,7 +141,9 @@ export async function sendSystemNotification(
         }
       }
 
-      const notifId = Math.floor(Math.random() * 1000000) + 1;
+      const notifId = options.tag
+        ? hashStringToNotifId(options.tag)
+        : Math.floor(Math.random() * 1000000) + 1;
       await LocalNotifications.schedule({
         notifications: [
           {
@@ -196,5 +210,52 @@ export async function sendSystemNotification(
     } catch {
       return false;
     }
+  }
+}
+
+/**
+ * Schedules or cancels a daily repeating Android LocalNotification using OS cron (`on: { hour, minute }`)
+ * with `allowWhileIdle: true` so reminders deliver reliably even when the app process is closed.
+ * Does NOT prompt for notification permission proactively; only schedules when permission is already granted.
+ */
+export async function syncNativeDailyReminder(options: {
+  idKey: string;
+  enabled: boolean;
+  hour: number;
+  minute: number;
+  title: string;
+  body: string;
+}): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return false;
+  const id = hashStringToNotifId(options.idKey);
+  try {
+    await LocalNotifications.cancel({ notifications: [{ id }] }).catch(() => {});
+    if (!options.enabled) return false;
+
+    const perm = await LocalNotifications.checkPermissions();
+    if (perm.display !== 'granted') return false;
+
+    await ensureNotificationChannel();
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id,
+          title: options.title,
+          body: options.body,
+          channelId: NOTIFICATION_CHANNEL_ID,
+          sound: 'default',
+          isExactNotification: false,
+          isExactMandatory: false,
+          schedule: {
+            on: { hour: options.hour, minute: options.minute },
+            allowWhileIdle: true
+          }
+        }
+      ]
+    });
+    return true;
+  } catch (err) {
+    console.warn('Failed to sync native daily reminder:', err);
+    return false;
   }
 }

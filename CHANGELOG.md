@@ -2,6 +2,15 @@
 
 All notable changes to the "Driver Dost" transport & logistics application will be documented in this file.
 
+## [1.3.1] - 2026-11-19
+### Security & Reliability
+- **Sync & Restore Hardening**: Switched cloud conflict resolution to strict mutation-only timestamps (`updatedAt`/`deletedAt`/`createdAt`) so future business dates never resurrect deleted items, bounded local deletion tombstones (`500` per collection), enforced offline-queue tombstone filtering, added delta checksum caching on public verification syncs, chunked large Firestore batch commits (`<= 450` writes/batch), added single-flight locking + remote sync kill-switch support, and upgraded backup restore with pre-restore Undo snapshots and explicit Merge vs Snapshot Replace modes.
+- **Guest Mode & Document Sequence Integrity**: Added a non-blocking prompt on sign-in before importing existing guest-mode device records (`Merge`, `Keep Separate`, or `Discard`), and hardened sequential document numbering against cross-device collisions.
+- **Account Deletion Reliability & Spark Queue**: Fixed offline deletion requests silently reporting success on failure, propagated partial cloud cleanup failures accurately, unified Samundri Head Office disclosures, and added an owner-only 30-day account deletion cleanup queue.
+- **Financial Input Hardening**: Replaced silent fallback defaults with strict validation on trip calculations, routes, invoices, expenses, salaries, and receiving-point ledgers.
+- **Android API 36, Dashcam & Native Exports**: Upgraded Android `compileSdk`/`targetSdk` to API 36 (AGP `8.9.1`) and `androidx.credentials` to `1.3.0`, added soft-keyboard IME insets in `MainActivity`, confined dashcam file operations and `FileProvider` cache sharing to `dashcam/` and `exports/`, deferred WakeLock until active recording after free-space (`>= 200MB`) verification, consolidated due/expiry notifications, and routed PDF downloads through native share/export.
+- **PWA, Map Caching, Hazard Privacy & Server Hardening**: Automated build-time Service Worker cache versioning, isolated standalone legal HTML pages from SPA shell cache, added 30-day persistent OSRM distance caching, bounded hazard queries with 3-decimal (~110m) coordinate precision, added CSP in `index.html`, and bounded CORS + rate limiting + LRU weather caching in `server.ts`.
+
 ## [1.3.0] - 2026-11-15
 ### Added
 - **Khata Expansion (5 Business Modules)**:

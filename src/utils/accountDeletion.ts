@@ -8,6 +8,7 @@
  */
 
 import { auth, db, deleteFirebaseUserAccount } from './firebase';
+import * as firestoreModule from 'firebase/firestore';
 import {
   collection,
   deleteDoc,
@@ -19,10 +20,10 @@ import {
   where
 } from 'firebase/firestore';
 import { getScopedStorageKey } from './calculator';
+import { isOwnerEmail } from './authUtils';
 import { idbDeleteMany, idbGetAllEntries } from './persistentStorage';
 import {
   clearOfflineQueue,
-  deletePublicBiltyVerification,
   getStoredBilties,
   withTimeout
 } from './storageSync';
@@ -37,6 +38,43 @@ export interface AccountDeletionRequest {
   referenceId: string;
   reason?: string;
   source?: string;
+}
+
+export interface OwnerDeletionQueueItem extends Partial<AccountDeletionRequest> {
+  docId: string;
+  userEmail: string;
+  requestedAt: string;
+  scheduledFor: string;
+  status: 'pending_deletion' | 'deleted';
+  referenceId: string;
+  isMatured: boolean;
+}
+
+const FIRESTORE_PURGE_BATCH_LIMIT = 400;
+
+async function commitDeleteRefsInBatches(
+  refs: Array<ReturnType<typeof doc>>,
+  timeoutMs = 15000
+): Promise<void> {
+  if (refs.length === 0 || !db) return;
+
+  const writeBatchFn = (firestoreModule as unknown as { writeBatch?: typeof firestoreModule.writeBatch }).writeBatch;
+  if (typeof writeBatchFn === 'function') {
+    for (let i = 0; i < refs.length; i += FIRESTORE_PURGE_BATCH_LIMIT) {
+      const chunk = refs.slice(i, i + FIRESTORE_PURGE_BATCH_LIMIT);
+      const batch = writeBatchFn(db);
+      for (const ref of chunk) {
+        batch.delete(ref);
+      }
+      await withTimeout(batch.commit(), timeoutMs);
+    }
+    return;
+  }
+
+  for (let i = 0; i < refs.length; i += 25) {
+    const chunk = refs.slice(i, i + 25);
+    await withTimeout(Promise.all(chunk.map(r => deleteDoc(r))), timeoutMs);
+  }
 }
 
 export const USER_FIRESTORE_SUBCOLLECTIONS = [
@@ -79,14 +117,32 @@ export async function requestAccountDeletion(
   };
 
   const currentUser = auth.currentUser;
-  if (db && userId && currentUser && currentUser.uid === userId) {
+  const hasAuthenticatedSession = Boolean(currentUser && currentUser.uid === userId);
+
+  if (hasAuthenticatedSession) {
+    const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+    if (!isOnline || !db) {
+      return {
+        success: false,
+        scheduledFor,
+        referenceId,
+        message: 'Internet connection required to register your deletion request in cloud.'
+      };
+    }
+
     try {
       const delDocRef = doc(db, 'accountDeletionRequests', userId);
-      await withTimeout(setDoc(delDocRef, deletionData), 4000);
+      await withTimeout(setDoc(delDocRef, deletionData), 8000);
       const userDocRef = doc(db, 'usersData', userId);
-      await withTimeout(setDoc(userDocRef, { accountDeletion: deletionData }, { merge: true }), 4000);
+      await withTimeout(setDoc(userDocRef, { accountDeletion: deletionData }, { merge: true }), 8000);
     } catch (err) {
-      console.warn('Could not write account deletion to Firestore:', err);
+      const errMsg = err instanceof Error ? err.message : String(err || 'Cloud registration failed');
+      return {
+        success: false,
+        scheduledFor,
+        referenceId,
+        message: `Failed to register deletion request in cloud: ${errMsg}`
+      };
     }
   }
 
@@ -100,16 +156,19 @@ export async function requestAccountDeletion(
   };
 }
 
-export async function cancelAccountDeletion(userId: string): Promise<{ success: boolean }> {
+export async function cancelAccountDeletion(userId: string): Promise<{ success: boolean; message?: string }> {
   const currentUser = auth.currentUser;
   if (db && userId && currentUser && currentUser.uid === userId) {
     try {
       const delDocRef = doc(db, 'accountDeletionRequests', userId);
-      await withTimeout(deleteDoc(delDocRef), 4000);
+      await withTimeout(deleteDoc(delDocRef), 8000);
       const userDocRef = doc(db, 'usersData', userId);
-      await withTimeout(setDoc(userDocRef, { accountDeletion: null }, { merge: true }), 4000);
+      await withTimeout(setDoc(userDocRef, { accountDeletion: null }, { merge: true }), 8000);
     } catch (err) {
-      console.warn('Could not cancel account deletion in Firestore:', err);
+      return {
+        success: false,
+        message: err instanceof Error ? err.message : 'Failed to cancel deletion in cloud'
+      };
     }
   }
   safeStorage.removeItem(`ah-deletion-${userId}`);
@@ -131,7 +190,7 @@ export async function fetchAccountDeletionStatus(userId: string): Promise<Accoun
   if (db && userId && currentUser && currentUser.uid === userId) {
     try {
       const delDocRef = doc(db, 'accountDeletionRequests', userId);
-      const docSnap = await withTimeout(getDoc(delDocRef), 3500);
+      const docSnap = await withTimeout(getDoc(delDocRef), 5000);
       if (docSnap && docSnap.exists()) {
         const data = docSnap.data() as AccountDeletionRequest;
         safeStorage.setItem(`ah-deletion-${userId}`, JSON.stringify(data));
@@ -184,6 +243,11 @@ export async function clearLocalAndIndexedDbForUser(userId: string): Promise<voi
     `ah-deletion-${userId}`,
     `wg_last_daily_cloud_backup_${userId}`,
     `${V3_MIGRATION_FLAG_PREFIX}${userId}`,
+    `wg_v3_prerestore_snapshot_${userId}`,
+    `wg_v3_prerestore_available_${userId}`,
+    `wg_v3_pub_bilty_digest_${userId}`,
+    `wg_v3_pub_bilty_deleted_${userId}`,
+    `wg_v3_khata_digest_${userId}`,
     'ah-gmail-user',
     'ah-gmail-user-uid',
     'ah-gmail-user-photo',
@@ -204,7 +268,8 @@ export async function clearLocalAndIndexedDbForUser(userId: string): Promise<voi
         (userId &&
           (key.includes(`_${userId}`) ||
             key.includes(`wg_v2_${userId}_`) ||
-            key.includes(`wg_v3_tombstones_${userId}_`))) ||
+            key.includes(`wg_v3_tombstones_${userId}_`) ||
+            key.includes(`wg_v3_prerestore_snapshot_${userId}`))) ||
         key === `ah-deletion-${userId}` ||
         key === `wg_last_daily_cloud_backup_${userId}` ||
         key === `${V3_MIGRATION_FLAG_PREFIX}${userId}` ||
@@ -235,7 +300,7 @@ async function collectUserPublicBiltyNos(userId: string): Promise<string[]> {
 
   if (db && userId) {
     try {
-      const legacySnap = await withTimeout(getDoc(doc(db, 'users', userId, 'collections', 'bilties')), 4000).catch(
+      const legacySnap = await withTimeout(getDoc(doc(db, 'users', userId, 'collections', 'bilties')), 8000).catch(
         () => null
       );
       if (legacySnap && legacySnap.exists() && Array.isArray(legacySnap.data()?.items)) {
@@ -243,7 +308,7 @@ async function collectUserPublicBiltyNos(userId: string): Promise<string[]> {
           if (item?.biltyNo) numbers.add(String(item.biltyNo).trim().toUpperCase());
         }
       }
-      const perDocSnap = await withTimeout(getDocs(collection(db, 'users', userId, 'biltiesDocs')), 4000).catch(
+      const perDocSnap = await withTimeout(getDocs(collection(db, 'users', userId, 'biltiesDocs')), 8000).catch(
         () => null
       );
       if (perDocSnap) {
@@ -262,8 +327,7 @@ async function collectUserPublicBiltyNos(userId: string): Promise<string[]> {
 
 /**
  * Recursively purges ALL Firestore data owned by `userId` (#17, #18).
- * Collects every real failure and throws if any critical purge fails so the Auth account
- * is NOT deleted leaving orphaned PII in Firestore.
+ * Batches deletions reliably, propagates failures, and aborts Auth deletion if any step fails.
  */
 export async function purgeAllUserFirestoreData(userId: string): Promise<void> {
   if (!db || !userId) return;
@@ -282,54 +346,58 @@ export async function purgeAllUserFirestoreData(userId: string): Promise<void> {
   // 1. Purge user-created public bilty verifications BEFORE wiping bilties
   await runStep('publicBiltyVerifications', async () => {
     const publicNos = await collectUserPublicBiltyNos(userId);
+    const pubRefs: Array<ReturnType<typeof doc>> = [];
     for (const bNo of publicNos) {
-      try {
-        await withTimeout(deleteDoc(doc(firestore, 'publicBiltyVerifications', bNo)), 5000);
-      } catch {
-        // Fallback through direct delete helper
-        await deletePublicBiltyVerification(bNo).catch(() => {});
+      pubRefs.push(doc(firestore, 'publicBiltyVerifications', bNo));
+      const cleanId = bNo.replace(/[^A-Z0-9]/g, '');
+      if (cleanId && cleanId !== bNo) {
+        pubRefs.push(doc(firestore, 'publicBiltyVerifications', cleanId));
       }
     }
+    await commitDeleteRefsInBatches(pubRefs, 15000);
   });
 
-  // 2. Purge ledgerAccounts and nested entries subcollections
+  // 2. Purge ledgerAccounts and nested entries subcollections in batches
   await runStep('ledgerAccounts', async () => {
-    const accSnap = await withTimeout(getDocs(collection(firestore, 'users', userId, 'ledgerAccounts')), 5000);
-    await Promise.all(
-      accSnap.docs.map(async accDoc => {
-        const entrySnap = await withTimeout(
-          getDocs(collection(firestore, 'users', userId, 'ledgerAccounts', accDoc.id, 'entries')),
-          5000
-        );
-        await Promise.all(entrySnap.docs.map(ed => deleteDoc(ed.ref)));
-        await deleteDoc(accDoc.ref);
-      })
-    );
+    const accSnap = await withTimeout(getDocs(collection(firestore, 'users', userId, 'ledgerAccounts')), 15000);
+    const allRefs: Array<ReturnType<typeof doc>> = [];
+    for (const accDoc of accSnap.docs) {
+      const entrySnap = await withTimeout(
+        getDocs(collection(firestore, 'users', userId, 'ledgerAccounts', accDoc.id, 'entries')),
+        15000
+      );
+      entrySnap.docs.forEach(ed => allRefs.push(ed.ref));
+      allRefs.push(accDoc.ref);
+    }
+    await commitDeleteRefsInBatches(allRefs, 15000);
   });
 
-  // 3. Purge all top-level user subcollections (including per-doc *Docs subcollections)
+  // 3. Purge all top-level user subcollections in batches
   await Promise.all(
     USER_FIRESTORE_SUBCOLLECTIONS.map(subColl =>
       runStep(subColl, async () => {
-        const subSnap = await withTimeout(getDocs(collection(firestore, 'users', userId, subColl)), 5000);
-        await Promise.all(subSnap.docs.map(d => deleteDoc(d.ref)));
+        const subSnap = await withTimeout(getDocs(collection(firestore, 'users', userId, subColl)), 15000);
+        await commitDeleteRefsInBatches(
+          subSnap.docs.map(d => d.ref),
+          15000
+        );
       })
     )
   );
 
-  // 4. Purge cloudBackups and their nested chunks subcollections
+  // 4. Purge cloudBackups and their nested chunks subcollections in batches
   await runStep('cloudBackups', async () => {
-    const backupsSnap = await withTimeout(getDocs(collection(firestore, 'usersData', userId, 'cloudBackups')), 5000);
-    await Promise.all(
-      backupsSnap.docs.map(async bDoc => {
-        const chunksSnap = await withTimeout(
-          getDocs(collection(firestore, 'usersData', userId, 'cloudBackups', bDoc.id, 'chunks')),
-          5000
-        );
-        await Promise.all(chunksSnap.docs.map(cd => deleteDoc(cd.ref)));
-        await deleteDoc(bDoc.ref);
-      })
-    );
+    const backupsSnap = await withTimeout(getDocs(collection(firestore, 'usersData', userId, 'cloudBackups')), 15000);
+    const allRefs: Array<ReturnType<typeof doc>> = [];
+    for (const bDoc of backupsSnap.docs) {
+      const chunksSnap = await withTimeout(
+        getDocs(collection(firestore, 'usersData', userId, 'cloudBackups', bDoc.id, 'chunks')),
+        15000
+      );
+      chunksSnap.docs.forEach(cd => allRefs.push(cd.ref));
+      allRefs.push(bDoc.ref);
+    }
+    await commitDeleteRefsInBatches(allRefs, 15000);
   });
 
   // 5. Purge user-authored hazardReports, activityLog, crashReports (#18)
@@ -337,36 +405,36 @@ export async function purgeAllUserFirestoreData(userId: string): Promise<void> {
     runStep('hazardReports', async () => {
       const snap = await withTimeout(
         getDocs(query(collection(firestore, 'hazardReports'), where('reporterUid', '==', userId))),
-        5000
+        15000
       );
-      await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+      await commitDeleteRefsInBatches(snap.docs.map(d => d.ref), 15000);
     }),
     runStep('activityLog', async () => {
       const snap = await withTimeout(
         getDocs(query(collection(firestore, 'activityLog'), where('uid', '==', userId))),
-        5000
+        15000
       );
-      await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+      await commitDeleteRefsInBatches(snap.docs.map(d => d.ref), 15000);
     }),
     runStep('crashReports', async () => {
       const snap = await withTimeout(
         getDocs(query(collection(firestore, 'crashReports'), where('userUid', '==', userId))),
-        5000
+        15000
       );
-      await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+      await commitDeleteRefsInBatches(snap.docs.map(d => d.ref), 15000);
     })
   ]);
 
   // 6. Purge root docs
   await Promise.all([
     runStep('usersRoot', async () => {
-      await withTimeout(deleteDoc(doc(firestore, 'users', userId)), 5000);
+      await withTimeout(deleteDoc(doc(firestore, 'users', userId)), 10000);
     }),
     runStep('usersDataRoot', async () => {
-      await withTimeout(deleteDoc(doc(firestore, 'usersData', userId)), 5000);
+      await withTimeout(deleteDoc(doc(firestore, 'usersData', userId)), 10000);
     }),
     runStep('accountDeletionRequestsRoot', async () => {
-      await withTimeout(deleteDoc(doc(firestore, 'accountDeletionRequests', userId)), 5000);
+      await withTimeout(deleteDoc(doc(firestore, 'accountDeletionRequests', userId)), 10000);
     })
   ]);
 
@@ -441,4 +509,87 @@ export async function purgeExpiredAccountData(userId: string): Promise<boolean> 
     return false;
   }
   return false;
+}
+
+/**
+ * Spark-Tier Owner Management Tool:
+ * Fetches all account deletion requests (in-app & web form) for the App Owner.
+ */
+export async function fetchAllAccountDeletionRequestsForOwner(): Promise<OwnerDeletionQueueItem[]> {
+  if (!db || !isOwnerEmail(auth.currentUser?.email)) return [];
+  try {
+    const snap = await withTimeout(getDocs(collection(db, 'accountDeletionRequests')), 8000);
+    const nowMs = Date.now();
+    const list: OwnerDeletionQueueItem[] = [];
+    snap.forEach(d => {
+      const data = d.data() as Partial<AccountDeletionRequest>;
+      const schedMs = data.scheduledFor ? new Date(String(data.scheduledFor)).getTime() : 0;
+      list.push({
+        ...data,
+        docId: d.id,
+        userEmail: String(data.userEmail || ''),
+        requestedAt: String(data.requestedAt || ''),
+        scheduledFor: String(data.scheduledFor || ''),
+        status: data.status === 'deleted' ? 'deleted' : 'pending_deletion',
+        referenceId: String(data.referenceId || d.id),
+        isMatured: !Number.isNaN(schedMs) && schedMs > 0 && nowMs >= schedMs
+      });
+    });
+    list.sort((a, b) => new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime());
+    return list;
+  } catch (err) {
+    console.warn('[OwnerDeletionQueue] Failed fetching requests:', err);
+    return [];
+  }
+}
+
+/**
+ * Spark-Tier Owner Management Tool:
+ * Purges owner-accessible shared records (activityLog, hazardReports, crashReports) if UID is known
+ * and marks the deletion request completed (`status: 'deleted'`) or removes the processed request.
+ */
+export async function processOwnerDeletionQueueItem(
+  docId: string,
+  action: 'complete' | 'remove',
+  targetUserId?: string
+): Promise<{ success: boolean; message: string }> {
+  if (!db || !isOwnerEmail(auth.currentUser?.email)) {
+    return { success: false, message: 'Owner authorization required.' };
+  }
+
+  try {
+    if (action === 'complete') {
+      if (targetUserId && !targetUserId.startsWith('web_')) {
+        // Purge shared top-level collections permitted for Owner in firestore.rules
+        const [hazSnap, actSnap, crashSnap] = await Promise.all([
+          withTimeout(getDocs(query(collection(db, 'hazardReports'), where('reporterUid', '==', targetUserId))), 10000).catch(() => null),
+          withTimeout(getDocs(query(collection(db, 'activityLog'), where('uid', '==', targetUserId))), 10000).catch(() => null),
+          withTimeout(getDocs(query(collection(db, 'crashReports'), where('userUid', '==', targetUserId))), 10000).catch(() => null)
+        ]);
+        const refs: Array<ReturnType<typeof doc>> = [];
+        hazSnap?.docs.forEach(d => refs.push(d.ref));
+        actSnap?.docs.forEach(d => refs.push(d.ref));
+        crashSnap?.docs.forEach(d => refs.push(d.ref));
+        await commitDeleteRefsInBatches(refs, 15000);
+      }
+
+      await withTimeout(
+        setDoc(
+          doc(db, 'accountDeletionRequests', docId),
+          { status: 'deleted', completedAt: new Date().toISOString() },
+          { merge: true }
+        ),
+        8000
+      );
+      return { success: true, message: 'Request marked completed & shared logs purged.' };
+    }
+
+    await withTimeout(deleteDoc(doc(db, 'accountDeletionRequests', docId)), 8000);
+    return { success: true, message: 'Request record removed from queue.' };
+  } catch (err) {
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : 'Failed processing deletion request'
+    };
+  }
 }

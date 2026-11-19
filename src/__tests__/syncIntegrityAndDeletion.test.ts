@@ -105,6 +105,47 @@ vi.mock('firebase/firestore', () => {
       mockState.docs.delete(ref.path);
       mockState.deleteLog.push(ref.path);
     },
+    writeBatch: () => {
+      const ops: Array<() => void> = [];
+      return {
+        set: (ref: { path: string }, data: Record<string, unknown>, opts?: { merge?: boolean }) => {
+          ops.push(() => {
+            for (const prefix of mockState.permissionDeniedPaths) {
+              if (ref.path.startsWith(prefix)) {
+                const err = new Error('Missing or insufficient permissions') as Error & { code?: string };
+                err.code = 'permission-denied';
+                throw err;
+              }
+            }
+            for (const prefix of mockState.failNetworkPaths) {
+              if (ref.path.startsWith(prefix)) {
+                throw new Error('Simulated network failure');
+              }
+            }
+            const prev = opts?.merge ? mockState.docs.get(ref.path) || {} : {};
+            const next = { ...prev, ...data };
+            mockState.docs.set(ref.path, next);
+            mockState.writeLog.push({ path: ref.path, data: next });
+          });
+        },
+        delete: (ref: { path: string }) => {
+          ops.push(() => {
+            for (const prefix of mockState.failDeletePaths) {
+              if (ref.path.startsWith(prefix)) {
+                throw new Error(`Simulated deleteDoc failure on ${ref.path}`);
+              }
+            }
+            mockState.docs.delete(ref.path);
+            mockState.deleteLog.push(ref.path);
+          });
+        },
+        commit: async () => {
+          for (const op of ops) {
+            op();
+          }
+        }
+      };
+    },
     runTransaction: async (_db: unknown, fn: (t: unknown) => Promise<unknown>) =>
       fn({
         get: async (ref: { path: string }) => ({

@@ -123,7 +123,9 @@ function hasNonEmptyArrayJson(raw: string | null): boolean {
 
 /**
  * Idempotent one-time v2 -> v3 migration per scope.
- * Migrates any pre-existing legacy/guest/email-scoped data into `wg_v2_<scope>_*` ONCE,
+ * Migrates any pre-existing legacy/email-scoped data into `wg_v2_<scope>_*` ONCE,
+ * WITHOUT silently absorbing separate Guest-mode records (`wg_v2_guest_*`) into authenticated accounts.
+ * Captures a safety pre-migration snapshot before writing target keys,
  * then sets `wg_v3_migrated_<scope> = '1'` so subsequent empty lists (`[]`) are respected.
  */
 export function runOneTimeV2ToV3Migration(scope: string = getActiveUserScope()): void {
@@ -135,7 +137,24 @@ export function runOneTimeV2ToV3Migration(scope: string = getActiveUserScope()):
   const localEmail = safeStorage.getItem('ah-gmail-user');
   const emailScope = localEmail ? localEmail.replace(/[^a-zA-Z0-9_]/g, '_') : null;
 
-  // 1. Core array collections
+  // Snapshot existing pre-migration data once before overwriting/migrating
+  const snapshotKey = `wg_v3_premigration_snapshot_${scope}`;
+  if (!safeStorage.getItem(snapshotKey)) {
+    try {
+      const preExisting: Record<string, string> = {};
+      for (const baseKey of ARRAY_COLLECTION_KEYS) {
+        const t = safeStorage.getItem(getScopedStorageKey(baseKey, scope));
+        if (t !== null) preExisting[baseKey] = t;
+      }
+      if (Object.keys(preExisting).length > 0) {
+        safeStorage.setItem(snapshotKey, JSON.stringify({ capturedAt: new Date().toISOString(), keys: preExisting }));
+      }
+    } catch {
+      // non-fatal
+    }
+  }
+
+  // 1. Core array collections (explicitly exclude wg_v2_guest_* so sign-in prompts user instead)
   for (const baseKey of ARRAY_COLLECTION_KEYS) {
     const targetKey = getScopedStorageKey(baseKey, scope);
     const existing = safeStorage.getItem(targetKey);
@@ -144,7 +163,6 @@ export function runOneTimeV2ToV3Migration(scope: string = getActiveUserScope()):
 
     const candidates = [
       emailScope && emailScope !== scope ? getScopedStorageKey(baseKey, emailScope) : null,
-      scope !== 'guest' ? getScopedStorageKey(baseKey, 'guest') : null,
       `ah-${baseKey}`,
       `ah-${baseKey}-data`,
       baseKey
@@ -166,7 +184,6 @@ export function runOneTimeV2ToV3Migration(scope: string = getActiveUserScope()):
 
     const candidates = [
       emailScope && emailScope !== scope ? getScopedStorageKey(baseKey, emailScope) : null,
-      scope !== 'guest' ? getScopedStorageKey(baseKey, 'guest') : null,
       `ah-${baseKey}`,
       `ah-${baseKey}-data`,
       baseKey
@@ -181,14 +198,13 @@ export function runOneTimeV2ToV3Migration(scope: string = getActiveUserScope()):
     }
   }
 
-  // 3. Khata collections (migrate legacy `${baseKey}_${uid}`, guest, or unscoped baseKey once)
+  // 3. Khata collections (migrate legacy `${baseKey}_${uid}` or unscoped baseKey once)
   for (const baseKey of KHATA_BASE_KEYS) {
     const targetKey = getScopedStorageKey(baseKey, scope);
     if (safeStorage.getItem(targetKey) !== null) continue;
 
     const candidates = [
       scope !== 'guest' ? `${baseKey}_${scope}` : null,
-      scope !== 'guest' ? getScopedStorageKey(baseKey, 'guest') : null,
       baseKey
     ].filter((k): k is string => Boolean(k && k !== targetKey));
 
@@ -202,6 +218,148 @@ export function runOneTimeV2ToV3Migration(scope: string = getActiveUserScope()):
   }
 
   safeStorage.setItem(flagKey, '1');
+}
+
+export interface GuestScopeSummary {
+  hasGuestData: boolean;
+  totalRecords: number;
+  counts: {
+    trips: number;
+    vehicles: number;
+    drivers: number;
+    routes: number;
+    fuel: number;
+    documents: number;
+    khata: number;
+  };
+}
+
+function readJsonArraySafe(raw: string | null): Array<Record<string, unknown>> {
+  if (!raw || raw === '[]') return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as Array<Record<string, unknown>>) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Inspects un-migrated Guest-mode (`wg_v2_guest_*`) records present on this device.
+ */
+export function inspectGuestScopeData(): GuestScopeSummary {
+  const trips = readJsonArraySafe(safeStorage.getItem(getScopedStorageKey('trips', 'guest'))).length;
+  const vehicles = readJsonArraySafe(safeStorage.getItem(getScopedStorageKey('vehicles', 'guest'))).length;
+  const drivers = readJsonArraySafe(safeStorage.getItem(getScopedStorageKey('drivers', 'guest'))).length;
+  const routes = readJsonArraySafe(safeStorage.getItem(getScopedStorageKey('routes', 'guest'))).length;
+  const fuel = readJsonArraySafe(safeStorage.getItem(getScopedStorageKey('fuel', 'guest'))).length;
+  const documents = readJsonArraySafe(safeStorage.getItem(getScopedStorageKey('bilties', 'guest'))).length;
+
+  let khata = 0;
+  for (const kKey of KHATA_BASE_KEYS) {
+    if (kKey === 'dd_khata_settings_v2') continue;
+    khata += readJsonArraySafe(safeStorage.getItem(getScopedStorageKey(kKey, 'guest'))).length;
+  }
+
+  const totalRecords = trips + vehicles + drivers + routes + fuel + documents + khata;
+  return {
+    hasGuestData: totalRecords > 0,
+    totalRecords,
+    counts: { trips, vehicles, drivers, routes, fuel, documents, khata }
+  };
+}
+
+function getMergeItemKey(item: Record<string, unknown>): string {
+  if (item.id !== undefined && item.id !== null) return `id:${String(item.id)}`;
+  if (item.biltyNo) return `b:${String(item.biltyNo).toUpperCase()}`;
+  if (item.reg) return `r:${String(item.reg).toUpperCase()}`;
+  return JSON.stringify(item);
+}
+
+/**
+ * Explicitly merges or discards Guest-mode (`wg_v2_guest_*`) records for a signed-in user scope.
+ * Never runs silently — invoked only after explicit user consent in GuestImportPromptModal.
+ */
+export function importGuestDataIntoScope(
+  targetScope: string,
+  action: 'merge' | 'discard'
+): { mergedCount: number } {
+  if (!targetScope || targetScope === 'guest') {
+    return { mergedCount: 0 };
+  }
+
+  runOneTimeV2ToV3Migration(targetScope);
+  let mergedCount = 0;
+  const nowIso = new Date().toISOString();
+
+  if (action === 'merge') {
+    for (const baseKey of ARRAY_COLLECTION_KEYS) {
+      const guestKey = getScopedStorageKey(baseKey, 'guest');
+      const guestItems = readJsonArraySafe(safeStorage.getItem(guestKey));
+      if (guestItems.length === 0) continue;
+
+      const targetKey = getScopedStorageKey(baseKey, targetScope);
+      const targetItems = readJsonArraySafe(safeStorage.getItem(targetKey));
+      const existingKeys = new Set(targetItems.map(getMergeItemKey));
+
+      const added: Array<Record<string, unknown>> = [];
+      for (const item of guestItems) {
+        if (!item || typeof item !== 'object') continue;
+        const k = getMergeItemKey(item);
+        if (!existingKeys.has(k)) {
+          existingKeys.add(k);
+          added.push({
+            ...item,
+            updatedAt: item.updatedAt || nowIso,
+            createdAt: item.createdAt || nowIso
+          });
+        }
+      }
+
+      if (added.length > 0) {
+        safeStorage.setItem(targetKey, JSON.stringify([...targetItems, ...added]));
+        mergedCount += added.length;
+      }
+      safeStorage.setItem(guestKey, '[]');
+    }
+
+    for (const kKey of KHATA_BASE_KEYS) {
+      const guestKey = getScopedStorageKey(kKey, 'guest');
+      const guestRaw = safeStorage.getItem(guestKey);
+      if (!guestRaw || guestRaw === '[]') continue;
+
+      const targetKey = getScopedStorageKey(kKey, targetScope);
+      if (kKey === 'dd_khata_settings_v2') {
+        if (!safeStorage.getItem(targetKey)) {
+          safeStorage.setItem(targetKey, guestRaw);
+        }
+        safeStorage.removeItem(guestKey);
+        continue;
+      }
+
+      const guestArr = readJsonArraySafe(guestRaw);
+      if (guestArr.length === 0) continue;
+      const targetArr = readJsonArraySafe(safeStorage.getItem(targetKey));
+      const existingKeys = new Set(targetArr.map(getMergeItemKey));
+      const added = guestArr.filter(it => it && typeof it === 'object' && !existingKeys.has(getMergeItemKey(it)));
+      if (added.length > 0) {
+        safeStorage.setItem(targetKey, JSON.stringify([...targetArr, ...added]));
+        mergedCount += added.length;
+      }
+      safeStorage.setItem(guestKey, '[]');
+    }
+  } else {
+    // Discard guest copies cleanly
+    for (const baseKey of ARRAY_COLLECTION_KEYS) {
+      safeStorage.setItem(getScopedStorageKey(baseKey, 'guest'), '[]');
+    }
+    for (const kKey of KHATA_BASE_KEYS) {
+      safeStorage.removeItem(getScopedStorageKey(kKey, 'guest'));
+    }
+  }
+
+  safeStorage.removeItem(`wg_v3_guest_import_deferred_${targetScope}`);
+  return { mergedCount };
 }
 
 /**

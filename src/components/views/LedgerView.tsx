@@ -1592,7 +1592,21 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
       }
     }
 
-    const evaluatedOpening = evaluateArithmetic(openingAmount) ?? Number(openingAmount) ?? 0;
+    const trimmedOpening = openingAmount.trim();
+    let finalOpening = 0;
+    if (trimmedOpening !== '') {
+      const evaluated = evaluateArithmetic(trimmedOpening);
+      const rawNum = evaluated ?? Number(trimmedOpening.replace(/,/g, ''));
+      if (!Number.isFinite(rawNum) || rawNum < 0) {
+        setPhoneError(
+          isUrdu
+            ? 'شروع کا بیلنس درست مثبت رقم میں درج کریں۔'
+            : 'Opening balance must be a valid non-negative number.'
+        );
+        return;
+      }
+      finalOpening = Math.round(rawNum * 100) / 100;
+    }
 
     const executeSave = () => {
       const saved = saveOrUpdateLedgerAccount({
@@ -1601,7 +1615,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
         name: name.trim(),
         phone: normalizedPhone || '',
         note: note.trim(),
-        openingAmount: Math.abs(evaluatedOpening),
+        openingAmount: finalOpening,
         openingDirection,
         dueDate: dueDate || undefined
       });

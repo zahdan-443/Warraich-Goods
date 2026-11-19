@@ -7,7 +7,8 @@ import {
   getDocs, 
   deleteDoc, 
   query, 
-  where, 
+  where,
+  limit,
   Timestamp,
   serverTimestamp,
   arrayUnion,
@@ -210,7 +211,7 @@ export async function checkRateLimit(reporterUid: string): Promise<{ allowed: bo
   if (auth.currentUser) {
     try {
       const reportsRef = collection(db, 'hazardReports');
-      const userQuery = query(reportsRef, where('reporterUid', '==', reporterUid));
+      const userQuery = query(reportsRef, where('reporterUid', '==', reporterUid), limit(10));
       const firestorePromise = getDocs(userQuery);
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), 1500)
@@ -266,8 +267,12 @@ export async function submitHazardReport(params: {
     };
   }
 
+  // Round coordinates to 3 decimals (~110m precision) to preserve driver privacy while retaining highway corridor accuracy
+  const privacyLat = Math.round(lat * 1000) / 1000;
+  const privacyLng = Math.round(lng * 1000) / 1000;
+
   // Resolve nearest city name (best effort)
-  const nearest = findNearestCity(lat, lng);
+  const nearest = findNearestCity(privacyLat, privacyLng);
   const cityNear = nearest ? nearest.nameEn : undefined;
 
   const nowMs = Date.now();
@@ -278,8 +283,8 @@ export async function submitHazardReport(params: {
     const docRef = doc(db, 'hazardReports', reportId);
     await setDoc(docRef, {
       category,
-      lat,
-      lng,
+      lat: privacyLat,
+      lng: privacyLng,
       ...(cityNear ? { cityNear } : {}),
       flags: 0,
       flaggedBy: [],
@@ -326,7 +331,7 @@ export async function fetchActiveHazardReports(): Promise<HazardReport[]> {
     }
 
     const reportsRef = collection(db, 'hazardReports');
-    const q = query(reportsRef, where('expiresAt', '>', nowTimestamp));
+    const q = query(reportsRef, where('expiresAt', '>', nowTimestamp), limit(200));
     const querySnap = await getDocs(q);
 
     querySnap.forEach((docSnap) => {
@@ -352,6 +357,25 @@ export async function fetchActiveHazardReports(): Promise<HazardReport[]> {
     // Update guest cache
     try {
       localStorage.setItem('wg_cached_hazard_reports', JSON.stringify(reports));
+    } catch {}
+
+    // Opportunistically clean up this user's own expired hazard reports (max 1x/day, non-blocking)
+    try {
+      const uid = auth.currentUser?.uid;
+      const cleanupKey = uid ? `wg_hz_cleanup_${uid}` : '';
+      const lastCleanup = cleanupKey ? Number(localStorage.getItem(cleanupKey) || '0') : Date.now();
+      if (uid && Date.now() - lastCleanup > 24 * 60 * 60 * 1000) {
+        localStorage.setItem(cleanupKey, String(Date.now()));
+        const ownExpiredQuery = query(
+          reportsRef,
+          where('reporterUid', '==', uid),
+          where('expiresAt', '<=', nowTimestamp),
+          limit(10)
+        );
+        getDocs(ownExpiredQuery)
+          .then((snap) => Promise.all(snap.docs.map((d) => deleteDoc(d.ref).catch(() => {}))))
+          .catch(() => {});
+      }
     } catch {}
 
     return reports;

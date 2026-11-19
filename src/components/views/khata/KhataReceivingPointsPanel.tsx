@@ -22,6 +22,7 @@ import {
   getLedgerAccounts,
   normalizePakistaniPhone
 } from '../../../utils/ledgerStorage';
+import { validateFinancialNumber } from '../../../utils/calculator';
 import {
   downloadOrSharePdf,
   generateReceivingPointStatementPdf
@@ -714,6 +715,7 @@ const ReceivingEntryModal: React.FC<{
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(getTodayIsoDate());
   const [notes, setNotes] = useState('');
+  const [entryError, setEntryError] = useState<string | null>(null);
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -730,9 +732,13 @@ const ReceivingEntryModal: React.FC<{
         <form
           onSubmit={e => {
             e.preventDefault();
-            const val = parseFloat(amount) || 0;
-            if (val <= 0) return;
-            onSave({ pointId: point.id, type, amount: val, date, notes: notes.trim() });
+            const valCheck = validateFinancialNumber(amount, isUrdu ? 'رقم' : 'Amount', { allowZero: false });
+            if (!valCheck.isValid) {
+              setEntryError(valCheck.error || (isUrdu ? 'درست مثبت رقم درج کریں۔' : 'Enter a valid positive amount.'));
+              return;
+            }
+            setEntryError(null);
+            onSave({ pointId: point.id, type, amount: valCheck.value, date, notes: notes.trim() });
           }}
           className="space-y-3"
         >
@@ -801,6 +807,12 @@ const ReceivingEntryModal: React.FC<{
               className="w-full min-h-[42px] px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"
             />
           </div>
+
+          {entryError && (
+            <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+              {entryError}
+            </p>
+          )}
 
           <div className="flex gap-2 pt-1">
             <button

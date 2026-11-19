@@ -21,7 +21,9 @@ import {
   FileSpreadsheet,
   Building2,
   Phone,
-  Wallet
+  Wallet,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { Language, UserProfile, ActivityLogItem, BiltyRecord, Trip, TollRatesConfig, CompanyProfile } from '../types';
 import { 
@@ -50,10 +52,17 @@ import { OWNER_EMAIL, isOwnerEmail } from '../utils/authUtils';
 import { getPakistanMonthKey } from '../utils/dateUtils';
 import {
   BackupPreviewSummary,
+  hasPreRestoreSnapshot,
   previewCloudBackup,
   previewJsonBackup,
-  restoreFromCloudBackup
+  restoreFromCloudBackup,
+  undoLastRestore
 } from '../utils/backupService';
+import {
+  OwnerDeletionQueueItem,
+  fetchAllAccountDeletionRequestsForOwner,
+  processOwnerDeletionQueueItem
+} from '../utils/accountDeletion';
 import { BackupRestoreConfirmModal } from './BackupRestoreConfirmModal';
 
 interface ManageBiltyAccessModalProps {
@@ -65,7 +74,7 @@ interface ManageBiltyAccessModalProps {
   onUpdated?: (config: { allowedUIDs: string[]; allowedEmails: string[] }) => void;
 }
 
-type PanelTab = 'access' | 'reports' | 'backup' | 'tollRates' | 'logs';
+type PanelTab = 'access' | 'reports' | 'backup' | 'tollRates' | 'logs' | 'deletions';
 
 export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
   isOpen,
@@ -110,12 +119,20 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
   const [pendingRestorePreview, setPendingRestorePreview] = useState<BackupPreviewSummary | null>(null);
   const [pendingRestoreJson, setPendingRestoreJson] = useState<string | null>(null);
   const [confirmingRestore, setConfirmingRestore] = useState(false);
+  const [undoAvailable, setUndoAvailable] = useState(false);
+  const [undoingRestore, setUndoingRestore] = useState(false);
   const backupInputRef = useRef<HTMLInputElement>(null);
 
   // Activity Logs State
   const [logs, setLogs] = useState<ActivityLogItem[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [logFilter, setLogFilter] = useState<string>('all');
+
+  // Spark-Tier Owner Account Deletion Queue State
+  const [deletionQueue, setDeletionQueue] = useState<OwnerDeletionQueueItem[]>([]);
+  const [loadingDeletions, setLoadingDeletions] = useState(false);
+  const [processingDeletionId, setProcessingDeletionId] = useState<string | null>(null);
+  const [deletionStatusMsg, setDeletionStatusMsg] = useState<{ msg: string; success: boolean } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -159,9 +176,23 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
     // Load Operational Data for Reports
     setBilties(getStoredBilties());
     setTrips(getStoredTrips());
+    setUndoAvailable(hasPreRestoreSnapshot());
 
-    // Load Activity Logs
+    // Load Activity Logs & Account Deletion Queue
     loadLogsData();
+    loadDeletionQueueData();
+  };
+
+  const loadDeletionQueueData = async () => {
+    setLoadingDeletions(true);
+    try {
+      const items = await fetchAllAccountDeletionRequestsForOwner();
+      setDeletionQueue(items);
+    } catch (err) {
+      console.warn('Failed loading deletion queue:', err);
+    } finally {
+      setLoadingDeletions(false);
+    }
   };
 
   const loadLogsData = async () => {
@@ -211,28 +242,30 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
     setPendingRestorePreview(preview);
   };
 
-  const handleConfirmPendingRestore = async () => {
+  const handleConfirmPendingRestore = async (mode: 'merge' | 'overwrite') => {
     if (!pendingRestorePreview || !pendingRestorePreview.valid) return;
     setConfirmingRestore(true);
     try {
       if (pendingRestorePreview.source === 'json' && pendingRestoreJson) {
-        const res = restoreFullBackupFromJson(pendingRestoreJson);
+        const res = restoreFullBackupFromJson(pendingRestoreJson, mode);
         if (res.success) {
           setRestoreStatus({ msg: `${res.message} (${res.count} records)`, success: true });
           setBilties(getStoredBilties());
           setTrips(getStoredTrips());
+          setUndoAvailable(hasPreRestoreSnapshot());
         } else {
           setRestoreStatus({ msg: res.message, success: false });
         }
       } else if (pendingRestorePreview.source === 'cloud') {
-        const ok = await restoreFromCloudBackup(pendingRestorePreview.backupId || 'latestIndex');
+        const ok = await restoreFromCloudBackup(pendingRestorePreview.backupId || 'latestIndex', mode);
         if (ok) {
           setRestoreStatus({
-            msg: `Cloud backup restored (${pendingRestorePreview.totalRecords} records)`,
+            msg: `Cloud backup restored (${pendingRestorePreview.totalRecords} records, mode: ${mode})`,
             success: true
           });
           setBilties(getStoredBilties());
           setTrips(getStoredTrips());
+          setUndoAvailable(hasPreRestoreSnapshot());
         } else {
           setRestoreStatus({ msg: 'Cloud backup restore failed — rolled back safely', success: false });
         }
@@ -241,6 +274,43 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
       setConfirmingRestore(false);
       setPendingRestorePreview(null);
       setPendingRestoreJson(null);
+    }
+  };
+
+  const handleUndoLastRestore = async () => {
+    setUndoingRestore(true);
+    try {
+      const res = await undoLastRestore();
+      setRestoreStatus({ msg: res.message, success: res.success });
+      if (res.success) {
+        setBilties(getStoredBilties());
+        setTrips(getStoredTrips());
+        setUndoAvailable(hasPreRestoreSnapshot());
+      }
+    } finally {
+      setUndoingRestore(false);
+    }
+  };
+
+  const handleProcessDeletionItem = async (
+    item: OwnerDeletionQueueItem,
+    action: 'complete' | 'remove'
+  ) => {
+    setProcessingDeletionId(item.docId);
+    setDeletionStatusMsg(null);
+    try {
+      const res = await processOwnerDeletionQueueItem(item.docId, action, item.userId);
+      setDeletionStatusMsg({ msg: res.message, success: res.success });
+      if (res.success) {
+        await logActivity(
+          action === 'complete' ? 'Account Deletion Completed' : 'Deletion Request Removed',
+          `${item.userEmail || item.referenceId} (${item.docId})`,
+          'auth'
+        );
+        await loadDeletionQueueData();
+      }
+    } finally {
+      setProcessingDeletionId(null);
     }
   };
 
@@ -492,6 +562,26 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
           >
             <Activity className="w-4 h-4" />
             <span>{lang === 'ur' ? 'سسٹم آڈٹ لاگ' : 'Activity Logs'}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('deletions');
+              loadDeletionQueueData();
+            }}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'deletions'
+                ? 'bg-rose-700 text-white shadow-xs'
+                : 'bg-[#fdfbf7] text-[#5a5a40] hover:bg-[#f0f0e4] border border-[#ecece0]'
+            }`}
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>{lang === 'ur' ? 'اکاؤنٹ ڈیلیٹ قطار' : 'Deletion Queue'}</span>
+            {deletionQueue.some(d => d.status === 'pending_deletion') && (
+              <span className="px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-mono font-bold">
+                {deletionQueue.filter(d => d.status === 'pending_deletion').length}
+              </span>
+            )}
           </button>
         </div>
 
@@ -896,6 +986,27 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
                     </div>
                     <Database className="w-4 h-4 text-emerald-700 shrink-0" />
                   </button>
+
+                  {undoAvailable && (
+                    <button
+                      type="button"
+                      disabled={undoingRestore}
+                      onClick={handleUndoLastRestore}
+                      className="sm:col-span-2 p-3 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl text-right transition-all cursor-pointer flex items-center justify-between group shadow-2xs disabled:opacity-50"
+                    >
+                      <div>
+                        <div className="font-bold text-xs text-amber-950">
+                          {lang === 'ur' ? 'آخری بحالی واپس لیں (Undo Restore)' : 'Undo Last Restore (Rollback)'}
+                        </div>
+                        <div className="text-[10px] text-amber-800 mt-0.5">
+                          {lang === 'ur'
+                            ? 'بیک اپ بحالی سے فوراً پہلے والا ڈیٹا دوبارہ لوڈ کریں'
+                            : 'Restore the snapshot captured right before your previous backup import'}
+                        </div>
+                      </div>
+                      <RotateCcw className="w-4 h-4 text-amber-800 shrink-0" />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1233,6 +1344,128 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
                       </span>
                     </div>
                   ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6: SPARK-TIER OWNER ACCOUNT DELETION QUEUE */}
+          {activeTab === 'deletions' && (
+            <div className="space-y-3.5">
+              <div className="p-3.5 bg-rose-50/80 border border-rose-200 rounded-2xl text-xs text-rose-950 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-bold">
+                    {lang === 'ur' ? '30 دن کی اکاؤنٹ ڈیلیٹ درخواستوں کی قطار' : '30-Day Account Deletion Queue'}
+                  </h3>
+                  <p className="text-[11px] text-rose-900 mt-0.5">
+                    {lang === 'ur'
+                      ? 'ویب یا ایپ سے موصول شدہ اکاؤنٹ حذف کرنے کی درخواستیں۔ 30 دن مکمل ہونے پر لاگز اور درخواست کو یہاں سے حتمی طور پر صاف کریں۔'
+                      : 'Pending and matured deletion requests submitted in-app or via web. Complete cleanup removes shared logs (activity, hazards, crashes) & updates request status.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={loadDeletionQueueData}
+                  className="px-3 py-1.5 bg-white hover:bg-rose-100 border border-rose-200 text-rose-900 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>{lang === 'ur' ? 'ریفریش' : 'Refresh'}</span>
+                </button>
+              </div>
+
+              {deletionStatusMsg && (
+                <div
+                  className={`p-3 rounded-xl border text-xs font-bold flex items-center gap-2 ${
+                    deletionStatusMsg.success
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      : 'bg-rose-50 border-rose-200 text-rose-900'
+                  }`}
+                >
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{deletionStatusMsg.msg}</span>
+                </div>
+              )}
+
+              <div className="space-y-2.5 max-h-[340px] overflow-y-auto">
+                {loadingDeletions ? (
+                  <div className="p-8 text-center text-xs text-[#8e8e75] italic">
+                    {lang === 'ur' ? 'درخواستیں لوڈ ہو رہی ہیں...' : 'Loading deletion queue...'}
+                  </div>
+                ) : deletionQueue.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-[#8e8e75] italic bg-[#fdfbf7] rounded-2xl border border-dashed border-[#ecece0]">
+                    {lang === 'ur' ? 'کوئی اکاؤنٹ ڈیلیٹ درخواست موجود نہیں ہے۔' : 'No account deletion requests in queue.'}
+                  </div>
+                ) : (
+                  deletionQueue.map(item => {
+                    const isCompleted = item.status === 'deleted';
+                    const isBusy = processingDeletionId === item.docId;
+                    return (
+                      <div
+                        key={item.docId}
+                        className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                          isCompleted
+                            ? 'bg-slate-50 border-slate-200 opacity-80'
+                            : item.isMatured
+                            ? 'bg-rose-50/70 border-rose-300'
+                            : 'bg-amber-50/50 border-amber-200'
+                        }`}
+                      >
+                        <div className="space-y-1 text-right">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-xs text-[#4a4a35] font-mono">
+                              {item.userEmail || item.userId || item.docId}
+                            </span>
+                            {isCompleted ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                {lang === 'ur' ? 'مکمل' : 'Completed'}
+                              </span>
+                            ) : item.isMatured ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-200 text-rose-950 border border-rose-300 inline-flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3" />
+                                {lang === 'ur' ? '30 دن مکمل (واجب العمل)' : 'Matured (>=30d)'}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200">
+                                {lang === 'ur' ? 'زیر التواء' : 'Pending 30d Window'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-[#6b6b55] font-mono">
+                            Ref: {item.referenceId} · Source: {item.source || 'app'}
+                          </div>
+                          <div className="text-[10px] text-[#8e8e75] font-mono">
+                            Requested: {item.requestedAt ? item.requestedAt.slice(0, 10) : '-'} · Scheduled:{' '}
+                            {item.scheduledFor ? item.scheduledFor.slice(0, 10) : '-'}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {!isCompleted && (
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => handleProcessDeletionItem(item, 'complete')}
+                              className="px-3 py-1.5 bg-rose-700 hover:bg-rose-800 text-white text-[11px] font-bold rounded-xl cursor-pointer disabled:opacity-50"
+                            >
+                              {isBusy
+                                ? '...'
+                                : lang === 'ur'
+                                ? 'لاگز صاف کریں و مکمل'
+                                : 'Purge Logs & Complete'}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={isBusy}
+                            onClick={() => handleProcessDeletionItem(item, 'remove')}
+                            className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-[11px] font-bold rounded-xl cursor-pointer disabled:opacity-50"
+                          >
+                            {lang === 'ur' ? 'قطار سے ہٹائیں' : 'Dismiss'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>

@@ -424,6 +424,7 @@ export interface BiltyRecord {
   podConfirmation?: PodConfirmation;
   isDelivered?: boolean;
   legalVault?: BiltyLegalVault;
+  createdAt?: string;
   updatedAt?: string;
 }
 

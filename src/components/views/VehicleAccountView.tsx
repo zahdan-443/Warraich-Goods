@@ -29,6 +29,7 @@ import {
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { sharePdfFileOrWhatsApp, escapeHtml, sanitizeHtml } from '../../utils/pdfHelper';
+import { shareOrDownloadBlob } from '../../utils/nativeExport';
 import { validateVehicleAccountFinancials } from '../../utils/calculator';
 import {
   getAllCashEntries,
@@ -524,7 +525,10 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
     try {
       const result = await generateAccountPdf();
       if (result) {
-        result.pdf.save(result.fileName);
+        await shareOrDownloadBlob(result.pdfBlob, result.fileName, {
+          title: result.fileName,
+          preferDownloadOnDesktop: true
+        });
       } else {
         setPdfError('پی ڈی ایف بنانے میں مسئلہ آیا، دوبارہ کوشش کریں۔');
       }

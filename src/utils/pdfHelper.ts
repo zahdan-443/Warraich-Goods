@@ -345,10 +345,12 @@ export async function shareBiltyPdfOrWhatsApp(options: {
         reader.readAsDataURL(pdfBlob);
       });
 
+      const safePdfName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
       const writeResult = await Filesystem.writeFile({
-        path: fileName,
+        path: `exports/${safePdfName}`,
         data: base64Data,
         directory: Directory.Cache,
+        recursive: true,
       });
 
       await Share.share({

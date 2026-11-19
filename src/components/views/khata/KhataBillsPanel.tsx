@@ -24,6 +24,7 @@ import {
   getLedgerAccounts,
   normalizePakistaniPhone
 } from '../../../utils/ledgerStorage';
+import { validateFinancialNumber } from '../../../utils/calculator';
 import { downloadOrSharePdf, generateBillPdf } from '../../../utils/khataPdf';
 import {
   CheckCircle2,
@@ -593,17 +594,19 @@ const BillFormModal: React.FC<{
   const [discount, setDiscount] = useState(String(seed?.discount ?? 0));
   const [advance, setAdvance] = useState(String(seed?.advance ?? 0));
   const [notes, setNotes] = useState(seed?.notes || '');
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const totals = useMemo(
-    () =>
-      calculateBillTotals(
-        lineItems,
-        parseFloat(extraCharges) || 0,
-        parseFloat(discount) || 0,
-        parseFloat(advance) || 0
-      ),
-    [lineItems, extraCharges, discount, advance]
-  );
+  const totals = useMemo(() => {
+    const extraVal = validateFinancialNumber(extraCharges, 'Extra Charges', { allowZero: true });
+    const discVal = validateFinancialNumber(discount, 'Discount', { allowZero: true });
+    const advVal = validateFinancialNumber(advance, 'Advance', { allowZero: true });
+    return calculateBillTotals(
+      lineItems,
+      extraVal.isValid ? extraVal.value : 0,
+      discVal.isValid ? discVal.value : 0,
+      advVal.isValid ? advVal.value : 0
+    );
+  }, [lineItems, extraCharges, discount, advance]);
 
   const handleSelectParty = (accId: string) => {
     setPartyId(accId);
@@ -620,8 +623,8 @@ const BillFormModal: React.FC<{
         if (i !== idx) return item;
         const next = { ...item };
         if (field === 'description') next.description = value;
-        else if (field === 'qty') next.qty = Math.max(0, parseFloat(value) || 0);
-        else if (field === 'rate') next.rate = Math.max(0, parseFloat(value) || 0);
+        else if (field === 'qty') next.qty = value.trim() === '' ? 0 : Math.max(0, Number(value) || 0);
+        else if (field === 'rate') next.rate = value.trim() === '' ? 0 : Math.max(0, Number(value) || 0);
         next.amount = Math.round(next.qty * next.rate * 100) / 100;
         return next;
       })
@@ -630,10 +633,32 @@ const BillFormModal: React.FC<{
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!partyName.trim()) return;
-    const validLines = lineItems.filter(l => l.description.trim() || l.amount > 0);
-    if (validLines.length === 0) return;
+    if (!partyName.trim()) {
+      setFormError(isUrdu ? 'پارٹی کا نام لازمی ہے۔' : 'Party name is required.');
+      return;
+    }
+    const extraVal = validateFinancialNumber(extraCharges, isUrdu ? 'اضافی چارجز' : 'Extra Charges', { allowZero: true });
+    const discVal = validateFinancialNumber(discount, isUrdu ? 'رعایت' : 'Discount', { allowZero: true });
+    const advVal = validateFinancialNumber(advance, isUrdu ? 'پیشگی رقم' : 'Advance', { allowZero: true });
+    if (!extraVal.isValid || !discVal.isValid || !advVal.isValid) {
+      setFormError(extraVal.error || discVal.error || advVal.error || 'Invalid amount.');
+      return;
+    }
 
+    for (const l of lineItems) {
+      if (l.qty < 0 || l.rate < 0 || !Number.isFinite(l.qty) || !Number.isFinite(l.rate)) {
+        setFormError(isUrdu ? 'لائن آئٹم کی تعداد اور ریٹ منفی نہیں ہو سکتے۔' : 'Line item quantity and rate must be non-negative numbers.');
+        return;
+      }
+    }
+
+    const validLines = lineItems.filter(l => l.description.trim() || l.amount > 0);
+    if (validLines.length === 0) {
+      setFormError(isUrdu ? 'کم از کم ایک بل تفصیل درج کریں۔' : 'Add at least one bill line item.');
+      return;
+    }
+
+    setFormError(null);
     onSave({
       id: initialBill?.id,
       billNumber: billNumber.trim(),
@@ -643,9 +668,9 @@ const BillFormModal: React.FC<{
       partyPhone: partyPhone.trim(),
       vehicleNo: vehicleNo.trim(),
       lineItems: validLines,
-      extraCharges: Math.max(0, parseFloat(extraCharges) || 0),
-      discount: Math.max(0, parseFloat(discount) || 0),
-      advance: Math.max(0, parseFloat(advance) || 0),
+      extraCharges: extraVal.value,
+      discount: discVal.value,
+      advance: advVal.value,
       notes: notes.trim(),
       linkedDocId: seed?.linkedDocId,
       linkedDocNo: seed?.linkedDocNo
@@ -876,6 +901,12 @@ const BillFormModal: React.FC<{
             className="w-full min-h-[40px] px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"
           />
 
+          {formError && (
+            <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+              {formError}
+            </p>
+          )}
+
           <div className="flex gap-2.5 pt-1">
             <button
               type="button"
@@ -908,6 +939,7 @@ const ReceivePaymentModal: React.FC<{
   const [amount, setAmount] = useState(String(bill.balance));
   const [date, setDate] = useState(getTodayIsoDate());
   const [note, setNote] = useState('');
+  const [payError, setPayError] = useState<string | null>(null);
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -929,8 +961,13 @@ const ReceivePaymentModal: React.FC<{
         <form
           onSubmit={e => {
             e.preventDefault();
-            const val = parseFloat(amount) || 0;
-            if (val > 0) onConfirm(val, date, note);
+            const valCheck = validateFinancialNumber(amount, isUrdu ? 'وصول رقم' : 'Amount', { allowZero: false });
+            if (!valCheck.isValid) {
+              setPayError(valCheck.error || (isUrdu ? 'درست مثبت رقم درج کریں۔' : 'Enter a valid positive amount.'));
+              return;
+            }
+            setPayError(null);
+            onConfirm(valCheck.value, date, note);
           }}
           className="space-y-3"
         >
@@ -972,6 +1009,12 @@ const ReceivePaymentModal: React.FC<{
               className="w-full min-h-[42px] px-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"
             />
           </div>
+
+          {payError && (
+            <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+              {payError}
+            </p>
+          )}
 
           <div className="flex gap-2 pt-1">
             <button

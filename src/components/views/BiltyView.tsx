@@ -39,11 +39,14 @@ import {
   exportContactsCSV,
   getContactList,
   allocateNextBiltyNumber,
+  checkBiltyNoConflict,
+  findNextAvailableBiltySeq,
   exportAllBiltiesCSV,
   saveStoredBilties
 } from '../../utils/storage';
 import { validateBiltyFreight, validateFinancialNumber } from '../../utils/calculator';
 import { generatePdfFromElement, preloadBiltyPdfAssets, shareBiltyPdfOrWhatsApp } from '../../utils/pdfHelper';
+import { shareOrDownloadBlob } from '../../utils/nativeExport';
 import { downloadBiltyLegalZip } from '../../utils/zipHelper';
 import { PublicImage } from '../PublicImage';
 import { biltyOfficialIconData } from '../../assets/dashboardIcons';
@@ -89,7 +92,7 @@ interface BiltyViewProps {
   lang: Language;
   bilties: BiltyRecord[];
   initialSubTab?: 'all' | 'create' | 'search';
-  onAddBilty: (record: Omit<BiltyRecord, 'id'>) => void;
+  onAddBilty: (record: Omit<BiltyRecord, 'id'>) => BiltyRecord | Promise<BiltyRecord> | void;
   onUpdateBilty?: (record: BiltyRecord) => void;
   onDeleteBilty?: (id: number) => void;
   onNavigate?: (tab: string, subSection?: string) => void;
@@ -520,8 +523,19 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       return;
     }
 
-    // Allocate sequential unique Bilty Number via Transaction / Monotonic counter
-    const allocatedBiltyNo = await allocateNextBiltyNumber();
+    // Allocate sequential unique Bilty Number via Transaction / Monotonic counter + collision check
+    let allocatedBiltyNo = await allocateNextBiltyNumber();
+    const conflictRes = await checkBiltyNoConflict(allocatedBiltyNo).catch(() => ({ conflict: false }));
+    if (conflictRes.conflict) {
+      try {
+        const rawDigits = String(allocatedBiltyNo).replace(/\D/g, '');
+        const seqNum = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10) || 1001;
+        const nextSeq = findNextAvailableBiltySeq(seqNum + 1);
+        allocatedBiltyNo = `WG-${nextSeq}`;
+      } catch {
+        allocatedBiltyNo = `WG-${Date.now().toString().slice(-6)}`;
+      }
+    }
     const isPendingOnline = allocatedBiltyNo.includes('-OFF-');
 
     const record: Omit<BiltyRecord, 'id'> = {
@@ -556,8 +570,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       legalVault: Object.keys(creationLegalVault).length > 0 ? creationLegalVault : undefined,
     };
 
-    onAddBilty(record);
-    setLastBilty({ ...record, id: Date.now() });
+    const saved = await Promise.resolve(onAddBilty(record));
+    setLastBilty(saved || { ...record, id: Date.now() });
 
     // Reset fields
     resetFormFields();
@@ -621,7 +635,10 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     try {
       const result = await generateBiltyPdf(record);
       if (result) {
-        result.pdf.save(`Bilty_${record.biltyNo}.pdf`);
+        await shareOrDownloadBlob(result.pdfBlob, `Bilty_${record.biltyNo}.pdf`, {
+          title: `Bilty_${record.biltyNo}.pdf`,
+          preferDownloadOnDesktop: true
+        });
       }
     } catch (err) {
       console.error('PDF export failed:', err);
