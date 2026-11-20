@@ -937,6 +937,47 @@ async function mirrorSettingsToFirestore(settings: KhataSettings): Promise<void>
   }
 }
 
+function collectAllKhataTombstones(scope: string = getActiveUserScope()): Record<string, TombstoneMap> {
+  const keys = [
+    'khata_ledgerAccounts',
+    'khata_entries',
+    'khata_cashbookEntries',
+    ...KHATA_FLAT_COLLECTIONS.map(c => `khata_${c}`)
+  ];
+  const result: Record<string, TombstoneMap> = {};
+  for (const k of keys) {
+    const map = getTombstones(k, scope);
+    if (Object.keys(map).length > 0) {
+      result[k] = map;
+    }
+  }
+  return result;
+}
+
+async function mirrorKhataTombstonesToFirestore(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) return;
+  const tombstones = collectAllKhataTombstones(getActiveUserScope());
+  const payload: Record<string, unknown> = { tombstones, schemaVersion: 3 };
+  if (!db) {
+    enqueueKhataDocSync({ action: 'upsert', collectionPath: 'khataSettings', docId: 'config', data: payload });
+    return;
+  }
+  try {
+    const ref = doc(db, 'users', user.uid, 'khataSettings', 'config');
+    await setDoc(ref, payload, { merge: true });
+  } catch (err: unknown) {
+    enqueueKhataDocSync({
+      action: 'upsert',
+      collectionPath: 'khataSettings',
+      docId: 'config',
+      data: payload,
+      status: isPermissionDeniedSyncError(err) ? 'blocked' : 'pending',
+      lastError: err instanceof Error ? err.message : undefined
+    });
+  }
+}
+
 export async function mirrorFlatKhataDocToFirestore(
   collectionPath: (typeof KHATA_FLAT_COLLECTIONS)[number],
   docData: { id: string; [key: string]: unknown },
@@ -944,7 +985,10 @@ export async function mirrorFlatKhataDocToFirestore(
 ): Promise<void> {
   const user = auth.currentUser;
   if (!user || !db) {
-    if (user) enqueueKhataDocSync({ action, collectionPath, docId: docData.id, data: docData });
+    if (user) {
+      enqueueKhataDocSync({ action, collectionPath, docId: docData.id, data: docData });
+      if (action === 'delete') void mirrorKhataTombstonesToFirestore();
+    }
     return;
   }
 
@@ -954,6 +998,7 @@ export async function mirrorFlatKhataDocToFirestore(
       await setDoc(ref, docData, { merge: true });
     } else {
       await deleteDoc(ref);
+      void mirrorKhataTombstonesToFirestore();
     }
   } catch (err: unknown) {
     enqueueKhataDocSync({
@@ -964,6 +1009,7 @@ export async function mirrorFlatKhataDocToFirestore(
       status: isPermissionDeniedSyncError(err) ? 'blocked' : 'pending',
       lastError: err instanceof Error ? err.message : undefined
     });
+    if (action === 'delete') void mirrorKhataTombstonesToFirestore();
   }
 }
 
@@ -983,6 +1029,27 @@ export async function fetchKhataFromFirestore(): Promise<void> {
   if (!user || !db) return;
 
   try {
+    // 0. Fetch Settings & Tombstones FIRST so deleted records never resurrect during collection merge
+    try {
+      const setSnap = await getDoc(doc(db, 'users', user.uid, 'khataSettings', 'config'));
+      if (setSnap.exists()) {
+        const rawData = setSnap.data() as KhataSettings & { tombstones?: Record<string, TombstoneMap> };
+        const { tombstones: remoteTombstones, ...settingsOnly } = rawData;
+        if (remoteTombstones && typeof remoteTombstones === 'object') {
+          const scope = getActiveUserScope();
+          for (const [collKey, cloudMap] of Object.entries(remoteTombstones)) {
+            const normKey = collKey.startsWith('khata_') ? collKey : `khata_${collKey}`;
+            const mergedMap = mergeTombstoneMaps(getTombstones(normKey, scope), cloudMap || {});
+            saveTombstones(normKey, mergedMap, scope);
+          }
+        }
+        const localSettings = getKhataSettings();
+        setJson(KHATA_STORAGE_KEYS.SETTINGS, { ...localSettings, ...settingsOnly });
+      }
+    } catch (e) {
+      console.warn('[KhataStorage] Settings/tombstones pre-fetch notice:', e);
+    }
+
     // 1. Fetch Accounts
     const accColl = collection(db, 'users', user.uid, 'ledgerAccounts');
     const accSnap = await getDocs(accColl);
@@ -1010,11 +1077,12 @@ export async function fetchKhataFromFirestore(): Promise<void> {
       }
     }
 
-    if (cloudAccounts.length > 0) {
-      // Merge with local accounts (cloud wins if newer)
-      const localAccounts = getLedgerAccounts();
+    // Always reconcile local accounts against tombstones & merge cloud accounts
+    {
+      const rawLocalAccounts = getLedgerAccounts();
+      const prunedLocal = rawLocalAccounts.filter(a => !isKhataDocTombstoned('ledgerAccounts', a.id, a.updatedAt));
       const mergedMap = new Map<string, LedgerAccount>();
-      for (const a of localAccounts) mergedMap.set(a.id, a);
+      for (const a of prunedLocal) mergedMap.set(a.id, a);
       for (const ca of cloudAccounts) {
         if (isKhataDocTombstoned('ledgerAccounts', ca.id, ca.updatedAt)) continue;
         const existing = mergedMap.get(ca.id);
@@ -1022,21 +1090,31 @@ export async function fetchKhataFromFirestore(): Promise<void> {
           mergedMap.set(ca.id, ca);
         }
       }
-      setJson(KHATA_STORAGE_KEYS.ACCOUNTS, Array.from(mergedMap.values()));
+      if (cloudAccounts.length > 0 || prunedLocal.length !== rawLocalAccounts.length) {
+        setJson(KHATA_STORAGE_KEYS.ACCOUNTS, Array.from(mergedMap.values()));
+      }
     }
 
-    if (cloudEntries.length > 0) {
-      const localEntries = getAllLedgerEntries();
+    // Always reconcile local ledger entries against tombstones & merge cloud entries
+    {
+      const rawLocalEntries = getAllLedgerEntries();
+      const prunedLocalEntries = rawLocalEntries.filter(
+        e => !isKhataDocTombstoned('entries', e.id, e.updatedAt) && !isKhataDocTombstoned('ledgerAccounts', e.accountId, e.updatedAt)
+      );
       const mergedEntryMap = new Map<string, LedgerEntry>();
-      for (const e of localEntries) mergedEntryMap.set(e.id, e);
+      for (const e of prunedLocalEntries) mergedEntryMap.set(e.id, e);
       for (const ce of cloudEntries) {
-        if (isKhataDocTombstoned('entries', ce.id, ce.updatedAt)) continue;
+        if (isKhataDocTombstoned('entries', ce.id, ce.updatedAt) || isKhataDocTombstoned('ledgerAccounts', ce.accountId, ce.updatedAt)) {
+          continue;
+        }
         const existing = mergedEntryMap.get(ce.id);
         if (!existing || new Date(ce.updatedAt).getTime() >= new Date(existing.updatedAt).getTime()) {
           mergedEntryMap.set(ce.id, ce);
         }
       }
-      setJson(KHATA_STORAGE_KEYS.ENTRIES, Array.from(mergedEntryMap.values()));
+      if (cloudEntries.length > 0 || prunedLocalEntries.length !== rawLocalEntries.length) {
+        setJson(KHATA_STORAGE_KEYS.ENTRIES, Array.from(mergedEntryMap.values()));
+      }
     }
 
     // 2. Fetch Cashbook
@@ -1047,10 +1125,11 @@ export async function fetchKhataFromFirestore(): Promise<void> {
       const cdata = d.data() as CashEntry;
       if (cdata && cdata.id) cloudCash.push(cdata);
     }
-    if (cloudCash.length > 0) {
-      const localCash = getAllCashEntries();
+    {
+      const rawLocalCash = getAllCashEntries();
+      const prunedLocalCash = rawLocalCash.filter(c => !isKhataDocTombstoned('cashbookEntries', c.id, c.updatedAt));
       const cashMap = new Map<string, CashEntry>();
-      for (const c of localCash) cashMap.set(c.id, c);
+      for (const c of prunedLocalCash) cashMap.set(c.id, c);
       for (const cc of cloudCash) {
         if (isKhataDocTombstoned('cashbookEntries', cc.id, cc.updatedAt)) continue;
         const existing = cashMap.get(cc.id);
@@ -1058,7 +1137,9 @@ export async function fetchKhataFromFirestore(): Promise<void> {
           cashMap.set(cc.id, cc);
         }
       }
-      setJson(KHATA_STORAGE_KEYS.CASHBOOK, Array.from(cashMap.values()));
+      if (cloudCash.length > 0 || prunedLocalCash.length !== rawLocalCash.length) {
+        setJson(KHATA_STORAGE_KEYS.CASHBOOK, Array.from(cashMap.values()));
+      }
     }
 
     // 3. Fetch v1.3.0 Khata Expansion Collections
@@ -1071,38 +1152,24 @@ export async function fetchKhataFromFirestore(): Promise<void> {
           const item = d.data() as { id: string; updatedAt?: string };
           if (item && item.id) cloudItems.push(item);
         }
-        if (cloudItems.length > 0) {
-          const localItems = getParsed<Array<{ id: string; updatedAt?: string }>>(key, []);
-          const merged = new Map<string, { id: string; updatedAt?: string }>();
-          for (const li of localItems) merged.set(li.id, li);
-          for (const ci of cloudItems) {
-            if (isKhataDocTombstoned(coll, ci.id, ci.updatedAt)) continue;
-            const existing = merged.get(ci.id);
-            const ciTime = ci.updatedAt ? new Date(ci.updatedAt).getTime() : 0;
-            const exTime = existing?.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
-            if (!existing || ciTime >= exTime) {
-              merged.set(ci.id, ci);
-            }
+        const rawLocalItems = getParsed<Array<{ id: string; updatedAt?: string }>>(key, []);
+        const prunedLocalItems = rawLocalItems.filter(li => !isKhataDocTombstoned(coll, li.id, li.updatedAt));
+        const merged = new Map<string, { id: string; updatedAt?: string }>();
+        for (const li of prunedLocalItems) merged.set(li.id, li);
+        for (const ci of cloudItems) {
+          if (isKhataDocTombstoned(coll, ci.id, ci.updatedAt)) continue;
+          const existing = merged.get(ci.id);
+          const ciTime = ci.updatedAt ? new Date(ci.updatedAt).getTime() : 0;
+          const exTime = existing?.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+          if (!existing || ciTime >= exTime) {
+            merged.set(ci.id, ci);
           }
+        }
+        if (cloudItems.length > 0 || prunedLocalItems.length !== rawLocalItems.length) {
           setJson(key, Array.from(merged.values()));
         }
       } catch (e) {
         console.warn(`[KhataStorage] Fetch notice for ${coll}:`, e);
-      }
-    }
-
-    // 4. Fetch Settings
-    const setSnap = await getDoc(doc(db, 'users', user.uid, 'khataSettings', 'config'));
-    if (setSnap.exists()) {
-      const sdata = setSnap.data() as KhataSettings & { tombstones?: Record<string, TombstoneMap> };
-      const localSettings = getKhataSettings();
-      setJson(KHATA_STORAGE_KEYS.SETTINGS, { ...localSettings, ...sdata });
-      if (sdata.tombstones && typeof sdata.tombstones === 'object') {
-        const scope = getActiveUserScope();
-        for (const [collKey, cloudMap] of Object.entries(sdata.tombstones)) {
-          const mergedMap = mergeTombstoneMaps(getTombstones(collKey, scope), cloudMap || {});
-          saveTombstones(collKey, mergedMap, scope);
-        }
       }
     }
   } catch (err) {
@@ -1202,7 +1269,11 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
   };
   const ops: PendingOp[] = [];
 
-  const settingsPayload = { ...settings, schemaVersion: 3 };
+  const settingsPayload = {
+    ...settings,
+    tombstones: collectAllKhataTombstones(getActiveUserScope()),
+    schemaVersion: 3
+  };
   const settingsDigest = JSON.stringify(settingsPayload);
   if (digestCache['khataSettings/config'] !== settingsDigest) {
     ops.push({
@@ -1216,7 +1287,7 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
 
   for (const acc of accounts) {
     const pathKey = `ledgerAccounts/${acc.id}`;
-    const d = String(acc.updatedAt || acc.name || '');
+    const d = JSON.stringify(acc);
     if (digestCache[pathKey] !== d) {
       ops.push({
         pathKey,
@@ -1230,7 +1301,7 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
 
   for (const entry of entries) {
     const pathKey = `ledgerAccounts/${entry.accountId}/entries/${entry.id}`;
-    const d = String(entry.updatedAt || entry.amount || '');
+    const d = JSON.stringify(entry);
     if (digestCache[pathKey] !== d) {
       ops.push({
         pathKey,
@@ -1244,7 +1315,7 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
 
   for (const cash of cashEntries) {
     const pathKey = `cashbookEntries/${cash.id}`;
-    const d = String(cash.updatedAt || cash.amount || '');
+    const d = JSON.stringify(cash);
     if (digestCache[pathKey] !== d) {
       ops.push({
         pathKey,
@@ -1261,7 +1332,7 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
     for (const item of items) {
       if (!item?.id) continue;
       const pathKey = `${coll}/${item.id}`;
-      const d = String(item.updatedAt || JSON.stringify(item).length);
+      const d = JSON.stringify(item);
       if (digestCache[pathKey] !== d) {
         ops.push({
           pathKey,
@@ -1299,7 +1370,15 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
           else if (op.kind === 'cash') pushedCash++;
         }
       } catch {
-        // Fallback per doc in chunk if batch fails
+        for (const op of chunk) {
+          try {
+            await setDoc(op.ref, op.data, { merge: true });
+            nextDigest[op.pathKey] = op.digest;
+            if (op.kind === 'account') pushedAccounts++;
+            else if (op.kind === 'entry') pushedEntries++;
+            else if (op.kind === 'cash') pushedCash++;
+          } catch {}
+        }
       }
     }
   } else {
@@ -1393,6 +1472,7 @@ export function deleteLedgerAccount(id: string): boolean {
   });
 
   void mirrorAccountToFirestore(target, 'delete');
+  void mirrorKhataTombstonesToFirestore();
   return true;
 }
 
@@ -1445,12 +1525,13 @@ export function saveOrUpdateLedgerEntry(
   clearKhataDeletionTombstone('entries', target.id);
   setJson(KHATA_STORAGE_KEYS.ENTRIES, entries);
 
-  // Update account's updatedAt timestamp
+  // Update account's updatedAt timestamp and mirror to cloud
   const accounts = getLedgerAccounts();
   const accIdx = accounts.findIndex(a => a.id === data.accountId);
   if (accIdx >= 0) {
     accounts[accIdx].updatedAt = now;
     setJson(KHATA_STORAGE_KEYS.ACCOUNTS, accounts);
+    void mirrorAccountToFirestore(accounts[accIdx], 'upsert');
   }
 
   void mirrorEntryToFirestore(target, 'upsert');
@@ -1467,6 +1548,7 @@ export function deleteLedgerEntry(id: string): LedgerEntry | null {
   recordKhataDeletionTombstone('entries', id);
 
   void mirrorEntryToFirestore(target, 'delete');
+  void mirrorKhataTombstonesToFirestore();
   return target;
 }
 
@@ -1593,6 +1675,7 @@ export function deleteCashEntry(id: string, options?: { skipExpenseSync?: boolea
   recordKhataDeletionTombstone('cashbookEntries', id);
 
   void mirrorCashEntryToFirestore(target, 'delete');
+  void mirrorKhataTombstonesToFirestore();
 
   if (!options?.skipExpenseSync && (target.linkedExpenseId || target.sourceModule === 'daily_expense')) {
     const expenses = getParsed<Array<{ id: string; linkedCashEntryId?: string }>>(

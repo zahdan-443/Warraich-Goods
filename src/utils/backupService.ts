@@ -91,6 +91,9 @@ export interface FullFleetBackup {
     totalEmployees?: number;
     totalReceivingPoints?: number;
     totalDailyExpenses?: number;
+    totalLedgerAccounts?: number;
+    totalLedgerEntries?: number;
+    totalCashbookEntries?: number;
   };
   data: {
     trips: ReturnType<typeof getStoredTrips>;
@@ -105,6 +108,9 @@ export interface FullFleetBackup {
     brokerTransactions: ReturnType<typeof getStoredBrokerTransactions>;
     vehicleExpenses: ReturnType<typeof getStoredVehicleExpenses>;
     vehicleIncomes: ReturnType<typeof getStoredVehicleIncomes>;
+    ledgerAccounts?: ReturnType<typeof getLedgerAccounts>;
+    ledgerEntries?: ReturnType<typeof getAllLedgerEntries>;
+    cashbookEntries?: ReturnType<typeof getAllCashEntries>;
     bills?: ReturnType<typeof getAllBills>;
     employees?: ReturnType<typeof getAllEmployees>;
     employeeEntries?: ReturnType<typeof getAllEmployeeEntries>;
@@ -148,6 +154,9 @@ const CORE_ARRAY_KEYS = [
   'brokerTransactions',
   'vehicleExpenses',
   'vehicleIncomes',
+  'ledgerAccounts',
+  'ledgerEntries',
+  'cashbookEntries',
   'bills',
   'employees',
   'employeeEntries',
@@ -242,6 +251,9 @@ export function generateFullFleetBackup(): FullFleetBackup {
   const vehicleExpenses = getStoredVehicleExpenses();
   const vehicleIncomes = getStoredVehicleIncomes();
 
+  const ledgerAccounts = getLedgerAccounts();
+  const ledgerEntries = getAllLedgerEntries();
+  const cashbookEntries = getAllCashEntries();
   const bills = getAllBills();
   const employees = getAllEmployees();
   const employeeEntries = getAllEmployeeEntries();
@@ -266,6 +278,9 @@ export function generateFullFleetBackup(): FullFleetBackup {
       totalBrokerTransactions: brokerTransactions.length,
       totalVehicleExpenses: vehicleExpenses.length,
       totalVehicleIncomes: vehicleIncomes.length,
+      totalLedgerAccounts: ledgerAccounts.length,
+      totalLedgerEntries: ledgerEntries.length,
+      totalCashbookEntries: cashbookEntries.length,
       totalBills: bills.length,
       totalEmployees: employees.length,
       totalReceivingPoints: receivingPoints.length,
@@ -284,6 +299,9 @@ export function generateFullFleetBackup(): FullFleetBackup {
       brokerTransactions,
       vehicleExpenses,
       vehicleIncomes,
+      ledgerAccounts,
+      ledgerEntries,
+      cashbookEntries,
       bills,
       employees,
       employeeEntries,
@@ -409,19 +427,23 @@ export async function runScheduledDailyCloudBackup(): Promise<{
 
     const chunkIds = allChunks.map(c => c.chunkId);
 
-    // 2. Write ALL chunk documents FIRST (#11)
-    await Promise.all(
-      allChunks.map(chunk =>
-        setDoc(doc(db, 'usersData', user.uid, 'cloudBackups', backupId, 'chunks', chunk.chunkId), {
-          key: chunk.key,
-          partIndex: chunk.partIndex,
-          totalParts: chunk.totalParts,
-          items: chunk.items,
-          byteSize: chunk.byteSize,
-          updatedAt: serverTimestamp()
-        })
-      )
-    );
+    // 2. Write ALL chunk documents FIRST in bounded batches (#11)
+    const CHUNK_BATCH_SIZE = 5;
+    for (let i = 0; i < allChunks.length; i += CHUNK_BATCH_SIZE) {
+      const batch = allChunks.slice(i, i + CHUNK_BATCH_SIZE);
+      await Promise.all(
+        batch.map(chunk =>
+          setDoc(doc(db, 'usersData', user.uid, 'cloudBackups', backupId, 'chunks', chunk.chunkId), {
+            key: chunk.key,
+            partIndex: chunk.partIndex,
+            totalParts: chunk.totalParts,
+            items: chunk.items,
+            byteSize: chunk.byteSize,
+            updatedAt: serverTimestamp()
+          })
+        )
+      );
+    }
 
     const metadataPayload = {
       backupId,
@@ -680,9 +702,15 @@ async function fetchAndValidateCloudBackup(
       if (Array.isArray(d.brokerTransactions)) datasets.brokerTransactions = d.brokerTransactions;
       if (Array.isArray(d.vehicleExpenses)) datasets.vehicleExpenses = d.vehicleExpenses;
       if (Array.isArray(d.vehicleIncomes)) datasets.vehicleIncomes = d.vehicleIncomes;
+      if (Array.isArray(d.ledgerAccounts)) datasets.ledgerAccounts = d.ledgerAccounts;
+      if (Array.isArray(d.ledgerEntries)) datasets.ledgerEntries = d.ledgerEntries;
+      if (Array.isArray(d.cashbookEntries)) datasets.cashbookEntries = d.cashbookEntries;
     }
     if (khataExtSnap.exists()) {
       const d = khataExtSnap.data();
+      if (Array.isArray(d.ledgerAccounts)) datasets.ledgerAccounts = d.ledgerAccounts;
+      if (Array.isArray(d.ledgerEntries)) datasets.ledgerEntries = d.ledgerEntries;
+      if (Array.isArray(d.cashbookEntries)) datasets.cashbookEntries = d.cashbookEntries;
       if (Array.isArray(d.bills)) datasets.bills = d.bills;
       if (Array.isArray(d.employees)) datasets.employees = d.employees;
       if (Array.isArray(d.employeeEntries)) datasets.employeeEntries = d.employeeEntries;
@@ -809,6 +837,41 @@ export async function undoLastRestore(): Promise<{ success: boolean; message: st
   }
 }
 
+function mergeLegacyById<T extends { id?: string; updatedAt?: unknown; createdAt?: unknown }>(
+  localList: T[],
+  incomingList: T[],
+  mode: 'merge' | 'overwrite'
+): T[] {
+  if (mode === 'overwrite') return incomingList;
+  const map = new Map<string, T>();
+  const noIdItems: T[] = [];
+
+  const getTs = (item: T): number => {
+    const raw = item?.updatedAt ?? item?.createdAt;
+    if (typeof raw === 'number') return raw;
+    if (!raw) return 0;
+    const ms = new Date(String(raw)).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  };
+
+  for (const item of localList) {
+    if (item?.id) map.set(String(item.id), item);
+    else noIdItems.push(item);
+  }
+  for (const item of incomingList) {
+    if (item?.id) {
+      const idKey = String(item.id);
+      const existing = map.get(idKey);
+      if (!existing || getTs(item) >= getTs(existing)) {
+        map.set(idKey, item);
+      }
+    } else {
+      noIdItems.push(item);
+    }
+  }
+  return [...Array.from(map.values()), ...noIdItems];
+}
+
 /**
  * Restores local data from a validated chunked cloud backup cleanly:
  * - Clears deletion tombstones for restored keys so sync never re-deletes them.
@@ -874,21 +937,42 @@ export async function restoreFromCloudBackup(
     if (Array.isArray(d.fuelLogs)) applyRestoredCollection('fuel', d.fuelLogs as Array<Record<string, unknown>>, mode);
     if (Array.isArray(d.bilties)) applyRestoredCollection('bilties', d.bilties as Array<Record<string, unknown>>, mode);
 
-    if (Array.isArray(d.parties)) saveStoredParties(d.parties as FullFleetBackup['data']['parties']);
-    if (Array.isArray(d.partyTransactions)) {
-      saveStoredPartyTransactions(d.partyTransactions as FullFleetBackup['data']['partyTransactions']);
+    if (Array.isArray(d.parties)) {
+      saveStoredParties(mergeLegacyById(preRestoreSnapshot.parties, d.parties as FullFleetBackup['data']['parties'], mode));
     }
-    if (Array.isArray(d.brokers)) saveStoredBrokers(d.brokers as FullFleetBackup['data']['brokers']);
+    if (Array.isArray(d.partyTransactions)) {
+      saveStoredPartyTransactions(
+        mergeLegacyById(preRestoreSnapshot.partyTransactions, d.partyTransactions as FullFleetBackup['data']['partyTransactions'], mode)
+      );
+    }
+    if (Array.isArray(d.brokers)) {
+      saveStoredBrokers(mergeLegacyById(preRestoreSnapshot.brokers, d.brokers as FullFleetBackup['data']['brokers'], mode));
+    }
     if (Array.isArray(d.brokerTransactions)) {
-      saveStoredBrokerTransactions(d.brokerTransactions as FullFleetBackup['data']['brokerTransactions']);
+      saveStoredBrokerTransactions(
+        mergeLegacyById(preRestoreSnapshot.brokerTransactions, d.brokerTransactions as FullFleetBackup['data']['brokerTransactions'], mode)
+      );
     }
     if (Array.isArray(d.vehicleExpenses)) {
-      saveStoredVehicleExpenses(d.vehicleExpenses as FullFleetBackup['data']['vehicleExpenses']);
+      saveStoredVehicleExpenses(
+        mergeLegacyById(preRestoreSnapshot.vehicleExpenses, d.vehicleExpenses as FullFleetBackup['data']['vehicleExpenses'], mode)
+      );
     }
     if (Array.isArray(d.vehicleIncomes)) {
-      saveStoredVehicleIncomes(d.vehicleIncomes as FullFleetBackup['data']['vehicleIncomes']);
+      saveStoredVehicleIncomes(
+        mergeLegacyById(preRestoreSnapshot.vehicleIncomes, d.vehicleIncomes as FullFleetBackup['data']['vehicleIncomes'], mode)
+      );
     }
 
+    if (Array.isArray(d.ledgerAccounts)) {
+      restoreKhataCollection(KHATA_STORAGE_KEYS.ACCOUNTS, 'ledgerAccounts', d.ledgerAccounts as Array<{ id: string }>, mode);
+    }
+    if (Array.isArray(d.ledgerEntries)) {
+      restoreKhataCollection(KHATA_STORAGE_KEYS.ENTRIES, 'entries', d.ledgerEntries as Array<{ id: string }>, mode);
+    }
+    if (Array.isArray(d.cashbookEntries)) {
+      restoreKhataCollection(KHATA_STORAGE_KEYS.CASHBOOK, 'cashbookEntries', d.cashbookEntries as Array<{ id: string }>, mode);
+    }
     if (Array.isArray(d.bills)) {
       restoreKhataCollection(KHATA_STORAGE_KEYS.BILLS, 'khataBills', d.bills as Array<{ id: string }>, mode);
     }
@@ -925,6 +1009,9 @@ export async function restoreFromCloudBackup(
       saveStoredBrokerTransactions(preRestoreSnapshot.brokerTransactions);
       saveStoredVehicleExpenses(preRestoreSnapshot.vehicleExpenses);
       saveStoredVehicleIncomes(preRestoreSnapshot.vehicleIncomes);
+      setScopedItem(KHATA_STORAGE_KEYS.ACCOUNTS, JSON.stringify(preRestoreSnapshot.ledgerAccounts));
+      setScopedItem(KHATA_STORAGE_KEYS.ENTRIES, JSON.stringify(preRestoreSnapshot.ledgerEntries));
+      setScopedItem(KHATA_STORAGE_KEYS.CASHBOOK, JSON.stringify(preRestoreSnapshot.cashbookEntries));
       setScopedItem(KHATA_STORAGE_KEYS.BILLS, JSON.stringify(preRestoreSnapshot.bills));
       setScopedItem(KHATA_STORAGE_KEYS.EMPLOYEES, JSON.stringify(preRestoreSnapshot.employees));
       setScopedItem(

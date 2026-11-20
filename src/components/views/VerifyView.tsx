@@ -100,12 +100,10 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
     const localMatch = allBilties.find((b) => {
       const bNo = String(b.biltyNo || '').toLowerCase();
       const bId = String(b.id ?? '').toLowerCase();
-      const vNo = String(b.vehicleNo || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       return (
         bNo === cleanLower ||
         bNo.replace(/[^a-z0-9]/g, '') === normalizedTerm ||
-        bId === cleanLower ||
-        (normalizedTerm.length > 3 && vNo === normalizedTerm)
+        bId === cleanLower
       );
     });
 
@@ -276,10 +274,16 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard?.writeText(text);
-    setCopiedText(text);
-    setTimeout(() => setCopiedText(null), 2000);
+  const handleCopy = async (text: string) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      }
+      setCopiedText(text);
+      setTimeout(() => setCopiedText(null), 2000);
+    } catch {
+      // Fallback copy unavailable in restricted webview contexts
+    }
   };
 
   // Perform Vehicle Verification (Direct Official Portal Launcher)

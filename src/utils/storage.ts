@@ -570,8 +570,8 @@ export const DEFAULT_COMPANY_PROFILE: CompanyProfile = {
   nameEn: 'Warraich Goods Transport Co.',
   ownerName: 'زاہدان نصر وڑائچ',
   phoneNumbers: '0300-5370443, 0339-5370443',
-  headOfficeUr: 'سمندری، فیصل آباد، پنجاب، پاکستان',
-  headOfficeEn: 'Samundri, Faisalabad, Punjab, Pakistan',
+  headOfficeUr: 'اوکاڑہ بائی پاس، نزدیک 466 چوک، سمندری، فیصل آباد',
+  headOfficeEn: 'Okara Bypass, Near 466 Chock, Samundri, Faisalabad',
   ntn: '7779394-1',
   taglineUr: 'ملک بھر میں ہر قسم کے سامان کی محفوظ اور قابل اعتماد ٹرانسپورٹ سروس'
 };
