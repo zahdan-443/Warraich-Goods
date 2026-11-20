@@ -193,8 +193,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
   const borderPrimary = `1.5px solid ${theme.primaryColor}`;
   const borderLight = `1px solid ${theme.lightRule}`;
 
-  const urBodyFont = "'Jameel Noori Nastaleeq', 'PDMS Nastaleeq Nafees', 'Noto Nastaliq Urdu', serif";
-  const urTitleFont = "'Akbar', 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif";
+  const urBodyFont = "'Noto Naskh Arabic', 'Noto Sans Arabic', 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', sans-serif";
+  const urTitleFont = "'Noto Naskh Arabic', 'Noto Sans Arabic', 'Akbar', 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', sans-serif";
   const enBodyFont = "'IBM Plex Sans', 'Segoe UI', Arial, sans-serif";
   const monoFont = "'JetBrains Mono', 'Courier New', monospace";
 

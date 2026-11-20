@@ -38,7 +38,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       }
     };
 
-    const handleBackButton = () => {
+    const handleBackButton = (e: Event) => {
+      e.preventDefault();
       if (!loading) {
         onCancel();
       }

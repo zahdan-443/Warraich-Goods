@@ -58,7 +58,6 @@ import {
   quickOpsIconData,
   mapIconData,
   biltyIconData,
-  biltyOfficialIconData,
   dashcamIconData,
   ledgerIconData
 } from '../../assets/dashboardIcons';
@@ -250,47 +249,30 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* Main Single Stream Content (Ergonomic Mobile App Layout) */}
       <div className="flex flex-col gap-5 sm:gap-6 w-full">
         
-        {/* Authenticated App Owner Control Panel: Top Priority, Clean, Dual Buttons */}
+        {/* Authenticated App Owner Panel: Simple Buttons Only (No Logo/Images) */}
         {isBiltyAuthorized && (
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50/90 dark:bg-[#1a1c22] border-2 border-amber-400/80 dark:border-amber-600/50 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 animate-in fade-in">
-            <div className="flex items-center gap-2.5">
-              <PublicImage
-                fileName={biltyOfficialIconData}
-                alt={lang === 'ur' ? 'آفیشل دستاویز مہر' : 'Official Document Seal'}
-                fallbackIcon={<Receipt className="w-5 h-5 text-amber-700" />}
-                fitMode="contain"
-                className="w-8 h-8 rounded-xl border border-amber-400/50 p-0.5 bg-white dark:bg-[#252216] shadow-2xs shrink-0"
-                imgClassName="rounded-lg"
-              />
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs sm:text-sm font-bold text-amber-950 dark:text-amber-100 font-serif">
-                  {lang === 'ur' ? 'وارائچ گڈز آنر پینل' : 'Warraich Goods Owner Panel'}
-                </span>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 font-bold border border-amber-300 dark:border-amber-700">
-                  {lang === 'ur' ? `${bilties.length} بلٹیاں محفوظ ہیں` : `${bilties.length} Bilties`}
-                </span>
-              </div>
-            </div>
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 animate-in fade-in">
+            <button
+              type="button"
+              onClick={() => onNavigate('bilty', 'create')}
+              className="w-full min-h-[48px] px-4 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-95"
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              <span>{lang === 'ur' ? 'نئی بلٹی بنائیں' : 'Create Bilty'}</span>
+            </button>
 
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <button
-                type="button"
-                onClick={() => onNavigate('bilty', 'create')}
-                className="flex-1 sm:flex-none px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all flex items-center justify-center gap-1.5 active:scale-95"
-              >
-                <Plus className="w-3.5 h-3.5 text-white" />
-                <span>{lang === 'ur' ? 'نئی بلٹی بنائیں' : 'Create Bilty'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('bilty', 'ledger')}
-                className="flex-1 sm:flex-none px-3.5 py-2 bg-gradient-to-r from-amber-500 to-[#b58b28] hover:from-amber-600 hover:to-[#96721f] text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all flex items-center justify-center gap-1.5 active:scale-95"
-              >
-                <Receipt className="w-3.5 h-3.5 text-amber-100" />
-                <span>{lang === 'ur' ? 'تمام بلٹیاں دیکھیں' : 'View All Bilties'}</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => onNavigate('bilty', 'ledger')}
+              className="w-full min-h-[48px] px-4 py-3 bg-[#0f2942] hover:bg-[#1a3a5c] text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-95"
+            >
+              <Receipt className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>
+                {lang === 'ur'
+                  ? `تمام بلٹیاں دیکھیں (${bilties.length})`
+                  : `View All Bilties (${bilties.length})`}
+              </span>
+            </button>
           </div>
         )}
 

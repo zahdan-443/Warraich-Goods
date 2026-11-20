@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { BiltyRecord, ContactItem, DICTIONARY, Language, BiltyBranch, BiltyLanguage, BiltyColorTheme, LegalRecordingItem, KhataReceivingPoint } from '../../types';
 import { getAllReceivingPoints } from '../../utils/khataModulesStorage';
 import {
@@ -35,6 +35,7 @@ import { VoiceInputButton } from '../VoiceInputButton';
 import { CameraOcrInput } from '../CameraOcrInput';
 import { PrintableBilty } from '../PrintableBilty';
 import { BiltyLegalVaultModal } from '../BiltyLegalVaultModal';
+import { ConfirmDialog } from '../ConfirmDialog';
 import {
   exportContactsCSV,
   getContactList,
@@ -114,9 +115,26 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const [subTab, setSubTab] = useState<'all' | 'create' | 'search'>(() => {
     return initialSubTab || (bilties && bilties.length > 0 ? 'all' : 'create');
   });
+  const subTabHistoryRef = useRef<Array<'all' | 'create' | 'search'>>([]);
+  const [showExitCreateConfirm, setShowExitCreateConfirm] = useState(false);
+
+  const navigateSubTab = useCallback((nextTab: 'all' | 'create' | 'search') => {
+    setSubTab((prev) => {
+      if (prev !== nextTab) {
+        subTabHistoryRef.current.push(prev);
+        if (typeof window !== 'undefined' && window.history?.pushState) {
+          try {
+            window.history.pushState({ tab: 'bilty', subTab: nextTab }, '', '#bilty');
+          } catch {}
+        }
+      }
+      return nextTab;
+    });
+  }, []);
 
   useEffect(() => {
     if (initialSubTab) {
+      subTabHistoryRef.current = [];
       setSubTab(initialSubTab);
     }
   }, [initialSubTab]);
@@ -215,7 +233,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
   const [contactsList, setContactsList] = useState<ContactItem[]>(() => getContactList());
 
-  const resetFormFields = () => {
+  const resetFormFields = useCallback(() => {
     setVehicleNo('');
     setDate(getTodayFormatted());
     setDriverName('');
@@ -243,7 +261,101 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setEditingBilty(null);
     setEditIsDelivered(false);
     setFormError(null);
-  };
+  }, []);
+
+  const hasUnsavedCreateDraft = Boolean(
+    subTab === 'create' &&
+      !editingBilty &&
+      (vehicleNo.trim() ||
+        driverName.trim() ||
+        mobileNo.trim() ||
+        sendingCity.trim() ||
+        receivingCity.trim() ||
+        senderName.trim() ||
+        receiverName.trim() ||
+        itemDescription.trim() ||
+        qty.trim() ||
+        total.trim())
+  );
+
+  useEffect(() => {
+    const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+
+      if (showExitCreateConfirm) {
+        setShowExitCreateConfirm(false);
+        e.preventDefault();
+        return;
+      }
+      if (isVaultModalOpen) {
+        setIsVaultModalOpen(false);
+        setVaultModalBilty(null);
+        e.preventDefault();
+        return;
+      }
+      if (biltyToDelete) {
+        setBiltyToDelete(null);
+        e.preventDefault();
+        return;
+      }
+      if (selectedModalBilty) {
+        setSelectedModalBilty(null);
+        e.preventDefault();
+        return;
+      }
+      if (isConfigModalOpen) {
+        setIsConfigModalOpen(false);
+        e.preventDefault();
+        return;
+      }
+      if (editingBilty) {
+        resetFormFields();
+        const prevSub = subTabHistoryRef.current.pop();
+        setSubTab(prevSub || (bilties.length > 0 ? 'all' : 'create'));
+        e.preventDefault();
+        return;
+      }
+      if (subTab === 'create' && isLegalVaultExpanded) {
+        setIsLegalVaultExpanded(false);
+        e.preventDefault();
+        return;
+      }
+      if (subTab === 'create' && hasUnsavedCreateDraft) {
+        setShowExitCreateConfirm(true);
+        e.preventDefault();
+        return;
+      }
+      if (subTabHistoryRef.current.length > 0) {
+        const prevSub = subTabHistoryRef.current.pop();
+        if (prevSub) {
+          setSubTab(prevSub);
+          e.preventDefault();
+          return;
+        }
+      }
+      if (subTab !== 'all' && bilties.length > 0 && initialSubTab !== 'create') {
+        setSubTab('all');
+        e.preventDefault();
+        return;
+      }
+    };
+
+    window.addEventListener('app-back-button', handleBack);
+    return () => window.removeEventListener('app-back-button', handleBack);
+  }, [
+    showExitCreateConfirm,
+    isVaultModalOpen,
+    biltyToDelete,
+    selectedModalBilty,
+    isConfigModalOpen,
+    editingBilty,
+    subTab,
+    isLegalVaultExpanded,
+    hasUnsavedCreateDraft,
+    bilties.length,
+    initialSubTab,
+    resetFormFields
+  ]);
 
   const handleStartEditBilty = (record: BiltyRecord) => {
     setEditingBilty(record);
@@ -277,7 +389,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setSelectedModalBilty(null);
     setLastBilty(record);
     setFormError(null);
-    setSubTab('create');
+    navigateSubTab('create');
   };
 
   const handleSaveVault = (biltyId: number, updatedVault: BiltyLegalVault) => {
@@ -868,6 +980,9 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           <button
             type="button"
             onClick={() => {
+              if (typeof window !== 'undefined' && window.history?.pushState) {
+                try { window.history.pushState({ tab: 'bilty', modal: 'vault' }, ''); } catch {}
+              }
               setVaultModalBilty(record);
               setIsVaultModalOpen(true);
             }}
@@ -913,6 +1028,14 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                   </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setIsConfigModalOpen(false)}
+                aria-label={isUrdu ? 'بند کریں' : 'Close'}
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
             <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
@@ -1052,19 +1175,33 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             {onNavigate && (
               <button
                 type="button"
-                onClick={() => onNavigate('home')}
+                onClick={() => {
+                  const backEv = new CustomEvent('app-back-button', { cancelable: true });
+                  window.dispatchEvent(backEv);
+                  if (!backEv.defaultPrevented) {
+                    onNavigate('home');
+                  }
+                }}
                 className="p-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-                title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
+                title={
+                  editingBilty || subTabHistoryRef.current.length > 0 || (subTab !== 'all' && bilties.length > 0)
+                    ? (isUrdu ? 'واپس جائیں' : 'Go Back')
+                    : (isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard')
+                }
               >
                 <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
-                <span>{isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}</span>
+                <span>
+                  {editingBilty || subTabHistoryRef.current.length > 0 || (subTab !== 'all' && bilties.length > 0)
+                    ? (isUrdu ? 'واپس' : 'Back')
+                    : (isUrdu ? 'ڈیش بورڈ' : 'Dashboard')}
+                </span>
               </button>
             )}
 
             <div className="flex items-center gap-1 sm:gap-1.5 bg-[#fdfbf7] p-1.5 rounded-full border border-[#ecece0] flex-wrap">
               <button
                 type="button"
-                onClick={() => setSubTab('all')}
+                onClick={() => navigateSubTab('all')}
                 className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                   subTab === 'all' ? 'bg-[#5a5a40] text-white shadow-xs' : 'text-[#8e8e75] hover:text-[#4a4a35]'
                 }`}
@@ -1079,7 +1216,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setSubTab('create')}
+                onClick={() => navigateSubTab('create')}
                 className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                   subTab === 'create' ? 'bg-[#5a5a40] text-white shadow-xs' : 'text-[#8e8e75] hover:text-[#4a4a35]'
                 }`}
@@ -1089,7 +1226,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setSubTab('search')}
+                onClick={() => navigateSubTab('search')}
                 className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                   subTab === 'search' ? 'bg-[#5a5a40] text-white shadow-xs' : 'text-[#8e8e75] hover:text-[#4a4a35]'
                 }`}
@@ -1192,22 +1329,35 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             onChangeDeliveryFilter={setDeliveryFilter}
             onChangeSortBy={setSortBy}
             onExportCsv={() => exportAllBiltiesCSV()}
-            onNavigateToCreate={() => setSubTab('create')}
+            onNavigateToCreate={() => navigateSubTab('create')}
             onResetFilters={() => {
               setAllFilterQuery('');
               setDeliveryFilter('all');
             }}
-            onInspectBilty={setSelectedModalBilty}
+            onInspectBilty={(b) => {
+              if (typeof window !== 'undefined' && window.history?.pushState) {
+                try { window.history.pushState({ tab: 'bilty', modal: 'inspect' }, ''); } catch {}
+              }
+              setSelectedModalBilty(b);
+            }}
             onPrintBilty={handlePrintBuilty}
             onDownloadPdf={handleDownloadPDF}
             onShareWhatsApp={handleWhatsAppShare}
             onOpenVault={(b) => {
+              if (typeof window !== 'undefined' && window.history?.pushState) {
+                try { window.history.pushState({ tab: 'bilty', modal: 'vault' }, ''); } catch {}
+              }
               setVaultModalBilty(b);
               setIsVaultModalOpen(true);
             }}
             onEditBilty={handleStartEditBilty}
             onDownloadZip={handleDownloadZip}
-            onRequestDelete={onDeleteBilty ? setBiltyToDelete : undefined}
+            onRequestDelete={onDeleteBilty ? (b) => {
+              if (typeof window !== 'undefined' && window.history?.pushState) {
+                try { window.history.pushState({ tab: 'bilty', modal: 'delete' }, ''); } catch {}
+              }
+              setBiltyToDelete(b);
+            } : undefined}
           />
         )}
 
@@ -1846,6 +1996,34 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           onGeneratePdf={generateBiltyPdf}
         />
       )}
+
+      {/* Unsaved Draft Confirmation when pressing Back mid-form */}
+      <ConfirmDialog
+        isOpen={showExitCreateConfirm}
+        lang={lang}
+        variant="warning"
+        title={isUrdu ? 'بلٹی فارم سے باہر نکلیں؟' : 'Leave Bilty Form?'}
+        message={
+          isUrdu
+            ? 'آپ کا غیر محفوظ شدہ بلٹی ڈیٹا فارم میں موجود ہے۔ کیا آپ واقعی واپس جانا چاہتے ہیں؟'
+            : 'You have unsaved fields in the bilty form. Are you sure you want to leave?'
+        }
+        confirmLabel={isUrdu ? 'جی ہاں، واپس جائیں' : 'Yes, Go Back'}
+        cancelLabel={isUrdu ? 'فارم پر رہیں' : 'Stay on Form'}
+        onCancel={() => setShowExitCreateConfirm(false)}
+        onConfirm={() => {
+          setShowExitCreateConfirm(false);
+          resetFormFields();
+          const prevSub = subTabHistoryRef.current.pop();
+          if (prevSub) {
+            setSubTab(prevSub);
+          } else if (bilties.length > 0 && initialSubTab !== 'create') {
+            setSubTab('all');
+          } else if (onNavigate) {
+            onNavigate('home');
+          }
+        }}
+      />
 
       {/* Hidden container for print and PDF generation */}
       {activePrintRecord && (

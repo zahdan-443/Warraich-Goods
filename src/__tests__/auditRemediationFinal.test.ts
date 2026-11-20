@@ -543,4 +543,32 @@ describe('Final A-to-Z Audit Remediation Regressions', () => {
     importGuestDataIntoScope(uid, 'discard');
     expect(globalThis.localStorage.getItem('wg_v2_guest_vehicles')).toBeNull();
   });
+
+  it('uses crisp Noto Naskh Arabic / Noto Sans Arabic without colliding Nastaleeq UI aliases or RTL letter-spacing', () => {
+    const rootDir = process.cwd();
+    const css = fs.readFileSync(path.join(rootDir, 'src/index.css'), 'utf8');
+    const html = fs.readFileSync(path.join(rootDir, 'index.html'), 'utf8');
+    const printable = fs.readFileSync(path.join(rootDir, 'src/components/PrintableBilty.tsx'), 'utf8');
+
+    expect(html).toContain('Noto+Naskh+Arabic');
+    expect(html).not.toContain('rel="preload" href="./fonts/PDMS_NastaliqNafees.ttf"');
+    expect(css).not.toContain("font-family: 'Jameel Noori Nastaleeq'");
+    expect(css).not.toContain("font-family: 'Alvi Lahori Nastaleeq'");
+    expect(css).toContain('[dir="rtl"] *, body.urdu *, [lang="ur"], [lang="ur"] * {\n  letter-spacing: 0 !important;');
+    expect(printable).toContain("'Noto Naskh Arabic', 'Noto Sans Arabic'");
+  });
+
+  it('keeps HomeView Owner panel simplified to action buttons only and routes BiltyView back steps without abruptly leaving to Dashboard', () => {
+    const rootDir = process.cwd();
+    const homeSrc = fs.readFileSync(path.join(rootDir, 'src/components/views/HomeView.tsx'), 'utf8');
+    const appSrc = fs.readFileSync(path.join(rootDir, 'src/App.tsx'), 'utf8');
+    const biltySrc = fs.readFileSync(path.join(rootDir, 'src/components/views/BiltyView.tsx'), 'utf8');
+
+    expect(homeSrc).not.toContain('biltyOfficialIconData');
+    expect(homeSrc).toContain('Simple Buttons Only (No Logo/Images)');
+    expect(appSrc).toContain("new CustomEvent('app-back-button', { cancelable: true })");
+    expect(biltySrc).toContain("window.addEventListener('app-back-button', handleBack)");
+    expect(biltySrc).toContain('hasUnsavedCreateDraft');
+    expect(biltySrc).toContain('showExitCreateConfirm');
+  });
 });

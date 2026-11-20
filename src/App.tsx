@@ -366,6 +366,13 @@ export default function App() {
           return;
         }
 
+        // Priority 1.5: Let active view / inner modal / sub-tab intercept Back step-by-step
+        const backEvent = new CustomEvent('app-back-button', { cancelable: true });
+        window.dispatchEvent(backEvent);
+        if (backEvent.defaultPrevented) {
+          return;
+        }
+
         // Priority 2: If user is inside ANY inner tool / section, navigate back to Dashboard ('home')
         if (activeTabRef.current !== 'home') {
           if ('vibrate' in navigator) {
@@ -402,6 +409,14 @@ export default function App() {
       }
       if (showBiltyAccessModalRef.current) {
         setShowBiltyAccessModal(false);
+        return;
+      }
+
+      const backEvent = new CustomEvent('app-back-button', { cancelable: true });
+      window.dispatchEvent(backEvent);
+      if (backEvent.defaultPrevented) {
+        const currentTab = activeTabRef.current || 'home';
+        window.history.pushState({ tab: currentTab }, '', `#${currentTab}`);
         return;
       }
 
@@ -1392,7 +1407,16 @@ export default function App() {
               subtitle={TAB_HEADER_INFO[activeTab]?.subtitle}
               subtitleUr={TAB_HEADER_INFO[activeTab]?.subtitleUr}
               lang={lang}
-              onBackToDashboard={() => handleNavigate('home')}
+              onBackToDashboard={() => {
+                if (activeTab === 'bilty') {
+                  const backEvent = new CustomEvent('app-back-button', { cancelable: true });
+                  window.dispatchEvent(backEvent);
+                  if (backEvent.defaultPrevented) {
+                    return;
+                  }
+                }
+                handleNavigate('home');
+              }}
               onToggleLang={handleToggleLang}
             />
           )}

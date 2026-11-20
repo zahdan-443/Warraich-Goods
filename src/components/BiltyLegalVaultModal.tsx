@@ -64,6 +64,16 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
   }, [bilty]);
 
   useEffect(() => {
+    if (!isOpen || !previewImage) return;
+    const handleBack = (e: Event) => {
+      e.preventDefault();
+      setPreviewImage(null);
+    };
+    window.addEventListener('app-back-button', handleBack);
+    return () => window.removeEventListener('app-back-button', handleBack);
+  }, [isOpen, previewImage]);
+
+  useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {

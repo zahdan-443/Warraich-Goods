@@ -262,7 +262,7 @@ export const Header: React.FC<HeaderProps> = ({
                   Driver Dost
                 </span>
                 <span className="text-gray-300 dark:text-slate-600 font-light">|</span>
-                <span className="text-xs sm:text-base font-nastaliq font-bold text-[#8b9d77] dark:text-emerald-400 whitespace-nowrap pt-0.5">
+                <span className="text-xs sm:text-base font-sans font-bold leading-normal text-[#8b9d77] dark:text-emerald-400 whitespace-nowrap">
                   ڈرائیور دوست
                 </span>
               </div>
