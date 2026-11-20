@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-1.3.1-mwom5gxb';
+const CACHE_NAME = 'driver-dost-1.3.1-mwon2rtt';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const MAX_CACHED_TILES = 350;
 
@@ -45,30 +45,30 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/BiltyView-Ds0VWZaw.js',
-  './assets/DashcamView-DvWlwik_.js',
-  './assets/DriversView-a18yKasD.js',
-  './assets/FuelLogView-ffpcO-oH.js',
-  './assets/LedgerView-CqAuWiSA.js',
-  './assets/MapView-BzZZTU31.js',
+    './assets/BiltyView-KdUp-ONi.js',
+  './assets/DashcamView-XkrRfmXv.js',
+  './assets/DriversView-B6V6PNua.js',
+  './assets/FuelLogView-Di7rUSKx.js',
+  './assets/LedgerView-BDPyp82_.js',
   './assets/MapView-CIGW-MKW.css',
-  './assets/NavigationView-BMcwhviO.js',
-  './assets/RoutesView-CuKvQ3Yx.js',
-  './assets/TollPlazaView-WSMZxJU1.js',
-  './assets/TripCostView-RryUfVuy.js',
-  './assets/VehicleAccountView-Be9m0iVf.js',
-  './assets/VehiclesView-CszGPjOy.js',
-  './assets/VerifyView-DT-duMmG.js',
+  './assets/MapView-DW4Y_RPw.js',
+  './assets/NavigationView-e6g-kUi1.js',
+  './assets/RoutesView-HJJXXxR2.js',
+  './assets/TollPlazaView-azK4S6mK.js',
+  './assets/TripCostView-CtcGh-M9.js',
+  './assets/VehicleAccountView-PD7SqdxY.js',
+  './assets/VehiclesView-DC60ZcyX.js',
+  './assets/VerifyView-CmBrd4LQ.js',
   './assets/biltyHelpers-MBn1nsl-.js',
   './assets/bilty_watermark_bg_1794821577675-BFAqost0.jpg',
   './assets/index-DonnXUEI.css',
-  './assets/index-Z4Zhc-g2.js',
-  './assets/pdfHelper-DFryRdrI.js',
+  './assets/index-o68sbefy.js',
+  './assets/pdfHelper-BQJYR32q.js',
   './assets/vendor-firebase-CIhkivAp.js',
   './assets/vendor-pdf-C_00KF73.js',
   './assets/vendor-react-DBna6sz6.js',
+  './assets/web-BFned5k-.js',
   './assets/web-BX2BdMlO.js',
-  './assets/web-CN-BHrqi.js',
   './assets/web-DuMV63fX.js',
   './assets/web-jwPn4hHg.js'
 ];
