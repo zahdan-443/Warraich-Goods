@@ -662,6 +662,7 @@ export default function App() {
 
       // Auto-reconcile all local/offline data to this user's cloud Firestore
       autoReconcileAllLocalToCloud(uid).then(() => {
+        setOfflineQueue(getStoredOfflineQueue());
         setBilties(getStoredBilties());
         setTrips(getStoredTrips());
         setVehicles(getStoredVehicles());
@@ -739,6 +740,7 @@ export default function App() {
 
     // Keep UI synced on storage/sync events
     const unsubSyncStatus = subscribeToSyncEvents(() => {
+      setOfflineQueue(getStoredOfflineQueue());
       setBilties(getStoredBilties());
     });
 
@@ -1014,7 +1016,7 @@ export default function App() {
         id: Date.now(),
         name: tripName
       };
-      if (isOffline) {
+      if (isOffline && currentUid) {
         const offlineItem: OfflineAction = {
           id: Date.now(),
           type: 'trip',
@@ -1642,7 +1644,8 @@ export default function App() {
             setPendingGuestImport(null);
             window.dispatchEvent(new CustomEvent('driverdost:storage_hydrated'));
             if (navigator.onLine) {
-              autoReconcileAllLocalToCloud(currentUid).catch(() => {});
+              await autoReconcileAllLocalToCloud(currentUid).catch(() => {});
+              setOfflineQueue(getStoredOfflineQueue());
             }
             pushAppNotification(
               lang === 'ur' ? 'گیسٹ ریکارڈز شامل ہو گئے' : 'Guest Records Merged',

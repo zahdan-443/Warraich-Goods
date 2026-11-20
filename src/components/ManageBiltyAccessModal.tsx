@@ -793,7 +793,7 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
                       type="text"
                       value={companyProfile.headOfficeUr || ''}
                       onChange={(e) => setCompanyProfile(prev => ({ ...prev, headOfficeUr: e.target.value }))}
-                      placeholder="اوکاڑہ بائی پاس، نزدیک 466 چوک، سمندری"
+                      placeholder="اوکاڑہ بائی پاس، نزد 466 چوک، سمندری"
                       className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-[#ecece0] dark:border-slate-700 rounded-xl focus:border-[#8b9d77] outline-hidden"
                     />
                   </div>

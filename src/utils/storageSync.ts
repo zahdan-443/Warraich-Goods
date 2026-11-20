@@ -42,7 +42,14 @@ import {
   normalizeEmail,
   verifyOwnerOrStaffClaim
 } from './authUtils';
-import { getActiveUserScope, getScopedItem, removeScopedItem, safeStorage, setScopedItem } from './storageCore';
+import {
+  cleanupUploadedLegacyAndStagingKeys,
+  getActiveUserScope,
+  getScopedItem,
+  removeScopedItem,
+  safeStorage,
+  setScopedItem
+} from './storageCore';
 
 export type SyncCollectionName = 'bilties' | 'trips' | 'vehicles' | 'drivers' | 'fuel' | 'routes';
 
@@ -434,6 +441,9 @@ export function saveStoredOfflineQueue(queue: OfflineAction[]): void {
   } else {
     safeStorage.setItem(scopedKey, JSON.stringify(queue));
   }
+  // Remove legacy un-scoped offline queue copies once scoped queue is authoritative
+  safeStorage.removeItem('ah-offline-queue');
+  safeStorage.removeItem('offline-queue');
 }
 
 export function clearOfflineQueue(): void {
@@ -907,7 +917,8 @@ export async function processOfflineQueue(): Promise<{
   const errorLogs: string[] = [];
   const nowMs = Date.now();
 
-  for (const action of queue) {
+  for (let idx = 0; idx < queue.length; idx++) {
+    const action = queue[idx];
     // Skip items still in backoff window without mutating retryCount
     if (action.status !== 'blocked' && action.nextRetryAt && action.nextRetryAt > nowMs) {
       remainingQueue.push(action);
@@ -940,6 +951,7 @@ export async function processOfflineQueue(): Promise<{
           }
         }
         processedCount++;
+        saveStoredOfflineQueue([...remainingQueue, ...queue.slice(idx + 1)]);
       } else if (action.type === 'public_bilty' && action.data?.biltyNo) {
         if (!isEntityTombstoned('bilties', action.data, biltyTombstones)) {
           const safeData = extractPublicBiltyVerification(action.data);
@@ -947,6 +959,7 @@ export async function processOfflineQueue(): Promise<{
           await withTimeout(setDoc(pubRef, safeData), 8000);
         }
         processedCount++;
+        saveStoredOfflineQueue([...remainingQueue, ...queue.slice(idx + 1)]);
       } else if (action.type === 'delete_public_bilty' && action.data?.biltyNo) {
         const normalizedNo = String(action.data.biltyNo).trim().toUpperCase();
         if (normalizedNo) {
@@ -954,6 +967,7 @@ export async function processOfflineQueue(): Promise<{
           await withTimeout(deleteDoc(pubRef), 8000);
         }
         processedCount++;
+        saveStoredOfflineQueue([...remainingQueue, ...queue.slice(idx + 1)]);
       } else if ((action.type === 'bilty' || action.type === 'bilties') && !Array.isArray(action.data)) {
         if (action.data?.biltyNo && !isEntityTombstoned('bilties', action.data, biltyTombstones)) {
           const safeData = extractPublicBiltyVerification(action.data);
@@ -961,6 +975,7 @@ export async function processOfflineQueue(): Promise<{
           await withTimeout(setDoc(pubRef, safeData), 8000);
         }
         processedCount++;
+        saveStoredOfflineQueue([...remainingQueue, ...queue.slice(idx + 1)]);
       } else {
         const collName = normalizeCollectionKey(action.type);
         if (collName) {
@@ -976,6 +991,7 @@ export async function processOfflineQueue(): Promise<{
             Object.keys(collTombstones)
           );
           processedCount++;
+          saveStoredOfflineQueue([...remainingQueue, ...queue.slice(idx + 1)]);
         } else if (action.type === 'settings') {
           if (!isOwnerEmail(user.email)) {
             throw new Error('permission-denied: Only owner can update company profile');
@@ -983,6 +999,7 @@ export async function processOfflineQueue(): Promise<{
           const docRef = doc(db, 'settings', 'companyProfile');
           await withTimeout(setDoc(docRef, action.data, { merge: true }), 8000);
           processedCount++;
+          saveStoredOfflineQueue([...remainingQueue, ...queue.slice(idx + 1)]);
         } else if (action.type === 'pod_confirmation' && action.data?.biltyNo) {
           if (!isEntityTombstoned('bilties', action.data, biltyTombstones)) {
             const safeData = extractPublicBiltyVerification({
@@ -994,8 +1011,10 @@ export async function processOfflineQueue(): Promise<{
             await withTimeout(setDoc(pubRef, safeData), 8000);
           }
           processedCount++;
+          saveStoredOfflineQueue([...remainingQueue, ...queue.slice(idx + 1)]);
         } else {
           processedCount++;
+          saveStoredOfflineQueue([...remainingQueue, ...queue.slice(idx + 1)]);
         }
       }
     } catch (err) {
@@ -1251,6 +1270,18 @@ export async function autoReconcileAllLocalToCloud(
         });
         totalSynced += mergedList.length;
 
+        // Immediately remove uploaded collection queue entries from localStorage so synced items are not kept queued
+        const currentQ = getStoredOfflineQueue();
+        if (currentQ.length > 0) {
+          const prunedQ = currentQ.filter(q => {
+            if (q.status === 'blocked') return true;
+            return normalizeCollectionKey(q.type) !== collName;
+          });
+          if (prunedQ.length !== currentQ.length) {
+            saveStoredOfflineQueue(prunedQ);
+          }
+        }
+
         // For bilties: delta-sync public verifications & clean up deleted (#3)
         if (collName === 'bilties') {
           const pubDigest = getPublicBiltyDigestCache(uid);
@@ -1301,6 +1332,23 @@ export async function autoReconcileAllLocalToCloud(
           if (digestDirty) savePublicBiltyDigestCache(uid, pubDigest);
           if (deletedDirty) saveDeletedPublicBiltyCache(uid, pubDeleted);
 
+          // Clear uploaded public_bilty / delete_public_bilty entries from localStorage queue
+          const afterPubQ = getStoredOfflineQueue();
+          if (afterPubQ.length > 0) {
+            const prunedPubQ = afterPubQ.filter(q => {
+              if (q.status === 'blocked') return true;
+              if (q.type !== 'public_bilty' && q.type !== 'delete_public_bilty') return true;
+              const qData = q.data && typeof q.data === 'object' ? (q.data as Record<string, unknown>) : null;
+              const qNo = qData?.biltyNo ? String(qData.biltyNo).trim().toUpperCase() : '';
+              if (!qNo) return true;
+              if (q.type === 'public_bilty') return !pubDigest[qNo];
+              return !pubDeleted[qNo];
+            });
+            if (prunedPubQ.length !== afterPubQ.length) {
+              saveStoredOfflineQueue(prunedPubQ);
+            }
+          }
+
           try {
             const counterRef = doc(db, 'counters', 'biltyCounter');
             const counterSnap = await withTimeout(getDoc(counterRef), 5000).catch(() => null);
@@ -1329,27 +1377,38 @@ export async function autoReconcileAllLocalToCloud(
     }
 
     // 4. Reconcile Khata / Ledger
+    let khataBlockedCount = 0;
+    let khataRemainingCount = 0;
     try {
       const { fetchKhataFromFirestore, syncAllKhataToFirestore, processKhataDocQueue } = await import(
         './ledgerStorage'
       );
       await syncAllKhataToFirestore().catch(() => {});
       await fetchKhataFromFirestore().catch(() => {});
-      await processKhataDocQueue().catch(() => {});
+      const khataRes = await processKhataDocQueue().catch(() => ({ processed: 0, remaining: 0, blocked: 0 }));
+      khataBlockedCount = khataRes.blocked || 0;
+      khataRemainingCount = khataRes.remaining || 0;
     } catch (kErr) {
       console.warn('[KhataSync] reconciliation notice:', kErr);
     }
 
+    const totalBlocked = queueResult.blocked + khataBlockedCount;
     safeStorage.setItem('ah-last-sync-time', new Date().toISOString());
-    if (syncErrors === 0 && queueResult.remaining === 0 && queueResult.blocked === 0) {
+    if (syncErrors === 0 && getStoredOfflineQueue().length === 0 && khataRemainingCount === 0 && totalBlocked === 0) {
       safeStorage.removeItem('ah-last-sync-error');
     }
+
+    // Remove uploaded legacy/staging/empty-guest keys cleanly from localStorage once cloud sync succeeds
+    if (syncErrors === 0 && totalBlocked === 0) {
+      cleanupUploadedLegacyAndStagingKeys(uid);
+    }
+
     notifySyncListeners();
 
     return {
-      synced: syncErrors === 0 && queueResult.blocked === 0,
+      synced: syncErrors === 0 && totalBlocked === 0,
       count: totalSynced,
-      blockedCount: queueResult.blocked
+      blockedCount: totalBlocked
     };
   })();
 
@@ -2036,7 +2095,21 @@ export function initAmbientSyncEngine(): () => void {
 export function getSyncStatus(): SyncStatusState {
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
   const queue = getStoredOfflineQueue();
-  const blockedCount = queue.filter(q => q.status === 'blocked').length;
+  const activeScope = getActiveUserScope();
+  let khataQueue: Array<{ id?: string; timestamp?: string; status?: string; lastError?: string; retryCount?: number; collectionPath?: string }> = [];
+  try {
+    const rawKhataQueue = safeStorage.getItem(getScopedStorageKey('dd_khata_doc_queue_v2', activeScope));
+    if (rawKhataQueue) {
+      const parsed = JSON.parse(rawKhataQueue);
+      if (Array.isArray(parsed)) khataQueue = parsed;
+    }
+  } catch {
+    khataQueue = [];
+  }
+
+  const blockedCount =
+    queue.filter(q => q.status === 'blocked').length +
+    khataQueue.filter(q => q.status === 'blocked').length;
   const lastSyncTime = safeStorage.getItem('ah-last-sync-time');
   const lastError = safeStorage.getItem('ah-last-sync-error');
   const errorLogs = getErrorLogs();
@@ -2052,7 +2125,7 @@ export function getSyncStatus(): SyncStatusState {
 
   return {
     status,
-    pendingCount: queue.length,
+    pendingCount: queue.length + khataQueue.length,
     blockedCount,
     lastSyncTime,
     lastError,
@@ -2063,6 +2136,15 @@ export function getSyncStatus(): SyncStatusState {
           id: String(q.id),
           timestamp: q.timestamp,
           message: q.lastError || `Blocked syncing ${q.type}`,
+          retryCount: q.retryCount,
+          status: 'blocked' as const
+        })),
+      ...khataQueue
+        .filter(q => q.status === 'blocked' && q.lastError)
+        .map((q, idx) => ({
+          id: String(q.id || `khata_blocked_${idx}`),
+          timestamp: q.timestamp || new Date().toISOString(),
+          message: q.lastError || `Blocked syncing ${q.collectionPath || 'khata'}`,
           retryCount: q.retryCount,
           status: 'blocked' as const
         })),

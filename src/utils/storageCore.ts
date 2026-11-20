@@ -296,7 +296,10 @@ export function importGuestDataIntoScope(
     for (const baseKey of ARRAY_COLLECTION_KEYS) {
       const guestKey = getScopedStorageKey(baseKey, 'guest');
       const guestItems = readJsonArraySafe(safeStorage.getItem(guestKey));
-      if (guestItems.length === 0) continue;
+      if (guestItems.length === 0) {
+        safeStorage.removeItem(guestKey);
+        continue;
+      }
 
       const targetKey = getScopedStorageKey(baseKey, targetScope);
       const targetItems = readJsonArraySafe(safeStorage.getItem(targetKey));
@@ -320,13 +323,30 @@ export function importGuestDataIntoScope(
         safeStorage.setItem(targetKey, JSON.stringify([...targetItems, ...added]));
         mergedCount += added.length;
       }
-      safeStorage.setItem(guestKey, '[]');
+      safeStorage.removeItem(guestKey);
     }
+
+    // Move any pending guest offline queue items into signed-in scope so sync uploads and deletes them cleanly
+    const guestQueueKey = getScopedStorageKey('offline-queue', 'guest');
+    const guestQueue = readJsonArraySafe(safeStorage.getItem(guestQueueKey));
+    if (guestQueue.length > 0) {
+      const targetQueueKey = getScopedStorageKey('offline-queue', targetScope);
+      const targetQueue = readJsonArraySafe(safeStorage.getItem(targetQueueKey));
+      const existingIds = new Set(targetQueue.map(q => String(q?.id ?? getMergeItemKey(q))));
+      const extraQueue = guestQueue.filter(q => q && typeof q === 'object' && !existingIds.has(String(q.id ?? getMergeItemKey(q))));
+      if (extraQueue.length > 0) {
+        safeStorage.setItem(targetQueueKey, JSON.stringify([...targetQueue, ...extraQueue]));
+      }
+    }
+    safeStorage.removeItem(guestQueueKey);
 
     for (const kKey of KHATA_BASE_KEYS) {
       const guestKey = getScopedStorageKey(kKey, 'guest');
       const guestRaw = safeStorage.getItem(guestKey);
-      if (!guestRaw || guestRaw === '[]') continue;
+      if (!guestRaw || guestRaw === '[]') {
+        safeStorage.removeItem(guestKey);
+        continue;
+      }
 
       const targetKey = getScopedStorageKey(kKey, targetScope);
       if (kKey === 'dd_khata_settings_v2') {
@@ -338,7 +358,10 @@ export function importGuestDataIntoScope(
       }
 
       const guestArr = readJsonArraySafe(guestRaw);
-      if (guestArr.length === 0) continue;
+      if (guestArr.length === 0) {
+        safeStorage.removeItem(guestKey);
+        continue;
+      }
       const targetArr = readJsonArraySafe(safeStorage.getItem(targetKey));
       const existingKeys = new Set(targetArr.map(getMergeItemKey));
       const added = guestArr.filter(it => it && typeof it === 'object' && !existingKeys.has(getMergeItemKey(it)));
@@ -346,20 +369,74 @@ export function importGuestDataIntoScope(
         safeStorage.setItem(targetKey, JSON.stringify([...targetArr, ...added]));
         mergedCount += added.length;
       }
-      safeStorage.setItem(guestKey, '[]');
+      safeStorage.removeItem(guestKey);
     }
   } else {
-    // Discard guest copies cleanly
+    // Discard all guest storage keys cleanly
     for (const baseKey of ARRAY_COLLECTION_KEYS) {
-      safeStorage.setItem(getScopedStorageKey(baseKey, 'guest'), '[]');
+      safeStorage.removeItem(getScopedStorageKey(baseKey, 'guest'));
     }
     for (const kKey of KHATA_BASE_KEYS) {
       safeStorage.removeItem(getScopedStorageKey(kKey, 'guest'));
     }
   }
 
+  for (const scalarKey of SCALAR_SCOPED_KEYS) {
+    safeStorage.removeItem(getScopedStorageKey(scalarKey, 'guest'));
+  }
+  safeStorage.removeItem(`${V3_MIGRATION_FLAG_PREFIX}guest`);
+  safeStorage.removeItem('wg_v3_premigration_snapshot_guest');
   safeStorage.removeItem(`wg_v3_guest_import_deferred_${targetScope}`);
   return { mergedCount };
+}
+
+/**
+ * Removes staging pre-migration snapshots and legacy duplicated localStorage keys
+ * after a signed-in scope has cleanly migrated and uploaded to Firestore.
+ */
+export function cleanupUploadedLegacyAndStagingKeys(targetScope: string): string[] {
+  if (!targetScope || targetScope === 'guest') return [];
+  const removed: string[] = [];
+  const tryRemove = (k: string | null) => {
+    if (!k) return;
+    if (safeStorage.getItem(k) !== null) {
+      safeStorage.removeItem(k);
+      removed.push(k);
+    }
+  };
+
+  tryRemove(`wg_v3_premigration_snapshot_${targetScope}`);
+  tryRemove('wg_v3_premigration_snapshot_guest');
+
+  // Remove stale guest offline queue if guest scope has no pending records left
+  if (!inspectGuestScopeData().hasGuestData) {
+    tryRemove(getScopedStorageKey('offline-queue', 'guest'));
+  }
+
+  if (safeStorage.getItem(`${V3_MIGRATION_FLAG_PREFIX}${targetScope}`) === '1') {
+    const localEmail = safeStorage.getItem('ah-gmail-user');
+    const emailScope = localEmail ? localEmail.replace(/[^a-zA-Z0-9_]/g, '_') : null;
+
+    for (const baseKey of [...ARRAY_COLLECTION_KEYS, ...SCALAR_SCOPED_KEYS]) {
+      tryRemove(`ah-${baseKey}`);
+      tryRemove(`ah-${baseKey}-data`);
+      tryRemove(baseKey);
+      if (emailScope && emailScope !== targetScope) {
+        tryRemove(getScopedStorageKey(baseKey, emailScope));
+      }
+    }
+    tryRemove('ah-driver-dost-counter');
+
+    for (const kKey of KHATA_BASE_KEYS) {
+      tryRemove(`${kKey}_${targetScope}`);
+      tryRemove(kKey);
+      if (emailScope && emailScope !== targetScope) {
+        tryRemove(getScopedStorageKey(kKey, emailScope));
+      }
+    }
+  }
+
+  return removed;
 }
 
 /**

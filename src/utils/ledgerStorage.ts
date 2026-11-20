@@ -30,10 +30,11 @@ import {
   getStoredBilties,
   setScopedItem
 } from './storage';
-import { getActiveUserScope, safeStorage } from './storageCore';
+import { getActiveUserScope, removeScopedItem, safeStorage } from './storageCore';
 import {
   getTombstones,
   mergeTombstoneMaps,
+  notifySyncListeners,
   saveTombstones,
   TombstoneMap
 } from './storageSync';
@@ -693,7 +694,12 @@ function getStoredKhataQueue(): KhataDocQueueItem[] {
 }
 
 function saveStoredKhataQueue(queue: KhataDocQueueItem[]): void {
-  setJson(KHATA_STORAGE_KEYS.OFFLINE_QUEUE, queue);
+  if (queue.length === 0) {
+    removeScopedItem(KHATA_STORAGE_KEYS.OFFLINE_QUEUE);
+  } else {
+    setJson(KHATA_STORAGE_KEYS.OFFLINE_QUEUE, queue);
+  }
+  notifySyncListeners();
 }
 
 export function getKhataQueueStats(): {
@@ -772,7 +778,8 @@ export async function processKhataDocQueue(): Promise<{
   let blocked = 0;
   const now = Date.now();
 
-  for (const item of queue) {
+  for (let i = 0; i < queue.length; i++) {
+    const item = queue[i];
     if (item.nextRetryAt && item.nextRetryAt > now && item.status !== 'blocked') {
       remaining.push(item);
       continue;
@@ -812,6 +819,8 @@ export async function processKhataDocQueue(): Promise<{
         await setDoc(ref, item.data || {}, { merge: true });
       }
       processed++;
+      // Immediately delete this uploaded item from localStorage queue
+      saveStoredKhataQueue([...remaining, ...queue.slice(i + 1)]);
     } catch (err: unknown) {
       const nextRetryCount = (item.retryCount || 0) + 1;
       const permDenied = isPermissionDeniedSyncError(err);
@@ -1269,6 +1278,8 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
   };
   const ops: PendingOp[] = [];
 
+  const confirmedSyncedPaths = new Set<string>();
+
   const settingsPayload = {
     ...settings,
     tombstones: collectAllKhataTombstones(getActiveUserScope()),
@@ -1283,6 +1294,8 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
       data: settingsPayload,
       kind: 'other'
     });
+  } else {
+    confirmedSyncedPaths.add('khataSettings/config');
   }
 
   for (const acc of accounts) {
@@ -1296,6 +1309,8 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
         data: acc as unknown as Record<string, unknown>,
         kind: 'account'
       });
+    } else {
+      confirmedSyncedPaths.add(pathKey);
     }
   }
 
@@ -1310,6 +1325,8 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
         data: entry as unknown as Record<string, unknown>,
         kind: 'entry'
       });
+    } else {
+      confirmedSyncedPaths.add(pathKey);
     }
   }
 
@@ -1324,6 +1341,8 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
         data: cash as unknown as Record<string, unknown>,
         kind: 'cash'
       });
+    } else {
+      confirmedSyncedPaths.add(pathKey);
     }
   }
 
@@ -1341,59 +1360,79 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
           data: item as unknown as Record<string, unknown>,
           kind: 'other'
         });
+      } else {
+        confirmedSyncedPaths.add(pathKey);
       }
     }
-  }
-
-  if (ops.length === 0) {
-    return { pushedAccounts: 0, pushedEntries: 0, pushedCash: 0 };
   }
 
   let pushedAccounts = 0;
   let pushedEntries = 0;
   let pushedCash = 0;
 
-  const writeBatchFn = (firestoreModule as unknown as { writeBatch?: typeof firestoreModule.writeBatch }).writeBatch;
-  if (typeof writeBatchFn === 'function') {
-    for (let i = 0; i < ops.length; i += 400) {
-      const chunk = ops.slice(i, i + 400);
-      try {
-        const batch = writeBatchFn(db);
-        for (const op of chunk) {
-          batch.set(op.ref, op.data, { merge: true });
-        }
-        await batch.commit();
-        for (const op of chunk) {
-          nextDigest[op.pathKey] = op.digest;
-          if (op.kind === 'account') pushedAccounts++;
-          else if (op.kind === 'entry') pushedEntries++;
-          else if (op.kind === 'cash') pushedCash++;
-        }
-      } catch {
-        for (const op of chunk) {
-          try {
-            await setDoc(op.ref, op.data, { merge: true });
+  if (ops.length > 0) {
+    const writeBatchFn = (firestoreModule as unknown as { writeBatch?: typeof firestoreModule.writeBatch }).writeBatch;
+    if (typeof writeBatchFn === 'function') {
+      for (let i = 0; i < ops.length; i += 400) {
+        const chunk = ops.slice(i, i + 400);
+        try {
+          const batch = writeBatchFn(db);
+          for (const op of chunk) {
+            batch.set(op.ref, op.data, { merge: true });
+          }
+          await batch.commit();
+          for (const op of chunk) {
             nextDigest[op.pathKey] = op.digest;
+            confirmedSyncedPaths.add(op.pathKey);
             if (op.kind === 'account') pushedAccounts++;
             else if (op.kind === 'entry') pushedEntries++;
             else if (op.kind === 'cash') pushedCash++;
-          } catch {}
+          }
+        } catch {
+          for (const op of chunk) {
+            try {
+              await setDoc(op.ref, op.data, { merge: true });
+              nextDigest[op.pathKey] = op.digest;
+              confirmedSyncedPaths.add(op.pathKey);
+              if (op.kind === 'account') pushedAccounts++;
+              else if (op.kind === 'entry') pushedEntries++;
+              else if (op.kind === 'cash') pushedCash++;
+            } catch {}
+          }
         }
       }
+    } else {
+      for (const op of ops) {
+        try {
+          await setDoc(op.ref, op.data, { merge: true });
+          nextDigest[op.pathKey] = op.digest;
+          confirmedSyncedPaths.add(op.pathKey);
+          if (op.kind === 'account') pushedAccounts++;
+          else if (op.kind === 'entry') pushedEntries++;
+          else if (op.kind === 'cash') pushedCash++;
+        } catch {}
+      }
     }
-  } else {
-    for (const op of ops) {
-      try {
-        await setDoc(op.ref, op.data, { merge: true });
-        nextDigest[op.pathKey] = op.digest;
-        if (op.kind === 'account') pushedAccounts++;
-        else if (op.kind === 'entry') pushedEntries++;
-        else if (op.kind === 'cash') pushedCash++;
-      } catch {}
+
+    saveKhataSyncDigest(user.uid, nextDigest);
+  }
+
+  // Delete queued upsert items from localStorage that are confirmed synced
+  const queued = getStoredKhataQueue();
+  if (queued.length > 0) {
+    const remainingQueue = queued.filter(q => {
+      if (q.status === 'blocked' || q.action !== 'upsert') return true;
+      const qPath =
+        q.collectionPath === 'entries' && q.subPath
+          ? `ledgerAccounts/${q.subPath}/entries/${q.docId}`
+          : `${q.collectionPath}/${q.docId}`;
+      return !confirmedSyncedPaths.has(qPath);
+    });
+    if (remainingQueue.length !== queued.length) {
+      saveStoredKhataQueue(remainingQueue);
     }
   }
 
-  saveKhataSyncDigest(user.uid, nextDigest);
   return { pushedAccounts, pushedEntries, pushedCash };
 }
 

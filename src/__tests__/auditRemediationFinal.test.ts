@@ -90,6 +90,25 @@ vi.mock('firebase/firestore', () => {
     deleteDoc: async (ref: { path: string }) => {
       testMockState.docs.delete(ref.path);
     },
+    writeBatch: () => {
+      const ops: Array<() => void> = [];
+      return {
+        set: (ref: { path: string }, data: Record<string, unknown>, opts?: { merge?: boolean }) => {
+          ops.push(() => {
+            const prev = opts?.merge ? testMockState.docs.get(ref.path) || {} : {};
+            testMockState.docs.set(ref.path, { ...prev, ...data });
+          });
+        },
+        delete: (ref: { path: string }) => {
+          ops.push(() => {
+            testMockState.docs.delete(ref.path);
+          });
+        },
+        commit: async () => {
+          for (const fn of ops) fn();
+        }
+      };
+    },
     runTransaction: async () => 1001,
     onSnapshot: () => () => {}
   };
@@ -118,16 +137,26 @@ import { PUBLIC_APP_SHARE_URL, resolvePublicAppShareUrl } from '../utils/externa
 import { generateFullFleetBackup } from '../utils/backupService';
 import {
   deleteLedgerAccount,
+  enqueueKhataDocSync,
   fetchKhataFromFirestore,
   getAllCashEntries,
   getAllLedgerEntries,
+  getKhataQueueStats,
   getLedgerAccounts,
+  processKhataDocQueue,
   saveOrUpdateCashEntry,
   saveOrUpdateLedgerAccount,
   saveOrUpdateLedgerEntry
 } from '../utils/ledgerStorage';
-import { restoreFullBackupFromJson } from '../utils/storage';
-import { runOneTimeV2ToV3Migration } from '../utils/storageCore';
+import { DEFAULT_COMPANY_PROFILE, restoreFullBackupFromJson } from '../utils/storage';
+import { importGuestDataIntoScope, runOneTimeV2ToV3Migration } from '../utils/storageCore';
+import {
+  autoReconcileAllLocalToCloud,
+  getStoredOfflineQueue,
+  processOfflineQueue,
+  saveStoredOfflineQueue,
+  saveStoredTrips
+} from '../utils/storageSync';
 
 function setupBrowserEnv(loc?: Partial<Location>) {
   const store: Record<string, string> = {};
@@ -364,5 +393,154 @@ describe('Final A-to-Z Audit Remediation Regressions', () => {
         /\bwindow\.(alert|confirm|open)\s*\(/
       );
     }
+  });
+
+  it('uses canonical "نزد 466 چوک" instead of "نزدیک" across app defaults, UI, and public docs', () => {
+    expect(DEFAULT_COMPANY_PROFILE.headOfficeUr).toContain('نزد 466 چوک');
+    expect(DEFAULT_COMPANY_PROFILE.headOfficeUr).not.toContain('نزدیک');
+
+    const rootDir = process.cwd();
+    const scanDirs = [path.join(rootDir, 'src'), path.join(rootDir, 'public')];
+    const extraFiles = ['index.html', 'README.md', 'CHANGELOG.md'].map(f => path.join(rootDir, f));
+    const targets: string[] = [...extraFiles.filter(f => fs.existsSync(f))];
+    const collectFiles = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name !== '__tests__' && entry.name !== 'tesseract') collectFiles(full);
+        } else if (/\.(ts|tsx|html|md|json|js)$/.test(entry.name)) {
+          targets.push(full);
+        }
+      }
+    };
+    scanDirs.forEach(collectFiles);
+
+    for (const filePath of targets) {
+      const text = fs.readFileSync(filePath, 'utf8');
+      expect(text, `${path.relative(rootDir, filePath)} must not contain نزدیک`).not.toContain('نزدیک');
+    }
+  });
+
+  it('deletes uploaded offline queues, Khata queues, guest keys, pre-migration snapshots, and legacy duplicates from localStorage upon sync while retaining active scoped cache', async () => {
+    const uid = 'uid_owner_test';
+
+    // 1. Offline queue items + legacy queue keys + pre-migration snapshot + legacy duplicate key
+    saveStoredTrips([
+      {
+        id: 501,
+        name: 'Samundri -> Faisalabad',
+        fuelType: 'Diesel',
+        fuelTypeRaw: 'diesel',
+        dist: 50,
+        consumed: '12.50',
+        fuelCost: 3500,
+        toll: 0,
+        loading: 0,
+        driver: 0,
+        other: 0,
+        total: 3500,
+        totalIncome: 12000,
+        netProfit: 8500,
+        isReturn: false,
+        date: '2026-11-20',
+        time: '10:00 AM',
+        month: '2026-11'
+      }
+    ]);
+    saveStoredOfflineQueue([
+      {
+        id: 9001,
+        type: 'trip',
+        data: { id: 501, name: 'Samundri -> Faisalabad' },
+        timestamp: '10:00 AM',
+        status: 'pending'
+      }
+    ]);
+    globalThis.localStorage.setItem('ah-offline-queue', JSON.stringify([{ id: 1 }]));
+    globalThis.localStorage.setItem('offline-queue', JSON.stringify([{ id: 2 }]));
+    globalThis.localStorage.setItem(`wg_v3_premigration_snapshot_${uid}`, '{"capturedAt":"2026-11-20"}');
+    globalThis.localStorage.setItem('ah-trips', JSON.stringify([{ id: 501 }]));
+
+    // 2. Enqueue Khata doc sync item
+    const acc = saveOrUpdateLedgerAccount({
+      kind: 'party',
+      name: 'Okara Mills',
+      phone: '03005370443',
+      openingAmount: 1000
+    });
+    enqueueKhataDocSync({
+      action: 'upsert',
+      collectionPath: 'ledgerAccounts',
+      docId: acc.id,
+      data: acc as unknown as Record<string, unknown>
+    });
+    expect(getKhataQueueStats().pendingCount).toBe(1);
+
+    // Process queues directly first
+    const offlineRes = await processOfflineQueue();
+    expect(offlineRes).toEqual({
+      processed: 1,
+      remaining: 0,
+      blocked: 0,
+      errors: []
+    });
+    expect(globalThis.localStorage.getItem(`wg_v2_${uid}_offline-queue`)).toBeNull();
+    expect(globalThis.localStorage.getItem('ah-offline-queue')).toBeNull();
+    expect(globalThis.localStorage.getItem('offline-queue')).toBeNull();
+
+    const khataRes = await processKhataDocQueue();
+    expect(khataRes.processed).toBe(1);
+    expect(khataRes.remaining).toBe(0);
+    expect(globalThis.localStorage.getItem(`wg_v2_${uid}_dd_khata_doc_queue_v2`)).toBeNull();
+
+    // Reconcile cleans up pre-migration snapshot & legacy ah-* duplicate keys, keeping active cache intact
+    const reconcileRes = await autoReconcileAllLocalToCloud(uid);
+    expect(reconcileRes.synced).toBe(true);
+    expect(globalThis.localStorage.getItem(`wg_v3_premigration_snapshot_${uid}`)).toBeNull();
+    expect(globalThis.localStorage.getItem('ah-trips')).toBeNull();
+    expect(globalThis.localStorage.getItem(`wg_v2_${uid}_trips`)).not.toBeNull();
+
+    // 3. Guest merge migrates queued action then completely deletes wg_v2_guest_* keys
+    globalThis.localStorage.setItem(
+      'wg_v2_guest_trips',
+      JSON.stringify([
+        {
+          id: 777,
+          name: 'Guest Local Trip',
+          distance: 100,
+          mileage: 5,
+          fuelPrice: 280,
+          fuelType: 'Diesel',
+          toll: 0,
+          otherExp: 0,
+          freight: 20000,
+          fuelCost: 5600,
+          totalCost: 5600,
+          netProfit: 14400,
+          date: '2026-11-20',
+          updatedAt: '2026-11-20T12:00:00.000Z'
+        }
+      ])
+    );
+    globalThis.localStorage.setItem(
+      'wg_v2_guest_offline-queue',
+      JSON.stringify([
+        { id: 888, type: 'trip', data: { id: 777 }, timestamp: '12:00 PM', status: 'pending' }
+      ])
+    );
+
+    const mergeOut = importGuestDataIntoScope(uid, 'merge');
+    expect(mergeOut.mergedCount).toBe(1);
+    expect(globalThis.localStorage.getItem('wg_v2_guest_trips')).toBeNull();
+    expect(globalThis.localStorage.getItem('wg_v2_guest_offline-queue')).toBeNull();
+    expect(getStoredOfflineQueue().length).toBe(1);
+
+    await processOfflineQueue();
+    expect(globalThis.localStorage.getItem(`wg_v2_${uid}_offline-queue`)).toBeNull();
+
+    // Discard also deletes guest keys cleanly without leaving '[]'
+    globalThis.localStorage.setItem('wg_v2_guest_vehicles', JSON.stringify([{ id: 1, reg: 'FSD-999' }]));
+    importGuestDataIntoScope(uid, 'discard');
+    expect(globalThis.localStorage.getItem('wg_v2_guest_vehicles')).toBeNull();
   });
 });
