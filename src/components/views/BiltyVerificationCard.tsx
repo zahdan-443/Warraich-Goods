@@ -14,6 +14,7 @@ import {
   Share2
 } from 'lucide-react';
 import { getBiltyVerificationUrl } from '../../utils/biltyHelpers';
+import { openWhatsAppMessage } from '../../utils/externalLinks';
 
 interface BiltyVerificationCardProps {
   bilty: Partial<PublicBiltyVerification> & Partial<BiltyRecord>;
@@ -45,17 +46,23 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
 
   const verificationUrl = getBiltyVerificationUrl(biltyNo);
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(verificationUrl);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
+  const handleCopyLink = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(verificationUrl);
+      }
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch {
+      // Clipboard unavailable in restricted context
+    }
   };
 
   const handleWhatsAppShare = () => {
     const text = isUrdu
       ? `ورائچ گڈز ٹرانسپورٹ کمپنی - تصدیق شدہ کنسائنمنٹ دستاویز نمبر ${biltyNo}\nتاریخ: ${biltyDate}\nگاڑی نمبر: ${vehicleNo}\nروٹ: ${origin} تا ${destination}\nمال: ${goodsDescription} (${weightOrQty})\nتصدیقی لنک:\n${verificationUrl}`
       : `Warraich Goods Transport Co. - Verified Consignment Document #${biltyNo}\nDate: ${biltyDate}\nVehicle: ${vehicleNo}\nRoute: ${origin} to ${destination}\nGoods: ${goodsDescription} (${weightOrQty})\nVerification Link:\n${verificationUrl}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    openWhatsAppMessage(text);
   };
 
   return (

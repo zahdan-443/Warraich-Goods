@@ -4,11 +4,11 @@
 
 # 🚚 Driver Dost | ڈرائیور دوست
 
-### Your Road-Freight Companion for Pakistan
-### پاکستان کے ڈرائیورز اور ٹرانسپورٹرز کے لیے ایک مفید ساتھی
+### Your Road-Freight & Fleet Companion for Pakistan
+### پاکستان کے ڈرائیورز اور ٹرانسپورٹرز کے لیے ایک مکمل ڈیجیٹل ساتھی
 
-**Plan smarter. Track expenses. Drive informed.**  
-**منصوبہ بندی کریں، اخراجات سنبھالیں، باخبر سفر کریں۔**
+**Plan smarter. Track expenses. Manage fleet accounts.**  
+**منصوبہ بندی کریں، اخراجات سنبھالیں، گاڑیوں اور کھاتوں کا مکمل حساب رکھیں۔**
 
 ![Free App](https://img.shields.io/badge/App-Free-198754?style=for-the-badge)
 ![Languages](https://img.shields.io/badge/Languages-Urdu%20%7C%20English-1e3a68?style=for-the-badge)
@@ -28,14 +28,17 @@ Samundri, Punjab, Pakistan
 
 <div align="center">
 
-### Home Screen
+### Home Dashboard | مین ڈیش بورڈ
 <img src="assets/home-screen.png" alt="Driver Dost home screen" width="280">
 
-### Weather & Fuel Tools
+### Live Weather & OGRA/PSO Fuel Rates | موسم اور پیٹرولیم ریٹس
 <img src="assets/weather-fuel-screen.png" alt="Driver Dost weather and fuel screen" width="280">
 
-### Weather & Fuel Details
-<img src="assets/weather-fuel-details.png" alt="Driver Dost weather and fuel details" width="280">
+### Route Weather & Live Navigation | روٹ موسم اور نیویگیشن
+<img src="assets/weather-fuel-details.png" alt="Driver Dost weather and route details" width="280">
+
+### Unified Ledger & Udhar Book | لین دین اور ادھار کھاتہ
+<img src="assets/udhar-book.png" alt="Driver Dost Udhar Book and Unified Ledger" width="280">
 
 </div>
 
@@ -43,55 +46,63 @@ Samundri, Punjab, Pakistan
 
 ## 👋 About Driver Dost
 
-**Driver Dost (ڈرائیور دوست)** is a free, bilingual, offline-first road-freight and fleet utility app made for drivers, truck owners, fleet operators and transport managers in Pakistan.
+**Driver Dost (ڈرائیور دوست)** is a free, bilingual, offline-first road-freight and fleet management app built for drivers, truck owners, fleet operators and transport managers in Pakistan.
 
-From estimating trip expenses and checking fuel rates to keeping vehicle records and reviewing road-hazard reports, Driver Dost brings practical transport tools together in one place. Core tools can be used in **Guest Mode without signing in**.
+From calculating trip fuel expenses and NHA toll estimates to managing party/driver ledgers (`لین دین، ادھار`), per-vehicle accounts (`گاڑی حساب`), profit & loss (`گاڑی P&L`), live weather advisories, and quick access to MTMIS, DLIMS, and e-Challan verification portals, Driver Dost brings daily transport operations into one clean Urdu/English interface. Core tools work seamlessly in **Guest Mode without signing in**.
 
-> **Independent app notice:** Driver Dost is privately owned and published by Warraich Goods Transport Company. It is **not a government app** and is not affiliated with any government body.
+> **Independent app notice:** Driver Dost is privately owned and published by **Warraich Goods Transport Company**. It is **not a government app** and does not represent or affiliate with any government agency, Excise department, Punjab Police, or Safe Cities Authority.
 
-## ✨ Features
+---
 
-| Feature | Description |
+## ✨ Key Features
+
+| Module / Feature | Description |
 |---|---|
-| 🧮 **Trip Expense Calculator** | Estimate fuel use and trip costs, with a PKR breakdown, return-trip option and additional route costs. |
-| 🛣️ **Toll & Route Estimates** | Review estimated motorway/highway tolls and compare routes where multiple real route options are available. |
-| 🌦️ **Weather Along the Route** | Check weather information and cargo-risk guidance for selected locations or a route. |
-| ⛽ **Fuel Rate Reference** | View reference fuel prices to help plan trip expenses. Confirm current prices with official sources or fuel stations. |
-| 🧭 **Navigation Assistance** | Optional foreground-location assistance for trip navigation. Location is not tracked in the background. |
-| ⚠️ **Road Hazard Reports** | Share driver-reported hazards such as checkpoints, flooding, accidents, road closures and traffic. Reports stop displaying after 24 hours. |
-| 🚛 **Fleet Records** | Keep vehicle, driver, fuel-log and per-vehicle expense records. |
-| 📅 **Document Expiry Reminders** | Set reminders for registration, permits, fitness certificates and driving licences at 30, 15 and 7 days before expiry. |
-| 🎥 **Optional Dashcam** | Manually start recording with a persistent recording notification. Recordings stay on the device. |
-| 📄 **Document Tools** | Scan documents using OCR, export PDFs and share documents through WhatsApp. Sensitive details can be masked in exports. |
-| 🔗 **Useful Portal Links** | Quick links to third-party vehicle, licence and e-challan portals, including MTMIS, DLIMS and PSCA where available. |
-| 🌐 **Urdu & English** | Bilingual interface with Urdu right-to-left layout support. |
-| 📶 **Offline-First Use** | Core tools are designed to work without an internet connection. Online services and cloud sync require connectivity. |
-| 👤 **Guest Mode** | Start using core tools without creating an account or signing in. |
+| 🏠 **8-Module Home Dashboard** | Quick bilingual access to **لین دین، ادھار**, **سفر خرچہ**, **ٹول پلازہ**, **گاڑی حساب**, **گاڑی رجسٹریشن معلومات**, **نقشہ و موسم**, **چالان چیک کریں**, and **لائسنس چیک کریں**. |
+| 📒 **Unified Ledger (لین دین و حساب کتاب)** | Track payables (`آپ نے دینا ہے`) and receivables (`آپ نے لینا ہے`) across parties (`کھاتہ دار`), staff (`ملازمین`), bills/invoices (`بلز/انوائس`), daily expenses (`روزمرہ خرچ`), receiving points (`ریسیونگ پوائنٹ`), and ledger reports (`رپورٹس`). |
+| 🚛 **Vehicle Khata & P&L (گاڑی حساب کھاتہ)** | Manage per-vehicle revenue (`حاصل شدہ آمدن و کرایہ جات` for outbound & return freight), trip expenses, daily logs (`روزنامچہ`), and **Vehicle Profit & Loss (`گاڑی P&L`)** by registration number. |
+| 🧮 **Trip Expense Calculator (ٹرپ خرچ کیلکولیٹر)** | Calculate route distance (`KM`), fuel consumption (`KM/L`), current diesel/fuel cost (`PKR`), route comparisons (`کم خرچ بمقابلہ تیز ترین`), and maintain a trip diary (`سفر ڈائری`). |
+| 🛣️ **NHA Toll Plaza Calculator (ٹول پلازہ کیلکولیٹر)** | Estimate route-based NHA tolls by vehicle category (`Cat-1` to heavy categories) with **M-Tag Active** status and 50% non-M-Tag cash surcharge visibility. |
+| 🌦️ **Live Route Weather & Navigation (نقشہ و موسم)** | View city weather, feels-like temperature, humidity, wind speed, visibility, corridor station forecasts, cargo safety advisories (`کلیئر روٹ`), road hazard alerts (`خطرہ رپورٹ`), Google Maps handoff, and WhatsApp location sharing. |
+| ⛽ **OGRA / PSO Fuel Rate Monitor** | Check reference prices per litre/kg for **Petrol (PMG)**, **Diesel (HSD)**, **Light Diesel (LDO)**, **Altron 97**, **CNG**, and **Kerosene** with GPS or manual city selection. |
+| 🔗 **MTMIS, Licence & E-Challan Portals** | Direct in-app guide and quick links to official verification portals such as **MTMIS Excise** (`mtmis.excise.punjab.gov.pk`), driving licence verification, and traffic e-challan portals. |
+| 📅 **Document Expiry Reminders** | Set reminders for vehicle registration, route permits, fitness certificates, and driving licences at 30, 15, and 7 days before expiry. |
+| 🎥 **Optional Dashcam & Document Tools** | Optional local dashcam recording with persistent notification, OCR document scanning, PDF export, sensitive-data masking, and WhatsApp sharing. |
+| 🌐 **Urdu RTL & English Toggle** | Designed primarily for effortless **Urdu right-to-left (RTL)** usability with instant one-tap switching between Urdu and English (`EN`). |
+| 📶 **Offline-First & Guest Mode** | Core calculators, ledgers, and vehicle records work offline on your device without mandatory login; optional Google Sign-In enables cloud backup. |
 
-*Features and online data availability may vary by device, connection, location and third-party service.*
+*Features and third-party online data availability may vary by device, connection, location, and external portal uptime.*
+
+---
 
 ## 🔒 Privacy at a Glance
 
-- **Guest Mode:** records remain on the user's device.
-- **Google sign-in:** supported records can sync to the user's private Firebase account.
-- **Dashcam:** recordings are stored locally on the device and are not uploaded by the app.
-- **Location:** used only with permission while the app is open; manual city selection is available.
-- **Road hazards:** submitted reports may be visible to other signed-in users and are linked internally to the submitting account.
-- **No ads and no data selling:** Driver Dost does not display advertising or sell user data.
+- **Guest Mode:** Ledgers, trip calculations, and vehicle records remain stored locally on the user's device.
+- **Google Sign-In:** Supported records can sync securely to the user's private Firebase account.
+- **Dashcam:** Recordings stay locally on the device and are never uploaded by the app.
+- **Location:** Used only in the foreground with user permission for weather, route distance, and navigation assistance; manual city selection is always available.
+- **Road Hazards:** Submitted hazard reports (`خطرہ رپورٹ`) may be visible to other signed-in users for 24 hours and are linked internally to the submitting account.
+- **No Ads & No Data Selling:** Driver Dost contains no advertisements and does not sell user data.
 
 Read the [Privacy Policy](public/privacy.html) for full details and the [Terms & Conditions](public/terms.html) for usage rules and disclaimers.
 
+---
+
 ## 🌐 Languages | زبانیں
 
-Driver Dost supports **English and Urdu**, including right-to-left layout for Urdu screens.
+Driver Dost supports **Urdu (اردو)** with full right-to-left (RTL) layout and **English**, allowing drivers, munshis, and fleet owners to switch languages anytime from the top bar.
 
-ایپ اردو اور انگریزی دونوں زبانوں میں دستیاب ہے، تاکہ پاکستان کے ڈرائیورز اور ٹرانسپورٹرز اسے آسانی سے استعمال کر سکیں۔
+یہ ایپ مکمل اردو (RTL) اور انگریزی دونوں زبانوں میں دستیاب ہے تاکہ ڈرائیور حضرات اور ٹرانسپورٹ مالکان آسانی سے اپنے روزمرہ حساب کتاب اور سفر کی منصوبہ بندی کر سکیں۔
+
+---
 
 ## 📲 Platforms
 
-- **Web app:** [Open Driver Dost](https://zahdan-443.github.io/Warraich-Goods/)
-- **Android package:** `com.warraichgoods.driverdost`
-- **Android APK:** built through the repository's GitHub Actions workflow.
+- **Web App:** [Open Driver Dost](https://zahdan-443.github.io/Warraich-Goods/)
+- **Android Package:** `com.warraichgoods.driverdost`
+- **Android APK:** Built and released via the repository's GitHub Actions workflow.
+
+---
 
 ## 🧰 Technology Stack
 
@@ -100,13 +111,15 @@ Driver Dost supports **English and Urdu**, including right-to-left layout for Ur
 | React 19 | User interface |
 | TypeScript | Typed application code |
 | Vite | Development server and production build |
-| Tailwind CSS | Styling and responsive UI |
-| Firebase Authentication | Google sign-in |
+| Tailwind CSS | Styling and responsive mobile-first UI |
+| Firebase Authentication | Optional Google sign-in |
 | Cloud Firestore | Cloud data sync and storage |
-| Capacitor 8 | Android application integration |
-| Vitest | Automated tests |
-| GitHub Pages | Web app deployment |
+| Capacitor 8 | Android application wrapper and native capabilities |
+| Vitest | Automated unit and logic tests |
+| GitHub Pages | Web app hosting |
 | GitHub Actions | Automated Android APK build and release |
+
+---
 
 ## 🛠️ Run Locally
 
@@ -154,7 +167,9 @@ npm run validate
 npm run pipeline
 ```
 
-> **Firebase security & API key hardening:** Firebase Web API keys identify your Firebase project on the client; they are not server secrets. Restrict the browser API key in Google Cloud Console by HTTP referrers (`zahdan-443.github.io/*` and `localhost/*`), restrict Android keys by package name + SHA-1 (`com.warraichgoods.driverdost`), enable **Firebase App Check** (reCAPTCHA v3 / Play Integrity), and keep `firestore.rules` deployed. Never commit private keystores or service account credentials.
+> **Firebase security & API key hardening:** Restrict the browser API key in Google Cloud Console by HTTP referrers (`zahdan-443.github.io/*` and `localhost/*`), restrict Android keys by package name + SHA-1 (`com.warraichgoods.driverdost`), enable **Firebase App Check** (reCAPTCHA v3 / Play Integrity), and keep `firestore.rules` deployed. Never commit private keystores or service account credentials.
+
+---
 
 ## 🤖 Android APK Release
 
@@ -169,49 +184,57 @@ Configure these GitHub repository secrets before running a signed release build:
 | `ANDROID_KEY_ALIAS` | Key alias |
 | `ANDROID_KEY_PASSWORD` | Key password |
 
-### Release checklist
+### Release Checklist
 
-1. Back up the keystore and passwords securely in more than one safe place.
-2. Update the app version in `package.json`. The Android `versionCode` is derived from that version.
+1. Back up the keystore and passwords securely in more than one safe location.
+2. Update the app version in `package.json` (Android `versionCode` is derived from it).
 3. Run the Android APK Build & Release workflow.
 4. Check the build output and verify the signing certificate fingerprint.
 5. Register SHA-1 and SHA-256 fingerprints in Firebase for `com.warraichgoods.driverdost`, where required.
 
-**Important:** If the release keystore is lost, you may not be able to update existing installations signed with it. Never upload the keystore or passwords to the repository.
+**Important:** Never upload the keystore or passwords to the repository.
+
+---
 
 ## 🛣️ Roadmap
 
-Potential future improvements include:
+Potential future enhancements include:
 
-- Party and broker ledgers
-- Per-vehicle profit and loss reports
-- Vehicle maintenance reminders
-- Receipt scanning for vehicle expenses
+- Automated OCR receipt scanning directly into vehicle expense entries
+- Predictive maintenance & oil-change interval alerts by odometer/trip logs
+- Multi-branch fleet role permissions for dispatchers and accountants
+- Exportable monthly fleet summary statements (PDF / Excel)
 
 Roadmap items are plans, not guaranteed delivery dates.
 
+---
+
 ## 🛡️ Permissions
 
-| Permission | Why it may be needed |
+| Permission | Why It Is Needed |
 |---|---|
-| Internet / Network State | Weather, routing, fuel-rate references and optional cloud sync |
-| Foreground Location | Navigation assistance, nearby information and hazard reporting |
-| Camera | Document scanning and optional dashcam |
+| Internet / Network State | Live weather, route calculations, fuel-rate updates, portal links, and optional cloud sync |
+| Foreground Location | GPS city detection, route distance, navigation assistance, and hazard reporting |
+| Camera | Document scanning and optional dashcam recording |
 | Microphone | Audio recording when optional dashcam audio is enabled |
-| Notifications | Optional information digest and document-expiry reminders |
+| Notifications | Document expiry reminders and persistent recording indicator |
 
-You can manage permissions through device settings. Do not operate the app manually while driving.
+You can manage permissions anytime through device settings. Do not operate the app manually while driving.
+
+---
 
 ## 🏛️ Third-Party Services
 
 Driver Dost may use or link to:
 
 - **Google Firebase** — authentication and cloud sync
-- **Open-Meteo** — weather information
-- **OSRM** — route calculations
-- **MTMIS / DLIMS / PSCA portals** — external vehicle, licence and e-challan information where available
+- **Open-Meteo** — weather forecasts
+- **OSRM** — route distance and path calculations
+- **MTMIS / DLIMS / PSCA Portals** — external vehicle registration, driving licence, and e-challan verification portals
 
-These services are independently operated. Their availability, content, estimates and policies may change. Driver Dost does not represent any government agency. Verify official information with the relevant authority.
+These services are independently operated. Driver Dost does not represent any government agency. Always verify official records directly with the relevant authority.
+
+---
 
 ## 📬 Support & Contact
 
@@ -220,15 +243,19 @@ Samundri, Punjab, Pakistan
 
 - **Email:** [warraichgoods43@gmail.com](mailto:warraichgoods43@gmail.com)
 - **Phone:** +92 300 5370443
-- **Website:** [https://zahdan-443.github.io/Warraichgoodstransportcompany]
-- **Web app:** [zahdan-443.github.io/Warraich-Goods](https://zahdan-443.github.io/Warraich-Goods/)
+- **Website:** [https://zahdan-443.github.io/Warraichgoodstransportcompany](https://zahdan-443.github.io/Warraichgoodstransportcompany)
+- **Web App:** [zahdan-443.github.io/Warraich-Goods](https://zahdan-443.github.io/Warraich-Goods/)
 
-For privacy or data-deletion requests, email from the account email associated with your request and use the subject **`Driver Dost - Request`**.
+For privacy or data-deletion requests, email from the account email associated with your request with the subject **`Driver Dost - Request`**.
+
+---
 
 ## 📜 Legal
 
 - [Privacy Policy](public/privacy.html)
 - [Terms & Conditions](public/terms.html)
+
+---
 
 ## © Copyright
 

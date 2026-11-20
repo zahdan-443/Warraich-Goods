@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-1.3.1';
+const CACHE_NAME = 'driver-dost-1.3.1-r2';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const MAX_CACHED_TILES = 350;
 
@@ -38,9 +38,7 @@ const CORE_STATIC_ASSETS = [
   'safar-diary-icon.png',
   'scan-me-qr.png',
   'splash.png',
-  'warraich-card.png',
-  'bilty-official-icon.png',
-  'bilty-icon.png'
+  'warraich-card.png'
 ];
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
@@ -305,9 +303,9 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// 4. Background Sync: Auto-sync pending bilties and transport accounts when online
+// 4. Background Sync: Auto-sync pending documents and transport accounts when online
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-bilty-data' || event.tag === 'sync-offline-records' || event.tag === 'sync-transport-logs') {
+  if (event.tag === 'sync-offline-documents' || event.tag === 'sync-offline-records' || event.tag === 'sync-transport-logs') {
     event.waitUntil(
       self.clients.matchAll().then((clients) => {
         clients.forEach((client) => {

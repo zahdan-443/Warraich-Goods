@@ -31,6 +31,7 @@ import {
   TollCalculationResult,
   MOTORWAYS_DIRECTORY
 } from '../../utils/tollMatrix';
+import { openWhatsAppMessage } from '../../utils/externalLinks';
 
 interface TollPlazaViewProps {
   lang: Language;
@@ -140,8 +141,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
       });
     }
 
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
+    openWhatsAppMessage(text);
   };
 
   const handleApplyToTripAndNavigate = (amount: number, from: string, to: string) => {

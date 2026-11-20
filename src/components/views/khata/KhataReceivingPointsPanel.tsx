@@ -40,6 +40,7 @@ import {
   Trash2,
   X
 } from 'lucide-react';
+import { openWhatsAppMessage } from '../../../utils/externalLinks';
 
 interface KhataReceivingPointsPanelProps {
   lang: Language;
@@ -107,10 +108,7 @@ export const KhataReceivingPointsPanel: React.FC<KhataReceivingPointsPanelProps>
     const handleShareWa = () => {
       const text = formatReceivingPointWhatsApp(selectedPoint, selectedEntries, businessName, lang);
       const cleanPhone = normalizePakistaniPhone(selectedPoint.phone);
-      const url = cleanPhone
-        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
-        : `https://wa.me/?text=${encodeURIComponent(text)}`;
-      if (typeof window !== 'undefined') window.open(url, '_blank');
+      openWhatsAppMessage(text, cleanPhone || undefined);
     };
 
     return (

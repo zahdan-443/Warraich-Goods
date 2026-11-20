@@ -43,6 +43,7 @@ import {
   Milestone,
   Gauge
 } from 'lucide-react';
+import { openExternalUrl } from '../../utils/externalLinks';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { PAKISTAN_CITIES_MASTER } from '../../utils/pakistanCitiesData';
@@ -1176,7 +1177,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
     const origin = routeCities[0];
     const dest = routeCities[routeCities.length - 1];
     const url = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${dest.lat},${dest.lng}&travelmode=driving`;
-    window.open(url, '_blank');
+    openExternalUrl(url);
   };
 
   // Geolocation trigger

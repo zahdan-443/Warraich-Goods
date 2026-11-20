@@ -99,11 +99,11 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       }
     });
 
-    // 4. Background Sync registration for offline Bilty records
+    // 4. Background Sync registration for offline document records
     if ('SyncManager' in window) {
       window.addEventListener('online', () => {
         (registration as unknown as { sync: { register: (tag: string) => Promise<void> } }).sync
-          ?.register('sync-bilty-data')
+          ?.register('sync-offline-documents')
           .catch(() => {});
       });
     }

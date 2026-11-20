@@ -178,7 +178,7 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     });
     expect(urWithAdvance).toContain('وڑائچ گڈز ٹرانسپورٹ کمپنی®');
     expect(urWithAdvance).toContain('پروپرائیٹر:* زاہدان نصر وڑائچ');
-    expect(urWithAdvance).toContain('اوکاڑہ بائی پاس، نزدیک 466 چوک، سمندری');
+    expect(urWithAdvance).toContain('اوکاڑہ بائی پاس، نزد 466 چوک، سمندری');
     expect(urWithAdvance).toContain('روپے 45,000');
     expect(urWithAdvance).toContain('پیشگی وصول:* روپے 15,000');
     expect(urWithAdvance).toContain('بقایا رقم:* روپے 30,000');

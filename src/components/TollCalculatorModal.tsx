@@ -33,6 +33,7 @@ import {
   TollCalculationResult,
   MOTORWAYS_DIRECTORY
 } from '../utils/tollMatrix';
+import { openWhatsAppMessage } from '../utils/externalLinks';
 
 interface TollCalculatorModalProps {
   isOpen: boolean;
@@ -78,6 +79,20 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
       setViewState('input');
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    const handleBackButton = () => onClose();
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('app-back-button', handleBackButton);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('app-back-button', handleBackButton);
+    };
+  }, [isOpen, onClose]);
 
   const loadRates = async () => {
     try {
@@ -173,8 +188,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
       });
     }
 
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
+    openWhatsAppMessage(text);
   };
 
   // Motorways Directory calculation
@@ -210,8 +224,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
     }
     text += `📌 ${isUrdu ? 'اہم انٹرچینجز' : 'Key Interchanges'}: ${isUrdu ? currentMw.interchangesUr.join(', ') : currentMw.interchanges.join(', ')}\n`;
 
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
+    openWhatsAppMessage(text);
   };
 
   if (!isOpen) return null;

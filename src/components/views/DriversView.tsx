@@ -14,6 +14,7 @@ import {
   Clock,
   AlertTriangle 
 } from 'lucide-react';
+import { openExternalUrl } from '../../utils/externalLinks';
 
 interface DriversViewProps {
   lang: Language;
@@ -98,7 +99,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
   const openWhatsApp = (phoneNum: string) => {
     const cleaned = phoneNum.replace(/\D/g, '');
     const prefix = cleaned.startsWith('92') ? cleaned : '92' + cleaned.replace(/^0/, '');
-    window.open(`https://api.whatsapp.com/send?phone=${prefix}`, '_blank');
+    openExternalUrl(`https://wa.me/${prefix}`);
   };
 
   // Helper to calculate days remaining

@@ -100,12 +100,10 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
     const localMatch = allBilties.find((b) => {
       const bNo = String(b.biltyNo || '').toLowerCase();
       const bId = String(b.id ?? '').toLowerCase();
-      const vNo = String(b.vehicleNo || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       return (
         bNo === cleanLower ||
         bNo.replace(/[^a-z0-9]/g, '') === normalizedTerm ||
-        bId === cleanLower ||
-        (normalizedTerm.length > 3 && vNo === normalizedTerm)
+        bId === cleanLower
       );
     });
 
@@ -276,10 +274,16 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard?.writeText(text);
-    setCopiedText(text);
-    setTimeout(() => setCopiedText(null), 2000);
+  const handleCopy = async (text: string) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      }
+      setCopiedText(text);
+      setTimeout(() => setCopiedText(null), 2000);
+    } catch {
+      // Fallback copy unavailable in restricted webview contexts
+    }
   };
 
   // Perform Vehicle Verification (Direct Official Portal Launcher)
@@ -430,10 +434,10 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
     <div className="flex-1 p-3 sm:p-5 max-w-5xl mx-auto w-full space-y-4">
       
       {/* Top Header Card */}
-      <div className="bg-white p-4 sm:p-6 rounded-[28px] sm:rounded-[32px] shadow-sm border border-[#ecece0] space-y-4">
-        <header className="border-b border-[#ecece0] pb-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-white dark:bg-[#1a1c22] p-4 sm:p-6 rounded-[28px] sm:rounded-[32px] shadow-sm border border-[#ecece0] dark:border-[#2d313b] space-y-4">
+        <header className="border-b border-[#ecece0] dark:border-[#2d313b] pb-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white border border-[#ecece0] p-0.5 flex items-center justify-center text-[#8b9d77] shadow-2xs shrink-0 overflow-hidden">
+            <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#16181e] border border-[#ecece0] dark:border-[#2d313b] p-0.5 flex items-center justify-center text-[#8b9d77] dark:text-emerald-400 shadow-2xs shrink-0 overflow-hidden">
               <PublicImage
                 fileName={
                   activeSubTab === 'license' 
@@ -447,23 +451,23 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                 height={40}
                 fitMode="contain"
                 className="w-full h-full"
-                fallbackIcon={<ShieldCheck className="w-5 h-5 text-[#4a5e38]" />}
+                fallbackIcon={<ShieldCheck className="w-5 h-5 text-[#4a5e38] dark:text-emerald-400" />}
               />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-serif font-bold text-[#4a4a35]">
+                <h1 className="text-base sm:text-lg font-serif font-bold text-[#4a4a35] dark:text-white">
                   {activeSubTab === 'license'
                     ? (isUrdu ? 'لائسنس کی تصدیق (DLIMS)' : 'Driver License Verification (DLIMS)')
                     : activeSubTab === 'challan'
                     ? (isUrdu ? 'ای چالان چیکنگ (PSCA Safe City)' : 'E-Challan Verification (Safe City)')
                     : (isUrdu ? 'گاڑیوں کی تصدیق (MTMIS Excise)' : 'Vehicle Verification (MTMIS Excise)')}
                 </h1>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#8b9d77]/15 text-[#4a5e38] border border-[#8b9d77]/30">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#8b9d77]/15 dark:bg-emerald-950/60 text-[#4a5e38] dark:text-emerald-300 border border-[#8b9d77]/30 dark:border-emerald-700/50">
                   {isUrdu ? 'ان-ایپ سسٹم' : 'In-App Hub'}
                 </span>
               </div>
-              <p className="text-[11px] text-[#8e8e75] font-sans mt-0.5">
+              <p className="text-[11px] text-[#8e8e75] dark:text-slate-400 font-sans mt-0.5">
                 {activeSubTab === 'license'
                   ? (isUrdu ? 'ٹریفک پولیس ڈی ایل آئی ایم ایس لائسنس ریکارڈ تصدیق' : 'Traffic police driving license verification & audit')
                   : activeSubTab === 'challan'
@@ -483,8 +487,8 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
               onClick={() => setActiveSubTab('history')}
               className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 border ${
                 activeSubTab === 'history'
-                  ? 'bg-[#4a5e38] text-white border-[#4a5e38] shadow-xs'
-                  : 'bg-[#fdfbf7] text-[#5a5a40] border-[#ecece0] hover:border-[#8b9d77]'
+                  ? 'bg-[#4a5e38] dark:bg-emerald-700 text-white border-[#4a5e38] dark:border-emerald-600 shadow-xs'
+                  : 'bg-[#fdfbf7] dark:bg-[#16181e] text-[#5a5a40] dark:text-slate-300 border-[#ecece0] dark:border-[#2d313b] hover:border-[#8b9d77] dark:hover:border-emerald-500/60'
               }`}
             >
               <CalendarCheck className="w-4 h-4" />
@@ -496,8 +500,8 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
               onClick={() => setActiveSubTab('bilty')}
               className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 border ${
                 activeSubTab === 'bilty'
-                  ? 'bg-[#4a5e38] text-white border-[#4a5e38] shadow-xs'
-                  : 'bg-[#fdfbf7] text-[#5a5a40] border-[#ecece0] hover:border-[#8b9d77]'
+                  ? 'bg-[#4a5e38] dark:bg-emerald-700 text-white border-[#4a5e38] dark:border-emerald-600 shadow-xs'
+                  : 'bg-[#fdfbf7] dark:bg-[#16181e] text-[#5a5a40] dark:text-slate-300 border-[#ecece0] dark:border-[#2d313b] hover:border-[#8b9d77] dark:hover:border-emerald-500/60'
               }`}
             >
               <QrCode className="w-4 h-4" />
@@ -510,22 +514,22 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
         {activeSubTab === 'vehicle' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* Pinned Official Portal Link Banner & Google Play Policy Disclaimer */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 shadow-xs space-y-2.5">
+            <div className="bg-white dark:bg-[#16181e] p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 dark:border-emerald-600/50 shadow-xs space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
-                    <Building2 className="w-5 h-5 text-emerald-700" />
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-serif font-bold text-sm sm:text-base text-slate-800">
+                      <h3 className="font-serif font-bold text-sm sm:text-base text-slate-800 dark:text-white">
                         {isUrdu ? 'آفیشل ایکسائز و وہیکل رجسٹریشن پورٹل (MTMIS)' : 'Official MTMIS Vehicle Registration Portal'}
                       </h3>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800/60">
                         {vehicleProvince === 'punjab' ? 'mtmis.excise.punjab.gov.pk' : vehicleProvince === 'sindh' ? 'excise.gos.pk' : 'islamabadexcise.gov.pk'}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                       {isUrdu 
                         ? 'سرکاری ایکسائز ریکارڈ، ٹوکن ٹیکس اور روٹ پرمٹ کی براہ راست تصدیق'
                         : 'Direct official verification of ownership, token tax and fitness on government database'}
@@ -586,13 +590,13 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
               </div>
             </div>
 
-            <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ecece0] space-y-5">
+            <div className="bg-[#fdfbf7] dark:bg-[#16181e] p-5 sm:p-6 rounded-3xl border border-[#ecece0] dark:border-[#2d313b] space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35]">
+                  <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35] dark:text-white">
                     {isUrdu ? 'گاڑی کی رجسٹریشن اور ایکسائز ریکارڈ چیک کریں' : 'Verify Vehicle Registration & Token Tax'}
                   </h2>
-                  <p className="text-xs text-[#8e8e75]">
+                  <p className="text-xs text-[#8e8e75] dark:text-slate-400">
                     {isUrdu 
                       ? 'پنجاب، سندھ، اسلام آباد یا خیبر پختونخواہ کا رجسٹریشن نمبر درج کریں' 
                       : 'Enter vehicle plate number for Punjab, Sindh, ICT or KPK Excise'}
@@ -600,12 +604,12 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                 </div>
 
                 {/* Province Selector */}
-                <div className="flex items-center gap-1.5 p-1 bg-white rounded-xl border border-[#ecece0] self-start sm:self-auto text-xs">
+                <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-[#1a1c22] rounded-xl border border-[#ecece0] dark:border-[#2d313b] self-start sm:self-auto text-xs">
                   <button
                     type="button"
                     onClick={() => setVehicleProvince('punjab')}
                     className={`min-h-[38px] px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                      vehicleProvince === 'punjab' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
+                      vehicleProvince === 'punjab' ? 'bg-[#8b9d77] dark:bg-emerald-700 text-white shadow-2xs' : 'text-[#5a5a40] dark:text-slate-300'
                     }`}
                   >
                     پنجاب
@@ -614,7 +618,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     type="button"
                     onClick={() => setVehicleProvince('sindh')}
                     className={`min-h-[38px] px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                      vehicleProvince === 'sindh' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
+                      vehicleProvince === 'sindh' ? 'bg-[#8b9d77] dark:bg-emerald-700 text-white shadow-2xs' : 'text-[#5a5a40] dark:text-slate-300'
                     }`}
                   >
                     سندھ
@@ -623,7 +627,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     type="button"
                     onClick={() => setVehicleProvince('islamabad')}
                     className={`min-h-[38px] px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                      vehicleProvince === 'islamabad' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
+                      vehicleProvince === 'islamabad' ? 'bg-[#8b9d77] dark:bg-emerald-700 text-white shadow-2xs' : 'text-[#5a5a40] dark:text-slate-300'
                     }`}
                   >
                     اسلام آباد
@@ -639,9 +643,9 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     value={vehicleReg}
                     onChange={(e) => setVehicleReg(e.target.value.toUpperCase())}
                     placeholder={isUrdu ? 'مثال: LES-20-4124 یا FSD-19-8832' : 'e.g. LES-20-4124'}
-                    className="w-full px-4 py-3 bg-white border border-[#ecece0] focus:border-[#8b9d77] rounded-2xl text-sm font-mono font-bold text-[#4a4a35] uppercase outline-none shadow-2xs"
+                    className="w-full px-4 py-3 bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#333844] focus:border-[#8b9d77] rounded-2xl text-sm font-mono font-bold text-[#4a4a35] dark:text-white uppercase outline-none shadow-2xs"
                   />
-                  <Car className="w-5 h-5 text-[#8e8e75] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Car className="w-5 h-5 text-[#8e8e75] dark:text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
                 <button
                   type="submit"
@@ -654,9 +658,9 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
               {/* Quick Fleet Vehicle Picker */}
               {vehicles.length > 0 && (
-                <div className="flex items-center flex-wrap gap-2 pt-2 border-t border-[#ecece0]">
-                  <span className="text-[11px] font-bold text-[#8e8e75] flex items-center gap-1">
-                    <Truck className="w-3.5 h-3.5 text-[#8b9d77]" />
+                <div className="flex items-center flex-wrap gap-2 pt-2 border-t border-[#ecece0] dark:border-[#2d313b]">
+                  <span className="text-[11px] font-bold text-[#8e8e75] dark:text-slate-400 flex items-center gap-1">
+                    <Truck className="w-3.5 h-3.5 text-[#8b9d77] dark:text-emerald-400" />
                     {isUrdu ? 'فلیٹ کی گاڑیاں:' : 'Fleet Trucks:'}
                   </span>
                   {vehicles.map(v => (
@@ -667,7 +671,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                         setVehicleReg(v.reg);
                         setTimeout(() => handleVerifyVehicle(), 50);
                       }}
-                      className="px-2.5 py-1 rounded-xl bg-white border border-[#ecece0] hover:border-[#8b9d77] text-xs font-mono font-bold text-[#4a4a35] shadow-2xs cursor-pointer transition-all hover:scale-105 active:scale-95"
+                      className="px-2.5 py-1 rounded-xl bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#2d313b] hover:border-[#8b9d77] text-xs font-mono font-bold text-[#4a4a35] dark:text-slate-200 shadow-2xs cursor-pointer transition-all hover:scale-105 active:scale-95"
                     >
                       {v.reg}
                     </button>
@@ -678,43 +682,43 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
             {/* Direct Official Vehicle Portal Launcher Card */}
             {vehicleAuditResult && (
-              <div className="p-6 rounded-3xl bg-white border-2 border-[#8b9d77] shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#ecece0]">
+              <div className="p-6 rounded-3xl bg-white dark:bg-[#16181e] border-2 border-[#8b9d77] dark:border-emerald-600/60 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#ecece0] dark:border-[#2d313b]">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-[#8b9d77]/20 text-[#4a5e38]">
+                    <div className="p-2.5 rounded-2xl bg-[#8b9d77]/20 dark:bg-emerald-950/60 text-[#4a5e38] dark:text-emerald-300">
                       <ExternalLink className="w-6 h-6" />
                     </div>
                     <div>
-                      <span className="text-xs font-bold text-[#8b9d77] uppercase tracking-wider font-mono">
+                      <span className="text-xs font-bold text-[#8b9d77] dark:text-emerald-400 uppercase tracking-wider font-mono">
                         {vehicleAuditResult.province}
                       </span>
-                      <h3 className="font-serif font-bold text-xl text-[#4a4a35] flex items-center gap-2">
+                      <h3 className="font-serif font-bold text-xl text-[#4a4a35] dark:text-white flex items-center gap-2">
                         <span>{vehicleAuditResult.reg}</span>
                         <button
                           type="button"
                           onClick={() => handleCopy(vehicleAuditResult.reg)}
-                          className="min-w-[38px] min-h-[38px] p-2 rounded-lg hover:bg-gray-100 text-gray-500 cursor-pointer inline-flex items-center justify-center"
+                          className="min-w-[38px] min-h-[38px] p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#22252c] text-gray-500 dark:text-slate-300 cursor-pointer inline-flex items-center justify-center"
                           title="کاپی کریں"
                         >
-                          {copiedText === vehicleAuditResult.reg ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                          {copiedText === vehicleAuditResult.reg ? <Check className="w-4 h-4 text-green-600 dark:text-emerald-400" /> : <Copy className="w-4 h-4" />}
                         </button>
                       </h3>
-                      <p className="text-xs text-[#5a5a40] font-medium">{vehicleAuditResult.model}</p>
+                      <p className="text-xs text-[#5a5a40] dark:text-slate-300 font-medium">{vehicleAuditResult.model}</p>
                     </div>
                   </div>
 
-                  <span className="self-start sm:self-auto px-3 py-1 bg-blue-100 border border-blue-300 text-blue-800 text-xs font-bold rounded-full flex items-center gap-1.5">
-                    <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="self-start sm:self-auto px-3 py-1 bg-blue-100 dark:bg-blue-950/70 border border-blue-300 dark:border-blue-800/60 text-blue-800 dark:text-blue-200 text-xs font-bold rounded-full flex items-center gap-1.5">
+                    <ExternalLink className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     {isUrdu ? 'براہ راست پورٹل ری ڈائریکٹ' : 'Direct Portal Redirect'}
                   </span>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs text-emerald-900 space-y-2">
+                <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-900 dark:text-emerald-100 space-y-2">
                   <div className="flex items-center gap-2 font-bold">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span>{isUrdu ? 'گاڑی نمبر کاپی ہو چکا ہے!' : 'Plate Number Copied to Clipboard!'}</span>
                   </div>
-                  <p className="text-[11px] leading-relaxed text-emerald-800">
+                  <p className="text-[11px] leading-relaxed text-emerald-800 dark:text-emerald-200/90">
                     {isUrdu
                       ? 'سرکاری ایکسائز پورٹل پر گاڑی کی رجسٹریشن، ٹوکن ٹیکس اور فٹنس کی تفصیلات لائیو دیکھنے کے لیے نیچے دیا گیا بٹن دبائیں۔'
                       : 'To view live vehicle registration, token tax and fitness records, click the button below to launch the official excise portal.'}
@@ -726,7 +730,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   <button
                     type="button"
                     onClick={handleSaveVehicleAudit}
-                    className="px-4 py-2 bg-[#8b9d77]/20 hover:bg-[#8b9d77]/30 text-[#4a5e38] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                    className="px-4 py-2 bg-[#8b9d77]/20 dark:bg-emerald-950/60 hover:bg-[#8b9d77]/30 dark:hover:bg-emerald-900/60 text-[#4a5e38] dark:text-emerald-300 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-transparent dark:border-emerald-800/60"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{isUrdu ? 'آڈٹ لاگ میں نوٹ محفوظ کریں' : 'Save Note to Audit Log'}</span>
@@ -751,22 +755,22 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
         {activeSubTab === 'license' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* Pinned Official Portal Link Banner & Google Play Policy Disclaimer */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 shadow-xs space-y-2.5">
+            <div className="bg-white dark:bg-[#16181e] p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 dark:border-emerald-600/50 shadow-xs space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
-                    <CreditCard className="w-5 h-5 text-emerald-700" />
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                    <CreditCard className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-serif font-bold text-sm sm:text-base text-slate-800">
+                      <h3 className="font-serif font-bold text-sm sm:text-base text-slate-800 dark:text-white">
                         {isUrdu ? 'آفیشل ڈی ایل آئی ایم ایس (DLIMS) ڈرائیونگ لائسنس پورٹل' : 'Official DLIMS Punjab Driving License Portal'}
                       </h3>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800/60">
                         dlims.punjab.gov.pk/verify
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                       {isUrdu 
                         ? 'پنجاب و موٹروے پولیس کے کمپیوٹرائزڈ کمرشل HTV / LTV لائسنس کی سرکاری تصدیق'
                         : 'Official verification of computerized commercial HTV/LTV driving license records'}
@@ -815,12 +819,12 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
               </div>
             </div>
 
-            <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ecece0] space-y-5">
+            <div className="bg-[#fdfbf7] dark:bg-[#16181e] p-5 sm:p-6 rounded-3xl border border-[#ecece0] dark:border-[#2d313b] space-y-5">
               <div>
-                <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35]">
+                <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35] dark:text-white">
                   {isUrdu ? 'ڈرائیور لائسنس و ڈی ایل آئی ایم ایس تصدیق' : 'DLIMS Driver License & Fitness Check'}
                 </h2>
-                <p className="text-xs text-[#8e8e75]">
+                <p className="text-xs text-[#8e8e75] dark:text-slate-400">
                   {isUrdu 
                     ? 'ڈرائیور کا شناختی کارڈ نمبر یا لائسنس نمبر درج کریں' 
                     : 'Enter Driver CNIC (e.g. 35201-XXXXXXXX-X) or License No'}
@@ -835,15 +839,15 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     value={licenseQuery}
                     onChange={(e) => setLicenseQuery(e.target.value)}
                     placeholder={isUrdu ? 'مثال: LHR-48291-HTV یا 35201-1849201-3' : 'License / CNIC Number'}
-                    className="w-full px-4 py-3 bg-white border border-[#ecece0] focus:border-[#8b9d77] rounded-2xl text-sm font-mono font-bold text-[#4a4a35] outline-none shadow-2xs"
+                    className="w-full px-4 py-3 bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#333844] focus:border-[#8b9d77] rounded-2xl text-sm font-mono font-bold text-[#4a4a35] dark:text-white outline-none shadow-2xs"
                   />
-                  <CreditCard className="w-5 h-5 text-[#8e8e75] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <CreditCard className="w-5 h-5 text-[#8e8e75] dark:text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
 
                 <select
                   value={licenseType}
                   onChange={(e) => setLicenseType(e.target.value)}
-                  className="w-full sm:w-auto px-3 py-3 bg-white border border-[#ecece0] rounded-2xl text-xs font-bold text-[#4a4a35] outline-none cursor-pointer"
+                  className="w-full sm:w-auto px-3 py-3 bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#333844] rounded-2xl text-xs font-bold text-[#4a4a35] dark:text-white outline-none cursor-pointer"
                 >
                   <option value="HTV">HTV ہیوی ٹرانسپورٹ</option>
                   <option value="Trailer">آرٹیکولیٹڈ ٹرالر (Trailer)</option>
@@ -862,9 +866,9 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
               {/* Quick Driver Picker */}
               {drivers.length > 0 && (
-                <div className="flex items-center flex-wrap gap-2 pt-2 border-t border-[#ecece0]">
-                  <span className="text-[11px] font-bold text-[#8e8e75] flex items-center gap-1">
-                    <Users className="w-3.5 h-3.5 text-[#8b9d77]" />
+                <div className="flex items-center flex-wrap gap-2 pt-2 border-t border-[#ecece0] dark:border-[#2d313b]">
+                  <span className="text-[11px] font-bold text-[#8e8e75] dark:text-slate-400 flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5 text-[#8b9d77] dark:text-emerald-400" />
                     {isUrdu ? 'رجسٹرڈ ڈرائیورز:' : 'Registered Drivers:'}
                   </span>
                   {drivers.map(d => (
@@ -875,7 +879,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                         setLicenseQuery(d.license || d.cnic);
                         setTimeout(() => handleVerifyLicense(), 50);
                       }}
-                      className="px-2.5 py-1 rounded-xl bg-white border border-[#ecece0] hover:border-[#8b9d77] text-xs font-mono font-bold text-[#4a4a35] shadow-2xs cursor-pointer transition-all hover:scale-105 active:scale-95"
+                      className="px-2.5 py-1 rounded-xl bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#2d313b] hover:border-[#8b9d77] text-xs font-mono font-bold text-[#4a4a35] dark:text-slate-200 shadow-2xs cursor-pointer transition-all hover:scale-105 active:scale-95"
                     >
                       {d.name} ({d.lictype || 'HTV'})
                     </button>
@@ -886,43 +890,43 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
             {/* Direct Official DLIMS Portal Launcher Card */}
             {licenseAuditResult && (
-              <div className="p-6 rounded-3xl bg-white border-2 border-[#8b9d77] shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#ecece0]">
+              <div className="p-6 rounded-3xl bg-white dark:bg-[#16181e] border-2 border-[#8b9d77] dark:border-emerald-600/60 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#ecece0] dark:border-[#2d313b]">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-emerald-100 text-emerald-800">
+                    <div className="p-2.5 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
                       <ExternalLink className="w-6 h-6" />
                     </div>
                     <div>
-                      <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider font-mono">
+                      <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider font-mono">
                         {licenseAuditResult.lictype} Commercial
                       </span>
-                      <h3 className="font-serif font-bold text-xl text-[#4a4a35] flex items-center gap-2">
+                      <h3 className="font-serif font-bold text-xl text-[#4a4a35] dark:text-white flex items-center gap-2">
                         <span>{licenseAuditResult.driverName}</span>
                         <button
                           type="button"
                           onClick={() => handleCopy(licenseAuditResult.identifier)}
-                          className="min-w-[38px] min-h-[38px] p-2 rounded-lg hover:bg-gray-100 text-gray-500 cursor-pointer inline-flex items-center justify-center"
+                          className="min-w-[38px] min-h-[38px] p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#22252c] text-gray-500 dark:text-slate-300 cursor-pointer inline-flex items-center justify-center"
                           title="کاپی کریں"
                         >
-                          {copiedText === licenseAuditResult.identifier ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                          {copiedText === licenseAuditResult.identifier ? <Check className="w-4 h-4 text-green-600 dark:text-emerald-400" /> : <Copy className="w-4 h-4" />}
                         </button>
                       </h3>
-                      <p className="text-xs text-[#8e8e75] font-mono">{licenseAuditResult.identifier}</p>
+                      <p className="text-xs text-[#8e8e75] dark:text-slate-400 font-mono">{licenseAuditResult.identifier}</p>
                     </div>
                   </div>
 
-                  <span className="self-start sm:self-auto px-3 py-1 bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold rounded-full flex items-center gap-1.5">
-                    <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="self-start sm:self-auto px-3 py-1 bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded-full flex items-center gap-1.5">
+                    <ExternalLink className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     {isUrdu ? 'براہ راست پورٹل ری ڈائریکٹ' : 'Direct Portal Redirect'}
                   </span>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs text-emerald-900 space-y-2">
+                <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-900 dark:text-emerald-100 space-y-2">
                   <div className="flex items-center gap-2 font-bold">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span>{isUrdu ? 'لائسنس / شناختی کارڈ نمبر کاپی ہو چکا ہے!' : 'Identifier Copied to Clipboard!'}</span>
                   </div>
-                  <p className="text-[11px] leading-relaxed text-emerald-800">
+                  <p className="text-[11px] leading-relaxed text-emerald-800 dark:text-emerald-200/90">
                     {isUrdu
                       ? 'پنجاب ٹریفک پولیس کے آفیشل ڈی ایل آئی ایم ایس (DLIMS) پورٹل پر لائسنس کی لائیو میعاد اور کیٹیگری چیک کرنے کے لیے نیچے بٹن دبائیں۔'
                       : 'To verify computerized driving license validity and traffic records directly on DLIMS, click the button below.'}
@@ -934,7 +938,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   <button
                     type="button"
                     onClick={handleSaveLicenseAudit}
-                    className="px-4 py-2 bg-[#8b9d77]/20 hover:bg-[#8b9d77]/30 text-[#4a5e38] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                    className="px-4 py-2 bg-[#8b9d77]/20 dark:bg-emerald-950/60 hover:bg-[#8b9d77]/30 dark:hover:bg-emerald-900/60 text-[#4a5e38] dark:text-emerald-300 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-transparent dark:border-emerald-800/60"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{isUrdu ? 'آڈٹ لاگ میں نوٹ محفوظ کریں' : 'Save Note to Audit Log'}</span>
@@ -959,22 +963,22 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
         {activeSubTab === 'challan' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* Pinned Official Portal Link Banner & Google Play Policy Disclaimer */}
-            <div className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 shadow-xs space-y-2.5">
+            <div className="bg-white dark:bg-[#16181e] p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/40 dark:border-emerald-600/50 shadow-xs space-y-2.5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
-                    <AlertTriangle className="w-5 h-5 text-emerald-700" />
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-serif font-bold text-sm sm:text-base text-slate-800">
+                      <h3 className="font-serif font-bold text-sm sm:text-base text-slate-800 dark:text-white">
                         {isUrdu ? 'آفیشل سیف سٹی ای چالان پورٹل (PSCA پنجاب)' : 'Official PSCA Safe City E-Challan Portal'}
                       </h3>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800/60">
                         echallan.psca.gop.pk
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                       {isUrdu 
                         ? 'پنجاب سیف سٹی اتھارٹی (PSCA) کے کیمرہ چالان و جرمانہ کی آفیشل تصدیق'
                         : 'Official camera speed, signal & violation penalty verification on PSCA portal'}
@@ -1023,25 +1027,25 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
               </div>
             </div>
 
-            <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ecece0] space-y-5">
+            <div className="bg-[#fdfbf7] dark:bg-[#16181e] p-5 sm:p-6 rounded-3xl border border-[#ecece0] dark:border-[#2d313b] space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35]">
+                  <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35] dark:text-white">
                     {isUrdu ? 'سیف سٹی ای چالان و ٹریفک خلاف ورزی آڈٹ' : 'Safe City E-Challan & Penalty Audit'}
                   </h2>
-                  <p className="text-xs text-[#8e8e75]">
+                  <p className="text-xs text-[#8e8e75] dark:text-slate-400">
                     {isUrdu 
                       ? 'گاڑی کا رجسٹریشن نمبر یا چالان آئی ڈی درج کریں' 
                       : 'Enter vehicle number or challan ID for Safe City checking'}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-1.5 p-1 bg-white rounded-xl border border-[#ecece0] text-xs">
+                <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-[#1a1c22] rounded-xl border border-[#ecece0] dark:border-[#2d313b] text-xs">
                   <button
                     type="button"
                     onClick={() => setChallanCity('lahore')}
                     className={`min-h-[38px] px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                      challanCity === 'lahore' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
+                      challanCity === 'lahore' ? 'bg-[#8b9d77] dark:bg-emerald-700 text-white shadow-2xs' : 'text-[#5a5a40] dark:text-slate-300'
                     }`}
                   >
                     لاہور PSCA
@@ -1050,7 +1054,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     type="button"
                     onClick={() => setChallanCity('islamabad')}
                     className={`min-h-[38px] px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                      challanCity === 'islamabad' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
+                      challanCity === 'islamabad' ? 'bg-[#8b9d77] dark:bg-emerald-700 text-white shadow-2xs' : 'text-[#5a5a40] dark:text-slate-300'
                     }`}
                   >
                     اسلام آباد
@@ -1059,7 +1063,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     type="button"
                     onClick={() => setChallanCity('rawalpindi')}
                     className={`min-h-[38px] px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                      challanCity === 'rawalpindi' ? 'bg-[#8b9d77] text-white shadow-2xs' : 'text-[#5a5a40]'
+                      challanCity === 'rawalpindi' ? 'bg-[#8b9d77] dark:bg-emerald-700 text-white shadow-2xs' : 'text-[#5a5a40] dark:text-slate-300'
                     }`}
                   >
                     راولپنڈی
@@ -1075,9 +1079,9 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     value={challanQuery}
                     onChange={(e) => setChallanQuery(e.target.value.toUpperCase())}
                     placeholder={isUrdu ? 'مثال: LES-20-4124 یا چالان نمبر' : 'e.g. LES-20-4124'}
-                    className="w-full px-4 py-3 bg-white border border-[#ecece0] focus:border-[#8b9d77] rounded-2xl text-sm font-mono font-bold text-[#4a4a35] uppercase outline-none shadow-2xs"
+                    className="w-full px-4 py-3 bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#333844] focus:border-[#8b9d77] rounded-2xl text-sm font-mono font-bold text-[#4a4a35] dark:text-white uppercase outline-none shadow-2xs"
                   />
-                  <AlertTriangle className="w-5 h-5 text-[#8e8e75] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <AlertTriangle className="w-5 h-5 text-[#8e8e75] dark:text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
                 <button
                   type="submit"
@@ -1117,33 +1121,33 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
             {/* Direct Official Safe City E-Challan Portal Launcher Card */}
             {challanAuditResult && (
-              <div className="p-6 rounded-3xl bg-white border-2 border-[#8b9d77] shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#ecece0]">
+              <div className="p-6 rounded-3xl bg-white dark:bg-[#16181e] border-2 border-[#8b9d77] dark:border-emerald-600/60 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#ecece0] dark:border-[#2d313b]">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-blue-100 text-blue-800">
+                    <div className="p-2.5 rounded-2xl bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300">
                       <ExternalLink className="w-6 h-6" />
                     </div>
                     <div>
-                      <span className="text-xs font-bold text-blue-800 uppercase tracking-wider font-mono">
+                      <span className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider font-mono">
                         {challanAuditResult.city}
                       </span>
-                      <h3 className="font-serif font-bold text-xl text-[#4a4a35] flex items-center gap-2">
+                      <h3 className="font-serif font-bold text-xl text-[#4a4a35] dark:text-white flex items-center gap-2">
                         <span>{challanAuditResult.identifier}</span>
                         <button
                           type="button"
                           onClick={() => handleCopy(challanAuditResult.identifier)}
-                          className="min-w-[38px] min-h-[38px] p-2 rounded-lg hover:bg-gray-100 text-gray-500 cursor-pointer inline-flex items-center justify-center"
+                          className="min-w-[38px] min-h-[38px] p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#22252c] text-gray-500 dark:text-slate-300 cursor-pointer inline-flex items-center justify-center"
                           title="کاپی کریں"
                         >
-                          {copiedText === challanAuditResult.identifier ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                          {copiedText === challanAuditResult.identifier ? <Check className="w-4 h-4 text-green-600 dark:text-emerald-400" /> : <Copy className="w-4 h-4" />}
                         </button>
                       </h3>
-                      <p className="text-xs text-[#5a5a40] font-medium">{challanAuditResult.city}</p>
+                      <p className="text-xs text-[#5a5a40] dark:text-slate-300 font-medium">{challanAuditResult.city}</p>
                     </div>
                   </div>
 
-                  <span className="self-start sm:self-auto px-3 py-1 bg-blue-100 border border-blue-300 text-blue-800 text-xs font-bold rounded-full flex items-center gap-1.5">
-                    <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="self-start sm:self-auto px-3 py-1 bg-blue-100 dark:bg-blue-950/70 border border-blue-300 dark:border-blue-800/60 text-blue-800 dark:text-blue-200 text-xs font-bold rounded-full flex items-center gap-1.5">
+                    <ExternalLink className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     {isUrdu ? 'براہ راست پورٹل ری ڈائریکٹ' : 'Direct Portal Redirect'}
                   </span>
                 </div>
@@ -1165,7 +1169,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   <button
                     type="button"
                     onClick={handleSaveChallanAudit}
-                    className="px-4 py-2 bg-[#8b9d77]/20 hover:bg-[#8b9d77]/30 text-[#4a5e38] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                    className="px-4 py-2 bg-[#8b9d77]/20 dark:bg-emerald-950/60 hover:bg-[#8b9d77]/30 dark:hover:bg-emerald-900/60 text-[#4a5e38] dark:text-emerald-300 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-transparent dark:border-emerald-800/60"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{isUrdu ? 'آڈٹ لاگ میں نوٹ محفوظ کریں' : 'Save Note to Audit Log'}</span>
@@ -1189,64 +1193,68 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
         {/* TAB 4: SAVED AUDIT RECORDS */}
         {activeSubTab === 'history' && (
           <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between pb-2 border-b border-[#ecece0]">
-              <span className="text-xs font-bold text-[#4a4a35]">
+            <div className="flex items-center justify-between pb-2 border-b border-[#ecece0] dark:border-[#2d313b]">
+              <span className="text-xs font-bold text-[#4a4a35] dark:text-white">
                 {isUrdu ? 'محفوظ شدہ تصدیقی لاگز اور آڈٹ تاریخ:' : 'Saved Compliance & Verification Audits:'}
               </span>
-              <span className="text-xs text-[#8e8e75] font-mono">
+              <span className="text-xs text-[#8e8e75] dark:text-slate-400 font-mono">
                 {auditRecords.length} {isUrdu ? 'ریکارڈز' : 'records'}
               </span>
             </div>
 
             {auditRecords.length === 0 ? (
-              <div className="p-12 text-center bg-[#fdfbf7] rounded-3xl border border-[#ecece0] space-y-2">
-                <ShieldCheck className="w-10 h-10 mx-auto text-[#8b9d77] opacity-40" />
-                <p className="text-sm font-serif text-[#5a5a40]">{isUrdu ? 'کوئی محفوظ شدہ ریکارڈ موجود نہیں' : 'No audit records saved yet'}</p>
+              <div className="p-12 text-center bg-[#fdfbf7] dark:bg-[#16181e] rounded-3xl border border-[#ecece0] dark:border-[#2d313b] space-y-2">
+                <ShieldCheck className="w-10 h-10 mx-auto text-[#8b9d77] dark:text-emerald-400 opacity-40" />
+                <p className="text-sm font-serif text-[#5a5a40] dark:text-slate-300">{isUrdu ? 'کوئی محفوظ شدہ ریکارڈ موجود نہیں' : 'No audit records saved yet'}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {auditRecords.map((item) => (
                   <div
                     key={item.id}
-                    className="p-5 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] hover:border-[#8b9d77] hover:bg-white transition-all space-y-3 shadow-2xs group flex flex-col justify-between"
+                    className="p-5 rounded-3xl bg-[#fdfbf7] dark:bg-[#16181e] border border-[#ecece0] dark:border-[#2d313b] hover:border-[#8b9d77] hover:bg-white dark:hover:bg-[#1e212a] transition-all space-y-3 shadow-2xs group flex flex-col justify-between"
                   >
                     <div className="space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span className={`p-2 rounded-xl text-xs font-bold ${
-                            item.type === 'vehicle' ? 'bg-blue-100 text-blue-800' : item.type === 'license' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                            item.type === 'vehicle'
+                              ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300'
+                              : item.type === 'license'
+                              ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'
+                              : 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300'
                           }`}>
                             {item.type === 'vehicle' ? <Car className="w-4 h-4" /> : item.type === 'license' ? <CreditCard className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
                           </span>
                           <div>
-                            <h4 className="font-serif font-bold text-sm text-[#4a4a35] leading-tight">
+                            <h4 className="font-serif font-bold text-sm text-[#4a4a35] dark:text-white leading-tight">
                               {item.title}
                             </h4>
-                            <span className="text-[11px] font-mono text-[#8b9d77] font-bold">
+                            <span className="text-[11px] font-mono text-[#8b9d77] dark:text-emerald-400 font-bold">
                               {item.identifier}
                             </span>
                           </div>
                         </div>
 
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-100 text-green-800 border border-green-200">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-100 dark:bg-emerald-950/70 text-green-800 dark:text-emerald-300 border border-green-200 dark:border-emerald-800/60">
                           {item.status.toUpperCase()}
                         </span>
                       </div>
 
-                      <p className="text-xs text-[#5a5a40] font-sans leading-relaxed bg-white/80 p-2.5 rounded-xl border border-[#ecece0]">
+                      <p className="text-xs text-[#5a5a40] dark:text-slate-300 font-sans leading-relaxed bg-white/80 dark:bg-[#1a1c22] p-2.5 rounded-xl border border-[#ecece0] dark:border-[#2d313b]">
                         {item.notes}
                       </p>
                     </div>
 
-                    <div className="pt-2 border-t border-[#ecece0] flex items-center justify-between text-[11px] text-[#8e8e75]">
+                    <div className="pt-2 border-t border-[#ecece0] dark:border-[#2d313b] flex items-center justify-between text-[11px] text-[#8e8e75] dark:text-slate-400">
                       <span className="flex items-center gap-1 font-mono">
-                        <Clock className="w-3 h-3 text-[#8b9d77]" />
+                        <Clock className="w-3 h-3 text-[#8b9d77] dark:text-emerald-400" />
                         {item.date}
                       </span>
                       <button
                         type="button"
                         onClick={() => handleDeleteAuditRecord(item.id)}
-                        className="min-w-[38px] min-h-[38px] p-2 rounded-lg text-red-500 hover:bg-red-50 cursor-pointer transition-all inline-flex items-center justify-center"
+                        className="min-w-[38px] min-h-[38px] p-2 rounded-lg text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer transition-all inline-flex items-center justify-center"
                         title={isUrdu ? 'حذف کریں' : 'Delete'}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1277,21 +1285,21 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
             ) : (
               <div className="space-y-6">
                 {/* Search Form Card */}
-                <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ecece0] space-y-5">
+                <div className="bg-[#fdfbf7] dark:bg-[#16181e] p-5 sm:p-6 rounded-3xl border border-[#ecece0] dark:border-[#2d313b] space-y-5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
-                      <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35] flex items-center gap-2">
-                        <QrCode className="w-5 h-5 text-[#8b9d77]" />
+                      <h2 className="font-serif font-bold text-base sm:text-lg text-[#4a4a35] dark:text-white flex items-center gap-2">
+                        <QrCode className="w-5 h-5 text-[#8b9d77] dark:text-emerald-400" />
                         <span>{isUrdu ? 'آفیشل آن لائن دستاویز تصدیق' : 'Official Online Document Verification'}</span>
                       </h2>
-                      <p className="text-xs text-[#8e8e75] mt-1">
+                      <p className="text-xs text-[#8e8e75] dark:text-slate-400 mt-1">
                         {isUrdu
                           ? 'دستاویز پر موجود کیو آر کوڈ اسکین کریں یا حوالہ نمبر درج کر کے سامان، تاریخ، گاڑی اور روٹ کی فوری تصدیق کریں۔'
                           : 'Verify authentic consignment documents, cargo description, weight/quantity, origin/destination, and vehicle details.'}
                       </p>
                     </div>
 
-                    <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 self-start sm:self-auto font-mono">
+                    <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 self-start sm:self-auto font-mono">
                       {isUrdu ? 'مستند تصدیق' : 'VERIFIED PORTAL'}
                     </span>
                   </div>
@@ -1305,10 +1313,10 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     className="space-y-3"
                   >
                     <div className="flex items-center justify-between">
-                      <label className="block text-xs font-bold text-[#4a4a35]">
-                        {isUrdu ? 'دستاویز نمبر یا گاڑی نمبر درج کریں:' : 'Enter Document Number or Vehicle Registration:'}
+                      <label className="block text-xs font-bold text-[#4a4a35] dark:text-slate-200">
+                        {isUrdu ? 'دستاویز نمبر درج کریں:' : 'Enter Document Number:'}
                       </label>
-                      <span className="text-[11px] text-[#8e8e75]">
+                      <span className="text-[11px] text-[#8e8e75] dark:text-slate-400">
                         {isUrdu ? 'مثال: WG-2026-0001 یا 0001' : 'e.g. WG-2026-0001'}
                       </span>
                     </div>
@@ -1319,10 +1327,10 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                           type="text"
                           value={biltyQuery}
                           onChange={(e) => setBiltyQuery(e.target.value)}
-                          placeholder={isUrdu ? 'مثال: WG-2026-0001 یا LES-20-4124' : 'e.g. WG-2026-0001 or LES-20-4124'}
-                          className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white border border-[#ecece0] focus:border-[#8b9d77] focus:ring-1 focus:ring-[#8b9d77] outline-hidden text-sm font-mono font-bold text-[#4a4a35] transition-all"
+                          placeholder={isUrdu ? 'مثال: WG-2026-0001' : 'e.g. WG-2026-0001'}
+                          className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#333844] focus:border-[#8b9d77] focus:ring-1 focus:ring-[#8b9d77] outline-hidden text-sm font-mono font-bold text-[#4a4a35] dark:text-white transition-all"
                         />
-                        <Search className="w-4 h-4 text-[#8e8e75] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Search className="w-4 h-4 text-[#8e8e75] dark:text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
 
                       <button
@@ -1335,7 +1343,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     </div>
 
                     {/* QR Code Scanner (Camera or Photo) Button */}
-                    <div className="pt-2 border-t border-[#ecece0]/80 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+                    <div className="pt-2 border-t border-[#ecece0]/80 dark:border-[#2d313b] flex flex-col sm:flex-row items-center justify-between gap-2.5">
                       <input
                         type="file"
                         ref={fileInputRef}
@@ -1354,7 +1362,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                         <span>{isUrdu ? '📷 کیمرے یا تصویر سے QR اسکین کریں' : '📷 Scan QR Code (Camera/Photo)'}</span>
                       </button>
 
-                      <p className="text-[11px] text-[#8e8e75] text-center sm:text-right">
+                      <p className="text-[11px] text-[#8e8e75] dark:text-slate-400 text-center sm:text-right">
                         {isUrdu 
                           ? 'دستاویز پر موجود QR کوڈ کی تصویر کھینچیں، تصدیق خودکار ہو جائے گی' 
                           : 'Point camera at printed document QR code for instant zero-failure verification'}
@@ -1362,7 +1370,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                     </div>
 
                     {scanStatus && (
-                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 font-medium animate-in fade-in">
+                      <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-xs text-emerald-900 dark:text-emerald-200 font-medium animate-in fade-in">
                         {scanStatus}
                       </div>
                     )}
@@ -1371,9 +1379,9 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
                 {/* Cloud Search Loading indicator */}
                 {isBiltyLoading && (
-                  <div className="p-6 rounded-3xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 flex items-center justify-center gap-3 animate-in fade-in">
+                  <div className="p-6 rounded-3xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-950 dark:text-emerald-100 flex items-center justify-center gap-3 animate-in fade-in">
                     <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-xs sm:text-sm font-bold text-emerald-900">
+                    <span className="text-xs sm:text-sm font-bold text-emerald-900 dark:text-emerald-200">
                       {isUrdu ? 'آفیشل ریکارڈز سے تصدیق جاری ہے...' : 'Checking verified document records...'}
                     </span>
                   </div>
@@ -1402,7 +1410,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                       <span className="text-[#5a5a40] dark:text-slate-300">
                         {isUrdu ? 'ورائچ گڈز 24/7 ہیلپ لائن رابطہ:' : 'Warraich Goods 24/7 Helpline:'}
                       </span>
-                      <div className="font-mono font-bold text-[#4a5e38] flex items-center gap-3">
+                      <div className="font-mono font-bold text-[#4a5e38] dark:text-emerald-400 flex items-center gap-3 dir-ltr">
                         <a href="tel:03005370443" className="hover:underline">0300-5370443</a>
                         <span>•</span>
                         <a href="tel:03395370443" className="hover:underline">0339-5370443</a>
@@ -1416,13 +1424,13 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   const stored = getStoredBilties();
                   if (stored.length === 0) return null;
                   return (
-                    <div className="bg-[#fdfbf7] p-5 sm:p-6 rounded-3xl border border-[#ecece0] space-y-3">
+                    <div className="bg-[#fdfbf7] dark:bg-[#16181e] p-5 sm:p-6 rounded-3xl border border-[#ecece0] dark:border-[#2d313b] space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-[#4a4a35] flex items-center gap-1.5">
-                          <Truck className="w-3.5 h-3.5 text-[#8b9d77]" />
+                        <span className="text-xs font-bold text-[#4a4a35] dark:text-white flex items-center gap-1.5">
+                          <Truck className="w-3.5 h-3.5 text-[#8b9d77] dark:text-emerald-400" />
                           {isUrdu ? 'حالیہ رجسٹرڈ دستاویزات (فوری تصدیق کیلئے کلک کریں):' : 'Recent Registered Documents (Click to verify):'}
                         </span>
-                        <span className="text-[11px] font-mono text-[#8e8e75]">
+                        <span className="text-[11px] font-mono text-[#8e8e75] dark:text-slate-400">
                           {stored.length} {isUrdu ? 'کل ریکارڈز' : 'total'}
                         </span>
                       </div>
@@ -1436,17 +1444,17 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                               setBiltyQuery(b.biltyNo);
                               handleVerifyBilty(b.biltyNo);
                             }}
-                            className="p-3 rounded-2xl bg-white border border-[#ecece0] hover:border-[#8b9d77] hover:shadow-2xs text-left cursor-pointer transition-all flex items-center justify-between gap-2 group"
+                            className="p-3 rounded-2xl bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#2d313b] hover:border-[#8b9d77] hover:shadow-2xs text-left cursor-pointer transition-all flex items-center justify-between gap-2 group"
                           >
                             <div className="overflow-hidden">
-                              <span className="font-mono font-bold text-xs text-[#4a5e38] block group-hover:text-[#3d4e2e]">
+                              <span className="font-mono font-bold text-xs text-[#4a5e38] dark:text-emerald-400 block group-hover:text-[#3d4e2e] dark:group-hover:text-emerald-300">
                                 {b.biltyNo}
                               </span>
-                              <span className="text-[11px] text-[#8e8e75] truncate block">
+                              <span className="text-[11px] text-[#8e8e75] dark:text-slate-400 truncate block">
                                 {b.sendingCity} → {b.receivingCity}
                               </span>
                             </div>
-                            <span className="text-[10px] font-mono text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                            <span className="text-[10px] font-mono text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/70 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60">
                               {b.vehicleNo || (isUrdu ? 'تصدیق شدہ' : 'Verified')}
                             </span>
                           </button>
@@ -1457,14 +1465,14 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                 })()}
 
                 {/* Online QR Document Verification Banner */}
-                <div className="p-4 sm:p-5 rounded-3xl bg-white border border-[#ecece0] space-y-2">
+                <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#16181e] border border-[#ecece0] dark:border-[#2d313b] space-y-2">
                   <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-[#8b9d77]" />
-                    <h4 className="font-serif font-bold text-xs sm:text-sm text-[#4a4a35]">
+                    <Building2 className="w-4 h-4 text-[#8b9d77] dark:text-emerald-400" />
+                    <h4 className="font-serif font-bold text-xs sm:text-sm text-[#4a4a35] dark:text-white">
                       {isUrdu ? 'آن لائن کیو آر دستاویز تصدیق سسٹم' : 'Online QR Document Verification System'}
                     </h4>
                   </div>
-                  <p className="text-xs text-[#5a5a40] leading-relaxed">
+                  <p className="text-xs text-[#5a5a40] dark:text-slate-300 leading-relaxed">
                     {isUrdu
                       ? 'ہر جاری کردہ کنسائنمنٹ دستاویز پر ایک آفیشل کیو آر کوڈ پرنٹ ہوتا ہے جو ورائچ گڈز کے آن لائن تصدیقی ریکارڈ سے منسلک ہے۔ کسی بھی اسمارٹ فون یا کیمرہ سے دستاویز کی اصلیت کی فوری تصدیق کی جا سکتی ہے۔'
                       : 'Every generated consignment document carries an official QR code linked to Warraich Goods online verification records so consignors and consignees can verify authenticity from any smartphone.'}

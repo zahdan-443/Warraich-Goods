@@ -126,7 +126,7 @@ export const BILTY_BRANCHES: Record<'samundri', BiltyBranchInfo> = {
     id: 'samundri',
     nameUr: 'سمندری',
     nameEn: 'Samundri',
-    addressUr: 'اوکاڑہ بائی پاس، نزدیک 466 چوک، سمندری',
+    addressUr: 'اوکاڑہ بائی پاس، نزد 466 چوک، سمندری',
     addressEn: 'Okara Bypass, Near 466 Chock, Samundri',
     phone: '0300-5370443, 0339-5370443'
   }

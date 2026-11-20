@@ -20,6 +20,7 @@ import {
   Users,
   Wallet
 } from 'lucide-react';
+import { openWhatsAppMessage } from '../../../utils/externalLinks';
 
 interface KhataReportsPanelProps {
   lang: Language;
@@ -64,9 +65,7 @@ export const KhataReportsPanel: React.FC<KhataReportsPanelProps> = ({
       ? `📊 *کاروباری و کھاتہ رپورٹ (${startDate} تا ${endDate})*\n🏢 ${biz}\n--------------------------------\nکل آمدن: PKR ${analytics.incomeVsExpense.totalIncome.toLocaleString('en-US')}\nکل اخراجات: PKR ${analytics.incomeVsExpense.totalExpenses.toLocaleString('en-US')}\nخالص نفع: PKR ${analytics.incomeVsExpense.netProfit.toLocaleString('en-US')}\nپارٹی وصولی: PKR ${analytics.partyReceivablePayable.totalReceivable.toLocaleString('en-US')}\nپارٹی ادائیگی: PKR ${analytics.partyReceivablePayable.totalPayable.toLocaleString('en-US')}\nبروکر کمیشن بقایا: PKR ${analytics.brokerCommissionDue.totalCommissionDue.toLocaleString('en-US')}\nبل بقایا: PKR ${analytics.billsSummary.totalPendingBalance.toLocaleString('en-US')}\n— ${biz}`
       : `📊 *BUSINESS & LEDGER REPORT (${startDate} to ${endDate})*\n🏢 ${biz}\n--------------------------------\nTotal Income: PKR ${analytics.incomeVsExpense.totalIncome.toLocaleString('en-US')}\nTotal Expenses: PKR ${analytics.incomeVsExpense.totalExpenses.toLocaleString('en-US')}\nNet Profit: PKR ${analytics.incomeVsExpense.netProfit.toLocaleString('en-US')}\nParty Receivable: PKR ${analytics.partyReceivablePayable.totalReceivable.toLocaleString('en-US')}\nParty Payable: PKR ${analytics.partyReceivablePayable.totalPayable.toLocaleString('en-US')}\nBroker Commission Due: PKR ${analytics.brokerCommissionDue.totalCommissionDue.toLocaleString('en-US')}\nBills Pending: PKR ${analytics.billsSummary.totalPendingBalance.toLocaleString('en-US')}\n— ${biz}`;
 
-    if (typeof window !== 'undefined') {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-    }
+    openWhatsAppMessage(text);
   };
 
   return (

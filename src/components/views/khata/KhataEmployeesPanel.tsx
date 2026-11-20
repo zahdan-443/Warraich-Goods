@@ -42,6 +42,8 @@ import {
   Users,
   X
 } from 'lucide-react';
+import { ConfirmDialog } from '../../ConfirmDialog';
+import { openWhatsAppMessage } from '../../../utils/externalLinks';
 
 interface KhataEmployeesPanelProps {
   lang: Language;
@@ -68,6 +70,7 @@ export const KhataEmployeesPanel: React.FC<KhataEmployeesPanelProps> = ({
   const [editingEmp, setEditingEmp] = useState<KhataEmployee | null>(null);
   const [showEntryModal, setShowEntryModal] = useState(false);
   const [defaultEntryType, setDefaultEntryType] = useState<KhataEmployeeEntryType>('salary_due');
+  const [pendingDeleteEmp, setPendingDeleteEmp] = useState<KhataEmployee | null>(null);
 
   const reload = () => {
     setEmployees(getAllEmployees());
@@ -128,10 +131,7 @@ export const KhataEmployeesPanel: React.FC<KhataEmployeesPanelProps> = ({
     const handleShareWa = () => {
       const text = formatEmployeeStatementWhatsApp(selectedEmployee, selectedEntries, businessName, lang);
       const cleanPhone = normalizePakistaniPhone(selectedEmployee.phone);
-      const url = cleanPhone
-        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
-        : `https://wa.me/?text=${encodeURIComponent(text)}`;
-      if (typeof window !== 'undefined') window.open(url, '_blank');
+      openWhatsAppMessage(text, cleanPhone || undefined);
     };
 
     return (
@@ -451,10 +451,7 @@ export const KhataEmployeesPanel: React.FC<KhataEmployeesPanelProps> = ({
                     type="button"
                     onClick={e => {
                       e.stopPropagation();
-                      if (window.confirm(isUrdu ? `کیا آپ "${emp.name}" کو حذف کرنا چاہتے ہیں؟` : `Delete employee "${emp.name}"?`)) {
-                        deleteEmployee(emp.id);
-                        reload();
-                      }
+                      setPendingDeleteEmp(emp);
                     }}
                     className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 cursor-pointer"
                   >
@@ -484,6 +481,29 @@ export const KhataEmployeesPanel: React.FC<KhataEmployeesPanelProps> = ({
           }}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(pendingDeleteEmp)}
+        lang={lang}
+        variant="danger"
+        title={isUrdu ? 'ملازم حذف کریں؟' : 'Delete Employee?'}
+        message={
+          pendingDeleteEmp
+            ? isUrdu
+              ? `کیا آپ "${pendingDeleteEmp.name}" کو حذف کرنا چاہتے ہیں؟`
+              : `Delete employee "${pendingDeleteEmp.name}"?`
+            : ''
+        }
+        confirmLabel={isUrdu ? 'حذف کریں' : 'Delete'}
+        onCancel={() => setPendingDeleteEmp(null)}
+        onConfirm={() => {
+          if (pendingDeleteEmp) {
+            deleteEmployee(pendingDeleteEmp.id);
+            reload();
+          }
+          setPendingDeleteEmp(null);
+        }}
+      />
     </div>
   );
 };

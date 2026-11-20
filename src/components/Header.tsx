@@ -24,6 +24,7 @@ import {
 import { getCrashReportingConsent, setCrashReportingConsent } from '../utils/crashReportingService';
 import { isOwnerEmail } from '../utils/authUtils';
 import { APP_VERSION } from '../constants/version';
+import { resolvePublicAppShareUrl, shareTextOrUrl } from '../utils/externalLinks';
 
 interface HeaderProps {
   lang: Language;
@@ -182,28 +183,47 @@ export const Header: React.FC<HeaderProps> = ({
     else setInternalShowTopMenu(false);
   };
 
-  const handleShareApp = async () => {
-    const shareData = {
-      title: 'Driver Dost - Road Freight, Safar & Fleet Manager',
-      text: lang === 'ur'
-        ? 'ڈرائیور دوست - ٹرپ اخراجات کیلکولیٹر، ٹول ٹیکس، ڈیزل مانیٹر اور فلیٹ مینجمنٹ سسٹم۔'
-        : 'Driver Dost - Road Freight, Safar Diary, Toll Calculator & Fleet Management System.',
-      url: window.location.origin + window.location.pathname,
+  useEffect(() => {
+    if (!isMenuOpen && !showNotifs) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showNotifs) setShowNotifs(false);
+        else if (isMenuOpen) handleCloseMenu();
+      }
     };
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch {
-        // user cancelled
+    const handleHardwareBack = (e: Event) => {
+      if (showNotifs) {
+        e.preventDefault();
+        setShowNotifs(false);
+      } else if (isMenuOpen) {
+        e.preventDefault();
+        handleCloseMenu();
       }
-    } else {
-      try {
-        await navigator.clipboard.writeText(shareData.url);
-        setCopyToast(true);
-        setTimeout(() => setCopyToast(false), 2500);
-      } catch {
-        // fallback ignore
-      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('app-back-button', handleHardwareBack);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('app-back-button', handleHardwareBack);
+    };
+  }, [isMenuOpen, showNotifs]);
+
+  const handleShareApp = async () => {
+    const shareTitle = 'Driver Dost - Road Freight, Safar & Fleet Manager';
+    const shareText = lang === 'ur'
+      ? 'ڈرائیور دوست - ٹرپ اخراجات کیلکولیٹر، ٹول ٹیکس، ڈیزل مانیٹر اور فلیٹ مینجمنٹ سسٹم۔'
+      : 'Driver Dost - Road Freight, Safar Diary, Toll Calculator & Fleet Management System.';
+    const shareUrl = resolvePublicAppShareUrl();
+
+    const status = await shareTextOrUrl({
+      title: shareTitle,
+      text: shareText,
+      url: shareUrl,
+      dialogTitle: lang === 'ur' ? 'ڈرائیور دوست ایپ شیئر کریں' : 'Share Driver Dost App'
+    });
+    if (status === 'copied') {
+      setCopyToast(true);
+      setTimeout(() => setCopyToast(false), 2500);
     }
   };
 
@@ -220,17 +240,17 @@ export const Header: React.FC<HeaderProps> = ({
       )}
 
       {/* CLEAN SINGLE LINE TOP HEADER: Logo, Brand Name & Notification Bell Icon ONLY */}
-      <header className="sticky top-0 z-50 bg-[#fdfbf7] border-b border-[#e2e2d5] shadow-2xs transition-all pt-[env(safe-area-inset-top,0px)]">
+      <header className="sticky top-0 z-50 bg-[#fdfbf7] dark:bg-[#16181e] border-b border-[#e2e2d5] dark:border-[#2d313b] shadow-2xs transition-all pt-[env(safe-area-inset-top,0px)]">
         <div className="py-2 sm:py-2.5 px-3 sm:px-6 md:px-10 flex items-center justify-between">
           {/* Left: Side Menu Trigger & Brand Title */}
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <button
               onClick={handleOpenMenu}
-              className="p-2 bg-white border border-[#ecece0] hover:border-[#8b9d77] rounded-xl shadow-2xs text-[#5a5a40] shrink-0 cursor-pointer active:scale-95 transition-all"
+              className="p-2 bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#2d313b] hover:border-[#8b9d77] dark:hover:border-emerald-500/60 rounded-xl shadow-2xs text-[#5a5a40] dark:text-slate-200 shrink-0 cursor-pointer active:scale-95 transition-all"
               title={lang === 'ur' ? "سیٹنگز اور کنٹرول مینیو کھولیں" : "Click to open System Menu"}
               aria-label={lang === 'ur' ? "سیٹنگز اور کنٹرول مینیو کھولیں" : "Open System Controls Menu"}
             >
-              <Menu className="w-5 h-5 text-[#8b9d77]" />
+              <Menu className="w-5 h-5 text-[#8b9d77] dark:text-emerald-400" />
             </button>
 
             {/* Logo Image */}
@@ -238,11 +258,11 @@ export const Header: React.FC<HeaderProps> = ({
 
             <div className="flex flex-col justify-center min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2 leading-tight">
-                <span className="text-sm sm:text-base md:text-lg font-serif font-bold tracking-tight text-[#4a4a35] whitespace-nowrap">
+                <span className="text-sm sm:text-base md:text-lg font-serif font-bold tracking-tight text-[#4a4a35] dark:text-white whitespace-nowrap">
                   Driver Dost
                 </span>
-                <span className="text-gray-300 font-light">|</span>
-                <span className="text-xs sm:text-base font-nastaliq font-bold text-[#8b9d77] whitespace-nowrap pt-0.5">
+                <span className="text-gray-300 dark:text-slate-600 font-light">|</span>
+                <span className="text-xs sm:text-base font-nastaliq font-bold text-[#8b9d77] dark:text-emerald-400 whitespace-nowrap pt-0.5">
                   ڈرائیور دوست
                 </span>
               </div>
@@ -329,7 +349,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                 {/* AUTHENTICATED ACCOUNT CONTROL CARD (Or Guest Sign In Card) */}
                 {userEmail ? (
-                  <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] shadow-2xs">
+                  <div className="p-4 rounded-3xl bg-[#fdfbf7] dark:bg-[#16181e] border border-[#ecece0] dark:border-[#2d313b] shadow-2xs">
                     <div className="space-y-3 text-left">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
@@ -337,15 +357,15 @@ export const Header: React.FC<HeaderProps> = ({
                             {userEmail.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="text-xs font-bold text-[#4a4a35] max-w-[170px] truncate">{userEmail}</div>
+                            <div className="text-xs font-bold text-[#4a4a35] dark:text-slate-100 max-w-[170px] truncate">{userEmail}</div>
                             {isOwnerUser ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px] border border-amber-300 mt-0.5">
-                                <Crown className="w-3 h-3 text-amber-600" />
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold text-[10px] border border-amber-300 dark:border-amber-700/60 mt-0.5">
+                                <Crown className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                                 <span>Owner (Active)</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-700 border border-blue-300 text-[10px] font-bold mt-0.5">
-                                <Truck className="w-3 h-3 text-[#3B82F6]" />
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800/60 text-[10px] font-bold mt-0.5">
+                                <Truck className="w-3 h-3 text-[#3B82F6] dark:text-blue-400" />
                                 <span>Authorized User</span>
                               </span>
                             )}
@@ -371,7 +391,7 @@ export const Header: React.FC<HeaderProps> = ({
                           handleCloseMenu();
                           onSignOut();
                         }}
-                        className="w-full py-2 px-3 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer border border-red-200"
+                        className="w-full py-2 px-3 rounded-xl bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-950/70 text-red-600 dark:text-red-300 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer border border-red-200 dark:border-red-900/50 transition-colors"
                       >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>{lang === 'ur' ? 'لاگ آؤٹ کریں' : 'Sign Out Account'}</span>
@@ -382,9 +402,9 @@ export const Header: React.FC<HeaderProps> = ({
                           handleCloseMenu();
                           setShowAccountDeletionModal(true);
                         }}
-                        className="w-full py-2 px-3 rounded-xl bg-gray-50 hover:bg-red-50 text-gray-500 hover:text-red-700 font-bold text-[11px] flex items-center justify-center gap-1.5 cursor-pointer border border-gray-200 hover:border-red-200 transition-all"
+                        className="w-full py-2 px-3 rounded-xl bg-gray-50 dark:bg-[#1a1c22] hover:bg-red-50 dark:hover:bg-red-950/40 text-gray-500 dark:text-slate-300 hover:text-red-700 dark:hover:text-red-300 font-bold text-[11px] flex items-center justify-center gap-1.5 cursor-pointer border border-gray-200 dark:border-[#2d313b] hover:border-red-200 dark:hover:border-red-900/50 transition-all"
                       >
-                        <Trash2 className="w-3 h-3 text-red-500" />
+                        <Trash2 className="w-3 h-3 text-red-500 dark:text-red-400" />
                         <span>{lang === 'ur' ? 'اکاؤنٹ ڈیلیٹ کی درخواست (30 دن کی مہلت)' : 'Request Account Deletion'}</span>
                       </button>
                     </div>
@@ -434,40 +454,40 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
 
                 {/* Language Control */}
-                <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] flex items-center justify-between">
+                <div className="p-4 rounded-3xl bg-[#fdfbf7] dark:bg-[#16181e] border border-[#ecece0] dark:border-[#2d313b] flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-white border border-[#ecece0] shadow-2xs">
-                      <Globe className="w-5 h-5 text-[#8b9d77]" />
+                    <div className="p-2.5 rounded-2xl bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#2d313b] shadow-2xs">
+                      <Globe className="w-5 h-5 text-[#8b9d77] dark:text-emerald-400" />
                     </div>
                     <div>
-                      <div className="font-serif font-bold text-sm text-[#4a4a35]">{lang === 'ur' ? 'زبان تبدیل کریں' : 'App Language'}</div>
-                      <div className="text-xs text-[#8e8e75]">{lang === 'ur' ? 'اردو / English' : 'English / Urdu'}</div>
+                      <div className="font-serif font-bold text-sm text-[#4a4a35] dark:text-white">{lang === 'ur' ? 'زبان تبدیل کریں' : 'App Language'}</div>
+                      <div className="text-xs text-[#8e8e75] dark:text-slate-400">{lang === 'ur' ? 'اردو / English' : 'English / Urdu'}</div>
                     </div>
                   </div>
                   <button
                     onClick={onToggleLang}
-                    className="px-4 py-2 rounded-xl bg-[#8b9d77] hover:bg-[#798a67] text-white font-bold text-xs shadow-xs cursor-pointer active:scale-95"
+                    className="px-4 py-2 rounded-xl bg-[#8b9d77] dark:bg-emerald-700 hover:bg-[#798a67] dark:hover:bg-emerald-600 text-white font-bold text-xs shadow-xs cursor-pointer active:scale-95"
                   >
                     {lang === 'en' ? 'اردو (UR)' : 'ENG (EN)'}
                   </button>
                 </div>
 
                 {/* Themes & Appearance Control */}
-                <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] space-y-2.5">
+                <div className="p-4 rounded-3xl bg-[#fdfbf7] dark:bg-[#16181e] border border-[#ecece0] dark:border-[#2d313b] space-y-2.5">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-white border border-[#ecece0] shadow-2xs">
-                      <Palette className="w-5 h-5 text-[#8b9d77]" />
+                    <div className="p-2.5 rounded-2xl bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#2d313b] shadow-2xs">
+                      <Palette className="w-5 h-5 text-[#8b9d77] dark:text-emerald-400" />
                     </div>
                     <div>
-                      <div className="font-serif font-bold text-sm text-[#4a4a35]">{lang === 'ur' ? 'ایپ تھیم اور رنگ' : 'Theme & Appearance'}</div>
-                      <div className="text-xs text-[#8e8e75]">{lang === 'ur' ? 'روشنی / ڈارک موڈ' : 'Select UI display theme'}</div>
+                      <div className="font-serif font-bold text-sm text-[#4a4a35] dark:text-white">{lang === 'ur' ? 'ایپ تھیم اور رنگ' : 'Theme & Appearance'}</div>
+                      <div className="text-xs text-[#8e8e75] dark:text-slate-400">{lang === 'ur' ? 'روشنی / ڈارک موڈ' : 'Select UI display theme'}</div>
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2 pt-1">
                     <button
                       type="button"
                       onClick={() => setThemePref('system')}
-                      className={`py-2 px-2.5 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${themePref === 'system' ? 'bg-[#8b9d77] text-white shadow-xs' : 'bg-white border border-[#ecece0] text-[#5a5a40] hover:bg-[#f0f0e4]'}`}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${themePref === 'system' ? 'bg-[#8b9d77] dark:bg-emerald-700 text-white shadow-xs' : 'bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#2d313b] text-[#5a5a40] dark:text-slate-300 hover:bg-[#f0f0e4] dark:hover:bg-[#22252c]'}`}
                       title={lang === 'ur' ? 'فون ڈیفالٹ (آٹو لائٹ/ڈارک)' : 'Phone Default (Auto)'}
                     >
                       <Monitor className="w-4 h-4" />
@@ -476,7 +496,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <button
                       type="button"
                       onClick={() => setThemePref('light')}
-                      className={`py-2 px-2.5 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${themePref === 'light' ? 'bg-[#8b9d77] text-white shadow-xs' : 'bg-white border border-[#ecece0] text-[#5a5a40] hover:bg-[#f0f0e4]'}`}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${themePref === 'light' ? 'bg-[#8b9d77] dark:bg-emerald-700 text-white shadow-xs' : 'bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#2d313b] text-[#5a5a40] dark:text-slate-300 hover:bg-[#f0f0e4] dark:hover:bg-[#22252c]'}`}
                       title={lang === 'ur' ? 'لائٹ تھیم (روشن)' : 'Light Theme'}
                     >
                       <Sun className="w-4 h-4" />
@@ -485,7 +505,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <button
                       type="button"
                       onClick={() => setThemePref('dark')}
-                      className={`py-2 px-2.5 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${themePref === 'dark' ? 'bg-[#1e3a68] text-white shadow-xs' : 'bg-white border border-[#ecece0] text-[#5a5a40] hover:bg-[#f0f0e4]'}`}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${themePref === 'dark' ? 'bg-[#1e3a68] text-white shadow-xs' : 'bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#2d313b] text-[#5a5a40] dark:text-slate-300 hover:bg-[#f0f0e4] dark:hover:bg-[#22252c]'}`}
                       title={lang === 'ur' ? 'ڈارک تھیم' : 'Dark Theme'}
                     >
                       <Moon className="w-4 h-4" />
@@ -496,10 +516,10 @@ export const Header: React.FC<HeaderProps> = ({
 
 
                 {/* Notifications Control */}
-                <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] flex items-center justify-between">
+                <div className="p-4 rounded-3xl bg-[#fdfbf7] dark:bg-[#16181e] border border-[#ecece0] dark:border-[#2d313b] flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-white border border-[#ecece0] shadow-2xs relative">
-                      <Bell className="w-5 h-5 text-[#8b9d77]" />
+                    <div className="p-2.5 rounded-2xl bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#2d313b] shadow-2xs relative">
+                      <Bell className="w-5 h-5 text-[#8b9d77] dark:text-emerald-400" />
                       {unreadCount > 0 && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#EF4444] text-white text-[9px] font-bold flex items-center justify-center">
                           {unreadCount}
@@ -507,8 +527,8 @@ export const Header: React.FC<HeaderProps> = ({
                       )}
                     </div>
                     <div>
-                      <div className="font-serif font-bold text-sm text-[#4a4a35]">{lang === 'ur' ? 'نوٹیفیکیشنز' : 'Notifications'}</div>
-                      <div className="text-xs text-[#8e8e75]">{unreadCount} {lang === 'ur' ? 'نئے الرٹس' : 'unread alerts'}</div>
+                      <div className="font-serif font-bold text-sm text-[#4a4a35] dark:text-white">{lang === 'ur' ? 'نوٹیفیکیشنز' : 'Notifications'}</div>
+                      <div className="text-xs text-[#8e8e75] dark:text-slate-400">{unreadCount} {lang === 'ur' ? 'نئے الرٹس' : 'unread alerts'}</div>
                     </div>
                   </div>
                   <button
@@ -516,23 +536,23 @@ export const Header: React.FC<HeaderProps> = ({
                       handleCloseMenu();
                       setShowNotifs(true);
                     }}
-                    className="px-4 py-2 rounded-xl bg-[#f0f0e4] hover:bg-[#e2e2d5] text-[#5a5a40] font-bold text-xs cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-[#f0f0e4] dark:bg-[#22252c] hover:bg-[#e2e2d5] dark:hover:bg-[#2d313b] text-[#5a5a40] dark:text-slate-200 font-bold text-xs cursor-pointer"
                   >
                     {lang === 'ur' ? 'دیکھیں' : 'View Alerts'}
                   </button>
                 </div>
 
                 {/* EXPORT DATA & PRIVACY CONTROLS CARD */}
-                <div className="p-4 rounded-3xl bg-[#fdfbf7] border border-[#ecece0] space-y-2.5 shadow-2xs">
+                <div className="p-4 rounded-3xl bg-[#fdfbf7] dark:bg-[#16181e] border border-[#ecece0] dark:border-[#2d313b] space-y-2.5 shadow-2xs">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-white border border-[#ecece0] shadow-2xs text-[#1e3a68] shrink-0">
+                    <div className="p-2.5 rounded-2xl bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#2d313b] shadow-2xs text-[#1e3a68] dark:text-amber-400 shrink-0">
                       <Shield className="w-5 h-5 text-[#c59b27]" />
                     </div>
                     <div>
-                      <div className="font-serif font-bold text-sm text-[#4a4a35]">
+                      <div className="font-serif font-bold text-sm text-[#4a4a35] dark:text-white">
                         {lang === 'ur' ? 'ڈیٹا بیک اپ و پرائیویسی' : 'Export & Privacy'}
                       </div>
-                      <div className="text-[11px] text-[#8e8e75]">
+                      <div className="text-[11px] text-[#8e8e75] dark:text-slate-400">
                         {lang === 'ur' ? 'شناختی کارڈ ماسکنگ اور CSV / JSON ڈاؤن لوڈ' : 'CNIC masking, CSV and JSON backups'}
                       </div>
                     </div>
@@ -675,12 +695,12 @@ export const Header: React.FC<HeaderProps> = ({
                   <div className="space-y-1.5 pt-2 text-xs text-[#5a5a40] dark:text-slate-300 font-sans">
                     <div className="flex items-center gap-2 text-[11px] font-semibold text-[#1e3a68] dark:text-emerald-400">
                       <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span className="dir-ltr font-bold">0300-5370443</span>
+                      <span className="dir-ltr font-bold">0300-5370443, 0339-5370443</span>
                     </div>
                     <div className="flex items-center gap-2 text-[11px] text-[#6b6b55] dark:text-slate-300">
                       <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                       <span className="truncate">
-                        {lang === 'ur' ? 'سمندری، فیصل آباد، پنجاب، پاکستان' : 'Samundri, Faisalabad, Punjab, Pakistan'}
+                        {lang === 'ur' ? 'اوکاڑہ بائی پاس، نزد 466 چوک، سمندری' : 'Okara Bypass, Near 466 Chock, Samundri'}
                       </span>
                     </div>
                   </div>
@@ -732,8 +752,14 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Firebase Notifications Drawer / Modal */}
       {showNotifs && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-start justify-end p-4 sm:p-6 pt-[max(env(safe-area-inset-top,0px),5rem)] pb-[max(env(safe-area-inset-bottom,0px),1.5rem)]">
-          <div className="bg-white dark:bg-[#16181e] w-full max-w-sm rounded-[32px] shadow-2xl border border-[#ecece0] dark:border-[#2d313b] overflow-hidden animate-in fade-in slide-in-from-top-5">
+        <div
+          onClick={() => setShowNotifs(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-start justify-end p-4 sm:p-6 pt-[max(env(safe-area-inset-top,0px),5rem)] pb-[max(env(safe-area-inset-bottom,0px),1.5rem)]"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-[#16181e] w-full max-w-sm rounded-[32px] shadow-2xl border border-[#ecece0] dark:border-[#2d313b] overflow-hidden animate-in fade-in slide-in-from-top-5"
+          >
             <div className="p-5 bg-[#363626] dark:bg-[#1a1c22] text-white flex items-center justify-between border-b border-[#2d313b]/40">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-full bg-[#8b9d77] dark:bg-emerald-700 flex items-center justify-center text-xs">🔥</div>

@@ -42,6 +42,8 @@ import {
   Wallet,
   X
 } from 'lucide-react';
+import { ConfirmDialog } from '../../ConfirmDialog';
+import { openWhatsAppMessage } from '../../../utils/externalLinks';
 
 interface KhataBillsPanelProps {
   lang: Language;
@@ -81,6 +83,7 @@ export const KhataBillsPanel: React.FC<KhataBillsPanelProps> = ({
   const [payingBill, setPayingBill] = useState<KhataBill | null>(null);
   const [showDocPicker, setShowDocPicker] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [pendingDeleteBill, setPendingDeleteBill] = useState<KhataBill | null>(null);
 
   const reload = () => {
     setBills(getAllBills());
@@ -133,10 +136,7 @@ export const KhataBillsPanel: React.FC<KhataBillsPanelProps> = ({
   const handleShareWhatsApp = (bill: KhataBill) => {
     const text = formatBillWhatsAppMessage(bill, businessName, lang);
     const cleanPhone = normalizePakistaniPhone(bill.partyPhone);
-    const url = cleanPhone
-      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
-      : `https://wa.me/?text=${encodeURIComponent(text)}`;
-    if (typeof window !== 'undefined') window.open(url, '_blank');
+    openWhatsAppMessage(text, cleanPhone || undefined);
   };
 
   const handleOpenCreateFromBilty = (record: BiltyRecord) => {
@@ -446,12 +446,7 @@ export const KhataBillsPanel: React.FC<KhataBillsPanelProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm(isUrdu ? `کیا آپ واقعی بل ${bill.billNumber} حذف کرنا چاہتے ہیں؟` : `Delete bill ${bill.billNumber}?`)) {
-                          deleteBill(bill.id);
-                          reload();
-                        }
-                      }}
+                      onClick={() => setPendingDeleteBill(bill)}
                       className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 cursor-pointer"
                       title={isUrdu ? 'حذف کریں' : 'Delete'}
                     >
@@ -557,6 +552,29 @@ export const KhataBillsPanel: React.FC<KhataBillsPanelProps> = ({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(pendingDeleteBill)}
+        lang={lang}
+        variant="danger"
+        title={isUrdu ? 'بل حذف کریں؟' : 'Delete Bill?'}
+        message={
+          pendingDeleteBill
+            ? isUrdu
+              ? `کیا آپ واقعی بل ${pendingDeleteBill.billNumber} حذف کرنا چاہتے ہیں؟`
+              : `Delete bill ${pendingDeleteBill.billNumber}?`
+            : ''
+        }
+        confirmLabel={isUrdu ? 'حذف کریں' : 'Delete'}
+        onCancel={() => setPendingDeleteBill(null)}
+        onConfirm={() => {
+          if (pendingDeleteBill) {
+            deleteBill(pendingDeleteBill.id);
+            reload();
+          }
+          setPendingDeleteBill(null);
+        }}
+      />
     </div>
   );
 };

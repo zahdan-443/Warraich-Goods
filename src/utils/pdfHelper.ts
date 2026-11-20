@@ -16,6 +16,7 @@ import { getCachedCompanyProfile } from './storage';
 import { BILTY_BRANCHES, getBiltyVerificationUrl } from './biltyHelpers';
 import { biltyWatermarkBgData } from '../assets/dashboardIcons';
 import { buildPublicEmblemCandidates } from './assetResolver';
+import { openWhatsAppMessage } from './externalLinks';
 
 /**
  * Escapes unsafe characters for HTML injection prevention.
@@ -415,13 +416,7 @@ export async function shareBiltyPdfOrWhatsApp(options: {
   }
 
   const textSummary = formatBiltyWhatsAppSummary(record);
-  const encodedText = encodeURIComponent(textSummary);
-  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
-
-  const win = window.open(whatsappUrl, '_blank');
-  if (!win || win.closed || typeof win.closed === 'undefined') {
-    window.location.href = whatsappUrl;
-  }
+  openWhatsAppMessage(textSummary);
 
   if (onSuccess) onSuccess();
 }
@@ -452,8 +447,7 @@ export async function sharePdfFileOrWhatsApp(options: {
     onDownloadedFallback();
   }
 
-  const encodedMsg = encodeURIComponent(
+  openWhatsAppMessage(
     `${textSummary}\n\n📄 *(نوٹ: مکمل پی ڈی ایف رسید ڈاؤن لوڈ ہو گئی ہے، برائے مہربانی چیٹ میں فائل اٹیچ کر کے بھیج دیں۔)*`
   );
-  window.open(`https://api.whatsapp.com/send?text=${encodedMsg}`, '_blank');
 }

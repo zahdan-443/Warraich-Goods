@@ -84,6 +84,8 @@ import { KhataEmployeesPanel } from './khata/KhataEmployeesPanel';
 import { KhataReceivingPointsPanel } from './khata/KhataReceivingPointsPanel';
 import { KhataDailyExpensesPanel } from './khata/KhataDailyExpensesPanel';
 import { KhataReportsPanel } from './khata/KhataReportsPanel';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { openWhatsAppMessage } from '../../utils/externalLinks';
 
 interface LedgerViewProps {
   lang: Language;
@@ -156,6 +158,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
   const [editingEntry, setEditingEntry] = useState<LedgerEntry | null>(null);
   const [showReminderModal, setShowReminderModal] = useState<LedgerAccount | null>(null);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [pendingDeleteAccount, setPendingDeleteAccount] = useState<LedgerAccount | null>(null);
 
   // Undo Snackbar State (5 seconds)
   const [undoItem, setUndoItem] = useState<{
@@ -496,13 +499,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
         lang
       );
       const cleanPhone = normalizePakistaniPhone(accountToShare.phone);
-      const waUrl = cleanPhone
-        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
-        : `https://wa.me/?text=${encodeURIComponent(text)}`;
-
-      if (typeof window !== 'undefined') {
-        window.open(waUrl, '_blank');
-      }
+      openWhatsAppMessage(text, cleanPhone || undefined);
     };
 
     return (
@@ -633,13 +630,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (window.confirm(isUrdu ? `کیا آپ واقعی "${selectedAccount.name}" کا کھاتہ حذف کرنا چاہتے ہیں؟` : `Delete party "${selectedAccount.name}"?`)) {
-                    deleteLedgerAccount(selectedAccount.id);
-                    setSelectedAccountId(null);
-                    reloadData();
-                  }
-                }}
+                onClick={() => setPendingDeleteAccount(selectedAccount)}
                 className="text-rose-600 dark:text-rose-400 font-bold p-1.5 hover:underline cursor-pointer"
               >
                 {isUrdu ? 'حذف کریں' : 'Delete'}
@@ -818,6 +809,29 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
         {renderEntryModal()}
         {renderReminderModal()}
         {renderUndoSnackbar()}
+        <ConfirmDialog
+          isOpen={Boolean(pendingDeleteAccount)}
+          lang={lang}
+          variant="danger"
+          title={isUrdu ? 'کھاتہ حذف کریں؟' : 'Delete Ledger Party?'}
+          message={
+            pendingDeleteAccount
+              ? isUrdu
+                ? `کیا آپ واقعی "${pendingDeleteAccount.name}" کا کھاتہ حذف کرنا چاہتے ہیں؟`
+                : `Delete party "${pendingDeleteAccount.name}"?`
+              : ''
+          }
+          confirmLabel={isUrdu ? 'حذف کریں' : 'Delete'}
+          onCancel={() => setPendingDeleteAccount(null)}
+          onConfirm={() => {
+            if (pendingDeleteAccount) {
+              deleteLedgerAccount(pendingDeleteAccount.id);
+              setSelectedAccountId(null);
+              reloadData();
+            }
+            setPendingDeleteAccount(null);
+          }}
+        />
       </div>
     );
   }

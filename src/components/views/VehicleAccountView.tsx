@@ -41,6 +41,7 @@ import {
   evaluateArithmetic
 } from '../../utils/ledgerStorage';
 import { getAllDailyExpenses } from '../../utils/khataModulesStorage';
+import { openWhatsAppMessage } from '../../utils/externalLinks';
 
 interface VehicleAccountViewProps {
   lang: Language;
@@ -510,12 +511,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
     setCopyToast(true);
     setTimeout(() => setCopyToast(false), 3000);
 
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-    try {
-      window.open(url, '_blank');
-    } catch {
-      window.location.href = url;
-    }
+    openWhatsAppMessage(msg);
   };
 
   const handleExportPDF = async () => {

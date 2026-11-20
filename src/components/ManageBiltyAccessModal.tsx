@@ -1,18 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  X, 
-  ShieldCheck, 
-  UserCheck, 
-  UserX, 
-  Search, 
-  Plus, 
-  Crown, 
-  BarChart3, 
-  Activity, 
-  RotateCcw, 
-  Calendar, 
-  CheckCircle2, 
-  Users,
+import {
+  X,
+  Crown,
+  BarChart3,
+  Activity,
+  RotateCcw,
+  Calendar,
+  CheckCircle2,
   Milestone,
   Save,
   Download,
@@ -20,16 +14,11 @@ import {
   Database,
   FileSpreadsheet,
   Building2,
-  Phone,
-  Wallet,
   Trash2,
   AlertTriangle
 } from 'lucide-react';
-import { Language, UserProfile, ActivityLogItem, BiltyRecord, Trip, TollRatesConfig, CompanyProfile } from '../types';
-import { 
-  getBiltyAccessConfig, 
-  updateBiltyAccessInFirestore,
-  getAllRegisteredUsers,
+import { Language, ActivityLogItem, BiltyRecord, Trip, TollRatesConfig, CompanyProfile } from '../types';
+import {
   getActivityLogs,
   logActivity,
   getStoredBilties,
@@ -42,11 +31,11 @@ import {
   saveCompanyProfileInFirestore,
   DEFAULT_COMPANY_PROFILE
 } from '../utils/storage';
-import { 
-  getStoredTollRates, 
-  saveTollRatesInFirestore, 
-  resetTollRatesToDefault, 
-  DEFAULT_TOLL_RATES 
+import {
+  getStoredTollRates,
+  saveTollRatesInFirestore,
+  resetTollRatesToDefault,
+  DEFAULT_TOLL_RATES
 } from '../utils/tollMatrix';
 import { OWNER_EMAIL, isOwnerEmail } from '../utils/authUtils';
 import { getPakistanMonthKey } from '../utils/dateUtils';
@@ -64,6 +53,7 @@ import {
   processOwnerDeletionQueueItem
 } from '../utils/accountDeletion';
 import { BackupRestoreConfirmModal } from './BackupRestoreConfirmModal';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface ManageBiltyAccessModalProps {
   isOpen: boolean;
@@ -74,37 +64,23 @@ interface ManageBiltyAccessModalProps {
   onUpdated?: (config: { allowedUIDs: string[]; allowedEmails: string[] }) => void;
 }
 
-type PanelTab = 'access' | 'reports' | 'backup' | 'tollRates' | 'logs' | 'deletions';
+type PanelTab = 'reports' | 'backup' | 'tollRates' | 'logs' | 'deletions';
 
 export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
   isOpen,
   onClose,
   lang,
-  currentUserUid,
-  currentUserEmail,
-  onUpdated
+  currentUserEmail
 }) => {
   const isOwner = isOwnerEmail(currentUserEmail);
 
-  // Strictly block and hide confidential bilty access and registered user list from non-owners
-  if (!isOpen || !isOwner) {
-    return null;
-  }
-
-  const [activeTab, setActiveTab] = useState<PanelTab>('access');
-
-  // Bilty Access State
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [allowedUIDs, setAllowedUIDs] = useState<string[]>([]);
-  const [allowedEmails, setAllowedEmails] = useState<string[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [manualInput, setManualInput] = useState('');
+  const [activeTab, setActiveTab] = useState<PanelTab>('reports');
 
   // Toll Rates State
   const [tollRates, setTollRates] = useState<TollRatesConfig>(DEFAULT_TOLL_RATES);
   const [savingTollRates, setSavingTollRates] = useState(false);
   const [tollSuccessMsg, setTollSuccessMsg] = useState(false);
+  const [showResetTollConfirm, setShowResetTollConfirm] = useState(false);
 
   // Business Reports State
   const [bilties, setBilties] = useState<BiltyRecord[]>([]);
@@ -134,55 +110,6 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
   const [processingDeletionId, setProcessingDeletionId] = useState<string | null>(null);
   const [deletionStatusMsg, setDeletionStatusMsg] = useState<{ msg: string; success: boolean } | null>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadInitialData();
-    }
-  }, [isOpen]);
-
-  const loadInitialData = async () => {
-    if (!isOwner) return;
-    // Load Access Config & Registered Users
-    setLoadingUsers(true);
-    try {
-      const config = await getBiltyAccessConfig();
-      setAllowedUIDs(config.allowedUIDs);
-      setAllowedEmails(config.allowedEmails);
-
-      const userList = await getAllRegisteredUsers();
-      setUsers(userList);
-    } catch (err) {
-      console.warn("Failed loading access config:", err);
-    } finally {
-      setLoadingUsers(false);
-    }
-
-    // Load Toll Rates
-    try {
-      const rates = await getStoredTollRates();
-      setTollRates(rates);
-    } catch (err) {
-      console.warn("Failed loading toll rates:", err);
-    }
-
-    // Load Company & Branch Profile
-    try {
-      const prof = await getStoredCompanyProfile();
-      setCompanyProfile(prof);
-    } catch (err) {
-      console.warn("Failed loading company profile:", err);
-    }
-
-    // Load Operational Data for Reports
-    setBilties(getStoredBilties());
-    setTrips(getStoredTrips());
-    setUndoAvailable(hasPreRestoreSnapshot());
-
-    // Load Activity Logs & Account Deletion Queue
-    loadLogsData();
-    loadDeletionQueueData();
-  };
-
   const loadDeletionQueueData = async () => {
     setLoadingDeletions(true);
     try {
@@ -201,11 +128,72 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
       const fetchedLogs = await getActivityLogs();
       setLogs(fetchedLogs);
     } catch (err) {
-      console.warn("Failed loading activity logs:", err);
+      console.warn('Failed loading activity logs:', err);
     } finally {
       setLoadingLogs(false);
     }
   };
+
+  const loadInitialData = async () => {
+    if (!isOwner) return;
+
+    // Load Toll Rates
+    try {
+      const rates = await getStoredTollRates();
+      setTollRates(rates);
+    } catch (err) {
+      console.warn('Failed loading toll rates:', err);
+    }
+
+    // Load Company & Branch Profile
+    try {
+      const prof = await getStoredCompanyProfile();
+      setCompanyProfile(prof);
+    } catch (err) {
+      console.warn('Failed loading company profile:', err);
+    }
+
+    // Load Operational Data for Reports
+    setBilties(getStoredBilties());
+    setTrips(getStoredTrips());
+    setUndoAvailable(hasPreRestoreSnapshot());
+
+    // Load Activity Logs & Account Deletion Queue
+    loadLogsData();
+    loadDeletionQueueData();
+  };
+
+  useEffect(() => {
+    if (isOpen && isOwner) {
+      void loadInitialData();
+    }
+  }, [isOpen, isOwner]);
+
+  useEffect(() => {
+    if (!isOpen || !isOwner) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !showResetTollConfirm && !pendingRestorePreview) {
+        onClose();
+      }
+    };
+    const handleBackButton = () => {
+      if (!showResetTollConfirm && !pendingRestorePreview) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('app-back-button', handleBackButton);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('app-back-button', handleBackButton);
+    };
+  }, [isOpen, isOwner, showResetTollConfirm, pendingRestorePreview, onClose]);
+
+  // Strictly block and hide confidential owner admin panel from non-owners
+  if (!isOpen || !isOwner) {
+    return null;
+  }
+
 
   const handleSaveCompanyProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -314,92 +302,6 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
-
-  // --- ACCESS TAB HANDLERS ---
-  const handleToggleAccess = async (user: UserProfile) => {
-    const targetEmail = user.email ? user.email.toLowerCase().trim() : '';
-    const targetUid = user.uid;
-
-    let newUIDs = [...allowedUIDs];
-    let newEmails = [...allowedEmails];
-
-    const isUidAuth = targetUid ? newUIDs.includes(targetUid) : false;
-    const isEmailAuth = targetEmail ? newEmails.map(e => e.toLowerCase().trim()).includes(targetEmail) : false;
-
-    if (isUidAuth || isEmailAuth) {
-      if (targetUid) {
-        newUIDs = newUIDs.filter(id => id !== targetUid);
-      }
-      if (targetEmail) {
-        newEmails = newEmails.filter(e => e.toLowerCase().trim() !== targetEmail);
-      }
-      await logActivity('Bilty Access Revoked', `Revoked access for ${user.name} (${user.email || targetUid})`, 'bilty');
-    } else {
-      if (targetUid && !newUIDs.includes(targetUid)) {
-        newUIDs.push(targetUid);
-      }
-      if (targetEmail && !newEmails.map(e => e.toLowerCase().trim()).includes(targetEmail)) {
-        newEmails.push(targetEmail);
-      }
-      await logActivity('Bilty Access Granted', `Granted bilty creation permission to ${user.name} (${user.email || targetUid})`, 'bilty');
-    }
-
-    setAllowedUIDs(newUIDs);
-    setAllowedEmails(newEmails);
-    await updateBiltyAccessInFirestore(newUIDs, newEmails);
-    if (onUpdated) {
-      onUpdated({ allowedUIDs: newUIDs, allowedEmails: newEmails });
-    }
-  };
-
-  const handleAddManualInput = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const inputVal = manualInput.trim();
-    if (!inputVal) return;
-
-    const newUIDs = [...allowedUIDs];
-    const newEmails = [...allowedEmails];
-
-    if (inputVal.includes('@')) {
-      const emailToAdd = inputVal.toLowerCase().trim();
-      if (!newEmails.map(e => e.toLowerCase().trim()).includes(emailToAdd)) {
-        newEmails.push(emailToAdd);
-      }
-      if (!users.some(u => u.email?.toLowerCase().trim() === emailToAdd)) {
-        setUsers(prev => [...prev, {
-          uid: `email_${Date.now()}`,
-          name: emailToAdd.split('@')[0],
-          email: emailToAdd,
-          role: 'driver'
-        }]);
-      }
-      await logActivity('Manual Email Authorized', `Added ${emailToAdd} to authorized bilty list`, 'bilty');
-    } else {
-      const uidToAdd = inputVal;
-      if (!newUIDs.includes(uidToAdd)) {
-        newUIDs.push(uidToAdd);
-      }
-      if (!users.some(u => u.uid === uidToAdd)) {
-        setUsers(prev => [...prev, {
-          uid: uidToAdd,
-          name: `Manual UID: ${uidToAdd.slice(0, 8)}...`,
-          email: 'Direct Permission',
-          role: 'driver'
-        }]);
-      }
-      await logActivity('Manual UID Authorized', `Added UID ${uidToAdd} to authorized bilty list`, 'bilty');
-    }
-
-    setAllowedUIDs(newUIDs);
-    setAllowedEmails(newEmails);
-    await updateBiltyAccessInFirestore(newUIDs, newEmails);
-    if (onUpdated) {
-      onUpdated({ allowedUIDs: newUIDs, allowedEmails: newEmails });
-    }
-    setManualInput('');
-  };
-
   // --- TOLL RATES HANDLERS ---
   const handleSaveTollRates = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -415,13 +317,12 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
     }
   };
 
-  const handleResetTollRates = async () => {
-    if (window.confirm(lang === 'ur' ? 'کیا آپ تمام ٹول ٹیکس ریٹس کو NHA کے طے شدہ نرخوں پر بحال کرنا چاہتے ہیں؟' : 'Reset all toll tax tariffs to default NHA rates?')) {
-      const def = await resetTollRatesToDefault();
-      setTollRates(def);
-      setTollSuccessMsg(true);
-      setTimeout(() => setTollSuccessMsg(false), 3000);
-    }
+  const handleConfirmResetTollRates = async () => {
+    setShowResetTollConfirm(false);
+    const def = await resetTollRatesToDefault();
+    setTollRates(def);
+    setTollSuccessMsg(true);
+    setTimeout(() => setTollSuccessMsg(false), 3000);
   };
 
   // --- BUSINESS REPORTS CALCULATIONS ---
@@ -457,71 +358,52 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
     return l.category === logFilter;
   });
 
-  const filteredUsers = users.filter(u => 
-    (u.name && u.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (u.uid && u.uid.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
   return (
     <div className="fixed inset-0 bg-black/65 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white rounded-[32px] sm:rounded-[36px] max-w-3xl w-full p-4 sm:p-7 shadow-2xl border border-[#ecece0] max-h-[92vh] flex flex-col space-y-4 text-right dir-rtl">
+      <div className="bg-white dark:bg-slate-900 rounded-[32px] sm:rounded-[36px] max-w-3xl w-full p-4 sm:p-7 shadow-2xl border border-[#ecece0] dark:border-slate-700 max-h-[92vh] flex flex-col space-y-4 text-right dir-rtl">
         
         {/* Top Header */}
-        <header className="flex justify-between items-center border-b border-[#ecece0] pb-3 shrink-0">
+        <header className="flex justify-between items-center border-b border-[#ecece0] dark:border-slate-700 pb-3 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#b58b28] to-amber-400 text-white flex items-center justify-center shadow-md shrink-0">
               <Crown className="w-6 h-6 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg sm:text-xl font-serif font-bold text-[#4a4a35]">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg sm:text-xl font-serif font-bold text-[#4a4a35] dark:text-slate-100">
                   {lang === 'ur' ? 'آنر کنٹرول پینل (وارائچ گڈز ایڈمن)' : 'Owner Control Panel'}
                 </h2>
-                <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 font-bold text-[10px] border border-amber-300 font-mono">
+                <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold text-[10px] border border-amber-300 dark:border-amber-700 font-mono">
                   {OWNER_EMAIL}
                 </span>
               </div>
-              <p className="text-xs text-[#8e8e75] mt-0.5 font-sans">
-                {lang === 'ur' 
-                  ? 'بلٹی بنانے کی سیکیورٹی رسائی، اکاؤنٹس مینجمنٹ اور کاروباری رپورٹس'
-                  : 'Manage bilty creation authorization for Gmail accounts & business ledger'}
+              <p className="text-xs text-[#8e8e75] dark:text-slate-400 mt-0.5 font-sans">
+                {lang === 'ur'
+                  ? 'ماہانہ کاروباری رپورٹس، کلاؤڈ بیک اپ، ٹول ریٹس اور آڈٹ کنٹرول (صرف مالک کے لیے)'
+                  : 'Monthly business reports, encrypted backups, motorway toll tariffs & owner logs'}
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-2.5 bg-[#f0f0e4] hover:bg-[#5a5a40] hover:text-white rounded-full text-[#5a5a40] transition-all cursor-pointer shrink-0"
+            className="p-2.5 bg-[#f0f0e4] dark:bg-slate-800 hover:bg-[#5a5a40] hover:text-white rounded-full text-[#5a5a40] dark:text-slate-200 transition-all cursor-pointer shrink-0"
             title="Close"
           >
             <X className="w-5 h-5" />
           </button>
         </header>
 
-        {/* Clean, Focused Tab Navigation (Only Essential, Non-Misusable Tabs) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 border-b border-[#ecece0] shrink-0">
+        {/* Clean, Focused Owner Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 border-b border-[#ecece0] dark:border-slate-700 shrink-0">
           <button
-            onClick={() => setActiveTab('access')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'access'
-                ? 'bg-[#8b9d77] text-white shadow-xs'
-                : 'bg-[#fdfbf7] text-[#5a5a40] hover:bg-[#f0f0e4] border border-[#ecece0]'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>{lang === 'ur' ? 'بلٹی رسائی کنٹرول' : 'Bilty Access'}</span>
-            <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-mono font-bold">
-              {allowedUIDs.length + allowedEmails.length}
-            </span>
-          </button>
-
-          <button
+            type="button"
             onClick={() => setActiveTab('reports')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'reports'
                 ? 'bg-[#8b9d77] text-white shadow-xs'
-                : 'bg-[#fdfbf7] text-[#5a5a40] hover:bg-[#f0f0e4] border border-[#ecece0]'
+                : 'bg-[#fdfbf7] dark:bg-slate-800 text-[#5a5a40] dark:text-slate-200 hover:bg-[#f0f0e4] dark:hover:bg-slate-700 border border-[#ecece0] dark:border-slate-700'
             }`}
           >
             <BarChart3 className="w-4 h-4" />
@@ -529,11 +411,12 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('backup')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'backup'
                 ? 'bg-[#8b9d77] text-white shadow-xs'
-                : 'bg-[#fdfbf7] text-[#5a5a40] hover:bg-[#f0f0e4] border border-[#ecece0]'
+                : 'bg-[#fdfbf7] dark:bg-slate-800 text-[#5a5a40] dark:text-slate-200 hover:bg-[#f0f0e4] dark:hover:bg-slate-700 border border-[#ecece0] dark:border-slate-700'
             }`}
           >
             <Database className="w-4 h-4" />
@@ -541,11 +424,12 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('tollRates')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'tollRates'
                 ? 'bg-[#8b9d77] text-white shadow-xs'
-                : 'bg-[#fdfbf7] text-[#5a5a40] hover:bg-[#f0f0e4] border border-[#ecece0]'
+                : 'bg-[#fdfbf7] dark:bg-slate-800 text-[#5a5a40] dark:text-slate-200 hover:bg-[#f0f0e4] dark:hover:bg-slate-700 border border-[#ecece0] dark:border-slate-700'
             }`}
           >
             <Milestone className="w-4 h-4" />
@@ -553,11 +437,12 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('logs')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'logs'
                 ? 'bg-[#8b9d77] text-white shadow-xs'
-                : 'bg-[#fdfbf7] text-[#5a5a40] hover:bg-[#f0f0e4] border border-[#ecece0]'
+                : 'bg-[#fdfbf7] dark:bg-slate-800 text-[#5a5a40] dark:text-slate-200 hover:bg-[#f0f0e4] dark:hover:bg-slate-700 border border-[#ecece0] dark:border-slate-700'
             }`}
           >
             <Activity className="w-4 h-4" />
@@ -565,6 +450,7 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
           </button>
 
           <button
+            type="button"
             onClick={() => {
               setActiveTab('deletions');
               loadDeletionQueueData();
@@ -572,7 +458,7 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
             className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'deletions'
                 ? 'bg-rose-700 text-white shadow-xs'
-                : 'bg-[#fdfbf7] text-[#5a5a40] hover:bg-[#f0f0e4] border border-[#ecece0]'
+                : 'bg-[#fdfbf7] dark:bg-slate-800 text-[#5a5a40] dark:text-slate-200 hover:bg-[#f0f0e4] dark:hover:bg-slate-700 border border-[#ecece0] dark:border-slate-700'
             }`}
           >
             <Trash2 className="w-4 h-4" />
@@ -588,148 +474,7 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
         {/* Tab Content Container (Scrollable) */}
         <div className="flex-1 overflow-y-auto pr-1 min-h-[350px]">
 
-          {/* TAB 1: BILTY ACCESS MANAGEMENT */}
-          {activeTab === 'access' && (
-            <div className="space-y-4">
-              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-xs text-emerald-950 flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold">{lang === 'ur' ? 'گوگل اکاؤنٹس اور بلٹی رسائی کا کنٹرول' : 'Bilty Creation Permission Control'}</h3>
-                  <p className="text-[11px] text-emerald-800 mt-0.5">
-                    {lang === 'ur' 
-                      ? 'جن صارفین نے جی میل سے سائن ان کیا ہے وہ نیچے نظر آ رہے ہیں۔ آپ 1-کلک سے کسی بھی اکاؤنٹ کو بلٹی بنانے کی اجازت دے سکتے ہیں یا واپس لے سکتے ہیں۔'
-                      : 'All Gmail accounts signed into the app are listed below. Click Grant or Revoke to manage Bilty generator access.'}
-                  </p>
-                </div>
-                <ShieldCheck className="w-7 h-7 text-emerald-600 shrink-0" />
-              </div>
-
-              {/* Add Gmail email directly or search */}
-              <div className="space-y-2.5">
-                <form onSubmit={handleAddManualInput} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={manualInput}
-                    onChange={(e) => setManualInput(e.target.value)}
-                    placeholder={lang === 'ur' ? 'نیا جی میل ایڈریس لکھیں (مثلاً driver@gmail.com)...' : 'Enter any Gmail address to grant Bilty access...'}
-                    className="flex-1 text-xs px-3.5 py-2.5 bg-[#fdfbf7] border border-[#ecece0] rounded-xl focus:outline-none focus:border-[#8b9d77]"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2.5 bg-[#8b9d77] text-white text-xs font-bold rounded-xl hover:bg-[#788a65] transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>{lang === 'ur' ? 'بلٹی رسائی دیں' : 'Grant Access'}</span>
-                  </button>
-                </form>
-
-                <div className="relative">
-                  <Search className="w-4 h-4 text-[#8e8e75] absolute right-3 top-3" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={lang === 'ur' ? 'موجودہ اکاؤنٹس میں تلاش کریں...' : 'Search accounts by name or email...'}
-                    className="w-full text-xs pr-9 pl-3 py-2.5 bg-[#fdfbf7] border border-[#ecece0] rounded-xl focus:outline-none focus:border-[#8b9d77]"
-                  />
-                </div>
-              </div>
-
-              {/* Users List */}
-              <div className="space-y-2 max-h-[320px] overflow-y-auto">
-                {loadingUsers ? (
-                  <div className="p-8 text-center text-xs text-[#8e8e75] italic">
-                    {lang === 'ur' ? 'اکاؤنٹس لوڈ ہو رہے ہیں...' : 'Loading accounts...'}
-                  </div>
-                ) : filteredUsers.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-[#8e8e75] italic bg-[#fdfbf7] rounded-2xl border border-dashed border-[#ecece0]">
-                    {lang === 'ur' ? 'کوئی اکاؤنٹ نہیں ملا۔ اوپر جی میل ایڈریس درج کر کے اجازت دیں۔' : 'No users found. Enter an email above to grant access.'}
-                  </div>
-                ) : (
-                  filteredUsers.map(user => {
-                    const isOwnerRole = isOwnerEmail(user.email) || user.role === 'owner';
-                    const isAuthorized = isOwnerRole || 
-                      (user.uid && allowedUIDs.includes(user.uid)) || 
-                      (user.email && allowedEmails.map(e => e.toLowerCase().trim()).includes(user.email.toLowerCase().trim()));
-
-                    return (
-                      <div
-                        key={user.uid || user.email}
-                        className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
-                          isAuthorized
-                            ? 'bg-emerald-50/60 border-emerald-300 shadow-2xs'
-                            : 'bg-white border-[#ecece0]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
-                            isOwnerRole 
-                              ? 'bg-gradient-to-tr from-amber-500 to-[#b58b28] text-white shadow-2xs' 
-                              : isAuthorized 
-                                ? 'bg-emerald-600 text-white' 
-                                : 'bg-gray-200 text-gray-700'
-                          }`}>
-                            {isOwnerRole ? <Crown className="w-5 h-5" /> : (user.email ? user.email.charAt(0).toUpperCase() : 'U')}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-xs text-[#4a4a35]">{user.name || user.email?.split('@')[0]}</span>
-                              <span className={`text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider ${
-                                isOwnerRole
-                                  ? 'bg-amber-100 text-amber-900 border border-amber-300' 
-                                  : isAuthorized
-                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                    : 'bg-gray-100 text-gray-700'
-                              }`}>
-                                {isOwnerRole ? 'Owner' : isAuthorized ? 'Authorized' : 'Guest / Driver'}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-[#4a4a35] font-mono mt-0.5 font-medium">{user.email || user.uid}</p>
-                            {user.lastLogin && (
-                              <p className="text-[9px] text-[#8e8e75] mt-0.5">
-                                {lang === 'ur' ? 'آخری لاگ ان:' : 'Last Login:'} {new Date(user.lastLogin).toLocaleDateString('en-PK')}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div>
-                          {isOwnerRole ? (
-                            <span className="text-xs bg-[#8b9d77] text-white px-3.5 py-1.5 rounded-xl font-bold">
-                              {lang === 'ur' ? 'مالک (مکمل رسائی)' : 'Owner (Master)'}
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleAccess(user)}
-                              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs ${
-                                isAuthorized
-                                  ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
-                                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                              }`}
-                            >
-                              {isAuthorized ? (
-                                <>
-                                  <UserX className="w-3.5 h-3.5 text-red-500" />
-                                  <span>{lang === 'ur' ? 'رسائی واپس لیں' : 'Revoke'}</span>
-                                </>
-                              ) : (
-                                <>
-                                  <UserCheck className="w-3.5 h-3.5 text-white" />
-                                  <span>{lang === 'ur' ? 'بلٹی رسائی دیں' : 'Grant Access'}</span>
-                                </>
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: BUSINESS & MONTHLY FINANCIAL REPORTS */}
+          {/* TAB 1: BUSINESS & MONTHLY FINANCIAL REPORTS */}
           {activeTab === 'reports' && (
             <div className="space-y-4">
               {/* Month Selector Bar */}
@@ -1048,8 +793,8 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
                       type="text"
                       value={companyProfile.headOfficeUr || ''}
                       onChange={(e) => setCompanyProfile(prev => ({ ...prev, headOfficeUr: e.target.value }))}
-                      placeholder="سمندری، فیصل آباد"
-                      className="w-full px-3 py-2 bg-white border border-[#ecece0] rounded-xl focus:border-[#8b9d77] outline-hidden"
+                      placeholder="اوکاڑہ بائی پاس، نزدیک 466 چوک، سمندری"
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-[#ecece0] dark:border-slate-700 rounded-xl focus:border-[#8b9d77] outline-hidden"
                     />
                   </div>
 
@@ -1260,8 +1005,8 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
               <div className="flex items-center justify-between pt-2 border-t border-[#ecece0]">
                 <button
                   type="button"
-                  onClick={handleResetTollRates}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                  onClick={() => setShowResetTollConfirm(true)}
+                  className="px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>{lang === 'ur' ? 'NHA ڈیفالٹ پر بحال کریں' : 'Reset to NHA Defaults'}</span>
@@ -1501,6 +1246,17 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
             setPendingRestoreJson(null);
           }}
           onConfirm={handleConfirmPendingRestore}
+        />
+
+        <ConfirmDialog
+          isOpen={showResetTollConfirm}
+          lang={lang}
+          variant="warning"
+          title={lang === 'ur' ? 'ٹول ٹیکس ریٹس کی بحالی' : 'Reset Motorway Toll Rates'}
+          message={lang === 'ur' ? 'کیا آپ تمام ٹول ٹیکس ریٹس کو NHA کے طے شدہ نرخوں پر بحال کرنا چاہتے ہیں؟' : 'Reset all toll tax tariffs to default NHA rates?'}
+          confirmLabel={lang === 'ur' ? 'جی ہاں، بحال کریں' : 'Reset to Defaults'}
+          onCancel={() => setShowResetTollConfirm(false)}
+          onConfirm={handleConfirmResetTollRates}
         />
 
       </div>

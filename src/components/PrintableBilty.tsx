@@ -576,7 +576,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                         textShadow: '0 1px 0 rgba(217, 119, 6, 0.24)'
                       }}
                     >
-                      {logoFailed ? cleanUrduCompanyName : 'آل پاکستان گڈز ٹرانسپورٹ سروس'}
+                      {logoFailed ? cleanUrduCompanyName : 'وڑائچ گڈز ٹرانسپورٹ کمپنی'}
                       <sup
                         style={{
                           fontSize: '11.5px',

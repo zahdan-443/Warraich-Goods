@@ -30,6 +30,7 @@ const publicFilesToScan = [
   'README.md',
   'CHANGELOG.md',
   'public/manifest.json',
+  'public/sw.js',
   'public/privacy.html',
   'public/terms.html',
   'public/delete-account.html'

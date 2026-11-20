@@ -570,8 +570,8 @@ export const DEFAULT_COMPANY_PROFILE: CompanyProfile = {
   nameEn: 'Warraich Goods Transport Co.',
   ownerName: 'زاہدان نصر وڑائچ',
   phoneNumbers: '0300-5370443, 0339-5370443',
-  headOfficeUr: 'سمندری، فیصل آباد، پنجاب، پاکستان',
-  headOfficeEn: 'Samundri, Faisalabad, Punjab, Pakistan',
+  headOfficeUr: 'اوکاڑہ بائی پاس، نزدیک 466 چوک، سمندری، فیصل آباد',
+  headOfficeEn: 'Okara Bypass, Near 466 Chock, Samundri, Faisalabad',
   ntn: '7779394-1',
   taglineUr: 'ملک بھر میں ہر قسم کے سامان کی محفوظ اور قابل اعتماد ٹرانسپورٹ سروس'
 };
@@ -765,6 +765,92 @@ export function exportAllTripsCSV(privacyOptions?: ExportPrivacyOptions): boolea
  * Schema-validated, snapshot-protected JSON restore (#14).
  * Supports both FullFleetBackup ({ metadata, data: { ... } }) and legacy flat JSON backups.
  */
+function readScopedJsonArray<T = Record<string, unknown>>(baseKey: string): T[] {
+  try {
+    const raw = getScopedItem(baseKey);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function mergeJsonItemsById(
+  localItems: Array<Record<string, unknown>>,
+  incomingItems: Array<Record<string, unknown>>,
+  mode: 'merge' | 'overwrite'
+): Array<Record<string, unknown>> {
+  if (mode === 'overwrite') return incomingItems;
+  const map = new Map<string, Record<string, unknown>>();
+  const noIdItems: Array<Record<string, unknown>> = [];
+
+  const getTs = (item: Record<string, unknown>): number => {
+    const raw = item.updatedAt ?? item.createdAt;
+    if (typeof raw === 'number') return raw;
+    if (!raw) return 0;
+    const ms = new Date(String(raw)).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  };
+
+  for (const item of localItems) {
+    if (item && item.id) map.set(String(item.id), item);
+    else if (item) noIdItems.push(item);
+  }
+  for (const item of incomingItems) {
+    if (item && item.id) {
+      const idKey = String(item.id);
+      const existing = map.get(idKey);
+      if (!existing || getTs(item) >= getTs(existing)) {
+        map.set(idKey, item);
+      }
+    } else if (item) {
+      noIdItems.push(item);
+    }
+  }
+  return [...Array.from(map.values()), ...noIdItems];
+}
+
+function restoreKhataScopedCollection(
+  storageKey: string,
+  collectionPath: string,
+  incomingItems: Array<Record<string, unknown>>,
+  mode: 'merge' | 'overwrite',
+  scope: string
+): number {
+  const nowIso = new Date().toISOString();
+  const prevItems = readScopedJsonArray<Record<string, unknown>>(storageKey);
+  const tombKey = `khata_${collectionPath}`;
+  const currentTombstones = { ...getTombstones(tombKey, scope) };
+
+  const stampedIncoming = incomingItems
+    .filter(item => item && typeof item === 'object' && item.id)
+    .map(item => {
+      const id = String(item.id);
+      delete currentTombstones[id];
+      return {
+        ...item,
+        id,
+        updatedAt: nowIso
+      };
+    });
+
+  if (mode === 'overwrite') {
+    const incomingIds = new Set(stampedIncoming.map(i => String(i.id)));
+    for (const prev of prevItems) {
+      if (prev?.id && !incomingIds.has(String(prev.id))) {
+        currentTombstones[String(prev.id)] = nowIso;
+      }
+    }
+  }
+
+  saveTombstones(tombKey, currentTombstones, scope);
+  const finalItems =
+    mode === 'overwrite' ? stampedIncoming : mergeJsonItemsById(prevItems, stampedIncoming, 'merge');
+  setScopedItem(storageKey, JSON.stringify(finalItems));
+  return stampedIncoming.length;
+}
+
 export function restoreFullBackupFromJson(
   jsonString: string,
   mode: 'merge' | 'overwrite' = 'merge'
@@ -778,6 +864,21 @@ export function restoreFullBackupFromJson(
     drivers: getStoredDrivers(),
     routes: getStoredRoutes(),
     fuelLogs: getStoredFuelLog(),
+    parties: readScopedJsonArray('dd_ledger_parties'),
+    partyTransactions: readScopedJsonArray('dd_ledger_party_transactions'),
+    brokers: readScopedJsonArray('dd_ledger_brokers'),
+    brokerTransactions: readScopedJsonArray('dd_ledger_broker_transactions'),
+    vehicleExpenses: readScopedJsonArray('dd_ledger_vehicle_expenses'),
+    vehicleIncomes: readScopedJsonArray('dd_ledger_vehicle_income'),
+    ledgerAccounts: readScopedJsonArray('dd_khata_accounts_v2'),
+    ledgerEntries: readScopedJsonArray('dd_khata_entries_v2'),
+    cashbookEntries: readScopedJsonArray('dd_khata_cashbook_v2'),
+    bills: readScopedJsonArray('dd_khata_bills_v2'),
+    employees: readScopedJsonArray('dd_khata_employees_v2'),
+    employeeEntries: readScopedJsonArray('dd_khata_employee_entries_v2'),
+    receivingPoints: readScopedJsonArray('dd_khata_receiving_points_v2'),
+    receivingEntries: readScopedJsonArray('dd_khata_receiving_entries_v2'),
+    dailyExpenses: readScopedJsonArray('dd_khata_daily_expenses_v2'),
     company: getCachedCompanyProfile()
   };
 
@@ -801,15 +902,52 @@ export function restoreFullBackupFromJson(
       'fuelLogs',
       'company',
       'parties',
-      'bills'
+      'partyTransactions',
+      'brokers',
+      'brokerTransactions',
+      'vehicleExpenses',
+      'vehicleIncomes',
+      'ledgerAccounts',
+      'ledgerEntries',
+      'cashbookEntries',
+      'bills',
+      'employees',
+      'employeeEntries',
+      'receivingPoints',
+      'receivingEntries',
+      'dailyExpenses'
     ];
     const hasRecognized = recognizedKeys.some(k => k in payload);
     if (!hasRecognized) {
       return { success: false, message: 'Unrecognized backup structure: no valid collections found', count: 0 };
     }
 
+    const arrayKeysToValidate = [
+      'bilties',
+      'trips',
+      'vehicles',
+      'drivers',
+      'routes',
+      'fuelLogs',
+      'parties',
+      'partyTransactions',
+      'brokers',
+      'brokerTransactions',
+      'vehicleExpenses',
+      'vehicleIncomes',
+      'ledgerAccounts',
+      'ledgerEntries',
+      'cashbookEntries',
+      'bills',
+      'employees',
+      'employeeEntries',
+      'receivingPoints',
+      'receivingEntries',
+      'dailyExpenses'
+    ];
+
     // Validate array types cleanly before applying any write
-    for (const arrKey of ['bilties', 'trips', 'vehicles', 'drivers', 'routes', 'fuelLogs']) {
+    for (const arrKey of arrayKeysToValidate) {
       if (arrKey in payload && payload[arrKey] !== undefined && !Array.isArray(payload[arrKey])) {
         return { success: false, message: `Malformed backup field "${arrKey}": expected list`, count: 0 };
       }
@@ -864,6 +1002,45 @@ export function restoreFullBackupFromJson(
       restoredCount += incomingFuel.length;
     }
 
+    const legacyScopedMappings: Array<{ payloadKey: string; storageKey: string; existing: Array<Record<string, unknown>> }> = [
+      { payloadKey: 'parties', storageKey: 'dd_ledger_parties', existing: snapshot.parties },
+      { payloadKey: 'partyTransactions', storageKey: 'dd_ledger_party_transactions', existing: snapshot.partyTransactions },
+      { payloadKey: 'brokers', storageKey: 'dd_ledger_brokers', existing: snapshot.brokers },
+      { payloadKey: 'brokerTransactions', storageKey: 'dd_ledger_broker_transactions', existing: snapshot.brokerTransactions },
+      { payloadKey: 'vehicleExpenses', storageKey: 'dd_ledger_vehicle_expenses', existing: snapshot.vehicleExpenses },
+      { payloadKey: 'vehicleIncomes', storageKey: 'dd_ledger_vehicle_income', existing: snapshot.vehicleIncomes }
+    ];
+
+    for (const mapping of legacyScopedMappings) {
+      if (Array.isArray(payload[mapping.payloadKey])) {
+        const incoming = (payload[mapping.payloadKey] as Array<Record<string, unknown>>).filter(
+          item => item && typeof item === 'object'
+        );
+        const merged = mergeJsonItemsById(mapping.existing, incoming, mode);
+        setScopedItem(mapping.storageKey, JSON.stringify(merged));
+        restoredCount += incoming.length;
+      }
+    }
+
+    const khataMappings: Array<{ payloadKey: string; storageKey: string; collectionPath: string }> = [
+      { payloadKey: 'ledgerAccounts', storageKey: 'dd_khata_accounts_v2', collectionPath: 'ledgerAccounts' },
+      { payloadKey: 'ledgerEntries', storageKey: 'dd_khata_entries_v2', collectionPath: 'entries' },
+      { payloadKey: 'cashbookEntries', storageKey: 'dd_khata_cashbook_v2', collectionPath: 'cashbookEntries' },
+      { payloadKey: 'bills', storageKey: 'dd_khata_bills_v2', collectionPath: 'khataBills' },
+      { payloadKey: 'employees', storageKey: 'dd_khata_employees_v2', collectionPath: 'khataEmployees' },
+      { payloadKey: 'employeeEntries', storageKey: 'dd_khata_employee_entries_v2', collectionPath: 'khataEmployeeEntries' },
+      { payloadKey: 'receivingPoints', storageKey: 'dd_khata_receiving_points_v2', collectionPath: 'khataReceivingPoints' },
+      { payloadKey: 'receivingEntries', storageKey: 'dd_khata_receiving_entries_v2', collectionPath: 'khataReceivingEntries' },
+      { payloadKey: 'dailyExpenses', storageKey: 'dd_khata_daily_expenses_v2', collectionPath: 'khataDailyExpenses' }
+    ];
+
+    for (const km of khataMappings) {
+      if (Array.isArray(payload[km.payloadKey])) {
+        const incoming = payload[km.payloadKey] as Array<Record<string, unknown>>;
+        restoredCount += restoreKhataScopedCollection(km.storageKey, km.collectionPath, incoming, mode, scope);
+      }
+    }
+
     if (payload.company && typeof payload.company === 'object') {
       safeStorage.setItem('ah-company-profile', JSON.stringify(payload.company));
     }
@@ -879,6 +1056,21 @@ export function restoreFullBackupFromJson(
       applyRestoredCollection('drivers', snapshot.drivers as unknown as Array<Record<string, unknown>>, 'overwrite');
       applyRestoredCollection('routes', snapshot.routes as unknown as Array<Record<string, unknown>>, 'overwrite');
       applyRestoredCollection('fuel', snapshot.fuelLogs as unknown as Array<Record<string, unknown>>, 'overwrite');
+      setScopedItem('dd_ledger_parties', JSON.stringify(snapshot.parties));
+      setScopedItem('dd_ledger_party_transactions', JSON.stringify(snapshot.partyTransactions));
+      setScopedItem('dd_ledger_brokers', JSON.stringify(snapshot.brokers));
+      setScopedItem('dd_ledger_broker_transactions', JSON.stringify(snapshot.brokerTransactions));
+      setScopedItem('dd_ledger_vehicle_expenses', JSON.stringify(snapshot.vehicleExpenses));
+      setScopedItem('dd_ledger_vehicle_income', JSON.stringify(snapshot.vehicleIncomes));
+      setScopedItem('dd_khata_accounts_v2', JSON.stringify(snapshot.ledgerAccounts));
+      setScopedItem('dd_khata_entries_v2', JSON.stringify(snapshot.ledgerEntries));
+      setScopedItem('dd_khata_cashbook_v2', JSON.stringify(snapshot.cashbookEntries));
+      setScopedItem('dd_khata_bills_v2', JSON.stringify(snapshot.bills));
+      setScopedItem('dd_khata_employees_v2', JSON.stringify(snapshot.employees));
+      setScopedItem('dd_khata_employee_entries_v2', JSON.stringify(snapshot.employeeEntries));
+      setScopedItem('dd_khata_receiving_points_v2', JSON.stringify(snapshot.receivingPoints));
+      setScopedItem('dd_khata_receiving_entries_v2', JSON.stringify(snapshot.receivingEntries));
+      setScopedItem('dd_khata_daily_expenses_v2', JSON.stringify(snapshot.dailyExpenses));
       safeStorage.setItem('ah-company-profile', JSON.stringify(snapshot.company));
     } catch {
       // ignore rollback error

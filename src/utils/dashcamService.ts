@@ -1,5 +1,6 @@
 import { registerPlugin, Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
+import { openExternalUrl } from './externalLinks';
 
 export interface DashcamClip {
   id: string;
@@ -568,7 +569,7 @@ export async function playDashcamClip(clip: DashcamClip): Promise<void> {
 
   // For web, if it has a blobUrl, open in new tab or trigger download
   if (clip.blobUrl) {
-    window.open(clip.blobUrl, '_blank');
+    openExternalUrl(clip.blobUrl);
   }
 }
 

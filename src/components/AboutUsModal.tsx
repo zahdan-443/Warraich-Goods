@@ -1,7 +1,8 @@
-import React from 'react';
-import { X, Phone, Mail, MapPin, Building2, Truck, ShieldCheck, Clock, CheckCircle2, MessageSquare, ExternalLink } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { X, Phone, Mail, MapPin, Building2, Truck, ShieldCheck, Clock, MessageSquare } from 'lucide-react';
 import { Language } from '../types';
 import { PublicImage } from '../assets/dashboardIcons';
+import { openWhatsAppMessage } from '../utils/externalLinks';
 
 interface AboutUsModalProps {
   isOpen: boolean;
@@ -14,21 +15,46 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
   onClose,
   lang
 }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    const handleHardwareBack = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('app-back-button', handleHardwareBack);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('app-back-button', handleHardwareBack);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
-  const phoneNum = "0300-5370443";
-  const whatsappUrl = `https://wa.me/923005370443?text=${encodeURIComponent('السلام علیکم! وڑائچ گڈز ٹرانسپورٹ انکوائری / بکنگ')}`;
+  const isUr = lang === 'ur';
+  const phoneNums = "0300-5370443, 0339-5370443";
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200">
-      <div className="bg-[#fdfbf7] w-full max-w-xl max-h-[90vh] rounded-[32px] shadow-2xl border border-[#ecece0] flex flex-col overflow-hidden text-right relative animate-in zoom-in-95 duration-200">
-        
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        dir={isUr ? 'rtl' : 'ltr'}
+        className={`bg-[#fdfbf7] dark:bg-[#121316] w-full max-w-xl max-h-[90vh] rounded-[32px] shadow-2xl border border-[#ecece0] dark:border-[#2d313b] flex flex-col overflow-hidden relative animate-in zoom-in-95 duration-200 ${isUr ? 'text-right' : 'text-left'}`}
+      >
         {/* Header */}
         <div className="bg-gradient-to-r from-[#162a4d] via-[#1e3a68] to-[#162a4d] p-5 sm:p-6 text-white relative shrink-0">
           <button
+            type="button"
             onClick={onClose}
-            className="absolute top-4 left-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-            title="بند کریں"
+            className={`absolute top-4 ${isUr ? 'left-4' : 'right-4'} p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer`}
+            title={isUr ? 'بند کریں' : 'Close'}
+            aria-label={isUr ? 'بند کریں' : 'Close'}
           >
             <X className="w-5 h-5" />
           </button>
@@ -53,34 +79,33 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
               />
             </div>
             <div>
-              <h2 className={`text-lg sm:text-xl font-bold tracking-tight text-white ${lang === 'ur' ? 'font-nastaliq' : 'font-serif'}`}>
-                {lang === 'ur' ? 'وڑائچ گڈز ٹرانسپورٹ کمپنی' : 'Warraich Goods Transport Co.'}
+              <h2 className={`text-lg sm:text-xl font-bold tracking-tight text-white ${isUr ? 'font-nastaliq' : 'font-serif'}`}>
+                {isUr ? 'وڑائچ گڈز ٹرانسپورٹ کمپنی' : 'Warraich Goods Transport Co.'}
               </h2>
               <p className="text-xs text-amber-200 font-sans mt-0.5">
-                {lang === 'ur' ? 'پاکستان بھر میں بااعتماد اور تیز ترین لاجسٹکس سروسز' : 'Nationwide Trusted Logistics & Road Freight Network'}
+                {isUr ? 'پاکستان بھر میں بااعتماد اور تیز ترین لاجسٹکس سروسز' : 'Nationwide Trusted Logistics & Road Freight Network'}
               </p>
             </div>
           </div>
         </div>
 
         {/* Scrollable Body Content */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 text-[#4a4a35] font-sans leading-relaxed text-sm">
-          
+        <div className="p-5 sm:p-6 overflow-y-auto space-y-6 text-[#4a4a35] dark:text-slate-200 font-sans leading-relaxed text-sm">
           {/* Main About Intro */}
-          <div className="bg-white p-5 rounded-2xl border border-[#ecece0] shadow-2xs space-y-3">
-            <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2">
-              <Building2 className="w-5 h-5 text-[#8b9d77]" />
-              <h3 className="font-serif font-bold text-base text-[#1e3a68]">
-                {lang === 'ur' ? 'ہمارے بارے میں (About Us)' : 'About Warraich Goods'}
+          <div className="bg-white dark:bg-[#1a1c22] p-5 rounded-2xl border border-[#ecece0] dark:border-[#2d313b] shadow-2xs space-y-3">
+            <div className="flex items-center gap-2 border-b border-[#ecece0] dark:border-[#2d313b] pb-2">
+              <Building2 className="w-5 h-5 text-[#8b9d77] dark:text-emerald-400" />
+              <h3 className="font-serif font-bold text-base text-[#1e3a68] dark:text-blue-200">
+                {isUr ? 'ہمارے بارے میں (About Us)' : 'About Warraich Goods'}
               </h3>
             </div>
-            <p className="text-xs sm:text-sm text-[#5a5a40] leading-relaxed">
-              {lang === 'ur'
+            <p className="text-xs sm:text-sm text-[#5a5a40] dark:text-slate-300 leading-relaxed">
+              {isUr
                 ? 'وڑائچ گڈز ٹرانسپورٹ کمپنی پاکستان بھر میں بااعتماد اور تیز ترین لاجسٹکس سروسز فراہم کرتی ہے۔ ہم فل ٹرک لوڈ (FTL) آپریشنز، ملک گیر مال برداری اور جدید فلیٹ شیڈولنگ کے ماہر ہیں۔'
                 : 'Warraich Goods Transport Co. provides reliable and rapid logistics across Pakistan. We specialize in Full Truck Load (FTL) operations, nationwide freight carriage, and advanced fleet scheduling.'}
             </p>
-            <p className="text-xs sm:text-sm text-[#5a5a40] leading-relaxed">
-              {lang === 'ur'
+            <p className="text-xs sm:text-sm text-[#5a5a40] dark:text-slate-300 leading-relaxed">
+              {isUr
                 ? 'ہمارا مقصد آپ کے سامان کو محفوظ طریقے سے، بروقت اور مناسب ترین اخراجات میں منزل مقصود تک پہنچانا ہے۔ بہتر نگاہ داشت، پیشہ ورانہ انتظامیہ اور بہترین کسٹمر سپورٹ کے ساتھ ہم آپ کے کاروبار کے لیے ایک بااعتماد ٹرانسپورٹ پارٹنر ہیں۔'
                 : 'Our mission is to transport your cargo safely, punctually, and cost-effectively to its destination. With attentive care, professional management, and stellar customer support, we are your trusted transport partner.'}
             </p>
@@ -89,59 +114,59 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
           {/* Key Services Offered */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Truck className="w-5 h-5 text-[#8b9d77]" />
-              <h3 className="font-serif font-bold text-base text-[#1e3a68]">
-                {lang === 'ur' ? 'ہماری اہم سروسز' : 'Our Key Freight Services'}
+              <Truck className="w-5 h-5 text-[#8b9d77] dark:text-emerald-400" />
+              <h3 className="font-serif font-bold text-base text-[#1e3a68] dark:text-blue-200">
+                {isUr ? 'ہماری اہم سروسز' : 'Our Key Freight Services'}
               </h3>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-4 bg-white rounded-2xl border border-[#ecece0] shadow-2xs space-y-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+              <div className="p-4 bg-white dark:bg-[#1a1c22] rounded-2xl border border-[#ecece0] dark:border-[#2d313b] shadow-2xs space-y-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold">
                   <Truck className="w-4 h-4" />
                 </div>
-                <h4 className="font-serif font-bold text-xs text-[#1e3a68]">
-                  {lang === 'ur' ? 'فل ٹرک لوڈ (FTL)' : 'Full Truck Load (FTL)'}
+                <h4 className="font-serif font-bold text-xs text-[#1e3a68] dark:text-blue-200">
+                  {isUr ? 'فل ٹرک لوڈ (FTL)' : 'Full Truck Load (FTL)'}
                 </h4>
-                <p className="text-[11px] text-[#7a7a60] leading-normal">
-                  {lang === 'ur' ? 'پورے پاکستان میں سامان کی محفوظ اور تیز رفتاری سے منتقلی۔' : 'Secure and rapid cargo transit across Pakistan.'}
+                <p className="text-[11px] text-[#7a7a60] dark:text-slate-400 leading-normal">
+                  {isUr ? 'پورے پاکستان میں سامان کی محفوظ اور تیز رفتاری سے منتقلی۔' : 'Secure and rapid cargo transit across Pakistan.'}
                 </p>
               </div>
 
-              <div className="p-4 bg-white rounded-2xl border border-[#ecece0] shadow-2xs space-y-2">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+              <div className="p-4 bg-white dark:bg-[#1a1c22] rounded-2xl border border-[#ecece0] dark:border-[#2d313b] shadow-2xs space-y-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold">
                   <Clock className="w-4 h-4" />
                 </div>
-                <h4 className="font-serif font-bold text-xs text-[#1e3a68]">
-                  {lang === 'ur' ? 'اسمارٹ فلیٹ مینجمنٹ' : 'Smart Fleet Management'}
+                <h4 className="font-serif font-bold text-xs text-[#1e3a68] dark:text-blue-200">
+                  {isUr ? 'اسمارٹ فلیٹ مینجمنٹ' : 'Smart Fleet Management'}
                 </h4>
-                <p className="text-[11px] text-[#7a7a60] leading-normal">
-                  {lang === 'ur' ? 'بہترین روٹس اور شیڈولنگ تاکہ آپ کے وقت کی بچت ہو۔' : 'Optimized corridors and scheduling to maximize efficiency.'}
+                <p className="text-[11px] text-[#7a7a60] dark:text-slate-400 leading-normal">
+                  {isUr ? 'بہترین روٹس اور شیڈولنگ تاکہ آپ کے وقت کی بچت ہو۔' : 'Optimized corridors and scheduling to maximize efficiency.'}
                 </p>
               </div>
 
-              <div className="p-4 bg-white rounded-2xl border border-[#ecece0] shadow-2xs space-y-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+              <div className="p-4 bg-white dark:bg-[#1a1c22] rounded-2xl border border-[#ecece0] dark:border-[#2d313b] shadow-2xs space-y-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
-                <h4 className="font-serif font-bold text-xs text-[#1e3a68]">
-                  {lang === 'ur' ? 'شفاف شرحیں' : 'Transparent Pricing'}
+                <h4 className="font-serif font-bold text-xs text-[#1e3a68] dark:text-blue-200">
+                  {isUr ? 'شفاف شرحیں' : 'Transparent Pricing'}
                 </h4>
-                <p className="text-[11px] text-[#7a7a60] leading-normal">
-                  {lang === 'ur' ? 'بغیر کسی مخفی اخراجات کے مناسب ریٹس اور واضح بلنگ۔' : 'Honest competitive rates with zero hidden charges.'}
+                <p className="text-[11px] text-[#7a7a60] dark:text-slate-400 leading-normal">
+                  {isUr ? 'بغیر کسی مخفی اخراجات کے مناسب ریٹس اور واضح بلنگ۔' : 'Honest competitive rates with zero hidden charges.'}
                 </p>
               </div>
             </div>
           </div>
 
           {/* Play Store Non-Government Disclosure */}
-          <div className="p-3.5 bg-amber-500/10 rounded-2xl border border-amber-500/30 text-amber-950 text-xs space-y-1">
-            <span className="font-bold flex items-center gap-1.5 text-amber-900">
-              <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
-              <span>{lang === 'ur' ? 'سرکاری عدم الحاق کا اعلان (Non-Government Entity Declaration)' : 'Non-Government Entity Declaration'}</span>
+          <div className="p-3.5 bg-amber-500/10 dark:bg-amber-950/40 rounded-2xl border border-amber-500/30 dark:border-amber-700/50 text-amber-950 dark:text-amber-100 text-xs space-y-1">
+            <span className="font-bold flex items-center gap-1.5 text-amber-900 dark:text-amber-300">
+              <ShieldCheck className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
+              <span>{isUr ? 'سرکاری عدم الحاق کا اعلان (Non-Government Entity Declaration)' : 'Non-Government Entity Declaration'}</span>
             </span>
-            <p className="text-[11px] leading-relaxed text-amber-900/90">
-              {lang === 'ur'
+            <p className="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/90">
+              {isUr
                 ? 'ڈرائیور دوست وڑائچ گڈز ٹرانسپورٹ کمپنی کا ایک آزاد نجی لاجسٹکس و فلیٹ سسٹم ہے اور یہ ایپ کسی سرکاری ادارے، ایکسائز، پنجاب پولیس یا سیف سٹی اتھارٹی کی نمائندگی نہیں کرتی اور نہ ہی ان سے الحاق شدہ ہے۔'
                 : 'Driver Dost is an independent private fleet logistics application developed by Warraich Goods Transport Company. It does not represent, nor is it affiliated with, any government entity.'}
             </p>
@@ -152,78 +177,76 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
             <div className="flex items-center gap-2 border-b border-[#ecece0] dark:border-[#2d313b] pb-2">
               <Phone className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               <h3 className="font-serif font-bold text-base text-[#1e3a68] dark:text-blue-200">
-                {lang === 'ur' ? 'رابطہ کی معلومات' : 'Contact Information'}
+                {isUr ? 'رابطہ کی معلومات' : 'Contact Information'}
               </h3>
             </div>
 
             <p className="text-xs text-[#7a7a60] dark:text-slate-300">
-              {lang === 'ur' 
+              {isUr
                 ? 'کسی بھی قسم کی بکنگ، معلومات یا رہنمائی کے لیے ہم سے رابطہ کریں:'
                 : 'For booking, inquiries, or support, please reach out directly:'}
             </p>
 
             <div className="space-y-3 text-xs sm:text-sm font-sans">
-              <div className="flex items-center justify-between p-3 bg-white dark:bg-[#16181e] rounded-xl border border-[#ecece0] dark:border-[#2d313b]">
+              <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-white dark:bg-[#16181e] rounded-xl border border-[#ecece0] dark:border-[#2d313b]">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 rounded-lg">
                     <Phone className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-[11px] text-[#8e8e75] dark:text-slate-400 block">{lang === 'ur' ? 'فون / واٹس ایپ:' : 'Phone / WhatsApp:'}</span>
-                    <span className="font-bold text-[#1e3a68] dark:text-emerald-400 dir-ltr text-sm font-mono">{phoneNum}</span>
+                    <span className="text-[11px] text-[#8e8e75] dark:text-slate-400 block">{isUr ? 'فون / واٹس ایپ:' : 'Phone / WhatsApp:'}</span>
+                    <span className="font-bold text-[#1e3a68] dark:text-emerald-400 dir-ltr text-xs sm:text-sm font-mono">{phoneNums}</span>
                   </div>
                 </div>
 
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs"
+                <button
+                  type="button"
+                  onClick={() => openWhatsAppMessage('السلام علیکم! وڑائچ گڈز ٹرانسپورٹ انکوائری / بکنگ', '923005370443')}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
-                  <span>{lang === 'ur' ? 'واٹس ایپ کریں' : 'WhatsApp Us'}</span>
-                </a>
+                  <span>{isUr ? 'واٹس ایپ کریں' : 'WhatsApp Us'}</span>
+                </button>
               </div>
 
-              <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[#ecece0]">
-                <div className="p-2 bg-blue-100 text-blue-800 rounded-lg shrink-0">
+              <div className="flex items-center gap-3 p-3 bg-white dark:bg-[#16181e] rounded-xl border border-[#ecece0] dark:border-[#2d313b]">
+                <div className="p-2 bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 rounded-lg shrink-0">
                   <Mail className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-[11px] text-[#8e8e75] block">{lang === 'ur' ? 'ای میل ایڈریس:' : 'Email Address:'}</span>
-                  <span className="font-bold text-[#1e3a68] text-xs sm:text-sm">warraichgoods43@gmail.com</span>
+                  <span className="text-[11px] text-[#8e8e75] dark:text-slate-400 block">{isUr ? 'ای میل ایڈریس:' : 'Email Address:'}</span>
+                  <span className="font-bold text-[#1e3a68] dark:text-blue-300 text-xs sm:text-sm dir-ltr">warraichgoods43@gmail.com</span>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 p-3 bg-white rounded-xl border border-[#ecece0]">
-                <div className="p-2 bg-amber-100 text-amber-800 rounded-lg shrink-0 mt-0.5">
+              <div className="flex items-start gap-3 p-3 bg-white dark:bg-[#16181e] rounded-xl border border-[#ecece0] dark:border-[#2d313b]">
+                <div className="p-2 bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 rounded-lg shrink-0 mt-0.5">
                   <MapPin className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-[11px] text-[#8e8e75] block">{lang === 'ur' ? 'ہیڈ آفس پتہ:' : 'Head Office Address:'}</span>
-                  <span className="font-bold text-[#4a4a35] text-xs sm:text-sm leading-relaxed">
-                    {lang === 'ur' ? 'سمندری، فیصل آباد، پنجاب، پاکستان' : 'Samundri, Faisalabad, Punjab, Pakistan'}
+                  <span className="text-[11px] text-[#8e8e75] dark:text-slate-400 block">{isUr ? 'ہیڈ آفس پتہ:' : 'Head Office Address:'}</span>
+                  <span className="font-bold text-[#4a4a35] dark:text-slate-100 text-xs sm:text-sm leading-relaxed">
+                    {isUr ? 'اوکاڑہ بائی پاس، نزد 466 چوک، سمندری، ضلع فیصل آباد' : 'Okara Bypass, Near 466 Chock, Samundri, Faisalabad'}
                   </span>
                 </div>
               </div>
             </div>
           </div>
-
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-[#f0f0e4] border-t border-[#ecece0] flex items-center justify-between shrink-0">
-          <span className="text-xs text-[#7a7a60] font-sans font-medium">
-            {lang === 'ur' ? 'وڑائچ گڈز ٹرانسپورٹ کمپنی · فیصل آباد، پاکستان' : 'Warraich Goods Transport Co. · Faisalabad, Pakistan'}
+        <div className="p-4 bg-[#f0f0e4] dark:bg-[#16181e] border-t border-[#ecece0] dark:border-[#2d313b] flex items-center justify-between shrink-0">
+          <span className="text-xs text-[#7a7a60] dark:text-slate-400 font-sans font-medium">
+            {isUr ? 'وڑائچ گڈز ٹرانسپورٹ کمپنی · سمندری، فیصل آباد' : 'Warraich Goods Transport Co. · Samundri, Faisalabad'}
           </span>
           <button
+            type="button"
             onClick={onClose}
             className="px-5 py-2 bg-[#1e3a68] hover:bg-[#162a4d] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
           >
-            {lang === 'ur' ? 'بند کریں' : 'Close'}
+            {isUr ? 'بند کریں' : 'Close'}
           </button>
         </div>
-
       </div>
     </div>
   );

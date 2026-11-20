@@ -1,4 +1,4 @@
-name: Android APK Build & Release
+name: Android APK & AAB Build & Release
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ on:
 
 jobs:
   build-apk:
-    name: Build Android APK
+    name: Build Android APK & Play Store AAB
     runs-on: ubuntu-24.04
     env:
       VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
@@ -165,7 +165,7 @@ jobs:
           echo "ANDROID_KEY_ALIAS=${ANDROID_KEY_ALIAS}" >> $GITHUB_ENV
           echo "ANDROID_KEY_PASSWORD=${ANDROID_KEY_PASSWORD}" >> $GITHUB_ENV
 
-      - name: Build Signed Android APK via Gradle
+      - name: Build Signed Android APK & Play Store AAB via Gradle
         env:
           ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
           ANDROID_KEYSTORE_PASSWORD: ${{ env.ANDROID_KEYSTORE_PASSWORD }}
@@ -175,14 +175,14 @@ jobs:
           cd android
           chmod +x ./gradlew
           if [ "${{ inputs.build_type }}" = "release" ]; then
-            echo "Building officially signed Store Release APK (assembleStoreRelease)..."
-            ./gradlew assembleStoreRelease --no-daemon --stacktrace
+            echo "Building officially signed Store Release APK & Play Store AAB (assembleStoreRelease + bundleStoreRelease)..."
+            ./gradlew assembleStoreRelease bundleStoreRelease --no-daemon --stacktrace
           else
             echo "Building Store Debug APK (assembleStoreDebug)..."
             ./gradlew assembleStoreDebug --no-daemon --stacktrace
           fi
 
-      - name: Verify APK Asset Hygiene (Fail on Web Leaks or Forbidden Artifacts)
+      - name: Verify APK & AAB Asset Hygiene (Fail on Web Leaks or Forbidden Artifacts)
         run: |
           APK_FILES=$(find android/app/build/outputs/apk -name "*.apk" 2>/dev/null || true)
           if [ -z "$APK_FILES" ]; then
@@ -223,10 +223,38 @@ jobs:
             echo "✅ Asset hygiene check passed for $apk"
           done
 
+          if [ "${{ inputs.build_type }}" = "release" ]; then
+            AAB_FILES=$(find android/app/build/outputs/bundle -name "*.aab" 2>/dev/null || true)
+            if [ -z "$AAB_FILES" ]; then
+              echo "::error::No signed Play Store AAB bundle found after bundleStoreRelease!"
+              exit 1
+            fi
+            for aab in $AAB_FILES; do
+              echo "Verifying Play Store AAB hygiene for: $aab ($(wc -c < "$aab") bytes)"
+              AAB_LISTING=$(unzip -l "$aab")
+              for pattern in "server.cjs" "sw.js" "404.html" "sitemap.xml" "screenshot-" "\.map"; do
+                if echo "$AAB_LISTING" | grep -E "base/assets/public/.*$pattern"; then
+                  echo "::error::[AAB Hygiene Failure] Found forbidden asset ($pattern) inside $aab"
+                  exit 1
+                fi
+              done
+              echo "✅ Play Store AAB check passed for $aab"
+            done
+          fi
+
       - name: Upload Signed APK Artifact
         uses: actions/upload-artifact@v6
         with:
           name: warraich-goods-driver-dost-signed-apk-${{ inputs.build_type }}
           path: |
             android/app/build/outputs/apk/**/*.apk
+          retention-days: 30
+
+      - name: Upload Signed Play Store AAB Artifact
+        if: ${{ inputs.build_type == 'release' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: warraich-goods-driver-dost-playstore-aab-${{ inputs.build_type }}
+          path: |
+            android/app/build/outputs/bundle/**/*.aab
           retention-days: 30

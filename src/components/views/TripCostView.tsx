@@ -37,6 +37,7 @@ import { validateFinancialNumber, validateTripFinancials } from '../../utils/cal
 import { getStoredFuelPrices, fetchLiveFuelPrices } from '../../utils/fuelPrice';
 import { getRouteComparisonOptions, RouteComparisonResult, RouteOptionComparison } from '../../utils/routeComparison';
 import { getStoredRoutes } from '../../utils/storage';
+import { openWhatsAppMessage } from '../../utils/externalLinks';
 
 interface TripCostViewProps {
   lang: Language;
@@ -586,12 +587,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     setCopyToast(true);
     setTimeout(() => setCopyToast(false), 3000);
 
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-    try {
-      window.open(url, '_blank');
-    } catch {
-      window.location.href = url;
-    }
+    openWhatsAppMessage(msg);
   };
 
   const handleExportPDF = async () => {

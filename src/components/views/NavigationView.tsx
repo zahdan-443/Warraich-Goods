@@ -36,6 +36,7 @@ import {
   formatTimeAgo,
   calculateDistanceKm 
 } from '../../utils/hazardReports';
+import { openExternalUrl, openWhatsAppMessage } from '../../utils/externalLinks';
 
 interface NavigationViewProps {
   lang: Language;
@@ -70,14 +71,26 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
   const isUrdu = lang === 'ur';
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const originMarkerRef = useRef<L.Marker | null>(null);
+  const destMarkerRef = useRef<L.Marker | null>(null);
   const userGpsMarkerRef = useRef<L.Marker | null>(null);
   const routePolylineRef = useRef<L.Polyline | null>(null);
   const gpsWatchIdRef = useRef<number | null>(null);
   const hazardMarkersGroupRef = useRef<L.LayerGroup | null>(null);
+  const lastRoutedRef = useRef<{ lat: number; lng: number; originId: string; destId: string; usedGps: boolean; ts: number } | null>(null);
 
   const [originId, setOriginId] = useState<string>(originCityId);
   const [destId, setDestId] = useState<string>(destCityId);
   const [hazardReports, setHazardReports] = useState<HazardReport[]>([]);
+
+  useEffect(() => {
+    setOriginId(originCityId);
+  }, [originCityId]);
+
+  useEffect(() => {
+    setDestId(destCityId);
+  }, [destCityId]);
 
   const originCity = PAKISTAN_CITIES.find(c => c.id === originId) || PAKISTAN_CITIES.find(c => c.id === 'samundri') || PAKISTAN_CITIES[0];
   const destCity = PAKISTAN_CITIES.find(c => c.id === destId) || PAKISTAN_CITIES.find(c => c.id === 'karachi') || PAKISTAN_CITIES[1];
@@ -178,19 +191,138 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
     };
   }, []);
 
-  // Fetch REAL road routing geometry from Open Source Routing Machine (OSRM)
+  // 1. Initialize Leaflet Map Container ONCE on mount
   useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    const map = L.map(mapContainerRef.current, {
+      center: [originCity.lat, originCity.lng],
+      zoom: 7,
+      minZoom: 5,
+      maxZoom: 18,
+      zoomControl: false
+    });
+
+    leafletMapRef.current = map;
+    hazardMarkersGroupRef.current = L.layerGroup().addTo(map);
+
+    return () => {
+      try {
+        map.remove();
+      } catch {
+        // ignore
+      }
+      leafletMapRef.current = null;
+      tileLayerRef.current = null;
+      originMarkerRef.current = null;
+      destMarkerRef.current = null;
+      userGpsMarkerRef.current = null;
+      routePolylineRef.current = null;
+      hazardMarkersGroupRef.current = null;
+    };
+  }, []);
+
+  // 2. Swap ONLY tile layer when selectedMapStyle changes (preserves markers, route, hazards, zoom)
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
+      tileLayerRef.current = null;
+    }
+
+    let tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    let attribution = '&copy; OpenStreetMap contributors';
+
+    if (selectedMapStyle === 'satellite') {
+      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      attribution = 'Tiles &copy; Esri';
+    } else if (selectedMapStyle === 'dark') {
+      tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+      attribution = '&copy; CARTO &copy; OpenStreetMap';
+    }
+
+    tileLayerRef.current = L.tileLayer(tileUrl, { attribution, maxZoom: 18 }).addTo(map);
+  }, [selectedMapStyle]);
+
+  // 3. Maintain Origin & Destination Markers cleanly without recreating map
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+
+    if (originMarkerRef.current) {
+      map.removeLayer(originMarkerRef.current);
+      originMarkerRef.current = null;
+    }
+    if (destMarkerRef.current) {
+      map.removeLayer(destMarkerRef.current);
+      destMarkerRef.current = null;
+    }
+
+    const originIcon = L.divIcon({
+      className: 'origin-marker',
+      html: `
+        <div style="background-color: #10b981; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
+          🟢
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    });
+    originMarkerRef.current = L.marker([originCity.lat, originCity.lng], { icon: originIcon })
+      .bindPopup(`<b>${originCity.nameUr} (${originCity.nameEn})</b><br>${isUrdu ? 'روانگی پوائنٹ' : 'Origin'}`)
+      .addTo(map);
+
+    const destIcon = L.divIcon({
+      className: 'dest-marker',
+      html: `
+        <div style="background-color: #ef4444; width: 34px; height: 34px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
+          🏁
+        </div>
+      `,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
+    });
+    destMarkerRef.current = L.marker([destCity.lat, destCity.lng], { icon: destIcon })
+      .bindPopup(`<b>${destCity.nameUr} (${destCity.nameEn})</b><br>${isUrdu ? 'منزل پوائنٹ' : 'Destination'}`)
+      .addTo(map);
+  }, [originId, destId, originCity.lat, originCity.lng, originCity.nameUr, originCity.nameEn, destCity.lat, destCity.lng, destCity.nameUr, destCity.nameEn, isUrdu]);
+
+  // 4. Fetch REAL road routing geometry from OSRM only on corridor change, first GPS fix, or >=250m & 45s deviation
+  useEffect(() => {
+    const startLat = userLocation ? userLocation.lat : originCity.lat;
+    const startLng = userLocation ? userLocation.lng : originCity.lng;
+    const usingGps = Boolean(userLocation);
+    const prev = lastRoutedRef.current;
+
+    const corridorChanged = !prev || prev.originId !== originId || prev.destId !== destId;
+    const upgradedToFirstGps = Boolean(prev && !prev.usedGps && usingGps);
+    const movedKm = prev ? calculateDistanceKm(prev.lat, prev.lng, startLat, startLng) : 999;
+    const elapsedMs = prev ? Date.now() - prev.ts : 999_999;
+    const shouldRerouteOnGps = movedKm > 0.25 && elapsedMs >= 45_000;
+
+    if (!corridorChanged && !upgradedToFirstGps && !shouldRerouteOnGps) {
+      return;
+    }
+
+    lastRoutedRef.current = {
+      lat: startLat,
+      lng: startLng,
+      originId,
+      destId,
+      usedGps: usingGps,
+      ts: Date.now()
+    };
+
     let isCancelled = false;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     const fetchRealRoute = async () => {
       setLoadingRealRoute(true);
-      const startCoord = userLocation 
-        ? `${userLocation.lng},${userLocation.lat}` 
-        : `${originCity.lng},${originCity.lat}`;
+      const startCoord = `${startLng},${startLat}`;
       const destCoord = `${destCity.lng},${destCity.lat}`;
-
       const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${startCoord};${destCoord}?overview=full&geometries=geojson`;
 
       try {
@@ -203,7 +335,6 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
           const distKm = Math.round(route.distance / 1000);
           setRealRouteDistanceKm(distKm);
 
-          // Render Real GeoJSON Polyline
           if (route.geometry && route.geometry.coordinates && leafletMapRef.current) {
             const coords = route.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]] as [number, number]);
 
@@ -220,14 +351,15 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
             }).addTo(leafletMapRef.current);
             routePolylineRef.current = polyline;
 
-            leafletMapRef.current.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+            if (corridorChanged || upgradedToFirstGps) {
+              leafletMapRef.current.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+            }
           }
         }
       } catch {
-        // Fallback: Straight direct polyline if offline
         if (!isCancelled && leafletMapRef.current) {
           const fallbackLatlngs: [number, number][] = [
-            [originCity.lat, originCity.lng],
+            [startLat, startLng],
             [destCity.lat, destCity.lng]
           ];
           if (routePolylineRef.current) {
@@ -239,6 +371,9 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
             dashArray: '5, 10'
           }).addTo(leafletMapRef.current);
           routePolylineRef.current = polyline;
+          if (corridorChanged) {
+            leafletMapRef.current.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+          }
         }
       } finally {
         clearTimeout(timeoutId);
@@ -253,83 +388,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [originId, destId, userLocation]);
-
-  // Leaflet Map Container Setup
-  useEffect(() => {
-    if (!mapContainerRef.current) return;
-
-    if (leafletMapRef.current) {
-      try {
-        leafletMapRef.current.remove();
-      } catch {
-        // ignore
-      }
-      leafletMapRef.current = null;
-    }
-
-    const map = L.map(mapContainerRef.current, {
-      center: [originCity.lat, originCity.lng],
-      zoom: 7,
-      minZoom: 5,
-      maxZoom: 18,
-      zoomControl: false
-    });
-
-    let tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-    let attribution = '&copy; OpenStreetMap contributors';
-
-    if (selectedMapStyle === 'satellite') {
-      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-      attribution = 'Tiles &copy; Esri';
-    } else if (selectedMapStyle === 'dark') {
-      tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-      attribution = '&copy; CARTO &copy; OpenStreetMap';
-    }
-
-    L.tileLayer(tileUrl, { attribution, maxZoom: 18 }).addTo(map);
-
-    // Origin Marker (Green)
-    const originIcon = L.divIcon({
-      className: 'origin-marker',
-      html: `
-        <div style="background-color: #10b981; width: 32px; height: 32px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
-          🟢
-        </div>
-      `,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
-    });
-    L.marker([originCity.lat, originCity.lng], { icon: originIcon })
-      .bindPopup(`<b>${originCity.nameUr} (${originCity.nameEn})</b><br>${isUrdu ? 'روانگی پوائنٹ' : 'Origin'}`)
-      .addTo(map);
-
-    // Destination Marker (Red Flag)
-    const destIcon = L.divIcon({
-      className: 'dest-marker',
-      html: `
-        <div style="background-color: #ef4444; width: 34px; height: 34px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">
-          🏁
-        </div>
-      `,
-      iconSize: [34, 34],
-      iconAnchor: [17, 17]
-    });
-    L.marker([destCity.lat, destCity.lng], { icon: destIcon })
-      .bindPopup(`<b>${destCity.nameUr} (${destCity.nameEn})</b><br>${isUrdu ? 'منزل پوائنٹ' : 'Destination'}`)
-      .addTo(map);
-
-    leafletMapRef.current = map;
-
-    return () => {
-      try {
-        map.remove();
-      } catch {
-        // ignore
-      }
-      leafletMapRef.current = null;
-    };
-  }, [selectedMapStyle]);
+  }, [originId, destId, userLocation, originCity.lat, originCity.lng, destCity.lat, destCity.lng]);
 
   // Load and periodically refresh active crowd-sourced road hazards
   const loadHazards = async () => {
@@ -420,15 +479,14 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
   const handleLaunchGoogleMapsLive = () => {
     const originParam = userLocation ? `${userLocation.lat},${userLocation.lng}` : `${originCity.lat},${originCity.lng}`;
     const destParam = `${destCity.lat},${destCity.lng}`;
-    // Official Google Maps Directions & Live Navigation Intent URL
     const url = `https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${destParam}&travelmode=driving&dir_action=navigate`;
-    window.open(url, '_blank');
+    openExternalUrl(url);
   };
 
   // Launch Waze Navigation
   const handleLaunchWazeLive = () => {
     const url = `https://waze.com/ul?ll=${destCity.lat},${destCity.lng}&navigate=yes`;
-    window.open(url, '_blank');
+    openExternalUrl(url);
   };
 
   // WhatsApp Share Real GPS Location & Corridor Info
@@ -439,8 +497,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
     
     const text = `🚚 *Driver Dost - حقیقی GPS لوکیشن و روٹ رپورٹ*\n📍 *روٹ*: ${originCity.nameUr} ➔ ${destCity.nameUr}\n📏 *کل فاصلہ*: ${realRouteDistanceKm} کلومیٹر\n⚡ *موجودہ رفتار*: ${realGpsSpeed} km/h\n⏱️ *تخمینی وقت (ETA)*: ${etaDisplay}\n🛰️ *لائیو لوکیشن لنک*: ${locUrl}\n🔗 *گوگل میپس نیویگیشن*: https://www.google.com/maps/dir/?api=1&destination=${destCity.lat},${destCity.lng}&travelmode=driving`;
     
-    const shareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    window.open(shareUrl, '_blank');
+    openWhatsAppMessage(text);
     setCopiedShare(true);
     setTimeout(() => setCopiedShare(false), 2500);
   };
