@@ -37,6 +37,9 @@ Samundri, Punjab, Pakistan
 ### Weather & Fuel Details
 <img src="assets/weather-fuel-details.png" alt="Driver Dost weather and fuel details" width="280">
 
+### Udhar Book
+<img src="assets/udhar-book.png" alt="Driver Dost Udhar Book details" width="280">
+
 </div>
 
 ---
