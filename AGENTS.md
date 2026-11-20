@@ -33,7 +33,7 @@
 
 ### Company Identity & Owner Control
 - **Company**: Warraich Goods Transport Company (`وڑائچ گڈز ٹرانسپورٹ کمپنی`), Proprietor: `Zahdan Nasar Warraich` (`پروپرائیٹر: زاہدان نصر وڑائچ`), NTN: `7779394-1`, Registered mark `®`.
-- **Branch**: Samundri Head Office ONLY — `Okara Bypass, Near 466 Chock, Samundri` (`اوکاڑہ بائی پاس، نزد 466 چوک، سمندری`), Phone: `0300-5370443, 0339-5370443`.
+- **Branch**: Samundri Head Office ONLY — `Okara Bypass, Near 466 Chock, Samundri` (`اوکاڑہ بائی پاس، نزدیک 466 چوک، سمندری`), Phone: `0300-5370443, 0339-5370443` (Kamalia branch deleted).
 - **Authorised Owner Email**: `warraichgoods43@gmail.com`.
 
 ### Implemented Program Modules

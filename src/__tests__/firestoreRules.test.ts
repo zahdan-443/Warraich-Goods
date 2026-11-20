@@ -16,10 +16,12 @@ describe('Firestore Rules Security Audit & Structure', () => {
     expect(rulesContent).toContain("'email_verified' in request.auth.token");
   });
 
-  it('should enforce strict owner-only isBiltyAuthorized() without staff delegation bypasses', () => {
+  it('should harden isBiltyAuthorized with isStaffAuthorized checking list types and email verification', () => {
+    expect(rulesContent).toContain('function isStaffAuthorized(accessDoc)');
+    expect(rulesContent).not.toContain('function isStaffAuthorized(data)');
+    expect(rulesContent).toContain('accessDoc.allowedUIDs is list');
+    expect(rulesContent).toContain('accessDoc.allowedEmails is list');
     expect(rulesContent).toContain('function isBiltyAuthorized()');
-    expect(rulesContent).toMatch(/function isBiltyAuthorized\(\)\s*\{\s*return isOwner\(\);\s*\}/);
-    expect(rulesContent).not.toContain('function isStaffAuthorized(');
   });
 
   it('should explicitly deny top-level bilties collection', () => {

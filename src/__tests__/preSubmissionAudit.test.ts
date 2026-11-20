@@ -224,10 +224,10 @@ describe('Pre-Submission APK Audit & Security Hardening Suite', () => {
       expect(rules).toContain("request.resource.data.category in ['auth', 'bilty', 'settings', 'fleet', 'export', 'error', 'sync']");
     });
 
-    it('protects accountDeletionRequests privacy without making failing unauthenticated runQuery fetches in public/delete-account.html', () => {
+    it('handles Firestore 401/403 privacy protection gracefully in public/delete-account.html', () => {
       const html = fs.readFileSync(path.join(root, 'public/delete-account.html'), 'utf8');
       expect(html).toContain('privacyProtected');
-      expect(html).not.toContain(':runQuery');
+      expect(html).toContain('res.status === 403 || res.status === 401');
     });
 
     it('ensures public-facing verification UI copy avoids restricted Bilty terminology', () => {

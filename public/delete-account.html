@@ -364,9 +364,52 @@ async function handleTrackStatus() {
     }
   } catch(e) {}
 
-  // 2. Unauthenticated public browsers cannot read other users' deletion PII from Firestore
+  // 2. Query Firestore REST (privacy rules restrict unauthenticated reads of other users' emails)
   if (!found) {
-    privacyProtected = true;
+    try {
+      var queryUrl = 'https://firestore.googleapis.com/v1/projects/' + FB_PROJECT_ID +
+        '/databases/(default)/documents:runQuery?key=' + FB_API_KEY;
+
+      var filterField = input.startsWith('DEL-') ? 'referenceId' : 'userEmail';
+      var filterValue = input.startsWith('DEL-') ? input : input.toLowerCase();
+
+      var queryBody = {
+        structuredQuery: {
+          from: [{ collectionId: 'accountDeletionRequests' }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: filterField },
+              op: 'EQUAL',
+              value: { stringValue: filterValue }
+            }
+          },
+          limit: 1
+        }
+      };
+
+      var res = await fetch(queryUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(queryBody)
+      });
+
+      if (res.ok) {
+        var results = await res.json();
+        if (Array.isArray(results) && results.length > 0 && results[0].document) {
+          var fields = results[0].document.fields;
+          found = {
+            referenceId: fields.referenceId ? fields.referenceId.stringValue : 'DEL-RECORDED',
+            email: fields.userEmail ? fields.userEmail.stringValue : filterValue,
+            status: fields.status ? fields.status.stringValue : 'pending_deletion',
+            scheduledFor: fields.scheduledFor ? fields.scheduledFor.stringValue : '30-Day Period'
+          };
+        }
+      } else if (res.status === 403 || res.status === 401) {
+        privacyProtected = true;
+      }
+    } catch(err) {
+      privacyProtected = true;
+    }
   }
 
   function escapeHtml(str) {
