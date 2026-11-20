@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-1.3.1-mwon2rtt';
+const CACHE_NAME = 'driver-dost-1.3.1-mwoqhqp1';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const MAX_CACHED_TILES = 350;
 
@@ -38,36 +38,34 @@ const CORE_STATIC_ASSETS = [
   'safar-diary-icon.png',
   'scan-me-qr.png',
   'splash.png',
-  'warraich-card.png',
-  'bilty-official-icon.png',
-  'bilty-icon.png'
+  'warraich-card.png'
 ];
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/BiltyView-KdUp-ONi.js',
-  './assets/DashcamView-XkrRfmXv.js',
-  './assets/DriversView-B6V6PNua.js',
-  './assets/FuelLogView-Di7rUSKx.js',
-  './assets/LedgerView-BDPyp82_.js',
+    './assets/BiltyView-K7cHHVuM.js',
+  './assets/DashcamView-BffVwHDi.js',
+  './assets/DriversView-Bxkb__Bz.js',
+  './assets/FuelLogView-UkxDcGhq.js',
+  './assets/LedgerView-BHSa2_Sh.js',
   './assets/MapView-CIGW-MKW.css',
-  './assets/MapView-DW4Y_RPw.js',
-  './assets/NavigationView-e6g-kUi1.js',
-  './assets/RoutesView-HJJXXxR2.js',
-  './assets/TollPlazaView-azK4S6mK.js',
-  './assets/TripCostView-CtcGh-M9.js',
-  './assets/VehicleAccountView-PD7SqdxY.js',
-  './assets/VehiclesView-DC60ZcyX.js',
-  './assets/VerifyView-CmBrd4LQ.js',
-  './assets/biltyHelpers-MBn1nsl-.js',
+  './assets/MapView-CZCQjbYq.js',
+  './assets/NavigationView-Bu1E3UtU.js',
+  './assets/RoutesView-D6mmkx5Q.js',
+  './assets/TollPlazaView-BP3mtWzg.js',
+  './assets/TripCostView-C8lfY0oV.js',
+  './assets/VehicleAccountView-B5yLCvum.js',
+  './assets/VehiclesView-BYLmpgiz.js',
+  './assets/VerifyView-USgoMM2H.js',
+  './assets/biltyHelpers-BPOn3prY.js',
   './assets/bilty_watermark_bg_1794821577675-BFAqost0.jpg',
-  './assets/index-DonnXUEI.css',
-  './assets/index-o68sbefy.js',
-  './assets/pdfHelper-BQJYR32q.js',
+  './assets/index-CDqL1Pcd.js',
+  './assets/index-s4jaArpX.css',
+  './assets/pdfHelper-Dn4XH_O1.js',
   './assets/vendor-firebase-CIhkivAp.js',
-  './assets/vendor-pdf-C_00KF73.js',
-  './assets/vendor-react-DBna6sz6.js',
-  './assets/web-BFned5k-.js',
+  './assets/vendor-pdf-B_jRPlaA.js',
+  './assets/vendor-react-BK-iGX-v.js',
+  './assets/web-6lnquZpJ.js',
   './assets/web-BX2BdMlO.js',
   './assets/web-DuMV63fX.js',
   './assets/web-jwPn4hHg.js'
@@ -330,9 +328,9 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// 4. Background Sync: Auto-sync pending bilties and transport accounts when online
+// 4. Background Sync: Auto-sync pending documents and transport accounts when online
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-bilty-data' || event.tag === 'sync-offline-records' || event.tag === 'sync-transport-logs') {
+  if (event.tag === 'sync-offline-documents' || event.tag === 'sync-offline-records' || event.tag === 'sync-transport-logs') {
     event.waitUntil(
       self.clients.matchAll().then((clients) => {
         clients.forEach((client) => {
