@@ -545,18 +545,25 @@ describe('Final A-to-Z Audit Remediation Regressions', () => {
     expect(globalThis.localStorage.getItem('wg_v2_guest_vehicles')).toBeNull();
   });
 
-  it('uses crisp Noto Naskh Arabic / Noto Sans Arabic without colliding Nastaleeq UI aliases or RTL letter-spacing', () => {
+  it('uses authentic Pakistani Urdu Nastaleeq fonts (no Arabic Naskh/Sans substitution) with RTL zero letter-spacing', () => {
     const rootDir = process.cwd();
     const css = fs.readFileSync(path.join(rootDir, 'src/index.css'), 'utf8');
     const html = fs.readFileSync(path.join(rootDir, 'index.html'), 'utf8');
     const printable = fs.readFileSync(path.join(rootDir, 'src/components/PrintableBilty.tsx'), 'utf8');
 
-    expect(html).toContain('Noto+Naskh+Arabic');
+    expect(html).toContain('Noto+Nastaliq+Urdu');
+    expect(html).not.toContain('Noto+Naskh+Arabic');
+    expect(html).not.toContain('Noto+Sans+Arabic');
     expect(html).not.toContain('rel="preload" href="./fonts/PDMS_NastaliqNafees.ttf"');
     expect(css).not.toContain("font-family: 'Jameel Noori Nastaleeq'");
     expect(css).not.toContain("font-family: 'Alvi Lahori Nastaleeq'");
+    expect(css).not.toContain('Noto Naskh Arabic');
+    expect(css).not.toContain('Noto Sans Arabic');
     expect(css).toContain('[dir="rtl"] *, body.urdu *, [lang="ur"], [lang="ur"] * {\n  letter-spacing: 0 !important;');
-    expect(printable).toContain("'Noto Naskh Arabic', 'Noto Sans Arabic'");
+    expect(printable).toContain("'Akbar', 'Noto Nastaliq Urdu'");
+    expect(printable).toContain("'Jameel Noori Nastaleeq', 'Noto Nastaliq Urdu'");
+    expect(printable).not.toContain('Noto Naskh Arabic');
+    expect(printable).not.toContain('Noto Sans Arabic');
   });
 
   it('keeps HomeView Owner panel simplified to action buttons only and routes BiltyView back steps without abruptly leaving to Dashboard', () => {

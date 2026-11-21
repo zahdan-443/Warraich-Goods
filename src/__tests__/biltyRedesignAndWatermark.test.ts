@@ -93,14 +93,18 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(printableSrc).not.toContain('Zahdan Nasr');
     expect(printableSrc).not.toContain('For WARRAICH GOODS');
 
-    // 8. Bold Akbar + Noto Nastaliq Urdu title, Cinzel + Libre Baskerville English title, Jameel Noori Nastaleeq body & bold Terms
+    // 8. Bold Akbar + Noto Nastaliq Urdu title, Cinzel + Libre Baskerville English title, Jameel Noori Nastaleeq body & bold Terms (zero Arabic fonts)
     expect(printableSrc).toContain('fontWeight: 700');
+    expect(printableSrc).toContain('fontWeight: 900');
     expect(printableSrc).toContain('Cinzel');
     expect(printableSrc).toContain('Libre Baskerville');
     expect(printableSrc).toContain('IBM Plex Sans');
     expect(printableSrc).toContain('Akbar');
     expect(printableSrc).toContain('Noto Nastaliq Urdu');
     expect(printableSrc).toContain('Jameel Noori Nastaleeq');
+    expect(printableSrc).toContain('PDMS Nastaleeq Nafees');
+    expect(printableSrc).not.toContain('Noto Naskh Arabic');
+    expect(printableSrc).not.toContain('Noto Sans Arabic');
     expect(printableSrc).not.toContain('Terms & Conditions (Warraich');
     expect(printableSrc).not.toContain('شرائط و ضوابط (وڑائچ');
 

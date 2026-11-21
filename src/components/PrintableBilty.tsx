@@ -119,8 +119,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
   const borderPrimary = `1.5px solid ${theme.primaryColor}`;
   const borderLight = `1px solid ${theme.lightRule}`;
 
-  const urBodyFont = "'Noto Naskh Arabic', 'Noto Sans Arabic', 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', sans-serif";
-  const urTitleFont = "'Noto Naskh Arabic', 'Noto Sans Arabic', 'Akbar', 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', sans-serif";
+  const urBodyFont = "'Jameel Noori Nastaleeq', 'Noto Nastaliq Urdu', 'PDMS Nastaleeq Nafees', serif";
+  const urTitleFont = "'Akbar', 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'PDMS Nastaleeq Nafees', serif";
   const enBodyFont = "'IBM Plex Sans', 'Segoe UI', Arial, sans-serif";
   const monoFont = "'JetBrains Mono', 'Courier New', monospace";
 
@@ -136,7 +136,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
         color: '#0f172a',
         border: `2.5px solid ${theme.primaryColor}`,
         fontFamily: isEn ? enBodyFont : urBodyFont,
-        lineHeight: isEn ? '1.3' : '1.55',
+        lineHeight: isEn ? '1.3' : '1.68',
         width: '794px',
         height: '1120px',
         minWidth: '794px',
@@ -245,7 +245,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               borderRadius: '3px',
               backgroundColor: theme.cellBg,
               backgroundImage: theme.headerGrad,
-              padding: '11px 14px 10px 14px',
+              padding: '9px 12px 9px 12px',
               position: 'relative',
               display: 'flex',
               flexDirection: 'column',
@@ -273,9 +273,9 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               data-testid="header-three-column-grid"
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1.38fr) 122px minmax(0, 1fr)',
+                gridTemplateColumns: 'minmax(0, 1.55fr) 108px minmax(0, 1fr)',
                 alignItems: 'center',
-                gap: '12px',
+                gap: '10px',
                 width: '100%',
                 position: 'relative',
                 zIndex: 2
@@ -288,6 +288,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center',
+                  minWidth: 0,
                   textAlign: isEn ? 'left' : 'right'
                 }}
               >
@@ -297,7 +298,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   style={{
                     display: 'flex',
                     justifyContent: isEn ? 'flex-start' : 'flex-end',
-                    marginBottom: '4px'
+                    marginBottom: '3px'
                   }}
                 >
                   <div
@@ -307,17 +308,17 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                       border: `1.5px solid ${theme.primaryColor}`,
                       borderBottom: `2px solid ${theme.goldAccent}`,
                       borderRadius: '3px',
-                      padding: isEn ? '2px 8px' : '2px 9px',
+                      padding: isEn ? '1.5px 8px' : '1.5px 9px',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '5px',
                       fontSize: isEn ? '9.5px' : '10.5px',
                       fontWeight: 700,
-                      fontFamily: isEn ? monoFont : "'Noto Sans Arabic', 'Jameel Noori Nastaleeq', sans-serif",
+                      fontFamily: isEn ? monoFont : urBodyFont,
                       color: theme.primaryColor,
                       backgroundColor: '#ffffff',
                       letterSpacing: isEn ? '0.04em' : '0',
-                      lineHeight: '1.3'
+                      lineHeight: isEn ? '1.3' : '1.45'
                     }}
                   >
                     {isEn ? (
@@ -342,21 +343,21 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   </div>
                 </div>
 
-                {/* Company Name */}
+                {/* Company Name — Bold, Dominated Pakistani Typography */}
                 <div data-testid="company-masthead-title">
                   {isEn ? (
                     <h1
                       style={{
                         fontFamily: "'Cinzel', 'Libre Baskerville', Georgia, 'Times New Roman', serif",
-                        fontSize: '14.5px',
+                        fontSize: '15px',
                         fontWeight: 900,
                         letterSpacing: '0.02em',
                         color: theme.maroonAccent,
                         margin: '0',
-                        lineHeight: '1.22',
+                        lineHeight: '1.2',
                         textTransform: 'uppercase',
                         textAlign: 'left',
-                        textShadow: '0 1px 0 rgba(217, 119, 6, 0.2)'
+                        textShadow: '0 1px 0 rgba(217, 119, 6, 0.22)'
                       }}
                     >
                       WARRAICH GOODS TRANSPORT COMPANY
@@ -377,13 +378,14 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     <h1
                       style={{
                         fontFamily: urTitleFont,
-                        fontSize: '20px',
-                        fontWeight: 700,
+                        fontSize: '23.5px',
+                        fontWeight: 900,
                         color: theme.maroonAccent,
                         margin: '0',
-                        lineHeight: '1.42',
+                        lineHeight: '1.52',
                         textAlign: 'right',
-                        textShadow: '0 1px 0 rgba(217, 119, 6, 0.18)'
+                        whiteSpace: 'nowrap',
+                        textShadow: '0 1px 0 rgba(217, 119, 6, 0.22)'
                       }}
                     >
                       {cleanUrduCompanyName}
@@ -411,7 +413,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     width: '100%',
                     height: '1.5px',
                     backgroundColor: theme.goldAccent,
-                    margin: '4px 0 4px 0'
+                    margin: '3px 0 4px 0'
                   }}
                 />
 
@@ -419,11 +421,11 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 <div
                   data-testid="header-office-address"
                   style={{
-                    fontSize: isEn ? '10.5px' : '11.5px',
+                    fontSize: isEn ? '10.5px' : '12px',
                     fontWeight: 700,
                     fontFamily: isEn ? enBodyFont : urBodyFont,
                     color: theme.primaryColor,
-                    lineHeight: isEn ? '1.35' : '1.5',
+                    lineHeight: isEn ? '1.32' : '1.55',
                     textAlign: isEn ? 'left' : 'right'
                   }}
                 >
@@ -435,8 +437,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               <div
                 data-testid="header-logo-inside-frame"
                 style={{
-                  width: '122px',
-                  height: '96px',
+                  width: '108px',
+                  height: '92px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -450,12 +452,12 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   <img
                     src={activeLogoSrc}
                     alt={isEn ? 'Warraich Goods Transport Company Emblem' : 'وڑائچ گڈز ٹرانسپورٹ کمپنی لوگو'}
-                    width={116}
-                    height={94}
+                    width={104}
+                    height={90}
                     onError={(e) => handleEmblemImgError(e.currentTarget, () => setLogoFailed(true))}
                     style={{
-                      width: '116px',
-                      height: '94px',
+                      width: '104px',
+                      height: '90px',
                       objectFit: 'contain',
                       border: 'none',
                       backgroundColor: 'transparent',
@@ -475,6 +477,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center',
+                  minWidth: 0,
                   textAlign: isEn ? 'right' : 'left'
                 }}
               >
@@ -487,9 +490,9 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     fontSize: isEn ? '11px' : '13px',
                     fontWeight: 800,
                     fontFamily: isEn ? enBodyFont : urBodyFont,
-                    lineHeight: isEn ? '1.3' : '1.5',
+                    lineHeight: isEn ? '1.28' : '1.58',
                     textAlign: isEn ? 'right' : 'left',
-                    marginBottom: '5px'
+                    marginBottom: '4px'
                   }}
                 >
                   {isEn ? (
@@ -497,12 +500,12 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                       <span style={{ color: theme.maroonAccent, fontSize: '9.5px', fontWeight: 800, letterSpacing: '0.06em' }}>
                         PROPRIETOR:
                       </span>
-                      <span style={{ color: theme.primaryColor, fontSize: '11.5px', fontWeight: 900, letterSpacing: '0.02em' }}>
+                      <span style={{ color: theme.primaryColor, fontSize: '11.5px', fontWeight: 900, letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>
                         ZAHDAN NASAR WARRAICH
                       </span>
                     </div>
                   ) : (
-                    <div>
+                    <div style={{ whiteSpace: 'nowrap' }}>
                       <span style={{ color: theme.maroonAccent, fontWeight: 800 }}>پروپرائیٹر:</span>{' '}
                       <span style={{ color: theme.primaryColor, fontWeight: 900 }}>زاہدان نصر وڑائچ</span>
                     </div>
