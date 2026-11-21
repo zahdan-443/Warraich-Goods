@@ -19,18 +19,33 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(printableSrc).not.toContain('Receiving Point');
     expect(printableSrc).not.toContain('ریسیونگ پوائنٹ');
 
-    // 2. Coloured Pakistani header frame enclosing transparent WG logo + Proprietor & Address panel, fixed Urdu NTN stamp, no Bismillah header
+    // 2. Clean double border + gradient strip header enclosing directional 3-column layout, frameless centered official logo, NTN above company name + solid hairline + address, Proprietor + 2 stacked phones
+    expect(printableSrc).toContain('header-three-column-grid');
+    expect(printableSrc).toContain('header-identity-col');
     expect(printableSrc).toContain('header-logo-inside-frame');
-    expect(printableSrc).toContain("width: isEn ? '210px' : '265px'");
+    expect(printableSrc).toContain('header-proprietor-col');
+    expect(printableSrc).toContain('biltyOfficialIconData');
     expect(printableSrc).toContain("border: 'none'");
+    expect(printableSrc).toContain("backgroundColor: 'transparent'");
     expect(printableSrc).not.toContain("borderRadius: '50%'");
     expect(printableSrc).not.toContain('بسم اللہ');
     expect(printableSrc).toContain('ntn-corner-stamp');
     expect(printableSrc).toContain('این ٹی این نمبر:');
     expect(printableSrc).toContain("unicodeBidi: 'isolate'");
     expect(printableSrc).toContain('company-masthead-title');
+    expect(printableSrc).toContain('company-name-hairline');
+    expect(printableSrc).toContain('header-office-address');
     expect(printableSrc).toContain('proprietor-clean-line');
+    expect(printableSrc).toContain('header-phone-stack');
+    expect(printableSrc).toContain('header-phone-line-');
     expect(printableSrc).toContain('truck-art-ribbon');
+    // NTN must appear before company masthead title inside the Identity column
+    expect(printableSrc.indexOf('ntn-corner-stamp')).toBeLessThan(printableSrc.indexOf('company-masthead-title'));
+    expect(printableSrc.indexOf('company-masthead-title')).toBeLessThan(printableSrc.indexOf('company-name-hairline'));
+    expect(printableSrc.indexOf('company-name-hairline')).toBeLessThan(printableSrc.indexOf('header-office-address'));
+    // Header frame uses clean double border + gradient strip only (no corner step-brackets or top-center diamond crest)
+    expect(printableSrc).not.toContain('78 13');
+    expect(printableSrc).not.toContain('20 20');
 
     // 3. Complete single-language footer sentence
     expect(printableSrc).toContain('This is a computer-generated Bilty, no signature required');
@@ -97,11 +112,13 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(rowBPos).toBeGreaterThan(rowAPos);
     expect(rowCPos).toBeGreaterThan(rowBPos);
 
-    // 10. Pakistani Coloured Bilty Themes (Pink / Yellow / Green), Truck-Art Gradients, and Scoped Transparent Cargo Watermark
-    expect(printableSrc).toContain('BILTY_COLOR_THEMES');
-    expect(printableSrc).toContain("paperBg: '#fff0f5'");
-    expect(printableSrc).toContain("paperBg: '#fef9c3'");
-    expect(printableSrc).toContain("paperBg: '#dcfce7'");
+    // 10. Unified Single A4 Palette (Warm Ivory, Navy Blue, Maroon, Gold), Truck-Art Gradient Strips, and Scoped Transparent Cargo Watermark
+    expect(printableSrc).toContain('UNIFIED_BILTY_PALETTE');
+    expect(printableSrc).not.toContain('BILTY_COLOR_THEMES');
+    expect(printableSrc).toContain("paperBg: '#fff9f0'");
+    expect(printableSrc).toContain("primaryColor: '#1a477a'");
+    expect(printableSrc).toContain("maroonAccent: '#881337'");
+    expect(printableSrc).toContain("goldAccent: '#d97706'");
     expect(printableSrc).toContain('bilty-colored-canvas');
     expect(printableSrc).toContain('headerStripGrad');
     expect(printableSrc).toContain('remarksGrad');
@@ -185,7 +202,7 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(urWithAdvance).toContain('یہ کمپیوٹر سے تیار کردہ بلٹی ہے، دستخط کی ضرورت نہیں');
   });
 
-  it('uses single Samundri office, Language-only setup modal, Receiver CNIC, optional Advance, and Remarks in BiltyView', () => {
+  it('uses single Samundri office, Language-only setup modal, Receiver CNIC, optional Advance, and Remarks in BiltyView without multi-color selector', () => {
     const biltyViewSrc = readWorkspaceFile('src/components/views/BiltyView.tsx');
     const helpersSrc = readWorkspaceFile('src/utils/biltyHelpers.ts');
 
@@ -212,10 +229,10 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(biltyViewSrc).not.toContain('To-Pay');
     expect(biltyViewSrc).not.toContain('ٹو پے (بقایا)');
 
-    // 1-Click Pink / Yellow / Green Pakistani Copy Color Selector wired in BiltyView
-    expect(biltyViewSrc).toContain('bilty-color-selector');
-    expect(biltyViewSrc).toContain('گلابی کاپی');
-    expect(biltyViewSrc).toContain('پیلی کاپی');
-    expect(biltyViewSrc).toContain('سبز کاپی');
+    // Multi-color Pink/Yellow/Green selector removed for single unified A4 Bilty design
+    expect(biltyViewSrc).not.toContain('bilty-color-selector');
+    expect(biltyViewSrc).not.toContain('گلابی کاپی');
+    expect(biltyViewSrc).not.toContain('پیلی کاپی');
+    expect(biltyViewSrc).not.toContain('سبز کاپی');
   });
 });

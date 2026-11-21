@@ -23,112 +23,35 @@ interface PrintableBiltyProps {
   colorTheme?: BiltyColorTheme;
 }
 
-interface BiltyPalette {
-  id: BiltyColorTheme;
-  labelUr: string;
-  labelEn: string;
-  paperBg: string;
-  paperGrad: string;
-  headerGrad: string;
-  cellBg: string;
-  pastelRowA: string;
-  pastelRowB: string;
-  pastelRowC: string;
-  remarksGrad: string;
-  termsBg: string;
-  freightTotalGrad: string;
-  primaryColor: string;
-  secondaryColor: string;
-  emeraldAccent: string;
-  emeraldHighlight: string;
-  goldAccent: string;
-  headerStripGrad: string;
-  colGradLeft: string;
-  colGradRight: string;
-  lightRule: string;
-}
-
-export const BILTY_COLOR_THEMES: Record<BiltyColorTheme, BiltyPalette> = {
-  pink: {
-    id: 'pink',
-    labelUr: 'گلابی (Gulabi)',
-    labelEn: 'Rose Pink',
-    paperBg: '#fff0f5',
-    paperGrad: 'linear-gradient(180deg, #fff6f9 0%, #ffe4ef 52%, #fff3f7 100%)',
-    headerGrad: 'linear-gradient(135deg, #fff8fb 0%, #ffe3ee 55%, #fff3db 100%)',
-    cellBg: '#fff8fb',
-    pastelRowA: '#ffdce9',
-    pastelRowB: '#ffedd5',
-    pastelRowC: '#e6f6ef',
-    remarksGrad: 'linear-gradient(90deg, #fde68a 0%, #fbcfe8 50%, #fde68a 100%)',
-    termsBg: '#fffaf3',
-    freightTotalGrad: 'linear-gradient(90deg, #fde68a 0%, #fbcfe8 100%)',
-    primaryColor: '#881337',
-    secondaryColor: '#1a477a',
-    emeraldAccent: '#065f46',
-    emeraldHighlight: '#047857',
-    goldAccent: '#d97706',
-    headerStripGrad: 'linear-gradient(90deg, #9f1239 0%, #d97706 34%, #065f46 67%, #1a477a 100%)',
-    colGradLeft: 'linear-gradient(135deg, #881337 0%, #be123c 58%, #9f1239 100%)',
-    colGradRight: 'linear-gradient(135deg, #1a477a 0%, #0f2942 58%, #065f46 100%)',
-    lightRule: '#d8b4c4'
-  },
-  yellow: {
-    id: 'yellow',
-    labelUr: 'پیلا (Golden)',
-    labelEn: 'Golden Buff',
-    paperBg: '#fef9c3',
-    paperGrad: 'linear-gradient(180deg, #fffef2 0%, #fef0c7 52%, #fffbeb 100%)',
-    headerGrad: 'linear-gradient(135deg, #fffef6 0%, #fdecc2 54%, #eaf3ff 100%)',
-    cellBg: '#fffef5',
-    pastelRowA: '#fde68a',
-    pastelRowB: '#e0f2fe',
-    pastelRowC: '#dcfce7',
-    remarksGrad: 'linear-gradient(90deg, #fed7aa 0%, #fef08a 50%, #fed7aa 100%)',
-    termsBg: '#fffcf0',
-    freightTotalGrad: 'linear-gradient(90deg, #fed7aa 0%, #fef08a 100%)',
-    primaryColor: '#1a477a',
-    secondaryColor: '#9a3412',
-    emeraldAccent: '#065f46',
-    emeraldHighlight: '#047857',
-    goldAccent: '#c9972c',
-    headerStripGrad: 'linear-gradient(90deg, #9a3412 0%, #d97706 34%, #065f46 67%, #1a477a 100%)',
-    colGradLeft: 'linear-gradient(135deg, #1a477a 0%, #1e3a8a 58%, #0f2942 100%)',
-    colGradRight: 'linear-gradient(135deg, #9a3412 0%, #b45309 58%, #d97706 100%)',
-    lightRule: '#d4b483'
-  },
-  green: {
-    id: 'green',
-    labelUr: 'سبز (Green)',
-    labelEn: 'Emerald Green',
-    paperBg: '#dcfce7',
-    paperGrad: 'linear-gradient(180deg, #f2fdf7 0%, #dcfce7 52%, #ecfdf5 100%)',
-    headerGrad: 'linear-gradient(135deg, #f6fff9 0%, #d1fae5 54%, #fef3c7 100%)',
-    cellBg: '#f6fff9',
-    pastelRowA: '#bbf7d0',
-    pastelRowB: '#fef3c7',
-    pastelRowC: '#e0f2fe',
-    remarksGrad: 'linear-gradient(90deg, #a7f3d0 0%, #fde68a 50%, #a7f3d0 100%)',
-    termsBg: '#f3fcf6',
-    freightTotalGrad: 'linear-gradient(90deg, #a7f3d0 0%, #fde68a 100%)',
-    primaryColor: '#065f46',
-    secondaryColor: '#1a477a',
-    emeraldAccent: '#047857',
-    emeraldHighlight: '#065f46',
-    goldAccent: '#d97706',
-    headerStripGrad: 'linear-gradient(90deg, #065f46 0%, #10b981 33%, #d97706 67%, #9f1239 100%)',
-    colGradLeft: 'linear-gradient(135deg, #065f46 0%, #047857 58%, #064e3b 100%)',
-    colGradRight: 'linear-gradient(135deg, #1a477a 0%, #0f2942 56%, #9f1239 100%)',
-    lightRule: '#94c9b2'
-  }
-};
+export const UNIFIED_BILTY_PALETTE = {
+  id: 'unified',
+  paperBg: '#fff9f0',
+  paperGrad: 'linear-gradient(180deg, #fffdf9 0%, #fff4e3 52%, #fffaf2 100%)',
+  headerGrad: 'linear-gradient(135deg, #fffef9 0%, #fff4e0 56%, #f8eef0 100%)',
+  cellBg: '#fffcf7',
+  pastelRowA: '#f9e8ec',
+  pastelRowB: '#fef1d6',
+  pastelRowC: '#e7f4ee',
+  remarksGrad: 'linear-gradient(90deg, #fde68a 0%, #f9e8ec 50%, #fde68a 100%)',
+  termsBg: '#fffaf0',
+  freightTotalGrad: 'linear-gradient(90deg, #fde68a 0%, #f9e8ec 100%)',
+  primaryColor: '#1a477a',
+  maroonAccent: '#881337',
+  secondaryColor: '#881337',
+  emeraldAccent: '#065f46',
+  emeraldHighlight: '#047857',
+  goldAccent: '#d97706',
+  headerStripGrad: 'linear-gradient(90deg, #881337 0%, #d97706 34%, #065f46 67%, #1a477a 100%)',
+  colGradLeft: 'linear-gradient(135deg, #1a477a 0%, #0f2942 58%, #1e3a8a 100%)',
+  colGradRight: 'linear-gradient(135deg, #881337 0%, #9f1239 58%, #1a477a 100%)',
+  lightRule: '#d6c3b0'
+} as const;
 
 export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
   record,
   qrDataUrl: propQrUrl,
   logoDataUrl: propLogoUrl,
-  language: propLanguage,
-  colorTheme: propColorTheme
+  language: propLanguage
 }) => {
   const [internalQrUrl, setInternalQrUrl] = useState<string>('');
   const [resolvedLogo, setResolvedLogo] = useState<string>(propLogoUrl || '');
@@ -137,13 +60,16 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
 
   const activeLang: BiltyLanguage = record.language || propLanguage || 'ur';
   const isEn = activeLang === 'en';
-  const activeColorKey: BiltyColorTheme = propColorTheme || record.colorTheme || 'pink';
-  const theme = BILTY_COLOR_THEMES[activeColorKey] || BILTY_COLOR_THEMES.pink;
+  const theme = UNIFIED_BILTY_PALETTE;
 
   const branchInfo = BILTY_BRANCHES.samundri;
   const cleanUrduCompanyName = (company.nameUr || 'وڑائچ گڈز ٹرانسپورٹ کمپنی')
     .replace(/\s*\(رجسٹرڈ\)\s*/g, '')
     .trim();
+  const phoneLines = branchInfo.phone
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean);
 
   useEffect(() => {
     let isMounted = true;
@@ -282,7 +208,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
         }}
       />
 
-      {/* Full-Canvas Colored Pakistani Paper Layer */}
+      {/* Full-Canvas Warm Ivory Paper Layer */}
       <div
         data-testid="bilty-colored-canvas"
         style={{
@@ -296,7 +222,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
           backgroundImage: theme.paperGrad
         }}
       >
-        {/* 1. HEADER: Pakistani Truck-Art / Offset Gradient Frame with Transparent Logo + Proprietor & Address */}
+        {/* 1. HEADER: Clean Double Border + Gradient Strip with Directional 3-Column Layout & Frameless Centered Logo */}
         <div
           dir={isEn ? 'ltr' : 'rtl'}
           data-testid="pakistani-header-frame"
@@ -319,14 +245,14 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
               borderRadius: '3px',
               backgroundColor: theme.cellBg,
               backgroundImage: theme.headerGrad,
-              padding: '15px 14px 10px 14px',
+              padding: '11px 14px 10px 14px',
               position: 'relative',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden'
             }}
           >
-            {/* Top Truck-Art Geometric Chamak-Patti Ribbon */}
+            {/* Top Gradient Strip Ribbon */}
             <div
               aria-hidden="true"
               data-testid="truck-art-ribbon"
@@ -335,230 +261,113 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                 top: '0',
                 left: '0',
                 right: '0',
-                height: '5px',
+                height: '4px',
                 backgroundImage: theme.headerStripGrad,
                 zIndex: 1
               }}
             />
 
-            {/* Top-Center Pakistani Geometric Crest Divider */}
-            <div
-              aria-hidden="true"
-              style={{
-                position: 'absolute',
-                top: '1px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                backgroundColor: theme.cellBg,
-                padding: '1px 8px',
-                borderRadius: '0 0 8px 8px',
-                borderBottom: `1px solid ${theme.goldAccent}`,
-                lineHeight: 0,
-                zIndex: 2
-              }}
-            >
-              <svg width="78" height="13" viewBox="0 0 78 13" fill="none">
-                <path d="M2 6.5H24" stroke={theme.primaryColor} strokeWidth="1.4" />
-                <path d="M54 6.5H76" stroke={theme.primaryColor} strokeWidth="1.4" />
-                <polygon points="39,1 45,6.5 39,12 33,6.5" fill={theme.goldAccent} stroke={theme.primaryColor} strokeWidth="1.2" />
-                <polygon points="28,2.5 31.5,6.5 28,10.5 24.5,6.5" fill={theme.emeraldAccent} />
-                <polygon points="50,2.5 53.5,6.5 50,10.5 46.5,6.5" fill={theme.secondaryColor} />
-                <circle cx="39" cy="6.5" r="1.7" fill="#ffffff" />
-              </svg>
-            </div>
-
-            {/* 4 Corner Pakistani Truck-Art Floral Step-Brackets */}
-            {[
-              { top: '7px', left: '4px', transform: 'none' },
-              { top: '7px', right: '4px', transform: 'scaleX(-1)' },
-              { bottom: '4px', left: '4px', transform: 'scaleY(-1)' },
-              { bottom: '4px', right: '4px', transform: 'scale(-1, -1)' }
-            ].map((cornerPos, idx) => (
-              <svg
-                key={idx}
-                aria-hidden="true"
-                width="20"
-                height="20"
-                viewBox="0 0 20 20"
-                fill="none"
-                style={{
-                  position: 'absolute',
-                  ...cornerPos,
-                  pointerEvents: 'none',
-                  zIndex: 2
-                }}
-              >
-                <path d="M1 17V4.5C1 2.567 2.567 1 4.5 1H17" stroke={theme.primaryColor} strokeWidth="1.6" />
-                <path d="M4.5 14V6C4.5 5.17157 5.17157 4.5 6 4.5H14" stroke={theme.goldAccent} strokeWidth="1.2" />
-                <polygon points="8,8 10.5,5.5 13,8 10.5,10.5" fill={theme.emeraldAccent} />
-                <circle cx="15.5" cy="1.8" r="1.3" fill={theme.secondaryColor} />
-              </svg>
-            ))}
-
-            {/* Top-Right NTN Corner Stamp (Crisp White Badge + BiDi Isolated Urdu Number) */}
+            {/* Directional 3-Column Header Grid: [Identity Column] [Center Frameless Logo] [Proprietor & 2-Line Contacts] */}
             <div
               dir={isEn ? 'ltr' : 'rtl'}
-              data-testid="ntn-corner-stamp"
+              data-testid="header-three-column-grid"
               style={{
-                position: 'absolute',
-                top: '10px',
-                right: '28px',
-                border: `1.5px solid ${theme.primaryColor}`,
-                borderBottom: `2px solid ${theme.goldAccent}`,
-                borderRadius: '3px',
-                padding: isEn ? '2px 9px' : '2px 10px',
-                display: 'inline-flex',
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1.38fr) 122px minmax(0, 1fr)',
                 alignItems: 'center',
-                gap: '5px',
-                fontSize: isEn ? '9.5px' : '10.5px',
-                fontWeight: 700,
-                fontFamily: isEn ? monoFont : "'Noto Sans Arabic', 'Jameel Noori Nastaleeq', sans-serif",
-                color: theme.primaryColor,
-                backgroundColor: '#ffffff',
-                letterSpacing: isEn ? '0.04em' : '0',
-                lineHeight: '1.35',
+                gap: '12px',
+                width: '100%',
+                position: 'relative',
                 zIndex: 2
               }}
             >
-              {isEn ? (
-                <span style={{ fontWeight: 800 }}>NTN: 7779394-1</span>
-              ) : (
-                <>
-                  <span>این ٹی این نمبر:</span>
-                  <span
-                    dir="ltr"
-                    style={{
-                      fontFamily: monoFont,
-                      fontSize: '9.5px',
-                      fontWeight: 800,
-                      color: theme.secondaryColor,
-                      unicodeBidi: 'isolate'
-                    }}
-                  >
-                    7779394-1
-                  </span>
-                </>
-              )}
-            </div>
-
-            {/* Inner Frame Flex Row: Transparent Official Logo + Proprietor & Address Panel */}
-            <div
-              dir="ltr"
-              style={{
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: '14px',
-                width: '100%',
-                marginTop: '4px'
-              }}
-            >
-              {/* Transparent Official Logo (already contains WG Truck Emblem + Urdu Company Title + Tagline) */}
+              {/* Column 1 (Right in Urdu RTL, Left in English LTR): NTN above Business Name + Hairline + Address */}
               <div
-                data-testid="header-logo-inside-frame"
+                data-testid="header-identity-col"
                 style={{
-                  width: isEn ? '210px' : '265px',
-                  height: isEn ? '106px' : '116px',
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                  backgroundColor: 'transparent',
-                  margin: '0',
-                  padding: '0'
-                }}
-              >
-                {!logoFailed ? (
-                  <img
-                    src={activeLogoSrc}
-                    alt={isEn ? 'Warraich Goods Transport Company Emblem' : 'وڑائچ گڈز ٹرانسپورٹ کمپنی لوگو'}
-                    width={isEn ? 210 : 265}
-                    height={isEn ? 106 : 116}
-                    onError={(e) => handleEmblemImgError(e.currentTarget, () => setLogoFailed(true))}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain',
-                      transform: 'scale(1.06)',
-                      transformOrigin: 'center center',
-                      border: 'none',
-                      backgroundColor: 'transparent',
-                      padding: '0',
-                      display: 'block'
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: '104px',
-                      height: '104px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: 'transparent'
-                    }}
-                  >
-                    <CompanyLogo className="w-24 h-24" />
-                  </div>
-                )}
-              </div>
-
-              {/* Right Panel: English Full Title OR Urdu Head Office Title + Clean Proprietor + Office Address & Phone */}
-              <div
-                dir={isEn ? 'ltr' : 'rtl'}
-                style={{
-                  flex: '1 1 0%',
-                  textAlign: 'center',
                   display: 'flex',
                   flexDirection: 'column',
-                  alignItems: 'center',
                   justifyContent: 'center',
-                  paddingTop: '14px',
-                  paddingRight: '8px',
-                  borderInlineStart: `1.5px dashed ${theme.goldAccent}`,
-                  paddingInlineStart: '12px'
+                  textAlign: isEn ? 'left' : 'right'
                 }}
               >
-                {/* Title Band (English shows full engraved company title; Urdu shows regional office & service banner so logo's Urdu title isn't duplicated) */}
+                {/* NTN directly above Business Name */}
                 <div
-                  data-testid="company-masthead-title"
+                  dir="ltr"
                   style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    borderBottom: `2px solid ${theme.goldAccent}`,
-                    paddingBottom: '4px',
-                    marginBottom: '6px'
+                    display: 'flex',
+                    justifyContent: isEn ? 'flex-start' : 'flex-end',
+                    marginBottom: '4px'
                   }}
                 >
-                  <svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
-                    <polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill={theme.emeraldAccent} stroke={theme.goldAccent} strokeWidth="1" />
-                  </svg>
+                  <div
+                    dir={isEn ? 'ltr' : 'rtl'}
+                    data-testid="ntn-corner-stamp"
+                    style={{
+                      border: `1.5px solid ${theme.primaryColor}`,
+                      borderBottom: `2px solid ${theme.goldAccent}`,
+                      borderRadius: '3px',
+                      padding: isEn ? '2px 8px' : '2px 9px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      fontSize: isEn ? '9.5px' : '10.5px',
+                      fontWeight: 700,
+                      fontFamily: isEn ? monoFont : "'Noto Sans Arabic', 'Jameel Noori Nastaleeq', sans-serif",
+                      color: theme.primaryColor,
+                      backgroundColor: '#ffffff',
+                      letterSpacing: isEn ? '0.04em' : '0',
+                      lineHeight: '1.3'
+                    }}
+                  >
+                    {isEn ? (
+                      <span style={{ fontWeight: 800 }}>NTN: 7779394-1</span>
+                    ) : (
+                      <>
+                        <span>این ٹی این نمبر:</span>
+                        <span
+                          dir="ltr"
+                          style={{
+                            fontFamily: monoFont,
+                            fontSize: '9.5px',
+                            fontWeight: 800,
+                            color: theme.maroonAccent,
+                            unicodeBidi: 'isolate'
+                          }}
+                        >
+                          7779394-1
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Company Name */}
+                <div data-testid="company-masthead-title">
                   {isEn ? (
                     <h1
                       style={{
                         fontFamily: "'Cinzel', 'Libre Baskerville', Georgia, 'Times New Roman', serif",
-                        fontSize: '18.5px',
+                        fontSize: '14.5px',
                         fontWeight: 900,
-                        letterSpacing: '0.03em',
-                        color: theme.primaryColor,
+                        letterSpacing: '0.02em',
+                        color: theme.maroonAccent,
                         margin: '0',
-                        lineHeight: '1.16',
+                        lineHeight: '1.22',
                         textTransform: 'uppercase',
-                        textShadow: '0 1px 0 rgba(217, 119, 6, 0.25)'
+                        textAlign: 'left',
+                        textShadow: '0 1px 0 rgba(217, 119, 6, 0.2)'
                       }}
                     >
                       WARRAICH GOODS TRANSPORT COMPANY
                       <sup
                         style={{
-                          fontSize: '11px',
+                          fontSize: '10px',
                           fontWeight: 800,
                           verticalAlign: 'super',
                           marginLeft: '2px',
                           fontFamily: enBodyFont,
-                          color: theme.emeraldAccent
+                          color: theme.primaryColor
                         }}
                       >
                         ®
@@ -568,100 +377,199 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     <h1
                       style={{
                         fontFamily: urTitleFont,
-                        fontSize: '21px',
-                        fontWeight: 800,
-                        color: theme.primaryColor,
+                        fontSize: '20px',
+                        fontWeight: 700,
+                        color: theme.maroonAccent,
                         margin: '0',
-                        lineHeight: '1.48',
-                        textShadow: '0 1px 0 rgba(217, 119, 6, 0.24)'
+                        lineHeight: '1.42',
+                        textAlign: 'right',
+                        textShadow: '0 1px 0 rgba(217, 119, 6, 0.18)'
                       }}
                     >
-                      {logoFailed ? cleanUrduCompanyName : 'وڑائچ گڈز ٹرانسپورٹ کمپنی'}
+                      {cleanUrduCompanyName}
                       <sup
                         style={{
-                          fontSize: '11.5px',
+                          fontSize: '11px',
                           fontWeight: 800,
                           verticalAlign: 'super',
                           marginRight: '3px',
                           fontFamily: enBodyFont,
-                          color: theme.emeraldAccent
+                          color: theme.primaryColor
                         }}
                       >
                         ®
                       </sup>
                     </h1>
                   )}
-                  <svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
-                    <polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill={theme.emeraldAccent} stroke={theme.goldAccent} strokeWidth="1" />
-                  </svg>
                 </div>
 
-                {/* Strip-Free Proprietor Line directly on Coloured Header Canvas */}
+                {/* Simple Solid Accent Hairline directly under Business Name */}
                 <div
-                  data-testid="proprietor-clean-line"
+                  aria-hidden="true"
+                  data-testid="company-name-hairline"
                   style={{
-                    backgroundColor: 'transparent',
-                    color: theme.secondaryColor,
-                    padding: isEn ? '2px 10px' : '1px 10px',
-                    fontSize: isEn ? '11.5px' : '13.5px',
-                    fontWeight: 800,
-                    fontFamily: isEn ? enBodyFont : urBodyFont,
-                    letterSpacing: isEn ? '0.05em' : '0',
-                    textTransform: isEn ? 'uppercase' : 'none',
-                    borderBottom: `1px solid ${theme.lightRule}`,
-                    lineHeight: isEn ? '1.35' : '1.55'
+                    width: '100%',
+                    height: '1.5px',
+                    backgroundColor: theme.goldAccent,
+                    margin: '4px 0 4px 0'
                   }}
-                >
-                  {isEn ? (
-                    <>
-                      <span style={{ color: theme.emeraldAccent, fontWeight: 800 }}>PROPRIETOR:</span>{' '}
-                      <span style={{ color: theme.primaryColor, fontWeight: 900 }}>ZAHDAN NASAR WARRAICH</span>
-                    </>
-                  ) : (
-                    <>
-                      <span style={{ color: theme.emeraldAccent, fontWeight: 800 }}>پروپرائیٹر:</span>{' '}
-                      <span style={{ color: theme.primaryColor, fontWeight: 900 }}>زاہدان نصر وڑائچ</span>
-                    </>
-                  )}
-                </div>
+                />
 
-                {/* Single Samundri Office Address & Phone Numbers */}
+                {/* Office Address below the hairline */}
                 <div
+                  data-testid="header-office-address"
                   style={{
-                    marginTop: '4px',
                     fontSize: isEn ? '10.5px' : '11.5px',
                     fontWeight: 700,
                     fontFamily: isEn ? enBodyFont : urBodyFont,
-                    color: theme.secondaryColor,
-                    lineHeight: isEn ? '1.35' : '1.55'
+                    color: theme.primaryColor,
+                    lineHeight: isEn ? '1.35' : '1.5',
+                    textAlign: isEn ? 'left' : 'right'
                   }}
                 >
-                  <div>{isEn ? branchInfo.addressEn : branchInfo.addressUr}</div>
-                  <div
-                    dir={isEn ? 'ltr' : 'rtl'}
+                  {isEn ? branchInfo.addressEn : branchInfo.addressUr}
+                </div>
+              </div>
+
+              {/* Column 2 (Center): Official Icon Centered WITHOUT any inner frame or box */}
+              <div
+                data-testid="header-logo-inside-frame"
+                style={{
+                  width: '122px',
+                  height: '96px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  margin: '0 auto',
+                  padding: '0'
+                }}
+              >
+                {!logoFailed ? (
+                  <img
+                    src={activeLogoSrc}
+                    alt={isEn ? 'Warraich Goods Transport Company Emblem' : 'وڑائچ گڈز ٹرانسپورٹ کمپنی لوگو'}
+                    width={116}
+                    height={94}
+                    onError={(e) => handleEmblemImgError(e.currentTarget, () => setLogoFailed(true))}
                     style={{
-                      fontFamily: isEn ? monoFont : urBodyFont,
-                      fontSize: isEn ? '10.5px' : '11px',
-                      marginTop: '2px',
-                      color: theme.emeraldAccent,
-                      fontWeight: 700,
-                      fontVariantNumeric: 'tabular-nums'
+                      width: '116px',
+                      height: '94px',
+                      objectFit: 'contain',
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      padding: '0',
+                      display: 'block'
                     }}
-                  >
-                    {isEn ? (
-                      <span>Mobile: {branchInfo.phone}</span>
-                    ) : (
-                      <span>
-                        فون نمبر:{' '}
-                        <span dir="ltr" style={{ fontFamily: monoFont, fontSize: '10.5px', color: theme.primaryColor, fontWeight: 800, unicodeBidi: 'isolate' }}>
-                          {branchInfo.phone}
-                        </span>
+                  />
+                ) : (
+                  <CompanyLogo className="w-20 h-20" />
+                )}
+              </div>
+
+              {/* Column 3 (Left in Urdu RTL, Right in English LTR): Proprietor + 2 Stacked Phone Numbers */}
+              <div
+                data-testid="header-proprietor-col"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  textAlign: isEn ? 'right' : 'left'
+                }}
+              >
+                {/* Proprietor Name */}
+                <div
+                  data-testid="proprietor-clean-line"
+                  dir={isEn ? 'ltr' : 'rtl'}
+                  style={{
+                    backgroundColor: 'transparent',
+                    fontSize: isEn ? '11px' : '13px',
+                    fontWeight: 800,
+                    fontFamily: isEn ? enBodyFont : urBodyFont,
+                    lineHeight: isEn ? '1.3' : '1.5',
+                    textAlign: isEn ? 'right' : 'left',
+                    marginBottom: '5px'
+                  }}
+                >
+                  {isEn ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                      <span style={{ color: theme.maroonAccent, fontSize: '9.5px', fontWeight: 800, letterSpacing: '0.06em' }}>
+                        PROPRIETOR:
                       </span>
-                    )}
-                  </div>
+                      <span style={{ color: theme.primaryColor, fontSize: '11.5px', fontWeight: 900, letterSpacing: '0.02em' }}>
+                        ZAHDAN NASAR WARRAICH
+                      </span>
+                    </div>
+                  ) : (
+                    <div>
+                      <span style={{ color: theme.maroonAccent, fontWeight: 800 }}>پروپرائیٹر:</span>{' '}
+                      <span style={{ color: theme.primaryColor, fontWeight: 900 }}>زاہدان نصر وڑائچ</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Clean 2 Stacked Phone Numbers with Compact Vector Phone Icon */}
+                <div
+                  dir="ltr"
+                  data-testid="header-phone-stack"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '3px',
+                    alignItems: isEn ? 'flex-end' : 'flex-start'
+                  }}
+                >
+                  {phoneLines.map((phoneNum, idx) => (
+                    <div
+                      key={phoneNum}
+                      data-testid={`header-phone-line-${idx + 1}`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        fontFamily: monoFont,
+                        fontSize: '11.5px',
+                        fontWeight: 800,
+                        color: theme.primaryColor,
+                        fontVariantNumeric: 'tabular-nums',
+                        lineHeight: '1.25'
+                      }}
+                    >
+                      <svg
+                        aria-hidden="true"
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke={theme.maroonAccent}
+                        strokeWidth="2.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        style={{ flexShrink: 0 }}
+                      >
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                      </svg>
+                      <span dir="ltr" style={{ unicodeBidi: 'isolate' }}>{phoneNum}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
+
+            {/* Bottom Gradient Strip Ribbon */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                bottom: '0',
+                left: '0',
+                right: '0',
+                height: '3px',
+                backgroundImage: theme.headerStripGrad,
+                zIndex: 1
+              }}
+            />
           </div>
         </div>
 

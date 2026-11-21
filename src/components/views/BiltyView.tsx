@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { BiltyRecord, ContactItem, DICTIONARY, Language, BiltyBranch, BiltyLanguage, BiltyColorTheme, LegalRecordingItem, KhataReceivingPoint } from '../../types';
+import { BiltyRecord, ContactItem, DICTIONARY, Language, BiltyBranch, BiltyLanguage, LegalRecordingItem, KhataReceivingPoint } from '../../types';
 import { getAllReceivingPoints } from '../../utils/khataModulesStorage';
 import {
   Receipt,
@@ -159,14 +159,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       if (stored === 'ur' || stored === 'en') return stored;
     } catch {}
     return 'ur';
-  });
-
-  const [selectedColorTheme, setSelectedColorTheme] = useState<BiltyColorTheme>(() => {
-    try {
-      const stored = localStorage.getItem('ah-bilty-color-theme');
-      if (stored === 'pink' || stored === 'yellow' || stored === 'green') return stored;
-    } catch {}
-    return 'pink';
   });
 
   // Prompt user on open: Modal is initially open
@@ -384,7 +376,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setRemarks(record.remarks || '');
     setCreationLegalVault(record.legalVault || {});
     if (record.language) setSelectedLanguage(record.language);
-    if (record.colorTheme) setSelectedColorTheme(record.colorTheme);
     setIsConfigModalOpen(false);
     setSelectedModalBilty(null);
     setLastBilty(record);
@@ -481,28 +472,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     }
   };
 
-  const handleChangeColorTheme = (colorTheme: BiltyColorTheme, targetRecord?: BiltyRecord) => {
-    setSelectedColorTheme(colorTheme);
-    try {
-      localStorage.setItem('ah-bilty-color-theme', colorTheme);
-    } catch {}
-    if (targetRecord) {
-      const updated = { ...targetRecord, colorTheme };
-      if (lastBilty && lastBilty.id === targetRecord.id) {
-        setLastBilty(updated);
-      }
-      if (selectedModalBilty && selectedModalBilty.id === targetRecord.id) {
-        setSelectedModalBilty(updated);
-      }
-      if (searchResult && searchResult.id === targetRecord.id) {
-        setSearchResult(updated);
-      }
-      if (onUpdateBilty && bilties.some((b) => b.id === targetRecord.id)) {
-        onUpdateBilty(updated);
-      }
-    }
-  };
-
   const handlePrintBuilty = async (record: BiltyRecord) => {
     const [qrUrl, assets] = await Promise.all([
       getQrDataUrl(record),
@@ -515,8 +484,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setActivePrintRecord({
       ...record,
       branch: record.branch || selectedBranch,
-      language: record.language || selectedLanguage,
-      colorTheme: record.colorTheme || selectedColorTheme
+      language: record.language || selectedLanguage
     });
     setTimeout(async () => {
       const target = document.getElementById('printable-bilty-dom');
@@ -588,7 +556,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         ...editingBilty,
         branch: selectedBranch,
         language: selectedLanguage,
-        colorTheme: selectedColorTheme,
         vehicleNo: vehicleNo.trim(),
         date: date.trim() || getTodayFormatted(),
         driverName: driverName.trim(),
@@ -655,7 +622,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       pendingOnlineNumber: isPendingOnline ? true : undefined,
       branch: selectedBranch,
       language: selectedLanguage,
-      colorTheme: selectedColorTheme,
       vehicleNo: vehicleNo.trim(),
       date: date.trim() || getTodayFormatted(),
       driverName: driverName.trim(),
@@ -703,8 +669,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setActivePrintRecord({
       ...record,
       branch: record.branch || selectedBranch,
-      language: record.language || selectedLanguage,
-      colorTheme: record.colorTheme || selectedColorTheme
+      language: record.language || selectedLanguage
     });
     // Allow React state to update DOM and QR code generation
     await new Promise((r) => setTimeout(r, 450));
@@ -812,12 +777,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
 
   const renderBiltyPreview = (record: BiltyRecord) => {
     const previewLang = record.language || selectedLanguage;
-    const previewColor: BiltyColorTheme = record.colorTheme || selectedColorTheme || 'pink';
-    const colorOptions: Array<{ id: BiltyColorTheme; labelUr: string; labelEn: string; swatch: string; activeBg: string }> = [
-      { id: 'pink', labelUr: 'گلابی کاپی', labelEn: 'Pink Copy', swatch: 'bg-rose-600', activeBg: 'bg-rose-50 border-rose-500 text-rose-900' },
-      { id: 'yellow', labelUr: 'پیلی کاپی', labelEn: 'Yellow Copy', swatch: 'bg-amber-500', activeBg: 'bg-amber-50 border-amber-500 text-amber-900' },
-      { id: 'green', labelUr: 'سبز کاپی', labelEn: 'Green Copy', swatch: 'bg-emerald-600', activeBg: 'bg-emerald-50 border-emerald-500 text-emerald-900' }
-    ];
 
     return (
       <div className="space-y-4">
@@ -882,32 +841,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* 1-Click Pakistani Copy Color Selector (Pink / Yellow / Green) */}
-            <div
-              role="group"
-              aria-label={previewLang === 'en' ? 'Bilty Paper Color' : 'بلٹی کا رنگ'}
-              data-testid="bilty-color-selector"
-              className="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200"
-            >
-              {colorOptions.map((opt) => {
-                const isSelected = previewColor === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => handleChangeColorTheme(opt.id, record)}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer whitespace-nowrap ${
-                      isSelected
-                        ? `${opt.activeBg} shadow-2xs`
-                        : 'bg-white/70 border-transparent text-slate-600 hover:bg-white hover:text-slate-900'
-                    }`}
-                  >
-                    <span className={`w-2.5 h-2.5 rounded-full ${opt.swatch} shrink-0`} />
-                    <span>{previewLang === 'en' ? opt.labelEn : opt.labelUr}</span>
-                  </button>
-                );
-              })}
-            </div>
             <BiltyQrCode record={record} className="w-12 h-12 rounded border border-slate-300 bg-white object-contain" />
           </div>
         </div>
@@ -919,7 +852,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             logoDataUrl={preloadedAssets.logo}
             branch="samundri"
             language={previewLang}
-            colorTheme={previewColor}
           />
         </div>
 
@@ -2038,7 +1970,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             logoDataUrl={preloadedAssets.logo}
             branch="samundri"
             language={activePrintRecord.language || selectedLanguage}
-            colorTheme={activePrintRecord.colorTheme || selectedColorTheme}
           />
         </div>
       )}
