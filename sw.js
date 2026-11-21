@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-1.3.1-mworruca';
+const CACHE_NAME = 'driver-dost-1.3.1-mwq4xxs8';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const MAX_CACHED_TILES = 350;
 
@@ -43,30 +43,30 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/BiltyView-D_8b60kT.js',
-  './assets/DashcamView-O9EU_oZI.js',
-  './assets/DriversView-BMwWwU7z.js',
-  './assets/FuelLogView-DmrhHaq-.js',
-  './assets/LedgerView-foficNUN.js',
-  './assets/MapView-C8wU3PKz.js',
+    './assets/BiltyView-CT5GdZ0U.js',
+  './assets/DashcamView-BD9iwnIe.js',
+  './assets/DriversView-ImUDsFYl.js',
+  './assets/FuelLogView-C474YAU0.js',
+  './assets/LedgerView-CK2kKzTJ.js',
   './assets/MapView-CIGW-MKW.css',
-  './assets/NavigationView-Dke90gaj.js',
-  './assets/RoutesView-D7ZuWRew.js',
-  './assets/TollPlazaView-BO488aIQ.js',
-  './assets/TripCostView-uSWNjjOj.js',
-  './assets/VehicleAccountView-DI1eNjvJ.js',
-  './assets/VehiclesView-Do8ALltc.js',
-  './assets/VerifyView-Cvl2d_UI.js',
-  './assets/biltyHelpers-BPOn3prY.js',
+  './assets/MapView-DvPnU7qb.js',
+  './assets/NavigationView-hO0NZ2SE.js',
+  './assets/RoutesView-BUr4rPAT.js',
+  './assets/TollPlazaView-BJ1SaKcz.js',
+  './assets/TripCostView-B1CX4xSs.js',
+  './assets/VehicleAccountView-DEZk6eyC.js',
+  './assets/VehiclesView-BfC8BeU9.js',
+  './assets/VerifyView-XmmUYrPV.js',
+  './assets/biltyHelpers-CTB4x2TP.js',
   './assets/bilty_watermark_bg_1794821577675-BFAqost0.jpg',
-  './assets/index-BrdVJcsZ.js',
-  './assets/index-g42kbLtq.css',
-  './assets/pdfHelper-CVv64VdY.js',
+  './assets/index-BukWRDts.css',
+  './assets/index-CMpjUjnu.js',
+  './assets/pdfHelper-BSHRGdRO.js',
   './assets/vendor-firebase-CIhkivAp.js',
-  './assets/vendor-pdf-B_jRPlaA.js',
-  './assets/vendor-react-BK-iGX-v.js',
+  './assets/vendor-pdf-BqJFK5ri.js',
+  './assets/vendor-react-BG83AqZi.js',
+  './assets/web-B7IsRIjQ.js',
   './assets/web-BX2BdMlO.js',
-  './assets/web-BxVcyEPh.js',
   './assets/web-DuMV63fX.js',
   './assets/web-jwPn4hHg.js'
 ];
