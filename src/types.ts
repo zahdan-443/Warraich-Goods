@@ -387,6 +387,47 @@ export interface BiltyLegalVault {
   updatedAt?: string;
 }
 
+export type BiltyAttachmentSlot =
+  | 'driverPhoto'
+  | 'driverLicense'
+  | 'driverCnic'
+  | 'vehiclePhoto'
+  | 'senderPhoto'
+  | 'senderCnic'
+  | 'receiverPhoto'
+  | 'receiverCnic'
+  | 'legalDoc'
+  | 'voiceNote';
+
+export type BiltyAttachmentKind = 'image' | 'audio';
+
+export interface BiltyAttachmentRecord {
+  /** Deterministic or UUID primary key in IndexedDB & Firestore */
+  id: string;
+  /** Canonical normalized key linking to parent bilty (uppercase biltyNo or String(bilty.id)) */
+  biltyKey: string;
+  biltyNo: string;
+  biltyId?: number;
+  slot: BiltyAttachmentSlot;
+  kind: BiltyAttachmentKind;
+  isIdCard: boolean;
+  name?: string;
+  mimeType: string;
+  dataUrl: string;
+  byteSize: number;
+  width?: number;
+  height?: number;
+  duration?: number;
+  createdAt: string;
+  createdAtMs: number;
+  updatedAt: string;
+  expireAtMs: number;
+  expireAtIso: string;
+  legalHold: boolean;
+  ownerUid?: string;
+  migratedFromLegacy?: boolean;
+}
+
 export interface BiltyRecord {
   id: number;
   biltyNo: string;
@@ -423,6 +464,11 @@ export interface BiltyRecord {
   receivingPointName?: string;
   podConfirmation?: PodConfirmation;
   isDelivered?: boolean;
+  /** Lightweight metadata counter (actual files live in IndexedDB + users/{uid}/biltyAttachments) */
+  attachmentCount?: number;
+  /** Owner-controlled legal hold flag exempting this document's attachments from 180-day auto-deletion */
+  legalHold?: boolean;
+  /** @deprecated Legacy embedded vault kept optional solely for verified one-time migration read */
   legalVault?: BiltyLegalVault;
   createdAt?: string;
   updatedAt?: string;

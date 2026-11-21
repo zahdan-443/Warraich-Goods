@@ -71,15 +71,40 @@
     },
     "BiltyRecord": {
       "title": "BiltyRecord",
-      "description": "Individual bilty receipt record",
+      "description": "Individual bilty receipt record (attachments stored separately)",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "biltyNo": { "type": "string" },
         "date": { "type": "string" },
         "vehicleNo": { "type": "string" },
-        "driverName": { "type": "string" }
+        "driverName": { "type": "string" },
+        "attachmentCount": { "type": "number" },
+        "legalHold": { "type": "boolean" }
       }
+    },
+    "BiltyAttachment": {
+      "title": "BiltyAttachment",
+      "description": "Owner-only compressed ID-card image or legal evidence attachment stored outside main BiltyRecord with 180-day auto-expiry and optional legal hold",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 160 },
+        "biltyKey": { "type": "string", "maxLength": 80 },
+        "biltyNo": { "type": "string", "maxLength": 64 },
+        "slot": { "type": "string" },
+        "kind": { "type": "string", "enum": ["image", "audio"] },
+        "isIdCard": { "type": "boolean" },
+        "mimeType": { "type": "string" },
+        "dataUrl": { "type": "string" },
+        "byteSize": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "createdAtMs": { "type": "number" },
+        "expireAtMs": { "type": "number" },
+        "expireAtIso": { "type": "string" },
+        "expireAt": { "type": "string", "format": "date-time" },
+        "legalHold": { "type": "boolean" }
+      },
+      "required": ["id", "biltyKey", "slot", "kind", "byteSize", "createdAtMs", "expireAtMs", "legalHold"]
     },
     "CounterData": {
       "title": "CounterData",
@@ -244,6 +269,10 @@
     "/users/{userId}/khataDailyExpenses/{expenseId}": {
       "schema": "UserData",
       "description": "User isolated categorized daily expenses mirrored to cashbook without double counting"
+    },
+    "/users/{userId}/biltyAttachments/{attachmentId}": {
+      "schema": "BiltyAttachment",
+      "description": "Owner-only separated compressed ID-card photos and legal attachments with 180-day retention and legal hold"
     }
   }
 }

@@ -130,8 +130,25 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId && isNotSelfPromoting();
 
+      // Strictly owner-only freight attachments (<= 400 KB hard cap, 180-day TTL / legal hold)
+      match /biltyAttachments/{attachmentId} {
+        allow read, delete: if isOwner() && request.auth.uid == userId;
+        allow create, update: if isOwner() &&
+                                 request.auth.uid == userId &&
+                                 attachmentId is string &&
+                                 attachmentId.size() >= 1 &&
+                                 attachmentId.size() <= 160 &&
+                                 request.resource.data.id is string &&
+                                 request.resource.data.biltyKey is string &&
+                                 request.resource.data.byteSize is number &&
+                                 request.resource.data.byteSize >= 0 &&
+                                 request.resource.data.byteSize <= 409600 &&
+                                 request.resource.data.expireAtMs is number &&
+                                 request.resource.data.legalHold is bool;
+      }
+
       match /{subcollection=**} {
-        allow read, write: if isSignedIn() && request.auth.uid == userId;
+        allow read, write: if isSignedIn() && request.auth.uid == userId && subcollection[0] != 'biltyAttachments';
       }
     }
 

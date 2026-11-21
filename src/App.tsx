@@ -44,6 +44,13 @@ import {
 import { OWNER_EMAIL, DEFAULT_AUTHORIZED_EMAILS, isOwnerEmail } from './utils/authUtils';
 import { fetchLiveFuelPrices } from './utils/fuelPrice';
 import { runScheduledDailyCloudBackup } from './utils/backupService';
+import { pruneExpiredPreRestoreSnapshotsIdbOnly } from './utils/persistentStorage';
+import {
+  deleteAllAttachmentsForBilty,
+  migrateLegacyBiltyLegalVaults,
+  pullRemoteBiltyAttachmentsForOwner,
+  runDailyBiltyAttachmentCleanup
+} from './utils/biltyAttachments';
 import { auth, onAuthStateChanged, logoutUser, checkRedirectAuthResult, loginWithGoogle } from './utils/firebase';
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
@@ -683,6 +690,13 @@ export default function App() {
         setVehicles(getStoredVehicles());
         setDrivers(getStoredDrivers());
         setFuelLogs(getStoredFuelLog());
+        if (isOwnerEmail) {
+          migrateLegacyBiltyLegalVaults(uid)
+            .then(() => pullRemoteBiltyAttachmentsForOwner(uid))
+            .then(() => runDailyBiltyAttachmentCleanup(uid))
+            .then(() => setBilties(getStoredBilties()))
+            .catch(() => {});
+        }
       }).catch(err => console.warn('Auth auto-sync notice:', err));
     } catch (generalAuthError: any) {
       console.error("Auth success handler error:", generalAuthError);
@@ -789,6 +803,14 @@ export default function App() {
 
   // ── APP-OPEN UNIFIED API PRE-FETCH (Live Fuel Rates, Weather & Cloud Offline Queue) ──
   useEffect(() => {
+    // 0. Prune expired 7-day pre-restore IDB snapshots & migrate legacy legalVaults idempotently
+    pruneExpiredPreRestoreSnapshotsIdbOnly().catch(() => {});
+    migrateLegacyBiltyLegalVaults().then((res) => {
+      if (res.migratedAttachments > 0) {
+        setBilties(getStoredBilties());
+      }
+    }).catch(() => {});
+
     // 1. Live Fuel Prices API
     fetchLiveFuelPrices(true).catch(err => console.warn('App-open fuel prefetch notice:', err));
 
@@ -955,6 +977,13 @@ export default function App() {
         setRoutes(getStoredRoutes());
         setFuelLogs(getStoredFuelLog());
         setBilties(getStoredBilties());
+        if (isOwnerEmail) {
+          migrateLegacyBiltyLegalVaults(user.uid)
+            .then(() => pullRemoteBiltyAttachmentsForOwner(user.uid))
+            .then(() => runDailyBiltyAttachmentCleanup(user.uid))
+            .then(() => setBilties(getStoredBilties()))
+            .catch(() => {});
+        }
         runScheduledDailyCloudBackup().catch(() => {});
       } else {
         if (unsubBilty) {
@@ -1273,6 +1302,9 @@ export default function App() {
     setBilties(updated);
     saveStoredBilties(updated);
 
+    if (target) {
+      void deleteAllAttachmentsForBilty(target);
+    }
     if (target?.biltyNo) {
       deletePublicBiltyVerification(target.biltyNo).catch(() => {});
     }

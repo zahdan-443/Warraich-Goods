@@ -7,17 +7,11 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' capacitor: https://localhost http://localhost; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://apis.google.com https://accounts.google.com https://*.firebaseapp.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://warraichgoods.eu.cc https://zahdan-443.github.io https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.tile.opentopomap.org https://server.arcgisonline.com https://*.googleusercontent.com https://lh3.googleusercontent.com; media-src 'self' data: blob:; connect-src 'self' data: blob: https://warraichgoods.eu.cc https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.open-meteo.com https://router.project-osrm.org https://psopk.com https://eklitre.pk https://api2.autoones.com https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.tile.opentopomap.org https://server.arcgisonline.com http://localhost:* ws://localhost:* wss://localhost:*; frame-src 'self' https://accounts.google.com https://*.firebaseapp.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self';" />
     <script>
       (function() {
-        // Early cross-origin and benign error trap for web and iFrame environments
+        // Early trap for benign browser ResizeObserver loop / IndexedDB teardown noise
         window.addEventListener('error', function(event) {
           if (!event) return;
           var msg = event.message || '';
-          if (
-            msg === 'Script error.' ||
-            msg === 'Script error' ||
-            msg.indexOf('ResizeObserver') !== -1 ||
-            msg.indexOf('websocket') !== -1 ||
-            (!event.filename && !event.lineno)
-          ) {
+          if (msg.indexOf('ResizeObserver loop') !== -1) {
             event.preventDefault();
             event.stopPropagation();
             return true;
@@ -28,9 +22,8 @@
           if (!event) return;
           var reason = (event.reason && (event.reason.message || String(event.reason))) || '';
           if (
-            reason.indexOf('ResizeObserver') !== -1 ||
-            reason.indexOf('Database is closing') !== -1 ||
-            reason.indexOf('Script error') !== -1
+            reason.indexOf('ResizeObserver loop') !== -1 ||
+            reason.indexOf('Database is closing') !== -1
           ) {
             event.preventDefault();
             event.stopPropagation();

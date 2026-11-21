@@ -42,6 +42,7 @@ import {
   normalizeEmail,
   verifyOwnerOrStaffClaim
 } from './authUtils';
+import { deleteAllAttachmentsForBilty } from './biltyAttachments';
 import {
   cleanupUploadedLegacyAndStagingKeys,
   getActiveUserScope,
@@ -594,9 +595,18 @@ async function writePerDocCollectionToFirestore(
   const ops: BatchWriteOp[] = [];
   const changedKeySet = Array.isArray(options.changedKeys) ? new Set(options.changedKeys) : null;
   const localTombstones = getTombstones(collName, uid);
+  const safeItems =
+    collName === 'bilties'
+      ? items.map(item => {
+          if (!item || !('legalVault' in item)) return item;
+          const copy = { ...item };
+          delete copy.legalVault;
+          return copy;
+        })
+      : items;
 
   // 1. Upsert ONLY changed/missing documents into users/{uid}/{coll}Docs/{docId} (#8 + delta)
-  for (const item of items) {
+  for (const item of safeItems) {
     const entityKey = getEntitySyncKey(collName, item);
     if (changedKeySet !== null && !changedKeySet.has(entityKey)) {
       continue;
@@ -660,7 +670,7 @@ async function writePerDocCollectionToFirestore(
 
   // 4. Maintain legacy doc if payload fits under 600KB; skip redundant rewrites if unchanged (#2, #8)
   const legacyRef = doc(db, 'users', uid, 'collections', collName);
-  const serializedSize = JSON.stringify(items).length;
+  const serializedSize = JSON.stringify(safeItems).length;
   const existingLegacy = options.existingLegacyData;
 
   if (serializedSize <= MAX_LEGACY_DOC_BYTES) {
@@ -669,13 +679,13 @@ async function writePerDocCollectionToFirestore(
       existingLegacy &&
       existingLegacy.migratedToPerDoc !== true &&
       Array.isArray(existingLegacy.items) &&
-      JSON.stringify(existingLegacy.items) === JSON.stringify(items);
+      JSON.stringify(existingLegacy.items) === JSON.stringify(safeItems);
 
     if (!legacyUnchanged) {
       ops.push({
         type: 'set',
         ref: legacyRef,
-        data: { items, updatedAt: nowIso, perDocSynced: true },
+        data: { items: safeItems, updatedAt: nowIso, perDocSynced: true },
         merge: true
       });
     }
@@ -684,13 +694,13 @@ async function writePerDocCollectionToFirestore(
       options.hasLegacySnapshot &&
       existingLegacy &&
       existingLegacy.migratedToPerDoc === true &&
-      existingLegacy.itemsCount === items.length;
+      existingLegacy.itemsCount === safeItems.length;
 
     if (!markerUnchanged) {
       ops.push({
         type: 'set',
         ref: legacyRef,
-        data: { items: [], migratedToPerDoc: true, itemsCount: items.length, updatedAt: nowIso },
+        data: { items: [], migratedToPerDoc: true, itemsCount: safeItems.length, updatedAt: nowIso },
         merge: true
       });
     }
@@ -1657,6 +1667,11 @@ export function saveStoredBilties(bilties: BiltyRecord[]): void {
   // Strictly scoped save (#7): no shadow owner copies
   setScopedItem('bilties', JSON.stringify(stamped));
   void syncToFirestore('bilties', stamped, deletedKeys, changedKeys);
+  if (deletedKeys.length > 0) {
+    for (const delKey of deletedKeys) {
+      void deleteAllAttachmentsForBilty(delKey);
+    }
+  }
   scheduleAmbientSync();
 
   const prevPublicMap = new Map<string, string>();
@@ -1768,6 +1783,9 @@ export function applyRestoredCollection(
     }
     for (const delKey of deletedKeys) {
       void deletePublicBiltyVerification(delKey).catch(() => {});
+      if (mode === 'overwrite') {
+        void deleteAllAttachmentsForBilty(delKey);
+      }
     }
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('driverdost:bilties_updated', { detail: finalItems }));
@@ -1845,7 +1863,8 @@ export async function confirmBiltyDelivery(
     const user = auth.currentUser;
     if (user) {
       const subDocRef = doc(db, 'users', user.uid, 'biltiesDocs', toSafeFirestoreDocId(normalizedNo));
-      await setDoc(subDocRef, updatedBilty, { merge: true }).catch(() => {});
+      const { legalVault: _omittedVault, ...cloudBiltyPayload } = updatedBilty;
+      await setDoc(subDocRef, cloudBiltyPayload, { merge: true }).catch(() => {});
     }
 
     return { success: true, offlineQueued: false, podConfirmation };

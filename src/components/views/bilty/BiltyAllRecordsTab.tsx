@@ -23,7 +23,7 @@ import {
   Pencil
 } from 'lucide-react';
 import { BiltyRecord } from '../../../types';
-import { countLegalVaultAttachments } from './biltyVaultUtils';
+import { countBiltyAttachments } from './biltyVaultUtils';
 
 interface BiltyAllRecordsTabProps {
   isUrdu: boolean;
@@ -292,7 +292,7 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredBilties.map((b) => {
-                  const vaultCount = countLegalVaultAttachments(b.legalVault);
+                  const vaultCount = countBiltyAttachments(b);
                   return (
                     <tr key={b.id || b.biltyNo} className="hover:bg-amber-50/40 transition-colors">
                       <td className="py-3 px-3.5 font-mono">
@@ -415,7 +415,7 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                             title={isUrdu ? 'قانونی والٹ (دستاویزات و کالز)' : 'Legal Vault'}
                           >
                             <ShieldCheck className="w-3.5 h-3.5" />
-                            {b.legalVault && (
+                            {vaultCount > 0 && (
                               <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-blue-600 text-white text-[8px] rounded-full flex items-center justify-center font-bold">
                                 {vaultCount}
                               </span>
@@ -459,7 +459,7 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
           {/* Mobile Responsive Cards */}
           <div className="lg:hidden space-y-3">
             {filteredBilties.map((b) => {
-              const vaultCount = countLegalVaultAttachments(b.legalVault);
+              const vaultCount = countBiltyAttachments(b);
               return (
                 <div
                   key={b.id || b.biltyNo}
@@ -568,7 +568,7 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                       >
                         <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                         <span>والٹ</span>
-                        {b.legalVault && (
+                        {vaultCount > 0 && (
                           <span className="bg-blue-600 text-white text-[9px] px-1 rounded-full font-bold">
                             {vaultCount}
                           </span>

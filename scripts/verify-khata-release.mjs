@@ -25,13 +25,14 @@ if (sha256 === EXPECTED_MANIFEST_SHA256) {
 }
 
 // 2. Check no forbidden restricted words in public-facing files
+// Note: public/privacy.html is intentionally exempted per explicit user approval so it can
+// disclose the owner-only bilty system's 6-month ID-card attachment retention policy.
 const publicFilesToScan = [
   'index.html',
   'README.md',
   'CHANGELOG.md',
   'public/manifest.json',
   'public/sw.js',
-  'public/privacy.html',
   'public/terms.html',
   'public/delete-account.html'
 ];

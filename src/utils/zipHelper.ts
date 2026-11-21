@@ -1,8 +1,9 @@
 import JSZip from 'jszip';
 import { Capacitor } from '@capacitor/core';
 import { shareOrDownloadBlob } from './nativeExport';
-import { BiltyRecord } from '../types';
+import { BiltyAttachmentSlot, BiltyRecord } from '../types';
 import { getBiltyVerificationUrl } from './biltyHelpers';
+import { getAttachmentsForBilty } from './biltyAttachments';
 
 function dataUrlToBinary(dataUrl: string): { data: Uint8Array; ext: string } {
   const parts = dataUrl.split(',');
@@ -29,10 +30,23 @@ function dataUrlToBinary(dataUrl: string): { data: Uint8Array; ext: string } {
   return { data: bytes, ext };
 }
 
+const SLOT_LABELS: Record<BiltyAttachmentSlot, string> = {
+  driverPhoto: '01_Driver_Photo',
+  driverLicense: '02_Driver_License',
+  driverCnic: '03_Driver_CNIC',
+  vehiclePhoto: '04_Vehicle_Photo',
+  senderPhoto: '05_Sender_Photo',
+  senderCnic: '06_Sender_CNIC',
+  receiverPhoto: '07_Receiver_Photo',
+  receiverCnic: '08_Receiver_CNIC',
+  legalDoc: '09_Legal_Document',
+  voiceNote: 'Voice_Note'
+};
+
 /**
  * Creates a complete ZIP package for a Bilty containing:
  * 1. Official Bilty PDF
- * 2. All attached legal photos (Driver, Vehicle, Sender, Receiver photos & CNICs)
+ * 2. All attached legal photos (loaded from separated IndexedDB storage or legacy vault)
  * 3. Attached call audio recordings
  * 4. Human-readable text summary of all Bilty details and verification link
  */
@@ -78,6 +92,7 @@ export async function generateBiltyLegalZip(options: {
     `  Advance Paid:    Rs. ${record.advance || 0}`,
     `  Payable Balance: Rs. ${record.payable || 0}`,
     `------------------------------------------------------------`,
+    `Legal Hold:        ${record.legalHold ? 'ENABLED (Protected)' : 'Standard 180-Day Retention'}`,
     `Online Public Verification:`,
     `  URL: ${getBiltyVerificationUrl(record)}`,
     `Archive Generated At: ${new Date().toISOString()}`,
@@ -86,50 +101,27 @@ export async function generateBiltyLegalZip(options: {
 
   zip.file(`Bilty_${biltyNo}_Summary.txt`, summaryContent);
 
-  // 3. Add legal documents
-  const vault = record.legalVault;
-  if (vault) {
+  // 3. Load isolated attachments (auto-falls back to legacy legalVault if unmigrated)
+  const attachments = await getAttachmentsForBilty(record);
+  if (attachments.length > 0) {
     const docsFolder = zip.folder('legal_documents');
-    if (docsFolder) {
-      const docMappings: Array<{ key: keyof typeof vault; label: string }> = [
-        { key: 'driverPhoto', label: '01_Driver_Photo' },
-        { key: 'driverLicense', label: '02_Driver_License' },
-        { key: 'driverCnic', label: '03_Driver_CNIC' },
-        { key: 'vehiclePhoto', label: '04_Vehicle_Photo' },
-        { key: 'senderPhoto', label: '05_Sender_Photo' },
-        { key: 'senderCnic', label: '06_Sender_CNIC' },
-        { key: 'receiverPhoto', label: '07_Receiver_Photo' },
-        { key: 'receiverCnic', label: '08_Receiver_CNIC' },
-      ];
+    const audioFolder = zip.folder('audio_notes');
+    let audioIdx = 0;
 
-      for (const m of docMappings) {
-        const val = vault[m.key] as string | undefined;
-        if (val && typeof val === 'string' && val.startsWith('data:')) {
-          try {
-            const { data, ext } = dataUrlToBinary(val);
-            docsFolder.file(`${m.label}.${ext}`, data);
-          } catch (e) {
-            console.warn(`Failed adding ${m.label} to zip:`, e);
-          }
+    for (const att of attachments) {
+      if (!att?.dataUrl || !att.dataUrl.startsWith('data:')) continue;
+      try {
+        const { data, ext } = dataUrlToBinary(att.dataUrl);
+        if (att.kind === 'audio') {
+          audioIdx++;
+          const safeName = (att.name || `Recording_${audioIdx}`).replace(/[^a-zA-Z0-9_-]/g, '_');
+          audioFolder?.file(`${safeName}.${ext}`, data);
+        } else {
+          const baseLabel = SLOT_LABELS[att.slot] || att.slot;
+          docsFolder?.file(`${baseLabel}.${ext}`, data);
         }
-      }
-    }
-
-    // 4. Add audio / voice notes
-    if (vault.recordings && vault.recordings.length > 0) {
-      const audioFolder = zip.folder('audio_notes');
-      if (audioFolder) {
-        vault.recordings.forEach((rec, idx) => {
-          if (rec?.dataUrl && rec.dataUrl.startsWith('data:')) {
-            try {
-              const { data, ext } = dataUrlToBinary(rec.dataUrl);
-              const safeName = (rec.name || `Recording_${idx + 1}`).replace(/[^a-zA-Z0-9_-]/g, '_');
-              audioFolder.file(`${safeName}.${ext}`, data);
-            } catch (e) {
-              console.warn(`Failed adding recording ${rec.name} to zip:`, e);
-            }
-          }
-        });
+      } catch (e) {
+        console.warn(`Failed adding attachment ${att.id} to zip:`, e);
       }
     }
   }

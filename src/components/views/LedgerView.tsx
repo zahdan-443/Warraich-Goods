@@ -36,10 +36,11 @@ import {
   formatAccountStatementWhatsAppMessage,
   exportKhataBackup,
   importKhataBackup,
+  validateKhataBackupPayload,
+  MAX_KHATA_BACKUP_BYTES,
   getPendingDocumentBalances,
   importPendingDocumentToKhata,
-  PendingDocBalance,
-  KhataBackupData
+  PendingDocBalance
 } from '../../utils/ledgerStorage';
 import {
   generateAccountStatementPdf,
@@ -2137,6 +2138,7 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
   const [newPin, setNewPin] = useState('');
   const [pinMessage, setPinMessage] = useState('');
   const [backupMessage, setBackupMessage] = useState('');
+  const [backupIsError, setBackupIsError] = useState(false);
   const [pendingImport, setPendingImport] = useState<{
     content: string;
     accountsCount: number;
@@ -2152,6 +2154,7 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
     const updated = saveKhataSettings({ businessName: businessName.trim() });
     setSettings(updated);
     onUpdated();
+    setBackupIsError(false);
     setBackupMessage(isUrdu ? 'کاروبار کا نام محفوظ ہو گیا' : 'Business name saved');
     setTimeout(() => setBackupMessage(''), 3000);
   };
@@ -2198,6 +2201,7 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
       title: fileName,
       dialogTitle: fileName
     });
+    setBackupIsError(false);
     setBackupMessage(isUrdu ? 'بیک اپ فائل محفوظ / شیئر ہو گئی' : 'Backup exported');
     setTimeout(() => setBackupMessage(''), 3000);
   };
@@ -2207,33 +2211,40 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
     e.target.value = '';
     if (!file) return;
 
+    if (file.size > MAX_KHATA_BACKUP_BYTES) {
+      setBackupIsError(true);
+      setBackupMessage(
+        isUrdu
+          ? `بیک اپ فائل ${Math.round(MAX_KHATA_BACKUP_BYTES / (1024 * 1024))} MB کی حد سے بڑی ہے`
+          : `Backup file exceeds ${Math.round(MAX_KHATA_BACKUP_BYTES / (1024 * 1024))} MB size limit`
+      );
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = event => {
       const content = event.target?.result as string;
       if (!content) return;
-      try {
-        const parsed = JSON.parse(content) as KhataBackupData;
-        if (
-          !parsed ||
-          parsed.app !== 'Driver Dost' ||
-          parsed.module !== 'khata' ||
-          !Array.isArray(parsed.accounts) ||
-          !Array.isArray(parsed.entries) ||
-          !Array.isArray(parsed.cashEntries)
-        ) {
-          setBackupMessage(isUrdu ? 'غلط بیک اپ فائل فارمیٹ' : 'Invalid Khata backup format');
-          return;
-        }
-        setPendingImport({
-          content,
-          accountsCount: parsed.accounts.length,
-          entriesCount: parsed.entries.length,
-          cashCount: parsed.cashEntries.length,
-          billsCount: Array.isArray(parsed.bills) ? parsed.bills.length : 0
-        });
-      } catch {
-        setBackupMessage(isUrdu ? 'فائل پڑھنے میں خرابی' : 'Failed to parse JSON backup');
+      const validation = validateKhataBackupPayload(content);
+      if (!validation.valid || !validation.data) {
+        setBackupIsError(true);
+        setBackupMessage(
+          isUrdu
+            ? `غلط یا خراب بیک اپ فائل: ${validation.error || 'Invalid format'}`
+            : validation.error || 'Invalid Khata backup format'
+        );
+        return;
       }
+      setBackupIsError(false);
+      setBackupMessage('');
+      const parsed = validation.data;
+      setPendingImport({
+        content,
+        accountsCount: parsed.accounts.length,
+        entriesCount: parsed.entries.length,
+        cashCount: parsed.cashEntries.length,
+        billsCount: Array.isArray(parsed.bills) ? parsed.bills.length : 0
+      });
     };
     reader.readAsText(file);
   };
@@ -2243,6 +2254,7 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
     const res = importKhataBackup(pendingImport.content, mode);
     setPendingImport(null);
     if (res.success) {
+      setBackupIsError(false);
       setBackupMessage(
         isUrdu
           ? `کامیابی! ${res.accountsCount} کھاتے اور ${res.entriesCount} ٹرانزیکشنز بحال ہو گئے۔`
@@ -2250,6 +2262,7 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
       );
       onUpdated();
     } else {
+      setBackupIsError(true);
       setBackupMessage(isUrdu ? `خرابی: ${res.error}` : `Error: ${res.error}`);
     }
     setTimeout(() => setBackupMessage(''), 4000);
@@ -2414,7 +2427,15 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
           )}
 
           {backupMessage && (
-            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{backupMessage}</p>
+            <p
+              className={`text-xs font-bold ${
+                backupIsError
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : 'text-emerald-600 dark:text-emerald-400'
+              }`}
+            >
+              {backupMessage}
+            </p>
           )}
         </div>
 

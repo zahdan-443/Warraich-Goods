@@ -15,9 +15,19 @@ import {
   FileSpreadsheet,
   Building2,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  FileArchive,
+  Loader2
 } from 'lucide-react';
-import { Language, ActivityLogItem, BiltyRecord, Trip, TollRatesConfig, CompanyProfile } from '../types';
+import {
+  Language,
+  ActivityLogItem,
+  BiltyAttachmentRecord,
+  BiltyRecord,
+  Trip,
+  TollRatesConfig,
+  CompanyProfile
+} from '../types';
 import {
   getActivityLogs,
   logActivity,
@@ -42,6 +52,7 @@ import { getPakistanMonthKey } from '../utils/dateUtils';
 import {
   BackupPreviewSummary,
   hasPreRestoreSnapshot,
+  hasPreRestoreSnapshotAsync,
   previewCloudBackup,
   previewJsonBackup,
   restoreFromCloudBackup,
@@ -52,6 +63,10 @@ import {
   fetchAllAccountDeletionRequestsForOwner,
   processOwnerDeletionQueueItem
 } from '../utils/accountDeletion';
+import {
+  exportAttachmentsZipBundle,
+  getExpiringBiltyAttachmentsSummary
+} from '../utils/biltyAttachments';
 import { BackupRestoreConfirmModal } from './BackupRestoreConfirmModal';
 import { ConfirmDialog } from './ConfirmDialog';
 
@@ -110,6 +125,11 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
   const [processingDeletionId, setProcessingDeletionId] = useState<string | null>(null);
   const [deletionStatusMsg, setDeletionStatusMsg] = useState<{ msg: string; success: boolean } | null>(null);
 
+  // 7-Day Expiring Attachments Warning State (placed strictly before conditional return)
+  const [expiringAttachments, setExpiringAttachments] = useState<BiltyAttachmentRecord[]>([]);
+  const [exportingExpiringZip, setExportingExpiringZip] = useState(false);
+  const [expiringBannerMsg, setExpiringBannerMsg] = useState<string | null>(null);
+
   const loadDeletionQueueData = async () => {
     setLoadingDeletions(true);
     try {
@@ -157,6 +177,10 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
     setBilties(getStoredBilties());
     setTrips(getStoredTrips());
     setUndoAvailable(hasPreRestoreSnapshot());
+    hasPreRestoreSnapshotAsync().then(setUndoAvailable).catch(() => {});
+    getExpiringBiltyAttachmentsSummary()
+      .then((summary) => setExpiringAttachments(summary.attachments))
+      .catch(() => {});
 
     // Load Activity Logs & Account Deletion Queue
     loadLogsData();
@@ -240,7 +264,8 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
           setRestoreStatus({ msg: `${res.message} (${res.count} records)`, success: true });
           setBilties(getStoredBilties());
           setTrips(getStoredTrips());
-          setUndoAvailable(hasPreRestoreSnapshot());
+          setUndoAvailable(true);
+          hasPreRestoreSnapshotAsync().then(setUndoAvailable).catch(() => {});
         } else {
           setRestoreStatus({ msg: res.message, success: false });
         }
@@ -253,7 +278,8 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
           });
           setBilties(getStoredBilties());
           setTrips(getStoredTrips());
-          setUndoAvailable(hasPreRestoreSnapshot());
+          setUndoAvailable(true);
+          hasPreRestoreSnapshotAsync().then(setUndoAvailable).catch(() => {});
         } else {
           setRestoreStatus({ msg: 'Cloud backup restore failed — rolled back safely', success: false });
         }
@@ -273,10 +299,31 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
       if (res.success) {
         setBilties(getStoredBilties());
         setTrips(getStoredTrips());
-        setUndoAvailable(hasPreRestoreSnapshot());
+        setUndoAvailable(false);
+        hasPreRestoreSnapshotAsync().then(setUndoAvailable).catch(() => {});
       }
     } finally {
       setUndoingRestore(false);
+    }
+  };
+
+  const handleExportExpiringAttachmentsZip = async () => {
+    if (exportingExpiringZip || expiringAttachments.length === 0) return;
+    setExportingExpiringZip(true);
+    setExpiringBannerMsg(null);
+    try {
+      const res = await exportAttachmentsZipBundle(expiringAttachments);
+      if (res.success) {
+        setExpiringBannerMsg(
+          lang === 'ur'
+            ? `${res.count} منسلکات کی ZIP کاپی محفوظ ہو گئی۔`
+            : `Exported ${res.count} expiring attachment(s) as ZIP.`
+        );
+      } else {
+        setExpiringBannerMsg(res.error || 'ZIP export failed');
+      }
+    } finally {
+      setExportingExpiringZip(false);
     }
   };
 
@@ -470,6 +517,45 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
             )}
           </button>
         </div>
+
+        {/* Gentle 7-Day Expiring Attachments Warning Banner */}
+        {(expiringAttachments.length > 0 || expiringBannerMsg) && (
+          <div className="p-3 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <div>
+                {expiringAttachments.length > 0 && (
+                  <div className="font-bold">
+                    {expiringAttachments.length} attachments will be deleted soon
+                    {lang === 'ur' && (
+                      <span className="block text-[11px] font-medium text-amber-800">
+                        {expiringAttachments.length} دستاویزات آئندہ 7 دن میں 6 ماہ کی مدت پوری ہونے پر خودکار حذف ہو جائیں گی (محفوظ رکھنے کے لیے ZIP ڈاؤن لوڈ کریں یا Legal Hold لگائیں)۔
+                      </span>
+                    )}
+                  </div>
+                )}
+                {expiringBannerMsg && (
+                  <div className="text-[11px] font-bold text-emerald-800 mt-0.5">{expiringBannerMsg}</div>
+                )}
+              </div>
+            </div>
+            {expiringAttachments.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void handleExportExpiringAttachmentsZip()}
+                disabled={exportingExpiringZip}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                {exportingExpiringZip ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <FileArchive className="w-3.5 h-3.5" />
+                )}
+                <span>Export ZIP</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Tab Content Container (Scrollable) */}
         <div className="flex-1 overflow-y-auto pr-1 min-h-[350px]">

@@ -24,7 +24,13 @@ import {
 import { auth, db } from './firebase';
 import { APP_VERSION } from '../constants/version';
 import { getPakistanDateKey, getPakistanTimestampIso } from './dateUtils';
-import { idbDelete, idbGet, idbSet } from './persistentStorage';
+import {
+  deletePreRestoreSnapshotIdbOnly,
+  hasPreRestoreSnapshotCached,
+  hasPreRestoreSnapshotIdbOnly,
+  loadPreRestoreSnapshotIdbOnly,
+  savePreRestoreSnapshotIdbOnly
+} from './persistentStorage';
 import {
   applyRestoredCollection,
   getActiveUserScope,
@@ -243,7 +249,12 @@ export function generateFullFleetBackup(): FullFleetBackup {
   const drivers = getStoredDrivers();
   const routes = getStoredRoutes();
   const fuelLogs = getStoredFuelLog();
-  const bilties = getStoredBilties();
+  const bilties = getStoredBilties().map((b) => {
+    if (!b || !('legalVault' in b)) return b;
+    const copy = { ...b };
+    delete copy.legalVault;
+    return copy;
+  });
   const parties = getStoredParties();
   const partyTransactions = getStoredPartyTransactions();
   const brokers = getStoredBrokers();
@@ -778,26 +789,26 @@ export async function previewCloudBackup(backupId = 'latestIndex'): Promise<Back
 
 export function hasPreRestoreSnapshot(): boolean {
   const scope = getActiveUserScope();
-  return Boolean(
-    safeStorage.getItem(`wg_v3_prerestore_available_${scope}`) ||
-      safeStorage.getItem(`wg_v3_prerestore_snapshot_${scope}`)
-  );
+  return hasPreRestoreSnapshotCached(scope);
+}
+
+export async function hasPreRestoreSnapshotAsync(): Promise<boolean> {
+  const scope = getActiveUserScope();
+  return hasPreRestoreSnapshotIdbOnly(scope);
 }
 
 /**
- * Undoes the most recent JSON or Cloud backup restore using the captured pre-restore snapshot.
+ * Undoes the most recent JSON or Cloud backup restore using the captured 7-day IDB pre-restore snapshot.
  */
 export async function undoLastRestore(): Promise<{ success: boolean; message: string }> {
   const scope = getActiveUserScope();
-  const key = `wg_v3_prerestore_snapshot_${scope}`;
 
   try {
-    const raw = (await idbGet(key).catch(() => null)) || safeStorage.getItem(key);
-    if (!raw) {
-      return { success: false, message: 'No pre-restore snapshot found for this account.' };
+    const snap = await loadPreRestoreSnapshotIdbOnly(scope);
+    if (!snap) {
+      return { success: false, message: 'No pre-restore snapshot found or it expired after 7 days.' };
     }
 
-    const snap = JSON.parse(raw) as Record<string, unknown>;
     if (Array.isArray(snap.trips)) applyRestoredCollection('trips', snap.trips as Array<Record<string, unknown>>, 'overwrite');
     if (Array.isArray(snap.vehicles)) applyRestoredCollection('vehicles', snap.vehicles as Array<Record<string, unknown>>, 'overwrite');
     if (Array.isArray(snap.drivers)) applyRestoredCollection('drivers', snap.drivers as Array<Record<string, unknown>>, 'overwrite');
@@ -824,9 +835,7 @@ export async function undoLastRestore(): Promise<{ success: boolean; message: st
 
     await syncAllKhataToFirestore().catch(() => {});
 
-    safeStorage.removeItem(key);
-    safeStorage.removeItem(`wg_v3_prerestore_available_${scope}`);
-    await idbDelete(key).catch(() => {});
+    await deletePreRestoreSnapshotIdbOnly(scope).catch(() => {});
 
     return { success: true, message: 'Previous device data has been restored successfully.' };
   } catch (err: unknown) {
@@ -918,12 +927,9 @@ export async function restoreFromCloudBackup(
       return false;
     }
 
-    // Persist safety snapshot in IndexedDB + safeStorage fallback prior to applying changes (#14)
+    // Persist 7-day Undo Restore snapshot strictly in IndexedDB (never localStorage) (#14)
     try {
-      const snapStr = JSON.stringify(preRestoreSnapshot);
-      await idbSet(`wg_v3_prerestore_snapshot_${scope}`, snapStr);
-      safeStorage.setItem(`wg_v3_prerestore_snapshot_${scope}`, snapStr);
-      safeStorage.setItem(`wg_v3_prerestore_available_${scope}`, preRestoreSnapshot.capturedAt);
+      await savePreRestoreSnapshotIdbOnly(scope, preRestoreSnapshot);
     } catch {
       // in-memory snapshot remains ready for catch rollback
     }

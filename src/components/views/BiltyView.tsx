@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { BiltyRecord, ContactItem, DICTIONARY, Language, BiltyBranch, BiltyLanguage, LegalRecordingItem, KhataReceivingPoint } from '../../types';
+import { BiltyRecord, ContactItem, DICTIONARY, Language, BiltyBranch, BiltyLanguage, KhataReceivingPoint } from '../../types';
 import { getAllReceivingPoints } from '../../utils/khataModulesStorage';
 import {
   Receipt,
@@ -28,7 +28,8 @@ import {
   ChevronUp,
   Camera,
   Upload,
-  PhoneCall
+  PhoneCall,
+  Lock
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { VoiceInputButton } from '../VoiceInputButton';
@@ -56,10 +57,21 @@ import {
   BILTY_BRANCHES,
   formatBiltyMobile
 } from '../../utils/biltyHelpers';
-import { BiltyLegalVault } from '../../types';
 import { BiltyDeleteModal } from './bilty/BiltyDeleteModal';
 import { BiltyAllRecordsTab } from './bilty/BiltyAllRecordsTab';
-import { countLegalVaultAttachments, LegalVaultImageKey } from './bilty/biltyVaultUtils';
+import { countBiltyAttachments, LegalVaultImageKey } from './bilty/biltyVaultUtils';
+import {
+  ATTACHMENT_HARD_CAP_BYTES,
+  ATTACHMENT_RETENTION_DAYS,
+  compressAttachmentImage,
+  DEFAULT_MAX_ID_IMAGES_PER_DOC,
+  getAttachmentsForBilty,
+  isIdCardSlot,
+  PendingDraftAttachment,
+  saveBiltyAttachment,
+  setBiltyLegalHold,
+  validateAudioAttachmentDataUrl
+} from '../../utils/biltyAttachments';
 
 interface AndroidPrinterWindow extends Window {
   AndroidPrinter?: {
@@ -215,8 +227,11 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     };
   }, []);
 
-  // Legal Vault state for newly created bilty
-  const [creationLegalVault, setCreationLegalVault] = useState<BiltyLegalVault>({});
+  // Isolated Legal Vault draft attachments for newly created/edited bilty
+  const [pendingAttachments, setPendingAttachments] = useState<PendingDraftAttachment[]>([]);
+  const [draftLegalHold, setDraftLegalHold] = useState(false);
+  const [draftAttachmentError, setDraftAttachmentError] = useState<string | null>(null);
+  const [processingDraftSlot, setProcessingDraftSlot] = useState<string | null>(null);
   const [isLegalVaultExpanded, setIsLegalVaultExpanded] = useState(false);
 
   // Legal Vault modal for existing bilties
@@ -248,7 +263,10 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setTotal('');
     setAdvance('');
     setRemarks('');
-    setCreationLegalVault({});
+    setPendingAttachments([]);
+    setDraftLegalHold(false);
+    setDraftAttachmentError(null);
+    setProcessingDraftSlot(null);
     setIsLegalVaultExpanded(false);
     setEditingBilty(null);
     setEditIsDelivered(false);
@@ -374,7 +392,9 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setTotal(record.total !== undefined ? String(record.total) : '');
     setAdvance(record.advance !== undefined ? String(record.advance) : '');
     setRemarks(record.remarks || '');
-    setCreationLegalVault(record.legalVault || {});
+    setPendingAttachments([]);
+    setDraftLegalHold(Boolean(record.legalHold));
+    setDraftAttachmentError(null);
     if (record.language) setSelectedLanguage(record.language);
     setIsConfigModalOpen(false);
     setSelectedModalBilty(null);
@@ -383,22 +403,30 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     navigateSubTab('create');
   };
 
-  const handleSaveVault = (biltyId: number, updatedVault: BiltyLegalVault) => {
-    const updated = bilties.map((b) => {
-      if (b.id === biltyId) {
-        return { ...b, legalVault: updatedVault };
-      }
-      return b;
-    });
+  const handleAttachmentsChanged = (
+    biltyId: number,
+    info: { attachmentCount: number; legalHold: boolean }
+  ) => {
+    const stripAndPatch = (rec: BiltyRecord): BiltyRecord => {
+      const next: BiltyRecord = {
+        ...rec,
+        attachmentCount: info.attachmentCount,
+        legalHold: info.legalHold || undefined
+      };
+      delete next.legalVault;
+      return next;
+    };
+
+    const updated = bilties.map((b) => (b.id === biltyId ? stripAndPatch(b) : b));
     saveStoredBilties(updated);
     if (selectedModalBilty && selectedModalBilty.id === biltyId) {
-      setSelectedModalBilty({ ...selectedModalBilty, legalVault: updatedVault });
+      setSelectedModalBilty(stripAndPatch(selectedModalBilty));
     }
     if (lastBilty && lastBilty.id === biltyId) {
-      setLastBilty({ ...lastBilty, legalVault: updatedVault });
+      setLastBilty(stripAndPatch(lastBilty));
     }
     if (vaultModalBilty && vaultModalBilty.id === biltyId) {
-      setVaultModalBilty({ ...vaultModalBilty, legalVault: updatedVault });
+      setVaultModalBilty(stripAndPatch(vaultModalBilty));
     }
   };
 
@@ -587,9 +615,10 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
               status: 'delivered'
             })
           : undefined,
-        legalVault: Object.keys(creationLegalVault).length > 0 ? creationLegalVault : undefined,
+        legalHold: draftLegalHold || undefined,
         updatedAt: new Date().toISOString()
       };
+      delete updatedRecord.legalVault;
 
       if (onUpdateBilty) {
         onUpdateBilty(updatedRecord);
@@ -597,6 +626,28 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         const nextList = bilties.map(b => (b.id === updatedRecord.id ? updatedRecord : b));
         saveStoredBilties(nextList);
       }
+
+      if (draftLegalHold !== Boolean(editingBilty.legalHold)) {
+        await setBiltyLegalHold(updatedRecord, draftLegalHold).catch(() => {});
+      }
+      if (pendingAttachments.length > 0) {
+        for (const att of pendingAttachments) {
+          await saveBiltyAttachment(updatedRecord, {
+            slot: att.slot,
+            kind: att.kind,
+            dataUrl: att.dataUrl,
+            mimeType: att.mimeType,
+            name: att.name,
+            width: att.width,
+            height: att.height,
+            allowReplaceSlot: true,
+            createdAtMs: att.createdAtMs
+          }).catch(() => {});
+        }
+        const savedAtts = await getAttachmentsForBilty(updatedRecord).catch(() => []);
+        updatedRecord.attachmentCount = savedAtts.length;
+      }
+
       setLastBilty(updatedRecord);
       resetFormFields();
       return;
@@ -645,11 +696,30 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       advance: validation.advance,
       payable: validation.payable,
       remarks: remarks.trim() || undefined,
-      legalVault: Object.keys(creationLegalVault).length > 0 ? creationLegalVault : undefined,
+      legalHold: draftLegalHold || undefined,
+      attachmentCount: pendingAttachments.length > 0 ? pendingAttachments.length : undefined
     };
 
     const saved = await Promise.resolve(onAddBilty(record));
-    setLastBilty(saved || { ...record, id: Date.now() });
+    const finalSavedRecord: BiltyRecord = (saved as BiltyRecord) || { ...record, id: Date.now() };
+    if (pendingAttachments.length > 0) {
+      for (const att of pendingAttachments) {
+        await saveBiltyAttachment(finalSavedRecord, {
+          slot: att.slot,
+          kind: att.kind,
+          dataUrl: att.dataUrl,
+          mimeType: att.mimeType,
+          name: att.name,
+          width: att.width,
+          height: att.height,
+          allowReplaceSlot: true,
+          createdAtMs: att.createdAtMs
+        }).catch(() => {});
+      }
+      const savedAtts = await getAttachmentsForBilty(finalSavedRecord).catch(() => []);
+      finalSavedRecord.attachmentCount = savedAtts.length;
+    }
+    setLastBilty(finalSavedRecord);
 
     // Reset fields
     resetFormFields();
@@ -922,9 +992,9 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           >
             <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
             <span>{previewLang === 'en' ? 'Manage Legal Vault' : 'دستاویزات والٹ کھولیں'}</span>
-            {record.legalVault && (
+            {countBiltyAttachments(record) > 0 && (
               <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-bold">
-                {countLegalVaultAttachments(record.legalVault)}
+                {countBiltyAttachments(record)}
               </span>
             )}
           </button>
@@ -1665,9 +1735,9 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {countLegalVaultAttachments(creationLegalVault) > 0 && (
+                    {pendingAttachments.length > 0 && (
                       <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                        {countLegalVaultAttachments(creationLegalVault)} فائلز
+                        {pendingAttachments.length} نئی فائلز
                       </span>
                     )}
                     {isLegalVaultExpanded ? (
@@ -1680,41 +1750,72 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
 
                 {isLegalVaultExpanded && (
                   <div className="p-4 bg-slate-50/50 space-y-4 border-t border-slate-200 text-right animate-in fade-in duration-150">
-                    <p className="text-[11px] text-slate-600">
-                      {isEnForm
-                        ? 'Files uploaded here are stored securely in cloud for legal reasons and will not appear on the printed bilty receipt.'
-                        : 'یہ دستاویزات قانونی حفاظت کے لیے کلاؤڈ میں محفوظ ہوں گی لیکن بلٹی رسید پر ظاہر نہیں ہوں گی۔ آپ بعد میں بھی والٹ میں جا کر ترمیم کر سکتے ہیں۔'}
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[11px] text-slate-600 flex-1">
+                        {isEnForm
+                          ? `Attachments are compressed (≤150KB target), stored privately in IndexedDB & owner cloud only, and auto-deleted after ${ATTACHMENT_RETENTION_DAYS} days unless Legal Hold is ON.`
+                          : `یہ دستاویزات خودکار کمپریس ہو کر صرف آپ کے نجی اکاؤنٹ میں الگ محفوظ ہوتی ہیں اور ${ATTACHMENT_RETENTION_DAYS} دن بعد خودکار حذف ہو جاتی ہیں (جب تک Legal Hold فعال نہ ہو)۔`}
+                      </p>
+                      <label className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-[11px] font-bold text-slate-800 cursor-pointer shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={draftLegalHold}
+                          onChange={(e) => setDraftLegalHold(e.target.checked)}
+                          className="rounded accent-emerald-600"
+                        />
+                        <Lock className="w-3 h-3 text-emerald-700" />
+                        <span>{isEnForm ? 'Legal Hold' : 'قانونی تحفظ (Legal Hold)'}</span>
+                      </label>
+                    </div>
+
+                    {draftAttachmentError && (
+                      <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-[11px] font-bold flex items-center justify-between gap-2">
+                        <span>{draftAttachmentError}</span>
+                        <button
+                          type="button"
+                          onClick={() => setDraftAttachmentError(null)}
+                          className="text-rose-600 hover:text-rose-900 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                       {([
                         { key: 'driverPhoto', label: isEnForm ? 'Driver Photo' : 'ڈرائیور تصویر' },
-                        { key: 'driverLicense', label: isEnForm ? 'Driver License' : 'ڈرائیور لائسنس' },
-                        { key: 'driverCnic', label: isEnForm ? 'Driver CNIC' : 'ڈرائیور CNIC' },
+                        { key: 'driverLicense', label: isEnForm ? 'Driver License (ID)' : 'ڈرائیور لائسنس (ID)' },
+                        { key: 'driverCnic', label: isEnForm ? 'Driver CNIC (ID)' : 'ڈرائیور CNIC (ID)' },
                         { key: 'vehiclePhoto', label: isEnForm ? 'Vehicle Photo' : 'گاڑی تصویر' },
                         { key: 'senderPhoto', label: isEnForm ? 'Sender Photo' : 'بھیجنے والا تصویر' },
-                        { key: 'senderCnic', label: isEnForm ? 'Sender CNIC' : 'بھیجنے والا CNIC' },
+                        { key: 'senderCnic', label: isEnForm ? 'Sender CNIC (ID)' : 'بھیجنے والا CNIC (ID)' },
                         { key: 'receiverPhoto', label: isEnForm ? 'Receiver Photo' : 'وصول کنندہ تصویر' },
-                        { key: 'receiverCnic', label: isEnForm ? 'Receiver CNIC' : 'وصول کنندہ CNIC' },
+                        { key: 'receiverCnic', label: isEnForm ? 'Receiver CNIC (ID)' : 'وصول کنندہ CNIC (ID)' },
                       ] as Array<{ key: LegalVaultImageKey; label: string }>).map((item) => {
-                        const val = creationLegalVault[item.key];
+                        const pendingAtt = pendingAttachments.find((a) => a.slot === item.key);
+                        const isBusy = processingDraftSlot === item.key;
                         return (
                           <div key={item.key} className="border border-slate-200 rounded-xl p-2 bg-white text-center flex flex-col justify-between">
                             <span className="text-[10px] font-bold text-slate-700 block mb-1 truncate">{item.label}</span>
-                            {val ? (
+                            {isBusy ? (
+                              <div className="w-full h-16 rounded-lg bg-slate-100 flex items-center justify-center mb-1">
+                                <Loader2 className="w-4 h-4 animate-spin text-[#0f2942]" />
+                              </div>
+                            ) : pendingAtt ? (
                               <div className="relative w-full h-16 rounded-lg overflow-hidden bg-slate-100 mb-1">
-                                <img src={val} alt={item.label} className="w-full h-full object-cover" />
+                                <img src={pendingAtt.dataUrl} alt={item.label} className="w-full h-full object-cover" />
                                 <button
                                   type="button"
-                                  onClick={() => setCreationLegalVault((prev) => {
-                                    const next: BiltyLegalVault = { ...prev };
-                                    delete next[item.key];
-                                    return next;
-                                  })}
-                                  className="absolute top-1 right-1 w-5 h-5 rounded bg-rose-600 text-white flex items-center justify-center text-[10px]"
+                                  onClick={() =>
+                                    setPendingAttachments((prev) => prev.filter((a) => a.slot !== item.key))
+                                  }
+                                  className="absolute top-1 right-1 w-5 h-5 rounded bg-rose-600 text-white flex items-center justify-center text-[10px] cursor-pointer"
                                 >
                                   ✕
                                 </button>
+                                <span className="absolute bottom-0.5 left-0.5 px-1 rounded bg-black/65 text-white text-[8px] font-mono">
+                                  {Math.round(pendingAtt.byteSize / 1024)}KB
+                                </span>
                               </div>
                             ) : (
                               <label className="w-full h-16 rounded-lg border border-dashed border-slate-300 hover:border-slate-400 flex flex-col items-center justify-center cursor-pointer text-slate-400 hover:text-slate-600 transition-colors mb-1">
@@ -1724,17 +1825,47 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                                   type="file"
                                   accept="image/*"
                                   className="hidden"
-                                  onChange={(e) => {
+                                  onChange={async (e) => {
                                     const f = e.target.files?.[0];
-                                    if (f) {
-                                      const r = new FileReader();
-                                      r.onload = (ev) => {
-                                        const res = ev.target?.result as string;
-                                        if (res) {
-                                          setCreationLegalVault(prev => ({ ...prev, [item.key]: res }));
-                                        }
+                                    e.target.value = '';
+                                    if (!f) return;
+                                    setDraftAttachmentError(null);
+                                    const isId = isIdCardSlot(item.key);
+                                    const alreadyOnSlot = pendingAttachments.some((a) => a.slot === item.key);
+                                    const pendingIdCount = pendingAttachments.filter((a) => a.isIdCard).length;
+                                    if (isId && !alreadyOnSlot && pendingIdCount >= DEFAULT_MAX_ID_IMAGES_PER_DOC) {
+                                      setDraftAttachmentError(
+                                        isEnForm
+                                          ? `Maximum ${DEFAULT_MAX_ID_IMAGES_PER_DOC} ID-card photos per document.`
+                                          : `ہر بلٹی کے لیے زیادہ سے زیادہ ${DEFAULT_MAX_ID_IMAGES_PER_DOC} شناختی کارڈ تصاویر کی اجازت ہے۔`
+                                      );
+                                      return;
+                                    }
+                                    setProcessingDraftSlot(item.key);
+                                    try {
+                                      const compressed = await compressAttachmentImage(f);
+                                      const nextDraft: PendingDraftAttachment = {
+                                        tempId: `${item.key}_${Date.now()}`,
+                                        slot: item.key,
+                                        kind: 'image',
+                                        isIdCard: isId,
+                                        mimeType: compressed.mimeType,
+                                        dataUrl: compressed.dataUrl,
+                                        byteSize: compressed.byteSize,
+                                        width: compressed.width,
+                                        height: compressed.height,
+                                        createdAtMs: Date.now()
                                       };
-                                      r.readAsDataURL(f);
+                                      setPendingAttachments((prev) => [
+                                        ...prev.filter((a) => a.slot !== item.key),
+                                        nextDraft
+                                      ]);
+                                    } catch (err) {
+                                      setDraftAttachmentError(
+                                        err instanceof Error ? err.message : 'Image compression failed'
+                                      );
+                                    } finally {
+                                      setProcessingDraftSlot(null);
                                     }
                                   }}
                                 />
@@ -1749,7 +1880,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                         <PhoneCall className="w-3.5 h-3.5 text-blue-600" />
-                        <span>{isEnForm ? 'Voice Note File (Audio)' : 'صوتی ہدایات فائل (Audio Note)'}</span>
+                        <span>{isEnForm ? 'Voice Note File (≤400KB)' : 'صوتی ہدایات فائل (≤400KB Audio Note)'}</span>
                       </span>
                       <label className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-xs font-bold text-slate-700 cursor-pointer flex items-center gap-1.5">
                         <Upload className="w-3.5 h-3.5" />
@@ -1760,32 +1891,49 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                           className="hidden"
                           onChange={(e) => {
                             const f = e.target.files?.[0];
-                            if (f) {
-                              const r = new FileReader();
-                              r.onload = (ev) => {
-                                const res = ev.target?.result as string;
-                                if (res) {
-                                  const newRec: LegalRecordingItem = {
-                                    id: `rec_${Date.now()}`,
-                                    name: f.name || 'Voice_Note',
-                                    dataUrl: res,
-                                    createdAt: new Date().toISOString()
-                                  };
-                                  setCreationLegalVault(prev => ({
-                                    ...prev,
-                                    recordings: [...(prev.recordings || []), newRec]
-                                  }));
-                                }
-                              };
-                              r.readAsDataURL(f);
+                            e.target.value = '';
+                            if (!f) return;
+                            setDraftAttachmentError(null);
+                            if (f.size > ATTACHMENT_HARD_CAP_BYTES * 0.95) {
+                              setDraftAttachmentError(
+                                isEnForm
+                                  ? `Audio exceeds ${Math.round(ATTACHMENT_HARD_CAP_BYTES / 1024)} KB limit.`
+                                  : `آڈیو فائل ${Math.round(ATTACHMENT_HARD_CAP_BYTES / 1024)} KB حد سے بڑی ہے۔`
+                              );
+                              return;
                             }
+                            const r = new FileReader();
+                            r.onload = (ev) => {
+                              const res = ev.target?.result as string;
+                              if (!res) return;
+                              try {
+                                const { byteSize, mimeType } = validateAudioAttachmentDataUrl(res);
+                                const nextRec: PendingDraftAttachment = {
+                                  tempId: `rec_${Date.now()}`,
+                                  slot: 'voiceNote',
+                                  kind: 'audio',
+                                  isIdCard: false,
+                                  name: f.name || 'Voice_Note',
+                                  mimeType,
+                                  dataUrl: res,
+                                  byteSize,
+                                  createdAtMs: Date.now()
+                                };
+                                setPendingAttachments((prev) => [...prev, nextRec]);
+                              } catch (err) {
+                                setDraftAttachmentError(
+                                  err instanceof Error ? err.message : 'Audio validation failed'
+                                );
+                              }
+                            };
+                            r.readAsDataURL(f);
                           }}
                         />
                       </label>
                     </div>
-                    {creationLegalVault.recordings && creationLegalVault.recordings.length > 0 && (
+                    {pendingAttachments.filter((a) => a.kind === 'audio').length > 0 && (
                       <div className="text-[11px] text-emerald-700 font-bold">
-                        ✓ {creationLegalVault.recordings.length} ریکارڈنگ منسلک ہے
+                        ✓ {pendingAttachments.filter((a) => a.kind === 'audio').length} ریکارڈنگ منسلک ہے
                       </div>
                     )}
                   </div>
@@ -1924,7 +2072,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             setVaultModalBilty(null);
           }}
           bilty={vaultModalBilty}
-          onSaveVault={handleSaveVault}
+          onAttachmentsChanged={handleAttachmentsChanged}
           onGeneratePdf={generateBiltyPdf}
         />
       )}

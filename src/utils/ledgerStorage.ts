@@ -31,6 +31,7 @@ import {
   setScopedItem
 } from './storage';
 import { getActiveUserScope, removeScopedItem, safeStorage } from './storageCore';
+import { savePreRestoreSnapshotIdbOnly } from './persistentStorage';
 import {
   getTombstones,
   mergeTombstoneMaps,
@@ -1868,16 +1869,332 @@ export function exportKhataBackup(): string {
   return JSON.stringify(backup, null, 2);
 }
 
-function mergeById<T extends { id: string }>(current: T[], incoming?: T[]): T[] {
-  if (!Array.isArray(incoming) || incoming.length === 0) return current;
-  const map = new Map<string, T>();
-  current.forEach(item => {
-    if (item?.id) map.set(item.id, item);
-  });
-  incoming.forEach(item => {
-    if (item?.id && !map.has(item.id)) map.set(item.id, item);
-  });
-  return Array.from(map.values());
+export const MAX_KHATA_BACKUP_BYTES = 15 * 1024 * 1024; // 15 MB hard import limit
+
+const AMOUNT_FIELD_KEYS = [
+  'openingAmount',
+  'amount',
+  'totalAmount',
+  'paidAmount',
+  'salary',
+  'basicSalary',
+  'monthlySalary',
+  'rate',
+  'freight',
+  'advance',
+  'balance'
+] as const;
+
+const DATE_FIELD_KEYS = ['date', 'dueDate', 'paymentDate', 'createdAt', 'updatedAt'] as const;
+
+export function isValidSaneDateString(raw: unknown): boolean {
+  if (typeof raw !== 'string') return false;
+  const trimmed = raw.trim();
+  if (!trimmed) return false;
+
+  const ymdMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (ymdMatch) {
+    const year = Number(ymdMatch[1]);
+    const month = Number(ymdMatch[2]);
+    const day = Number(ymdMatch[3]);
+    if (year < 1970 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+      return false;
+    }
+    const check = new Date(Date.UTC(year, month - 1, day));
+    return (
+      check.getUTCFullYear() === year &&
+      check.getUTCMonth() + 1 === month &&
+      check.getUTCDate() === day
+    );
+  }
+
+  const ms = Date.parse(trimmed);
+  if (Number.isNaN(ms)) return false;
+  const year = new Date(ms).getUTCFullYear();
+  return year >= 1970 && year <= 2100;
+}
+
+export interface KhataBackupValidationResult {
+  valid: boolean;
+  data?: KhataBackupData;
+  error?: string;
+}
+
+function verifyKhataChecksumIfPresent(data: KhataBackupData): { ok: boolean; error?: string } {
+  const record = data as unknown as Record<string, unknown>;
+  if (!('checksum' in record) || record.checksum === undefined) {
+    // Allow legacy backups with no checksum field
+    return { ok: true };
+  }
+  if (typeof record.checksum !== 'number' || !Number.isFinite(record.checksum)) {
+    return { ok: false, error: 'Invalid backup checksum format' };
+  }
+
+  const { checksum: providedChecksum, ...restWithoutChecksum } = record;
+  if (calculateChecksum(restWithoutChecksum) === providedChecksum) {
+    return { ok: true };
+  }
+
+  // Canonical field-order match matching exportKhataBackup()
+  const canonicalPayload: Record<string, unknown> = {
+    app: record.app,
+    module: record.module,
+    version: record.version
+  };
+  if (record.schemaVersion !== undefined) canonicalPayload.schemaVersion = record.schemaVersion;
+  canonicalPayload.exportedAt = record.exportedAt;
+  canonicalPayload.businessName = record.businessName;
+  canonicalPayload.accounts = record.accounts;
+  canonicalPayload.entries = record.entries;
+  canonicalPayload.cashEntries = record.cashEntries;
+  if (record.bills !== undefined) canonicalPayload.bills = record.bills;
+  if (record.employees !== undefined) canonicalPayload.employees = record.employees;
+  if (record.employeeEntries !== undefined) canonicalPayload.employeeEntries = record.employeeEntries;
+  if (record.receivingPoints !== undefined) canonicalPayload.receivingPoints = record.receivingPoints;
+  if (record.receivingEntries !== undefined) canonicalPayload.receivingEntries = record.receivingEntries;
+  if (record.dailyExpenses !== undefined) canonicalPayload.dailyExpenses = record.dailyExpenses;
+
+  if (calculateChecksum(canonicalPayload) === providedChecksum) {
+    return { ok: true };
+  }
+
+  return { ok: false, error: 'Backup checksum mismatch — file may be corrupted or tampered with' };
+}
+
+function validateKhataArrayItems(
+  items: unknown[],
+  collectionLabel: string,
+  requireAmountAndDate: boolean
+): string | null {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return `Invalid item in ${collectionLabel} at index ${i}`;
+    }
+    const obj = item as Record<string, unknown>;
+    if (typeof obj.id !== 'string' || !obj.id.trim()) {
+      return `Missing or invalid id in ${collectionLabel} at index ${i}`;
+    }
+    if (requireAmountAndDate) {
+      if (typeof obj.amount !== 'number' || !Number.isFinite(obj.amount)) {
+        return `Invalid amount in ${collectionLabel} (${obj.id})`;
+      }
+      if (!isValidSaneDateString(obj.date)) {
+        return `Invalid date in ${collectionLabel} (${obj.id})`;
+      }
+    }
+    for (const key of AMOUNT_FIELD_KEYS) {
+      if (key in obj && obj[key] !== undefined) {
+        if (typeof obj[key] !== 'number' || !Number.isFinite(obj[key])) {
+          return `Non-finite or invalid ${key} in ${collectionLabel} (${obj.id})`;
+        }
+      }
+    }
+    for (const dKey of DATE_FIELD_KEYS) {
+      if (dKey in obj && obj[dKey] !== undefined && obj[dKey] !== '') {
+        if (!isValidSaneDateString(obj[dKey])) {
+          return `Invalid ${dKey} in ${collectionLabel} (${obj.id})`;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+export function validateKhataBackupPayload(jsonStr: string): KhataBackupValidationResult {
+  if (typeof jsonStr !== 'string' || !jsonStr.trim()) {
+    return { valid: false, error: 'Empty backup file' };
+  }
+
+  const byteLen =
+    typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(jsonStr).length : jsonStr.length * 2;
+  if (byteLen > MAX_KHATA_BACKUP_BYTES) {
+    return {
+      valid: false,
+      error: `Backup exceeds ${Math.round(MAX_KHATA_BACKUP_BYTES / (1024 * 1024))} MB size limit`
+    };
+  }
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(jsonStr);
+  } catch {
+    return { valid: false, error: 'Failed to parse JSON backup' };
+  }
+
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { valid: false, error: 'Invalid backup file format' };
+  }
+
+  const data = raw as KhataBackupData;
+  if (data.app !== 'Driver Dost' || data.module !== 'khata') {
+    return { valid: false, error: 'Invalid backup file format' };
+  }
+
+  if (!Array.isArray(data.accounts) || !Array.isArray(data.entries) || !Array.isArray(data.cashEntries)) {
+    return { valid: false, error: 'Malformed Khata backup contents' };
+  }
+
+  const optionalArrayFields = [
+    'bills',
+    'employees',
+    'employeeEntries',
+    'receivingPoints',
+    'receivingEntries',
+    'dailyExpenses'
+  ] as const;
+  for (const field of optionalArrayFields) {
+    const val = (data as unknown as Record<string, unknown>)[field];
+    if (val !== undefined && !Array.isArray(val)) {
+      return { valid: false, error: `Malformed "${field}" collection in backup` };
+    }
+  }
+
+  const checksumCheck = verifyKhataChecksumIfPresent(data);
+  if (!checksumCheck.ok) {
+    return { valid: false, error: checksumCheck.error };
+  }
+
+  const itemChecks: Array<[unknown[], string, boolean]> = [
+    [data.accounts, 'accounts', false],
+    [data.entries, 'entries', true],
+    [data.cashEntries, 'cashEntries', true],
+    ...(Array.isArray(data.bills) ? [[data.bills, 'bills', false] as [unknown[], string, boolean]] : []),
+    ...(Array.isArray(data.employees) ? [[data.employees, 'employees', false] as [unknown[], string, boolean]] : []),
+    ...(Array.isArray(data.employeeEntries)
+      ? [[data.employeeEntries, 'employeeEntries', false] as [unknown[], string, boolean]]
+      : []),
+    ...(Array.isArray(data.receivingPoints)
+      ? [[data.receivingPoints, 'receivingPoints', false] as [unknown[], string, boolean]]
+      : []),
+    ...(Array.isArray(data.receivingEntries)
+      ? [[data.receivingEntries, 'receivingEntries', false] as [unknown[], string, boolean]]
+      : []),
+    ...(Array.isArray(data.dailyExpenses)
+      ? [[data.dailyExpenses, 'dailyExpenses', false] as [unknown[], string, boolean]]
+      : [])
+  ];
+
+  for (const [list, label, requireAmountAndDate] of itemChecks) {
+    const err = validateKhataArrayItems(list, label, requireAmountAndDate);
+    if (err) {
+      return { valid: false, error: err };
+    }
+  }
+
+  return { valid: true, data };
+}
+
+interface KhataRestoreBatchOp {
+  action: 'upsert' | 'delete';
+  collectionPath: string;
+  docId: string;
+  subPath?: string;
+  pathKey: string;
+  ref: ReturnType<typeof doc>;
+  data?: Record<string, unknown>;
+  digest?: string;
+}
+
+let pendingKhataImportSyncPromise: Promise<void> = Promise.resolve();
+
+export function waitForPendingKhataImportSync(): Promise<void> {
+  return pendingKhataImportSyncPromise;
+}
+
+async function commitKhataRestoreBatches(
+  uid: string,
+  ops: KhataRestoreBatchOp[]
+): Promise<void> {
+  if (ops.length === 0) return;
+
+  const isOnline = typeof navigator === 'undefined' || navigator.onLine;
+  const queueBatchOps = (failedOps: KhataRestoreBatchOp[], permDenied = false) => {
+    try {
+      const queue = getStoredKhataQueue();
+      const map = new Map<string, KhataDocQueueItem>();
+      for (const existing of queue) {
+        const k = `${existing.collectionPath}:${existing.subPath || ''}:${existing.docId}`;
+        map.set(k, existing);
+      }
+      const nowIso = new Date().toISOString();
+      for (const op of failedOps) {
+        const k = `${op.collectionPath}:${op.subPath || ''}:${op.docId}`;
+        map.set(k, {
+          id: `khata_batch_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          action: op.action,
+          collectionPath: op.collectionPath,
+          docId: op.docId,
+          subPath: op.subPath,
+          data: op.data,
+          timestamp: nowIso,
+          retryCount: 0,
+          status: permDenied ? 'blocked' : 'pending'
+        });
+      }
+      saveStoredKhataQueue(Array.from(map.values()));
+    } catch (err) {
+      console.warn('[KhataImport] Queue fallback notice:', err);
+    }
+  };
+
+  if (!db || !isOnline) {
+    queueBatchOps(ops);
+    return;
+  }
+
+  const writeBatchFn = (firestoreModule as unknown as {
+    writeBatch?: typeof firestoreModule.writeBatch;
+  }).writeBatch;
+  const digestCache = getKhataSyncDigest(uid);
+  const nextDigest: Record<string, string> = { ...digestCache };
+  let digestDirty = false;
+  const failedOps: KhataRestoreBatchOp[] = [];
+  let hadPermError = false;
+
+  for (let i = 0; i < ops.length; i += 400) {
+    const chunk = ops.slice(i, i + 400);
+    try {
+      if (typeof writeBatchFn === 'function') {
+        const batch = writeBatchFn(db);
+        for (const op of chunk) {
+          if (op.action === 'upsert') {
+            batch.set(op.ref, op.data || {}, { merge: true });
+          } else {
+            batch.delete(op.ref);
+          }
+        }
+        await batch.commit();
+      } else {
+        for (const op of chunk) {
+          if (op.action === 'upsert') {
+            await setDoc(op.ref, op.data || {}, { merge: true });
+          } else {
+            await deleteDoc(op.ref);
+          }
+        }
+      }
+      for (const op of chunk) {
+        if (op.action === 'upsert' && op.digest) {
+          nextDigest[op.pathKey] = op.digest;
+          digestDirty = true;
+        } else if (op.action === 'delete' && nextDigest[op.pathKey]) {
+          delete nextDigest[op.pathKey];
+          digestDirty = true;
+        }
+      }
+    } catch (err) {
+      if (isPermissionDeniedSyncError(err)) hadPermError = true;
+      failedOps.push(...chunk);
+    }
+  }
+
+  if (digestDirty) {
+    saveKhataSyncDigest(uid, nextDigest);
+  }
+  if (failedOps.length > 0) {
+    queueBatchOps(failedOps, hadPermError);
+  }
 }
 
 export function importKhataBackup(
@@ -1897,106 +2214,227 @@ export function importKhataBackup(
   error?: string;
 } {
   try {
-    const data = JSON.parse(jsonStr) as KhataBackupData;
-    if (!data || data.app !== 'Driver Dost' || data.module !== 'khata') {
-      return { success: false, accountsCount: 0, entriesCount: 0, cashCount: 0, error: 'Invalid backup file format' };
+    const validation = validateKhataBackupPayload(jsonStr);
+    if (!validation.valid || !validation.data) {
+      return {
+        success: false,
+        accountsCount: 0,
+        entriesCount: 0,
+        cashCount: 0,
+        error: validation.error || 'Invalid backup file format'
+      };
     }
 
-    if (!Array.isArray(data.accounts) || !Array.isArray(data.entries) || !Array.isArray(data.cashEntries)) {
-      return { success: false, accountsCount: 0, entriesCount: 0, cashCount: 0, error: 'Malformed Khata backup contents' };
+    const data = validation.data;
+    const scope = getActiveUserScope();
+    const restoreMode: 'merge' | 'overwrite' = mode === 'replace' ? 'overwrite' : 'merge';
+
+    // Capture current state for both pre-restore Undo snapshot (IDB-only 7-day TTL) & replace-mode cloud deletes
+    const prevAccounts = getLedgerAccounts();
+    const prevEntries = getAllLedgerEntries();
+    const prevCash = getAllCashEntries();
+    const prevBills = getParsed<Array<{ id: string; updatedAt?: string }>>(KHATA_STORAGE_KEYS.BILLS, []);
+    const prevEmployees = getParsed<Array<{ id: string; updatedAt?: string }>>(KHATA_STORAGE_KEYS.EMPLOYEES, []);
+    const prevEmpEntries = getParsed<Array<{ id: string; updatedAt?: string }>>(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, []);
+    const prevPoints = getParsed<Array<{ id: string; updatedAt?: string }>>(KHATA_STORAGE_KEYS.RECEIVING_POINTS, []);
+    const prevPointEntries = getParsed<Array<{ id: string; updatedAt?: string }>>(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, []);
+    const prevExpenses = getParsed<Array<{ id: string; updatedAt?: string }>>(KHATA_STORAGE_KEYS.DAILY_EXPENSES, []);
+
+    void savePreRestoreSnapshotIdbOnly(scope, {
+      capturedAt: new Date().toISOString(),
+      source: 'khata-json-import',
+      ledgerAccounts: prevAccounts,
+      ledgerEntries: prevEntries,
+      cashbookEntries: prevCash,
+      bills: prevBills,
+      employees: prevEmployees,
+      employeeEntries: prevEmpEntries,
+      receivingPoints: prevPoints,
+      receivingEntries: prevPointEntries,
+      dailyExpenses: prevExpenses
+    });
+
+    const incomingBills = Array.isArray(data.bills) ? (data.bills as Array<{ id: string; updatedAt?: string }>) : [];
+    const incomingEmployees = Array.isArray(data.employees) ? (data.employees as Array<{ id: string; updatedAt?: string }>) : [];
+    const incomingEmpEntries = Array.isArray(data.employeeEntries) ? (data.employeeEntries as Array<{ id: string; updatedAt?: string }>) : [];
+    const incomingPoints = Array.isArray(data.receivingPoints) ? (data.receivingPoints as Array<{ id: string; updatedAt?: string }>) : [];
+    const incomingPointEntries = Array.isArray(data.receivingEntries) ? (data.receivingEntries as Array<{ id: string; updatedAt?: string }>) : [];
+    const incomingExpenses = Array.isArray(data.dailyExpenses) ? (data.dailyExpenses as Array<{ id: string; updatedAt?: string }>) : [];
+
+    // Tombstone-aware restore (clears restored tombstones, re-stamps updatedAt, tombstones deleted items in 'replace' mode)
+    const finalAccounts = restoreKhataCollection<LedgerAccount>(
+      KHATA_STORAGE_KEYS.ACCOUNTS,
+      'ledgerAccounts',
+      data.accounts,
+      restoreMode
+    );
+    const finalEntries = restoreKhataCollection<LedgerEntry>(
+      KHATA_STORAGE_KEYS.ENTRIES,
+      'entries',
+      data.entries,
+      restoreMode
+    );
+    const finalCash = restoreKhataCollection<CashEntry>(
+      KHATA_STORAGE_KEYS.CASHBOOK,
+      'cashbookEntries',
+      data.cashEntries,
+      restoreMode
+    );
+
+    const hasExpansion = data.version === '3.0';
+    const shouldWriteExpansion = (arr: unknown) =>
+      restoreMode === 'merge' || hasExpansion || Array.isArray(arr);
+
+    const finalBills = shouldWriteExpansion(data.bills)
+      ? restoreKhataCollection(KHATA_STORAGE_KEYS.BILLS, 'khataBills', incomingBills, restoreMode)
+      : prevBills;
+    const finalEmployees = shouldWriteExpansion(data.employees)
+      ? restoreKhataCollection(KHATA_STORAGE_KEYS.EMPLOYEES, 'khataEmployees', incomingEmployees, restoreMode)
+      : prevEmployees;
+    const finalEmpEntries = shouldWriteExpansion(data.employeeEntries)
+      ? restoreKhataCollection(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, 'khataEmployeeEntries', incomingEmpEntries, restoreMode)
+      : prevEmpEntries;
+    const finalPoints = shouldWriteExpansion(data.receivingPoints)
+      ? restoreKhataCollection(KHATA_STORAGE_KEYS.RECEIVING_POINTS, 'khataReceivingPoints', incomingPoints, restoreMode)
+      : prevPoints;
+    const finalPointEntries = shouldWriteExpansion(data.receivingEntries)
+      ? restoreKhataCollection(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, 'khataReceivingEntries', incomingPointEntries, restoreMode)
+      : prevPointEntries;
+    const finalExpenses = shouldWriteExpansion(data.dailyExpenses)
+      ? restoreKhataCollection(KHATA_STORAGE_KEYS.DAILY_EXPENSES, 'khataDailyExpenses', incomingExpenses, restoreMode)
+      : prevExpenses;
+
+    if (mode === 'replace' && data.businessName) {
+      const currentSettings = getKhataSettings();
+      setJson(KHATA_STORAGE_KEYS.SETTINGS, {
+        ...currentSettings,
+        businessName: data.businessName,
+        schemaVersion: 3
+      });
     }
 
-    const incomingBills = Array.isArray(data.bills) ? data.bills : [];
-    const incomingEmployees = Array.isArray(data.employees) ? data.employees : [];
-    const incomingEmpEntries = Array.isArray(data.employeeEntries) ? data.employeeEntries : [];
-    const incomingPoints = Array.isArray(data.receivingPoints) ? data.receivingPoints : [];
-    const incomingPointEntries = Array.isArray(data.receivingEntries) ? data.receivingEntries : [];
-    const incomingExpenses = Array.isArray(data.dailyExpenses) ? data.dailyExpenses : [];
+    // Build batched Firestore commit (single writeBatch pipeline instead of N individual writes)
+    const user = auth.currentUser;
+    if (user && db) {
+      const batchOps: KhataRestoreBatchOp[] = [];
 
-    if (mode === 'replace') {
-      setJson(KHATA_STORAGE_KEYS.ACCOUNTS, data.accounts);
-      setJson(KHATA_STORAGE_KEYS.ENTRIES, data.entries);
-      setJson(KHATA_STORAGE_KEYS.CASHBOOK, data.cashEntries);
-      if (data.version === '3.0' || Array.isArray(data.bills)) setJson(KHATA_STORAGE_KEYS.BILLS, incomingBills);
-      if (data.version === '3.0' || Array.isArray(data.employees)) setJson(KHATA_STORAGE_KEYS.EMPLOYEES, incomingEmployees);
-      if (data.version === '3.0' || Array.isArray(data.employeeEntries)) setJson(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, incomingEmpEntries);
-      if (data.version === '3.0' || Array.isArray(data.receivingPoints)) setJson(KHATA_STORAGE_KEYS.RECEIVING_POINTS, incomingPoints);
-      if (data.version === '3.0' || Array.isArray(data.receivingEntries)) setJson(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, incomingPointEntries);
-      if (data.version === '3.0' || Array.isArray(data.dailyExpenses)) setJson(KHATA_STORAGE_KEYS.DAILY_EXPENSES, incomingExpenses);
+      const settingsPayload = {
+        ...getKhataSettings(),
+        tombstones: collectAllKhataTombstones(scope),
+        schemaVersion: 3
+      };
+      batchOps.push({
+        action: 'upsert',
+        collectionPath: 'khataSettings',
+        docId: 'config',
+        pathKey: 'khataSettings/config',
+        ref: doc(db, 'users', user.uid, 'khataSettings', 'config'),
+        data: settingsPayload as unknown as Record<string, unknown>,
+        digest: JSON.stringify(settingsPayload)
+      });
 
-      if (data.businessName) {
-        saveKhataSettings({ businessName: data.businessName, schemaVersion: 3 });
+      const addUpserts = (
+        coll: string,
+        items: Array<{ id: string }>,
+        getSubPath?: (item: any) => string
+      ) => {
+        for (const item of items) {
+          if (!item?.id) continue;
+          const sub = getSubPath ? getSubPath(item) : undefined;
+          const ref = sub
+            ? doc(db, 'users', user.uid, 'ledgerAccounts', sub, 'entries', item.id)
+            : doc(db, 'users', user.uid, coll, item.id);
+          const pathKey = sub ? `ledgerAccounts/${sub}/entries/${item.id}` : `${coll}/${item.id}`;
+          batchOps.push({
+            action: 'upsert',
+            collectionPath: coll,
+            docId: item.id,
+            subPath: sub,
+            pathKey,
+            ref,
+            data: item as unknown as Record<string, unknown>,
+            digest: JSON.stringify(item)
+          });
+        }
+      };
+
+      const addReplaceDeletes = (
+        coll: string,
+        prevItems: Array<{ id: string }>,
+        finalItems: Array<{ id: string }>,
+        getSubPath?: (item: any) => string
+      ) => {
+        if (restoreMode !== 'overwrite') return;
+        const keptIds = new Set(finalItems.map(i => i.id));
+        for (const prev of prevItems) {
+          if (!prev?.id || keptIds.has(prev.id)) continue;
+          const sub = getSubPath ? getSubPath(prev) : undefined;
+          const ref = sub
+            ? doc(db, 'users', user.uid, 'ledgerAccounts', sub, 'entries', prev.id)
+            : doc(db, 'users', user.uid, coll, prev.id);
+          const pathKey = sub ? `ledgerAccounts/${sub}/entries/${prev.id}` : `${coll}/${prev.id}`;
+          batchOps.push({
+            action: 'delete',
+            collectionPath: coll,
+            docId: prev.id,
+            subPath: sub,
+            pathKey,
+            ref
+          });
+        }
+      };
+
+      addUpserts('ledgerAccounts', finalAccounts);
+      addUpserts('entries', finalEntries, (e: LedgerEntry) => e.accountId);
+      addUpserts('cashbookEntries', finalCash);
+      if (shouldWriteExpansion(data.bills)) addUpserts('khataBills', finalBills);
+      if (shouldWriteExpansion(data.employees)) addUpserts('khataEmployees', finalEmployees);
+      if (shouldWriteExpansion(data.employeeEntries)) addUpserts('khataEmployeeEntries', finalEmpEntries);
+      if (shouldWriteExpansion(data.receivingPoints)) addUpserts('khataReceivingPoints', finalPoints);
+      if (shouldWriteExpansion(data.receivingEntries)) addUpserts('khataReceivingEntries', finalPointEntries);
+      if (shouldWriteExpansion(data.dailyExpenses)) addUpserts('khataDailyExpenses', finalExpenses);
+
+      addReplaceDeletes('ledgerAccounts', prevAccounts, finalAccounts);
+      addReplaceDeletes('entries', prevEntries, finalEntries, (e: LedgerEntry) => e.accountId);
+      addReplaceDeletes('cashbookEntries', prevCash, finalCash);
+      if (shouldWriteExpansion(data.bills)) addReplaceDeletes('khataBills', prevBills, finalBills);
+      if (shouldWriteExpansion(data.employees)) addReplaceDeletes('khataEmployees', prevEmployees, finalEmployees);
+      if (shouldWriteExpansion(data.employeeEntries)) {
+        addReplaceDeletes('khataEmployeeEntries', prevEmpEntries, finalEmpEntries);
       }
-      // Trigger cloud mirrors
-      data.accounts.forEach(a => mirrorAccountToFirestore(a, 'upsert'));
-      data.entries.forEach(e => mirrorEntryToFirestore(e, 'upsert'));
-      data.cashEntries.forEach(c => mirrorCashEntryToFirestore(c, 'upsert'));
-      incomingBills.forEach(b => b?.id && mirrorFlatKhataDocToFirestore('khataBills', b, 'upsert'));
-      incomingEmployees.forEach(em => em?.id && mirrorFlatKhataDocToFirestore('khataEmployees', em, 'upsert'));
-      incomingEmpEntries.forEach(ee => ee?.id && mirrorFlatKhataDocToFirestore('khataEmployeeEntries', ee, 'upsert'));
-      incomingPoints.forEach(rp => rp?.id && mirrorFlatKhataDocToFirestore('khataReceivingPoints', rp, 'upsert'));
-      incomingPointEntries.forEach(re => re?.id && mirrorFlatKhataDocToFirestore('khataReceivingEntries', re, 'upsert'));
-      incomingExpenses.forEach(dx => dx?.id && mirrorFlatKhataDocToFirestore('khataDailyExpenses', dx, 'upsert'));
+      if (shouldWriteExpansion(data.receivingPoints)) {
+        addReplaceDeletes('khataReceivingPoints', prevPoints, finalPoints);
+      }
+      if (shouldWriteExpansion(data.receivingEntries)) {
+        addReplaceDeletes('khataReceivingEntries', prevPointEntries, finalPointEntries);
+      }
+      if (shouldWriteExpansion(data.dailyExpenses)) {
+        addReplaceDeletes('khataDailyExpenses', prevExpenses, finalExpenses);
+      }
 
-      return {
-        success: true,
-        accountsCount: data.accounts.length,
-        entriesCount: data.entries.length,
-        cashCount: data.cashEntries.length,
-        billsCount: incomingBills.length,
-        employeesCount: incomingEmployees.length,
-        employeeEntriesCount: incomingEmpEntries.length,
-        receivingPointsCount: incomingPoints.length,
-        receivingEntriesCount: incomingPointEntries.length,
-        dailyExpensesCount: incomingExpenses.length
-      };
-    } else {
-      // Merge mode
-      const finalAccounts = mergeById(getLedgerAccounts(), data.accounts);
-      const finalEntries = mergeById(getAllLedgerEntries(), data.entries);
-      const finalCash = mergeById(getAllCashEntries(), data.cashEntries);
-      const finalBills = mergeById(getParsed<any[]>(KHATA_STORAGE_KEYS.BILLS, []), incomingBills);
-      const finalEmployees = mergeById(getParsed<any[]>(KHATA_STORAGE_KEYS.EMPLOYEES, []), incomingEmployees);
-      const finalEmpEntries = mergeById(getParsed<any[]>(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, []), incomingEmpEntries);
-      const finalPoints = mergeById(getParsed<any[]>(KHATA_STORAGE_KEYS.RECEIVING_POINTS, []), incomingPoints);
-      const finalPointEntries = mergeById(getParsed<any[]>(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, []), incomingPointEntries);
-      const finalExpenses = mergeById(getParsed<any[]>(KHATA_STORAGE_KEYS.DAILY_EXPENSES, []), incomingExpenses);
-
-      setJson(KHATA_STORAGE_KEYS.ACCOUNTS, finalAccounts);
-      setJson(KHATA_STORAGE_KEYS.ENTRIES, finalEntries);
-      setJson(KHATA_STORAGE_KEYS.CASHBOOK, finalCash);
-      setJson(KHATA_STORAGE_KEYS.BILLS, finalBills);
-      setJson(KHATA_STORAGE_KEYS.EMPLOYEES, finalEmployees);
-      setJson(KHATA_STORAGE_KEYS.EMPLOYEE_ENTRIES, finalEmpEntries);
-      setJson(KHATA_STORAGE_KEYS.RECEIVING_POINTS, finalPoints);
-      setJson(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, finalPointEntries);
-      setJson(KHATA_STORAGE_KEYS.DAILY_EXPENSES, finalExpenses);
-
-      finalAccounts.forEach(a => mirrorAccountToFirestore(a, 'upsert'));
-      finalEntries.forEach(e => mirrorEntryToFirestore(e, 'upsert'));
-      finalCash.forEach(c => mirrorCashEntryToFirestore(c, 'upsert'));
-      finalBills.forEach(b => mirrorFlatKhataDocToFirestore('khataBills', b, 'upsert'));
-      finalEmployees.forEach(em => mirrorFlatKhataDocToFirestore('khataEmployees', em, 'upsert'));
-      finalEmpEntries.forEach(ee => mirrorFlatKhataDocToFirestore('khataEmployeeEntries', ee, 'upsert'));
-      finalPoints.forEach(rp => mirrorFlatKhataDocToFirestore('khataReceivingPoints', rp, 'upsert'));
-      finalPointEntries.forEach(re => mirrorFlatKhataDocToFirestore('khataReceivingEntries', re, 'upsert'));
-      finalExpenses.forEach(dx => mirrorFlatKhataDocToFirestore('khataDailyExpenses', dx, 'upsert'));
-
-      return {
-        success: true,
-        accountsCount: finalAccounts.length,
-        entriesCount: finalEntries.length,
-        cashCount: finalCash.length,
-        billsCount: finalBills.length,
-        employeesCount: finalEmployees.length,
-        employeeEntriesCount: finalEmpEntries.length,
-        receivingPointsCount: finalPoints.length,
-        receivingEntriesCount: finalPointEntries.length,
-        dailyExpensesCount: finalExpenses.length
-      };
+      pendingKhataImportSyncPromise = commitKhataRestoreBatches(user.uid, batchOps).catch(() => {});
     }
+
+    return {
+      success: true,
+      accountsCount: finalAccounts.length,
+      entriesCount: finalEntries.length,
+      cashCount: finalCash.length,
+      billsCount: finalBills.length,
+      employeesCount: finalEmployees.length,
+      employeeEntriesCount: finalEmpEntries.length,
+      receivingPointsCount: finalPoints.length,
+      receivingEntriesCount: finalPointEntries.length,
+      dailyExpensesCount: finalExpenses.length
+    };
   } catch (err: any) {
-    return { success: false, accountsCount: 0, entriesCount: 0, cashCount: 0, error: err?.message || 'Parse error' };
+    return {
+      success: false,
+      accountsCount: 0,
+      entriesCount: 0,
+      cashCount: 0,
+      error: err?.message || 'Parse error'
+    };
   }
 }
 

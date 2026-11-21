@@ -30,8 +30,7 @@ if (typeof window !== 'undefined') {
       reason.includes('database is closing') ||
       reason.includes('Database is closing/hidden') ||
       reason.includes('The database is closing') ||
-      reason.includes('ResizeObserver') ||
-      reason.includes('Script error')
+      reason.includes('ResizeObserver loop')
     ) {
       event.preventDefault();
       return;
@@ -41,12 +40,7 @@ if (typeof window !== 'undefined') {
 
   window.addEventListener('error', (event) => {
     const msg = event.message || '';
-    if (
-      msg.includes('ResizeObserver') ||
-      msg.includes('Script error') ||
-      msg === 'Script error.' ||
-      (!event.filename && !event.lineno)
-    ) {
+    if (msg.includes('ResizeObserver loop')) {
       event.preventDefault();
       return;
     }

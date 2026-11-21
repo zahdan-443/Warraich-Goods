@@ -21,7 +21,15 @@ import {
 } from 'firebase/firestore';
 import { getScopedStorageKey } from './calculator';
 import { isOwnerEmail } from './authUtils';
-import { idbDeleteMany, idbGetAllEntries } from './persistentStorage';
+import {
+  deletePreRestoreSnapshotIdbOnly,
+  idbClearAllBiltyAttachments,
+  idbDeleteMany,
+  idbGetAllEntries,
+  idbOnlyDelete,
+  idbOnlyListKeys,
+  removeLegacyLocalPreRestoreKeys
+} from './persistentStorage';
 import {
   clearOfflineQueue,
   getStoredBilties,
@@ -80,6 +88,7 @@ async function commitDeleteRefsInBatches(
 export const USER_FIRESTORE_SUBCOLLECTIONS = [
   'collections',
   'biltiesDocs',
+  'biltyAttachments',
   'tripsDocs',
   'vehiclesDocs',
   'driversDocs',
@@ -258,9 +267,26 @@ export async function clearLocalAndIndexedDbForUser(userId: string): Promise<voi
   for (const k of keysToRemove) {
     safeStorage.removeItem(k);
   }
+  removeLegacyLocalPreRestoreKeys(userId);
   clearOfflineQueue();
 
   try {
+    await deletePreRestoreSnapshotIdbOnly(userId);
+    await idbClearAllBiltyAttachments();
+
+    const idbOnlyKeys = await idbOnlyListKeys();
+    for (const k of idbOnlyKeys) {
+      if (
+        !userId ||
+        k.endsWith(`_${userId}`) ||
+        k.includes(`_${userId}_`) ||
+        k.startsWith('wg_idb_attach_') ||
+        k.startsWith('wg_idb_bilty_vault_')
+      ) {
+        await idbOnlyDelete(k);
+      }
+    }
+
     const entries = await idbGetAllEntries();
     const idbKeys: string[] = [...keysToRemove];
     for (const key of Object.keys(entries)) {

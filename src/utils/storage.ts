@@ -30,6 +30,7 @@ import {
 import { DEFAULT_AUTHORIZED_EMAILS, OWNER_EMAIL, isOwnerEmail, normalizeEmail } from './authUtils';
 import { getPakistanDateKey } from './dateUtils';
 import { shareOrDownloadText } from './nativeExport';
+import { savePreRestoreSnapshotIdbOnly } from './persistentStorage';
 import {
   GuestScopeSummary,
   V3_MIGRATION_FLAG_PREFIX,
@@ -644,7 +645,15 @@ export function exportAllBusinessDataJSON(privacyOptions?: ExportPrivacyOptions)
   const rawTrips = getStoredTrips();
   const rawDrivers = getStoredDrivers();
 
-  const sanitizedBilties = rawBilties.map(b => sanitizeBiltyRecord(b, privacyOptions));
+  const sanitizedBilties = rawBilties.map(b => {
+    const clean = sanitizeBiltyRecord(b, privacyOptions);
+    if (clean && 'legalVault' in clean) {
+      const copy = { ...clean };
+      delete copy.legalVault;
+      return copy;
+    }
+    return clean;
+  });
   const sanitizedTrips = rawTrips.map(t => sanitizeTripRecord(t, privacyOptions));
   const sanitizedDrivers = rawDrivers.map(d => sanitizeDriverRecord(d, privacyOptions));
 
@@ -955,14 +964,8 @@ export function restoreFullBackupFromJson(
       }
     }
 
-    // Save Undo Restore pre-snapshot before modifying local data
-    try {
-      const snapStr = JSON.stringify(snapshot);
-      safeStorage.setItem(`wg_v3_prerestore_snapshot_${scope}`, snapStr);
-      safeStorage.setItem(`wg_v3_prerestore_available_${scope}`, snapshot.capturedAt);
-    } catch {
-      // ignore quota issues on secondary fallback
-    }
+    // Save 7-day Undo Restore pre-snapshot strictly in IndexedDB (never localStorage)
+    void savePreRestoreSnapshotIdbOnly(scope, snapshot).catch(() => {});
 
     let restoredCount = 0;
 
