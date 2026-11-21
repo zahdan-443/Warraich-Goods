@@ -1329,7 +1329,7 @@ export default function App() {
     },
     bilty: {
       title: 'Bilty Generator',
-      titleUr: 'بلٹی جنریٹر (وارڑائچ گڈز)',
+      titleUr: 'بلٹی جنریٹر (وڑائچ گڈز)',
       subtitle: 'Authorized Consignment Note System',
       subtitleUr: 'مجاز کنسائنمنٹ نوٹ اور کیو آر'
     },

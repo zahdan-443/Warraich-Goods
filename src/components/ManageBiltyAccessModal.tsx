@@ -371,7 +371,7 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-lg sm:text-xl font-serif font-bold text-[#4a4a35] dark:text-slate-100">
-                  {lang === 'ur' ? 'آنر کنٹرول پینل (وارائچ گڈز ایڈمن)' : 'Owner Control Panel'}
+                  {lang === 'ur' ? 'آنر کنٹرول پینل (وڑائچ گڈز ایڈمن)' : 'Owner Control Panel'}
                 </h2>
                 <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold text-[10px] border border-amber-300 dark:border-amber-700 font-mono">
                   {OWNER_EMAIL}
@@ -761,7 +761,7 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-emerald-700" />
                     <h4 className="font-bold text-xs text-[#4a4a35]">
-                      {lang === 'ur' ? 'وارائچ گڈز برانچز و کسٹمر آن لائن پیمنٹ سیٹ اپ' : 'Branches & Online Payment Details'}
+                      {lang === 'ur' ? 'وڑائچ گڈز برانچز و کسٹمر آن لائن پیمنٹ سیٹ اپ' : 'Branches & Online Payment Details'}
                     </h4>
                   </div>
                   {profileSuccessMsg && (

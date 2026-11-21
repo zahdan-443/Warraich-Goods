@@ -67,11 +67,11 @@ export function formatStrictBiltyNumber(val: string | number): string {
 /**
  * Official canonical base URL for public bilty verification on company website
  */
-export const OFFICIAL_APP_BASE_URL = 'https://zahdan-443.github.io/Warraichgoodstransportcompany/';
+export const OFFICIAL_APP_BASE_URL = 'https://warraichgoods.eu.cc/';
 
 /**
  * Generates official verification URL in the required secure format:
- * https://zahdan-443.github.io/Warraichgoodstransportcompany/?page=verify&bilty={BILTY_NUMBER}
+ * https://warraichgoods.eu.cc/?page=verify&bilty={BILTY_NUMBER}
  * 
  * Contains ONLY the company website verification URL and normalized bilty number.
  * Excludes party details, financial amounts, Base64 records, or vdata tokens.
@@ -81,7 +81,7 @@ export function getBiltyVerificationUrl(biltyInput: string | Partial<BiltyRecord
   const rawBiltyNo = (isObj ? (biltyInput.biltyNo || '') : String(biltyInput || '')).trim();
   const normalizedNo = rawBiltyNo.toUpperCase();
 
-  return `https://zahdan-443.github.io/Warraichgoodstransportcompany/?page=verify&bilty=${encodeURIComponent(normalizedNo)}`;
+  return `https://warraichgoods.eu.cc/?page=verify&bilty=${encodeURIComponent(normalizedNo)}`;
 }
 
 /**

@@ -167,7 +167,7 @@ npm run validate
 npm run pipeline
 ```
 
-> **Firebase security & API key hardening:** Restrict the browser API key in Google Cloud Console by HTTP referrers (`zahdan-443.github.io/*` and `localhost/*`), restrict Android keys by package name + SHA-1 (`com.warraichgoods.driverdost`), enable **Firebase App Check** (reCAPTCHA v3 / Play Integrity), and keep `firestore.rules` deployed. Never commit private keystores or service account credentials.
+> **Firebase security & API key hardening:** Restrict the browser API key in Google Cloud Console by HTTP referrers (`zahdan-443.github.io/*`, `warraichgoods.eu.cc/*`, and `localhost/*`), restrict Android keys by package name + SHA-1 (`com.warraichgoods.driverdost`), enable **Firebase App Check** (reCAPTCHA v3 / Play Integrity), and keep `firestore.rules` deployed. Never commit private keystores or service account credentials.
 
 ---
 
@@ -243,7 +243,7 @@ Samundri, Punjab, Pakistan
 
 - **Email:** [warraichgoods43@gmail.com](mailto:warraichgoods43@gmail.com)
 - **Phone:** +92 300 5370443
-- **Website:** [https://zahdan-443.github.io/Warraichgoodstransportcompany](https://zahdan-443.github.io/Warraichgoodstransportcompany)
+- **Website:** [https://warraichgoods.eu.cc](https://warraichgoods.eu.cc)
 - **Web App:** [zahdan-443.github.io/Warraich-Goods](https://zahdan-443.github.io/Warraich-Goods/)
 
 For privacy or data-deletion requests, email from the account email associated with your request with the subject **`Driver Dost - Request`**.

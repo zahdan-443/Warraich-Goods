@@ -460,7 +460,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
 
   const buildWhatsAppMsg = () => {
     const fmt = (num: number) => 'Rs ' + num.toLocaleString('en-US');
-    let msg = `🚚 *وارائچ گڈز ٹرانسپورٹ کمپنی*\n` +
+    let msg = `🚚 *وڑائچ گڈز ٹرانسپورٹ کمپنی*\n` +
       `📋 *گاڑی کا تفصیلی حساب و لیجر رپورٹ*\n` +
       `─────────────────────\n` +
       `🚛 *گاڑی نمبر:* ${vehicleNo || 'نامعلوم'}\n` +

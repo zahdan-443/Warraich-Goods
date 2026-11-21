@@ -674,13 +674,13 @@ describe('Digital Khata (کھاتہ) Unit Tests', () => {
       const statement = formatAccountStatementWhatsAppMessage(
         account,
         entries,
-        'وارڑائچ لاجسٹکس',
+        'وڑائچ لاجسٹکس',
         'ur'
       );
 
       expect(statement).toContain('کھاتہ اسٹیٹمنٹ');
       expect(statement).toContain('چوہدری طارق گڈز');
-      expect(statement).toContain('وارڑائچ لاجسٹکس');
+      expect(statement).toContain('وڑائچ لاجسٹکس');
       expect(statement).toContain('03001234567');
       expect(statement).toContain('30,000'); // 50,000 - 20,000 = 30,000
       expect(statement).toContain('واجب الوصول');

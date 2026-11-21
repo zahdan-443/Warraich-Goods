@@ -2039,7 +2039,7 @@ export function formatAccountStatementWhatsAppMessage(
   lang: Language = 'ur'
 ): string {
   const isUrdu = lang === 'ur';
-  const business = (customBusinessName && customBusinessName.trim()) ? customBusinessName.trim() : 'وارڑائچ گڈز ٹرانسپورٹ';
+  const business = (customBusinessName && customBusinessName.trim()) ? customBusinessName.trim() : 'وڑائچ گڈز ٹرانسپورٹ کمپنی';
   const { balance, totalGave, totalGot } = calculateAccountBalance(account, entries);
   const cleanPhone = normalizePakistaniPhone(account.phone);
   const displayPhone = formatPhoneForDisplay(cleanPhone || account.phone);

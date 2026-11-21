@@ -92,7 +92,7 @@ describe('Deep Audit Fixes Verification Suite', () => {
 
     it('should generate official verification QR URL without vdata or financial tokens', () => {
       const url = getBiltyVerificationUrl('AH-2026-0001');
-      expect(url).toBe('https://zahdan-443.github.io/Warraichgoodstransportcompany/?page=verify&bilty=AH-2026-0001');
+      expect(url).toBe('https://warraichgoods.eu.cc/?page=verify&bilty=AH-2026-0001');
       expect(url).not.toContain('vdata');
     });
   });

@@ -558,7 +558,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   const buildWhatsAppMsg = () => {
     if (!lastCalc) return '';
     const fmt = (n: number) => 'Rs ' + (Number(n) || 0).toLocaleString();
-    return `🚚 *وارائچ گڈز ٹرانسپورٹ کمپنی*\n` +
+    return `🚚 *وڑائچ گڈز ٹرانسپورٹ کمپنی*\n` +
       `📋 *سفری لاگت اور اخراجات کا تخمینہ*\n` +
       `─────────────────────\n` +
       `📍 *روانگی (از):* ${lastCalc.origin}\n` +

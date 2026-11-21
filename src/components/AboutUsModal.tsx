@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
-import { X, Phone, Mail, MapPin, Building2, Truck, ShieldCheck, Clock, MessageSquare } from 'lucide-react';
+import { X, Phone, Mail, MapPin, Building2, Truck, ShieldCheck, Clock, MessageSquare, Globe, ExternalLink } from 'lucide-react';
 import { Language } from '../types';
 import { PublicImage } from '../assets/dashboardIcons';
-import { openWhatsAppMessage } from '../utils/externalLinks';
+import { openExternalUrl, openWhatsAppMessage } from '../utils/externalLinks';
 
 interface AboutUsModalProps {
   isOpen: boolean;
@@ -217,6 +217,27 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
                   <span className="text-[11px] text-[#8e8e75] dark:text-slate-400 block">{isUr ? 'ای میل ایڈریس:' : 'Email Address:'}</span>
                   <span className="font-bold text-[#1e3a68] dark:text-blue-300 text-xs sm:text-sm dir-ltr">warraichgoods43@gmail.com</span>
                 </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-white dark:bg-[#16181e] rounded-xl border border-[#ecece0] dark:border-[#2d313b]">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 rounded-lg shrink-0">
+                    <Globe className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-[#8e8e75] dark:text-slate-400 block">{isUr ? 'آفیشل ویب سائٹ:' : 'Official Website:'}</span>
+                    <span className="font-bold text-[#1e3a68] dark:text-indigo-300 text-xs sm:text-sm dir-ltr font-mono">https://warraichgoods.eu.cc</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => openExternalUrl('https://warraichgoods.eu.cc/')}
+                  className="px-3 py-1.5 bg-[#1e3a68] hover:bg-[#162a4d] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>{isUr ? 'ویب سائٹ کھولیں' : 'Visit Site'}</span>
+                </button>
               </div>
 
               <div className="flex items-start gap-3 p-3 bg-white dark:bg-[#16181e] rounded-xl border border-[#ecece0] dark:border-[#2d313b]">

@@ -60,7 +60,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
 
   const handleWhatsAppShare = () => {
     const text = isUrdu
-      ? `ورائچ گڈز ٹرانسپورٹ کمپنی - تصدیق شدہ کنسائنمنٹ دستاویز نمبر ${biltyNo}\nتاریخ: ${biltyDate}\nگاڑی نمبر: ${vehicleNo}\nروٹ: ${origin} تا ${destination}\nمال: ${goodsDescription} (${weightOrQty})\nتصدیقی لنک:\n${verificationUrl}`
+      ? `وڑائچ گڈز ٹرانسپورٹ کمپنی - تصدیق شدہ کنسائنمنٹ دستاویز نمبر ${biltyNo}\nتاریخ: ${biltyDate}\nگاڑی نمبر: ${vehicleNo}\nروٹ: ${origin} تا ${destination}\nمال: ${goodsDescription} (${weightOrQty})\nتصدیقی لنک:\n${verificationUrl}`
       : `Warraich Goods Transport Co. - Verified Consignment Document #${biltyNo}\nDate: ${biltyDate}\nVehicle: ${vehicleNo}\nRoute: ${origin} to ${destination}\nGoods: ${goodsDescription} (${weightOrQty})\nVerification Link:\n${verificationUrl}`;
     openWhatsAppMessage(text);
   };
@@ -84,7 +84,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
             </div>
             <p className="text-xs sm:text-sm text-emerald-950 font-medium mt-0.5">
               {isUrdu
-                ? 'ورائچ گڈز ٹرانسپورٹ کمپنی کے آفیشل ریکارڈ سے تصدیق شدہ'
+                ? 'وڑائچ گڈز ٹرانسپورٹ کمپنی کے آفیشل ریکارڈ سے تصدیق شدہ'
                 : 'Verified via Warraich Goods Transport Co. Official System'}
             </p>
           </div>
@@ -109,7 +109,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-[#8b9d77]" />
               <h3 className={`font-bold text-lg text-[#4a4a35] ${isUrdu ? 'font-nastaliq' : 'font-serif'}`}>
-                {isUrdu ? 'ورائچ گڈز ٹرانسپورٹ کمپنی' : 'Warraich Goods Transport Co.'}
+                {isUrdu ? 'وڑائچ گڈز ٹرانسپورٹ کمپنی' : 'Warraich Goods Transport Co.'}
               </h3>
             </div>
             <p className="text-xs text-[#8e8e75]">
@@ -206,7 +206,7 @@ export const BiltyVerificationCard: React.FC<BiltyVerificationCardProps> = ({
             <Phone className="w-4 h-4 text-emerald-700 shrink-0" />
             <div>
               <span className="font-bold text-slate-800">
-                {isUrdu ? 'ورائچ گڈز 24/7 آفیشل ہیلپ لائن:' : 'Warraich Goods 24/7 Helpline:'}
+                {isUrdu ? 'وڑائچ گڈز 24/7 آفیشل ہیلپ لائن:' : 'Warraich Goods 24/7 Helpline:'}
               </span>
               <p className="text-[11px] text-slate-500">
                 {isUrdu ? 'کسی بھی معلومات یا تصدیق کے لیے رابطہ کریں' : 'Contact for consignment verification and support'}

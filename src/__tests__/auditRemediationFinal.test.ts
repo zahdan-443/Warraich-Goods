@@ -134,6 +134,7 @@ import {
   resolvePublicEmblemUrl
 } from '../utils/assetResolver';
 import { PUBLIC_APP_SHARE_URL, resolvePublicAppShareUrl } from '../utils/externalLinks';
+import { OFFICIAL_APP_BASE_URL, getBiltyVerificationUrl } from '../utils/biltyHelpers';
 import { generateFullFleetBackup } from '../utils/backupService';
 import {
   deleteLedgerAccount,
@@ -570,5 +571,34 @@ describe('Final A-to-Z Audit Remediation Regressions', () => {
     expect(biltySrc).toContain("window.addEventListener('app-back-button', handleBack)");
     expect(biltySrc).toContain('hasUnsavedCreateDraft');
     expect(biltySrc).toContain('showExitCreateConfirm');
+  });
+
+  it('uses canonical Urdu spelling وڑائچ گڈز ٹرانسپورٹ کمپنی across src and public with zero typo variants', () => {
+    const rootDir = process.cwd();
+    const scanDirs = [path.join(rootDir, 'src'), path.join(rootDir, 'public')];
+    const extraFiles = ['index.html', 'README.md'].map(f => path.join(rootDir, f));
+    const targets: string[] = [...extraFiles.filter(f => fs.existsSync(f))];
+    const collectFiles = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name !== '__tests__' && entry.name !== 'tesseract') collectFiles(full);
+        } else if (/\.(ts|tsx|html|md|json|js)$/.test(entry.name)) {
+          targets.push(full);
+        }
+      }
+    };
+    scanDirs.forEach(collectFiles);
+
+    const typoPattern = /وارائچ|وارڑائچ|ورائچ|وڑایچ/;
+    for (const filePath of targets) {
+      const text = fs.readFileSync(filePath, 'utf8');
+      expect(text, `${path.relative(rootDir, filePath)} must use canonical وڑائچ spelling`).not.toMatch(typoPattern);
+    }
+  });
+
+  it('points official company website and QR bilty verification URLs to https://warraichgoods.eu.cc', () => {
+    expect(OFFICIAL_APP_BASE_URL).toBe('https://warraichgoods.eu.cc/');
+    expect(getBiltyVerificationUrl('WG-1001')).toBe('https://warraichgoods.eu.cc/?page=verify&bilty=WG-1001');
   });
 });

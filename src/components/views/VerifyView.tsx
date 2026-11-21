@@ -1408,7 +1408,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
 
                     <div className="p-3 bg-white/80 dark:bg-[#16181e] rounded-2xl border border-amber-200 dark:border-amber-900/50 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                       <span className="text-[#5a5a40] dark:text-slate-300">
-                        {isUrdu ? 'ورائچ گڈز 24/7 ہیلپ لائن رابطہ:' : 'Warraich Goods 24/7 Helpline:'}
+                        {isUrdu ? 'وڑائچ گڈز 24/7 ہیلپ لائن رابطہ:' : 'Warraich Goods 24/7 Helpline:'}
                       </span>
                       <div className="font-mono font-bold text-[#4a5e38] dark:text-emerald-400 flex items-center gap-3 dir-ltr">
                         <a href="tel:03005370443" className="hover:underline">0300-5370443</a>
@@ -1474,7 +1474,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                   </div>
                   <p className="text-xs text-[#5a5a40] dark:text-slate-300 leading-relaxed">
                     {isUrdu
-                      ? 'ہر جاری کردہ کنسائنمنٹ دستاویز پر ایک آفیشل کیو آر کوڈ پرنٹ ہوتا ہے جو ورائچ گڈز کے آن لائن تصدیقی ریکارڈ سے منسلک ہے۔ کسی بھی اسمارٹ فون یا کیمرہ سے دستاویز کی اصلیت کی فوری تصدیق کی جا سکتی ہے۔'
+                      ? 'ہر جاری کردہ کنسائنمنٹ دستاویز پر ایک آفیشل کیو آر کوڈ پرنٹ ہوتا ہے جو وڑائچ گڈز کے آن لائن تصدیقی ریکارڈ سے منسلک ہے۔ کسی بھی اسمارٹ فون یا کیمرہ سے دستاویز کی اصلیت کی فوری تصدیق کی جا سکتی ہے۔'
                       : 'Every generated consignment document carries an official QR code linked to Warraich Goods online verification records so consignors and consignees can verify authenticity from any smartphone.'}
                   </p>
                 </div>
