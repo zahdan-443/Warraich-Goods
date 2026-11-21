@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-1.3.1-mwq4xxs8';
+const CACHE_NAME = 'driver-dost-1.3.1-mwq753ga';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const MAX_CACHED_TILES = 350;
 
@@ -43,29 +43,29 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/BiltyView-CT5GdZ0U.js',
-  './assets/DashcamView-BD9iwnIe.js',
-  './assets/DriversView-ImUDsFYl.js',
-  './assets/FuelLogView-C474YAU0.js',
-  './assets/LedgerView-CK2kKzTJ.js',
+    './assets/BiltyView-Dy_SIqZP.js',
+  './assets/DashcamView-kzp7ULQE.js',
+  './assets/DriversView-kq-zen-2.js',
+  './assets/FuelLogView-BfVmeOJK.js',
+  './assets/LedgerView-Cgbl17QL.js',
   './assets/MapView-CIGW-MKW.css',
-  './assets/MapView-DvPnU7qb.js',
-  './assets/NavigationView-hO0NZ2SE.js',
-  './assets/RoutesView-BUr4rPAT.js',
-  './assets/TollPlazaView-BJ1SaKcz.js',
-  './assets/TripCostView-B1CX4xSs.js',
-  './assets/VehicleAccountView-DEZk6eyC.js',
-  './assets/VehiclesView-BfC8BeU9.js',
-  './assets/VerifyView-XmmUYrPV.js',
+  './assets/MapView-D7qCap93.js',
+  './assets/NavigationView-D0yR_sxA.js',
+  './assets/RoutesView-k4WR815L.js',
+  './assets/TollPlazaView-DKB5u_Tk.js',
+  './assets/TripCostView-Bic_pmcZ.js',
+  './assets/VehicleAccountView-iLgq4Yp4.js',
+  './assets/VehiclesView-P0iQHLNN.js',
+  './assets/VerifyView-lI91J0Db.js',
   './assets/biltyHelpers-CTB4x2TP.js',
   './assets/bilty_watermark_bg_1794821577675-BFAqost0.jpg',
-  './assets/index-BukWRDts.css',
-  './assets/index-CMpjUjnu.js',
-  './assets/pdfHelper-BSHRGdRO.js',
+  './assets/index-BOKdG5kL.css',
+  './assets/index-DTmtFMbm.js',
+  './assets/pdfHelper-BFgv8vJc.js',
   './assets/vendor-firebase-CIhkivAp.js',
   './assets/vendor-pdf-BqJFK5ri.js',
   './assets/vendor-react-BG83AqZi.js',
-  './assets/web-B7IsRIjQ.js',
+  './assets/web-B9d-Sw6X.js',
   './assets/web-BX2BdMlO.js',
   './assets/web-DuMV63fX.js',
   './assets/web-jwPn4hHg.js'
