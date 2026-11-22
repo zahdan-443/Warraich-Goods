@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-1.3.1-mwqebnwr';
+const CACHE_NAME = 'driver-dost-1.3.1-mwrlgrea';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const MAX_CACHED_TILES = 350;
 
@@ -43,30 +43,30 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/BiltyView-B-Lpmcvy.js',
-  './assets/DashcamView-Dulae4b7.js',
-  './assets/DriversView-ZE3OgGDo.js',
-  './assets/FuelLogView-BM7sLTgI.js',
-  './assets/LedgerView-YbpQzOJL.js',
-  './assets/MapView-BwIKqa-A.js',
+    './assets/BiltyView-CbPD83qK.js',
+  './assets/DashcamView-4XecHd8h.js',
+  './assets/DriversView-D2BLxuW0.js',
+  './assets/FuelLogView-1bxpmTwy.js',
+  './assets/LedgerView-Bs3MZ5QK.js',
+  './assets/MapView-BydcgKgH.js',
   './assets/MapView-CIGW-MKW.css',
-  './assets/NavigationView-nAYjst7F.js',
-  './assets/RoutesView-Cn-JVI6S.js',
-  './assets/TollPlazaView-Dc4V_knl.js',
-  './assets/TripCostView-CFQi5Pdh.js',
-  './assets/VehicleAccountView-B9tyeroZ.js',
-  './assets/VehiclesView-BKyQNHbX.js',
-  './assets/VerifyView-BC0mihkz.js',
+  './assets/NavigationView-CZfbQl_j.js',
+  './assets/RoutesView-Be1_xQnq.js',
+  './assets/TollPlazaView-DNpf2K1p.js',
+  './assets/TripCostView-DvRJ0F1l.js',
+  './assets/VehicleAccountView-DwTctNZl.js',
+  './assets/VehiclesView-DubiNqWm.js',
+  './assets/VerifyView-D15cFO5z.js',
   './assets/biltyHelpers-L5uTVh4X.js',
   './assets/bilty_watermark_bg_1794821577675-BFAqost0.jpg',
-  './assets/index-C-GrhEs8.css',
-  './assets/index-DiYT4k7y.js',
-  './assets/pdfHelper-CfraDdzm.js',
+  './assets/index-Be2Xi_7a.js',
+  './assets/index-BnuFLh_r.css',
+  './assets/pdfHelper-D5FaHjmU.js',
   './assets/vendor-firebase-BFdMEah4.js',
   './assets/vendor-pdf-C2vGc3bl.js',
   './assets/vendor-react-DJFy7Cbw.js',
+  './assets/web-175-WHBT.js',
   './assets/web-BNcKuHj6.js',
-  './assets/web-Bq4-reJz.js',
   './assets/web-By2t5DVK.js',
   './assets/web-CaNjkXQ3.js'
 ];
