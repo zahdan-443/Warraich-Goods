@@ -246,7 +246,7 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
 
   if (compact) {
     return (
-      <div className="bg-white rounded-3xl border border-[#ecece0] p-5 sm:p-6 shadow-2xs space-y-4">
+      <div dir={lang === 'ur' ? 'rtl' : 'ltr'} className="bg-white rounded-3xl border border-[#ecece0] p-5 sm:p-6 shadow-2xs space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#ecece0]">
           <div className="flex items-center gap-2.5">
             <div className="p-2.5 bg-emerald-50 rounded-2xl text-emerald-800 border border-emerald-200/60 shadow-2xs">
@@ -254,7 +254,7 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
             </div>
             <div>
               <div className="font-serif font-bold text-base text-[#4a4a35] flex flex-wrap items-center gap-2">
-                <span>{lang === 'ur' ? 'پاکستان سرکاری پول ریٹس (PSO / OGRA)' : 'Official Pakistan Fuel Rates (PSO / OGRA)'}</span>
+                <span>{lang === 'ur' ? 'پاکستان سرکاری پول ریٹس' : 'Official Pakistan Fuel Rates (PSO / OGRA)'}</span>
                 {isManualOverride ? (
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold border border-amber-300">
                     {lang === 'ur' ? 'دستی پمپ ریٹ' : 'Manual Rate'}
@@ -342,15 +342,17 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5 font-serif">
                 <span>⛽</span>
-                <span>{lang === 'ur' ? 'پریمیئر موٹر پٹرول (PMG)' : 'Premier Petrol (PMG)'}</span>
+                <span>{lang === 'ur' ? 'پریمیئر موٹر پٹرول' : 'Premier Petrol (PMG)'}</span>
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                Super Petrol
+                {lang === 'ur' ? 'سپر پٹرول' : 'Super Petrol'}
               </span>
             </div>
 
             <div className="flex items-baseline gap-1.5 pt-1">
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 font-mono">Rs.</span>
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 font-mono">
+                {lang === 'ur' ? 'روپے' : 'Rs.'}
+              </span>
               <span className="text-3xl sm:text-4xl font-extrabold font-mono text-slate-800 dark:text-white tracking-tight">
                 {petrolPrice}
               </span>
@@ -368,16 +370,28 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
         {/* Secondary Row: Altron Hi-Octane, Light Diesel Oil, Kerosene Oil */}
         <div className="grid grid-cols-3 gap-2 bg-[#f9f9f2] p-3 rounded-2xl border border-[#ecece0] text-center">
           <div className="p-1">
-            <span className="text-[10px] font-bold uppercase text-[#8e8e75] block">Altron X 97</span>
-            <span className="text-sm sm:text-base font-bold font-mono text-[#4a4a35] mt-0.5 block">Rs. {hiOctanePrice}</span>
+            <span className="text-[10px] font-bold uppercase text-[#8e8e75] block">
+              {lang === 'ur' ? 'الٹران 97' : 'Altron X 97'}
+            </span>
+            <span className="text-sm sm:text-base font-bold font-mono text-[#4a4a35] mt-0.5 block">
+              {lang === 'ur' ? 'روپے' : 'Rs.'} {hiOctanePrice}
+            </span>
           </div>
           <div className="border-x border-[#ecece0] p-1">
-            <span className="text-[10px] font-bold uppercase text-[#8e8e75] block">Light Diesel (LDO)</span>
-            <span className="text-sm sm:text-base font-bold font-mono text-[#4a4a35] mt-0.5 block">Rs. {ldoPrice}</span>
+            <span className="text-[10px] font-bold uppercase text-[#8e8e75] block">
+              {lang === 'ur' ? 'لائٹ ڈیزل' : 'Light Diesel (LDO)'}
+            </span>
+            <span className="text-sm sm:text-base font-bold font-mono text-[#4a4a35] mt-0.5 block">
+              {lang === 'ur' ? 'روپے' : 'Rs.'} {ldoPrice}
+            </span>
           </div>
           <div className="p-1">
-            <span className="text-[10px] font-bold uppercase text-[#8e8e75] block">Kerosene (SKO)</span>
-            <span className="text-sm sm:text-base font-bold font-mono text-[#4a4a35] mt-0.5 block">Rs. {skoPrice}</span>
+            <span className="text-[10px] font-bold uppercase text-[#8e8e75] block">
+              {lang === 'ur' ? 'مٹی کا تیل' : 'Kerosene (SKO)'}
+            </span>
+            <span className="text-sm sm:text-base font-bold font-mono text-[#4a4a35] mt-0.5 block">
+              {lang === 'ur' ? 'روپے' : 'Rs.'} {skoPrice}
+            </span>
           </div>
         </div>
 
@@ -408,12 +422,14 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-[32px] border border-[#ecece0] p-6 md:p-8 shadow-sm space-y-6">
+    <div dir={lang === 'ur' ? 'rtl' : 'ltr'} className="bg-white rounded-[32px] border border-[#ecece0] p-6 md:p-8 shadow-sm space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#ecece0] pb-5">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#8b9d77]/20 text-[#5a5a40] uppercase tracking-wider">
-              {isManualOverride ? '● Manual Pump Override Active' : '● Official PSO POL Archives Monitor'}
+              {isManualOverride
+                ? (lang === 'ur' ? '● دستی پمپ ریٹ فعال ہے' : '● Manual Pump Override Active')
+                : (lang === 'ur' ? '● سرکاری پی ایس او ریٹ مانیٹر' : '● Official PSO POL Archives Monitor')}
             </span>
             <a
               href="https://psopk.com/fuel-prices/pol/archives"
@@ -426,7 +442,7 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
             </a>
           </div>
           <div className="text-2xl md:text-3xl font-serif font-bold text-[#4a4a35] mt-1">
-            {lang === 'ur' ? 'پی ایس او (PSO) پاکستان فیول نرخ' : 'Official PSO Retail POL Rates'}
+            {lang === 'ur' ? 'پی ایس او پاکستان فیول نرخ' : 'Official PSO Retail POL Rates'}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -442,7 +458,9 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
             onClick={() => setShowApiConfig(!showApiConfig)}
             className="text-xs font-sans text-[#8e8e75] hover:text-[#4a4a35] underline px-2 py-1 cursor-pointer"
           >
-            {showApiConfig ? 'Hide API Config' : '⚙️ Custom API URL'}
+            {showApiConfig
+              ? (lang === 'ur' ? 'سیٹنگ چھپائیں' : 'Hide API Config')
+              : (lang === 'ur' ? '⚙️ کسٹم لنک' : '⚙️ Custom API URL')}
           </button>
           <button
             type="button"
@@ -462,13 +480,13 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
       {showApiConfig && (
         <div className="p-4 bg-[#fdfbf7] rounded-2xl border border-[#ecece0] space-y-2 animate-fadeIn">
           <label htmlFor="custom-fuel-api-url" className="block text-xs font-bold text-[#5a5a40]">
-            Custom Backend API endpoint URL (Optional):
+            {lang === 'ur' ? 'کسٹم ایندھن اے پی آئی لنک (اختیاری):' : 'Custom Backend API endpoint URL (Optional):'}
           </label>
           <div className="flex gap-2">
             <input
               id="custom-fuel-api-url"
               type="url"
-              aria-label="Custom Backend API endpoint URL"
+              aria-label={lang === 'ur' ? 'کسٹم اے پی آئی لنک' : 'Custom Backend API endpoint URL'}
               placeholder="https://api.example.com/fuel"
               value={customApiUrl}
               onChange={(e) => setCustomApiUrl(e.target.value)}
@@ -476,7 +494,9 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
             />
           </div>
           <p className="text-[11px] text-[#5a5a40]">
-            If left blank, clicks on &quot;Sync PSO Rates&quot; will fetch directly according to PSO POL Archives (psopk.com/fuel-prices/pol/archives).
+            {lang === 'ur'
+              ? 'خالی چھوڑنے پر ریٹس خودکار طریقے سے پی ایس او آرکائیو سے حاصل کیے جائیں گے۔'
+              : 'If left blank, clicks on "Sync PSO Rates" will fetch directly according to PSO POL Archives (psopk.com/fuel-prices/pol/archives).'}
           </p>
         </div>
       )}
@@ -487,14 +507,21 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
         <div className="p-6 bg-[#fdfbf7] rounded-3xl border-2 border-[#8b9d77] shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#5a5a40]">🛢️ High Speed Diesel (HSD)</span>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-green-100 text-green-800">Primary Freight</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#5a5a40]">
+                {lang === 'ur' ? '🛢️ ہائی اسپیڈ ڈیزل' : '🛢️ High Speed Diesel (HSD)'}
+              </span>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-green-100 text-green-800">
+                {lang === 'ur' ? 'بنیادی فریٹ' : 'Primary Freight'}
+              </span>
             </div>
-            <p className="text-xs text-[#8e8e75]">Ex-Depot Transport Standard</p>
+            <p className="text-xs text-[#8e8e75]">
+              {lang === 'ur' ? 'ٹرانسپورٹ معیاری ریٹ' : 'Ex-Depot Transport Standard'}
+            </p>
           </div>
           <div className="mt-4">
             <div className="text-3xl sm:text-4xl font-bold font-mono text-green-700 tracking-tight">
-              Rs. {dieselPrice} <span className="text-sm font-normal text-[#8e8e75]">/ Ltr</span>
+              {lang === 'ur' ? 'روپے' : 'Rs.'} {dieselPrice}{' '}
+              <span className="text-sm font-normal text-[#8e8e75]">/ {lang === 'ur' ? 'لیٹر' : 'Ltr'}</span>
             </div>
           </div>
         </div>
@@ -502,12 +529,17 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
         {/* Premier Motor Gasoline (Petrol) Card */}
         <div className="p-6 bg-white rounded-3xl border border-[#ecece0] flex flex-col justify-between hover:border-[#8b9d77] transition-all">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-[#8e8e75] block mb-1">⛽ Premier Motor Gasoline (PMG)</span>
-            <p className="text-xs text-[#8e8e75]">Euro5 Super Petrol</p>
+            <span className="text-xs font-bold uppercase tracking-wider text-[#8e8e75] block mb-1">
+              {lang === 'ur' ? '⛽ پریمیئر موٹر پٹرول' : '⛽ Premier Motor Gasoline (PMG)'}
+            </span>
+            <p className="text-xs text-[#8e8e75]">
+              {lang === 'ur' ? 'یورو 5 سپر پٹرول' : 'Euro5 Super Petrol'}
+            </p>
           </div>
           <div className="mt-4">
             <div className="text-2xl sm:text-3xl font-bold font-mono text-[#4a4a35]">
-              Rs. {petrolPrice} <span className="text-sm font-normal text-[#8e8e75]">/ Ltr</span>
+              {lang === 'ur' ? 'روپے' : 'Rs.'} {petrolPrice}{' '}
+              <span className="text-sm font-normal text-[#8e8e75]">/ {lang === 'ur' ? 'لیٹر' : 'Ltr'}</span>
             </div>
           </div>
         </div>
@@ -515,12 +547,17 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
         {/* Altron X 97 Hi-Octane Card */}
         <div className="p-6 bg-white rounded-3xl border border-[#ecece0] flex flex-col justify-between hover:border-[#8b9d77] transition-all">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-[#8e8e75] block mb-1">🏎️ Altron X 97 Hi-Octane</span>
-            <p className="text-xs text-[#8e8e75]">High Octane Blending Grade</p>
+            <span className="text-xs font-bold uppercase tracking-wider text-[#8e8e75] block mb-1">
+              {lang === 'ur' ? '🏎️ الٹران 97 ہائی آکٹین' : '🏎️ Altron X 97 Hi-Octane'}
+            </span>
+            <p className="text-xs text-[#8e8e75]">
+              {lang === 'ur' ? 'ہائی آکٹین گریڈ' : 'High Octane Blending Grade'}
+            </p>
           </div>
           <div className="mt-4">
             <div className="text-2xl sm:text-3xl font-bold font-mono text-[#4a4a35]">
-              Rs. {hiOctanePrice} <span className="text-sm font-normal text-[#8e8e75]">/ Ltr</span>
+              {lang === 'ur' ? 'روپے' : 'Rs.'} {hiOctanePrice}{' '}
+              <span className="text-sm font-normal text-[#8e8e75]">/ {lang === 'ur' ? 'لیٹر' : 'Ltr'}</span>
             </div>
           </div>
         </div>
@@ -530,22 +567,32 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
         {/* Light Diesel Oil Card */}
         <div className="p-4 bg-[#f9f9f2] rounded-2xl border border-[#ecece0] flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-[#4a4a35]">⚙️ Light Diesel Oil (LDO)</span>
-            <p className="text-[11px] text-[#8e8e75]">Industrial &amp; Agricultural Engines</p>
+            <span className="text-xs font-bold text-[#4a4a35]">
+              {lang === 'ur' ? '⚙️ لائٹ ڈیزل آئل' : '⚙️ Light Diesel Oil (LDO)'}
+            </span>
+            <p className="text-[11px] text-[#8e8e75]">
+              {lang === 'ur' ? 'صنعتی اور زرعی انجن' : 'Industrial & Agricultural Engines'}
+            </p>
           </div>
           <div className="text-xl font-bold font-mono text-[#5a5a40]">
-            Rs. {ldoPrice} <span className="text-xs font-normal">/ Ltr</span>
+            {lang === 'ur' ? 'روپے' : 'Rs.'} {ldoPrice}{' '}
+            <span className="text-xs font-normal">/ {lang === 'ur' ? 'لیٹر' : 'Ltr'}</span>
           </div>
         </div>
 
         {/* Kerosene Oil Card */}
         <div className="p-4 bg-[#f9f9f2] rounded-2xl border border-[#ecece0] flex items-center justify-between">
           <div>
-            <span className="text-xs font-bold text-[#4a4a35]">🔥 Kerosene Oil (SKO)</span>
-            <p className="text-[11px] text-[#8e8e75]">Superior Kerosene Oil Standard</p>
+            <span className="text-xs font-bold text-[#4a4a35]">
+              {lang === 'ur' ? '🔥 مٹی کا تیل' : '🔥 Kerosene Oil (SKO)'}
+            </span>
+            <p className="text-[11px] text-[#8e8e75]">
+              {lang === 'ur' ? 'معیاری کیروسین آئل' : 'Superior Kerosene Oil Standard'}
+            </p>
           </div>
           <div className="text-xl font-bold font-mono text-[#5a5a40]">
-            Rs. {skoPrice} <span className="text-xs font-normal">/ Ltr</span>
+            {lang === 'ur' ? 'روپے' : 'Rs.'} {skoPrice}{' '}
+            <span className="text-xs font-normal">/ {lang === 'ur' ? 'لیٹر' : 'Ltr'}</span>
           </div>
         </div>
       </div>
@@ -563,7 +610,7 @@ export const LiveFuelPriceWidget: React.FC<LiveFuelPriceWidgetProps> = ({
               onClick={() => onApplyRates(dieselPrice, petrolPrice, hiOctanePrice)}
               className="px-3.5 py-1.5 bg-[#8b9d77] hover:bg-[#798a67] text-white rounded-xl font-bold text-xs flex items-center gap-1 shrink-0 cursor-pointer"
             >
-              <span>Use These Prices in Diary</span>
+              <span>{lang === 'ur' ? 'یہ نرخ ٹرپ میں لگائیں' : 'Use These Prices in Diary'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           )}

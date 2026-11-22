@@ -48,7 +48,10 @@ export const GuestImportPromptModal: React.FC<GuestImportPromptModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[55] bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-[#ecece0] dark:border-slate-800 pb-[max(env(safe-area-inset-bottom),1.25rem)] space-y-4">
+      <div
+        dir={isUrdu ? 'rtl' : 'ltr'}
+        className={`w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-[#ecece0] dark:border-slate-800 pb-[max(env(safe-area-inset-bottom),1.25rem)] space-y-4 ${isUrdu ? 'text-right' : 'text-left'}`}
+      >
         <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto sm:hidden" />
 
         <div className="flex items-start justify-between gap-3">
@@ -110,7 +113,7 @@ export const GuestImportPromptModal: React.FC<GuestImportPromptModalProps> = ({
             <span>
               {busy
                 ? isUrdu ? 'شامل کیا جا رہا ہے...' : 'Importing...'
-                : isUrdu ? 'اکاؤنٹ میں شامل کریں (Merge)' : 'Merge into Signed-In Account'}
+                : isUrdu ? 'اکاؤنٹ میں شامل کریں' : 'Merge into Signed-In Account'}
             </span>
           </button>
 

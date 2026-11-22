@@ -50,7 +50,10 @@ export const BackupRestoreConfirmModal: React.FC<BackupRestoreConfirmModalProps>
 
   return (
     <div className="fixed inset-0 bg-black/65 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 shadow-2xl border border-[#ecece0] dark:border-slate-800 space-y-4">
+      <div
+        dir={isUrdu ? 'rtl' : 'ltr'}
+        className={`w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 shadow-2xl border border-[#ecece0] dark:border-slate-800 space-y-4 ${isUrdu ? 'text-right' : 'text-left'}`}
+      >
         <div className="flex items-center justify-between border-b border-[#ecece0] dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2.5">
             <div
@@ -152,7 +155,7 @@ export const BackupRestoreConfirmModal: React.FC<BackupRestoreConfirmModalProps>
               <button
                 type="button"
                 onClick={() => setRestoreMode('merge')}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                className={`p-2.5 rounded-xl border ${isUrdu ? 'text-right' : 'text-left'} transition-all cursor-pointer ${
                   restoreMode === 'merge'
                     ? 'bg-emerald-50 border-emerald-500 text-emerald-950 font-bold ring-1 ring-emerald-400'
                     : 'bg-white border-[#ecece0] text-slate-600'
@@ -166,7 +169,7 @@ export const BackupRestoreConfirmModal: React.FC<BackupRestoreConfirmModalProps>
               <button
                 type="button"
                 onClick={() => setRestoreMode('overwrite')}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                className={`p-2.5 rounded-xl border ${isUrdu ? 'text-right' : 'text-left'} transition-all cursor-pointer ${
                   restoreMode === 'overwrite'
                     ? 'bg-amber-50 border-amber-500 text-amber-950 font-bold ring-1 ring-amber-400'
                     : 'bg-white border-[#ecece0] text-slate-600'

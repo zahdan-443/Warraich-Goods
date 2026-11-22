@@ -149,6 +149,75 @@ const QuickActionButton: React.FC<{
   );
 };
 
+const EnglishCompactActionButton: React.FC<{
+  onClick: () => void;
+  icon: React.ReactNode;
+  iconBgClass: string;
+  title: string;
+  subtitle: string;
+  href?: string;
+  highlight?: boolean;
+}> = ({
+  onClick,
+  icon,
+  iconBgClass,
+  title,
+  subtitle,
+  href,
+  highlight = false,
+}) => {
+  const cardClasses = `w-full min-h-[100px] sm:min-h-[112px] bg-white dark:bg-[#1a1c22] border ${
+    highlight
+      ? 'border-[#8b9d77]/55 dark:border-emerald-700/60 shadow-2xs'
+      : 'border-[#e4e1cf] dark:border-[#2d313b] shadow-2xs'
+  } hover:border-[#8b9d77] dark:hover:border-emerald-500 hover:shadow-sm active:scale-[0.96] transition-all duration-150 cursor-pointer rounded-2xl p-2.5 sm:p-3.5 flex flex-col items-start justify-between gap-2 text-left group no-underline select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b9d77]`;
+
+  const innerContent = (
+    <>
+      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-150 group-hover:scale-105 ${iconBgClass}`}>
+        {icon}
+      </div>
+      <div className="w-full min-w-0">
+        <div className="font-serif font-bold text-[12px] sm:text-sm text-[#2b2c20] dark:text-slate-100 leading-tight line-clamp-2">
+          {title}
+        </div>
+        <div className="text-[10px] sm:text-[11px] text-[#555644] dark:text-slate-400 leading-tight truncate mt-0.5 font-sans">
+          {subtitle}
+        </div>
+      </div>
+    </>
+  );
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        onClick={(e) => {
+          e.preventDefault();
+          onClick();
+        }}
+        title={`${title} — ${subtitle}`}
+        aria-label={`${title}: ${subtitle}`}
+        className={cardClasses}
+      >
+        {innerContent}
+      </a>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`${title} — ${subtitle}`}
+      aria-label={`${title}: ${subtitle}`}
+      className={cardClasses}
+    >
+      {innerContent}
+    </button>
+  );
+};
+
 
 export const HomeView: React.FC<HomeViewProps> = ({ 
   lang, 
@@ -373,7 +442,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                           : 'bg-amber-700 text-white'
                       }`}>
                         {item.isExpired
-                          ? (lang === 'ur' ? '🚨 میعاد ختم (EXPIRED)' : '🚨 EXPIRED')
+                          ? (lang === 'ur' ? '🚨 میعاد ختم' : '🚨 EXPIRED')
                           : (lang === 'ur' ? `⚠️ ${item.daysLeft} دن باقی` : `⚠️ ${item.daysLeft} days left`)}
                       </span>
                     </div>
@@ -399,7 +468,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
                           }`}
                           title={lang === 'ur' ? 'آفیشل سرکاری پورٹل پر جائیں' : 'Open Official Govt Portal'}
                         >
-                          <span>{item.portalType === 'mtmis' ? 'آفیشل MTMIS ↗' : 'آفیشل DLIMS ↗'}</span>
+                          <span>
+                            {lang === 'ur'
+                              ? (item.portalType === 'mtmis' ? 'آفیشل MTMIS ↗' : 'آفیشل DLIMS ↗')
+                              : (item.portalType === 'mtmis' ? 'Official MTMIS ↗' : 'Official DLIMS ↗')}
+                          </span>
                           <ExternalLink className="w-3 h-3 text-white/90" />
                         </a>
 
@@ -419,98 +492,166 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         )}
 
-        {/* FULL DISPLAY APP LAUNCHER: 10 Core Transport Icon Image Buttons (2 Columns x 5 Rows, Single-Tap, Full Screen Grid) */}
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:gap-5 w-full">
-          {/* 1. Trip Expense Calculator */}
-          <QuickActionButton
-            href="#calculator"
-            onClick={() => onNavigate('calculator')}
-            imgSrc={tripIconData}
-            fallbackIcon={<Calculator className="w-12 h-12 text-[#8b9d77]" />}
-            fullName={lang === 'ur' ? 'سفر اخراجات کیلکولیٹر' : 'Trip Expense Calculator'}
-            highlight={true}
-          />
+        {/* FULL DISPLAY APP LAUNCHER: Compact 3-Column Vector Grid in English; Preserved 2-Column Image Grid in Urdu */}
+        {lang === 'en' ? (
+          <div className="grid grid-cols-3 gap-2 sm:gap-3.5 w-full">
+            <EnglishCompactActionButton
+              href="#calculator"
+              onClick={() => onNavigate('calculator')}
+              icon={<Calculator className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 dark:text-emerald-300" />}
+              iconBgClass="bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/60"
+              title="Trip Cost"
+              subtitle="Fuel & expenses"
+              highlight={true}
+            />
 
-          {/* 2. Financial Ledger (حساب کتاب) */}
-          <QuickActionButton
-            href="#ledger"
-            onClick={() => onNavigate('ledger')}
-            imgSrc={ledgerIconData}
-            fallbackIcon={<BookOpen className="w-12 h-12 text-[#8b9d77]" />}
-            fullName={lang === 'ur' ? 'حساب کتاب (لیجر)' : 'Financial Ledger (Khata)'}
-            highlight={true}
-          />
+            <EnglishCompactActionButton
+              href="#ledger"
+              onClick={() => onNavigate('ledger')}
+              icon={<BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-700 dark:text-indigo-300" />}
+              iconBgClass="bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200/80 dark:border-indigo-800/60"
+              title="Ledger"
+              subtitle="Party & cashbook"
+              highlight={true}
+            />
 
-          {/* 3. Vehicle Account / Khata */}
-          <QuickActionButton
-            href="#vehicleAccount"
-            onClick={() => onNavigate('vehicleAccount')}
-            imgSrc={gariHisaabIconData}
-            fallbackIcon={<Calculator className="w-12 h-12 text-[#8b9d77]" />}
-            fullName={lang === 'ur' ? 'گاڑی کا حساب' : 'Vehicle Account'}
-            highlight={true}
-          />
+            <EnglishCompactActionButton
+              href="#vehicleAccount"
+              onClick={() => onNavigate('vehicleAccount')}
+              icon={<Receipt className="w-4 h-4 sm:w-5 sm:h-5 text-amber-700 dark:text-amber-300" />}
+              iconBgClass="bg-amber-50 dark:bg-amber-950/70 border border-amber-200/80 dark:border-amber-800/60"
+              title="Vehicle Account"
+              subtitle="Income & profit"
+              highlight={true}
+            />
 
-          {/* 4. Motorway Toll Tax Calculator */}
-          <QuickActionButton
-            href="#toll"
-            onClick={() => onNavigate('toll')}
-            imgSrc={tollIconData}
-            fallbackIcon={<Milestone className="w-12 h-12 text-[#8b9d77]" />}
-            fullName={lang === 'ur' ? 'موٹروے ٹول ٹیکس' : 'Motorway Toll Tax'}
-            highlight={true}
-          />
+            <EnglishCompactActionButton
+              href="#toll"
+              onClick={() => onNavigate('toll')}
+              icon={<Milestone className="w-4 h-4 sm:w-5 sm:h-5 text-sky-700 dark:text-sky-300" />}
+              iconBgClass="bg-sky-50 dark:bg-sky-950/70 border border-sky-200/80 dark:border-sky-800/60"
+              title="Toll Tax"
+              subtitle="Motorway & NHA"
+              highlight={true}
+            />
 
-          {/* 5. Map & Route Weather */}
-          <QuickActionButton
-            href="#map"
-            onClick={() => onNavigate('map')}
-            imgSrc={mapIconData}
-            fallbackIcon={<MapPin className="w-12 h-12 text-[#8b9d77]" />}
-            fullName={lang === 'ur' ? 'نقشہ و روٹ موسم' : 'Map & Route Weather'}
-            highlight={true}
-          />
+            <EnglishCompactActionButton
+              href="#map"
+              onClick={() => onNavigate('map')}
+              icon={<MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-teal-700 dark:text-teal-300" />}
+              iconBgClass="bg-teal-50 dark:bg-teal-950/70 border border-teal-200/80 dark:border-teal-800/60"
+              title="Route Map"
+              subtitle="Live weather"
+              highlight={true}
+            />
 
-          {/* Dashcam Video Recorder - Temporarily hidden for Palm Store submission compliance. Source code preserved in project */}
-          {/*
-          <QuickActionButton
-            href="#dashcam"
-            onClick={() => onNavigate('dashcam')}
-            imgSrc={dashcamIconData}
-            fallbackIcon={<Camera className="w-12 h-12 text-[#8b9d77]" />}
-            fullName={lang === 'ur' ? 'ڈیش کیم ریکارڈر' : 'Dashcam Recorder'}
-            highlight={true}
-          />
-          */}
+            <EnglishCompactActionButton
+              href="#verify"
+              onClick={() => onNavigate('verify', 'vehicle')}
+              icon={<Truck className="w-4 h-4 sm:w-5 sm:h-5 text-[#1e3a68] dark:text-blue-300" />}
+              iconBgClass="bg-blue-50 dark:bg-blue-950/70 border border-blue-200/80 dark:border-blue-800/60"
+              title="Vehicle Check"
+              subtitle="MTMIS ownership"
+            />
 
+            <EnglishCompactActionButton
+              href="#verify"
+              onClick={() => onNavigate('verify', 'license')}
+              icon={<ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 dark:text-emerald-300" />}
+              iconBgClass="bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/60"
+              title="License Check"
+              subtitle="DLIMS status"
+            />
 
-          {/* 8. Vehicles Verification */}
-          <QuickActionButton
-            href="#verify"
-            onClick={() => onNavigate('verify', 'vehicle')}
-            imgSrc={vehicleIconData}
-            fallbackIcon={<Truck className="w-12 h-12 text-[#8b9d77]" />}
-            fullName={lang === 'ur' ? 'گاڑیوں کی تصدیق' : 'Vehicles Verification'}
-          />
+            <EnglishCompactActionButton
+              href="#verify"
+              onClick={() => onNavigate('verify', 'challan')}
+              icon={<AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-rose-700 dark:text-rose-300" />}
+              iconBgClass="bg-rose-50 dark:bg-rose-950/70 border border-rose-200/80 dark:border-rose-800/60"
+              title="E-Challan"
+              subtitle="Traffic fines"
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:gap-5 w-full">
+            {/* 1. Trip Expense Calculator */}
+            <QuickActionButton
+              href="#calculator"
+              onClick={() => onNavigate('calculator')}
+              imgSrc={tripIconData}
+              fallbackIcon={<Calculator className="w-12 h-12 text-[#8b9d77]" />}
+              fullName="سفر اخراجات کیلکولیٹر"
+              highlight={true}
+            />
 
-          {/* 9. License Verification */}
-          <QuickActionButton
-            href="#verify"
-            onClick={() => onNavigate('verify', 'license')}
-            imgSrc={licenseIconData}
-            fallbackIcon={<ShieldCheck className="w-12 h-12 text-[#8b9d77]" />}
-            fullName={lang === 'ur' ? 'لائسنس کی تصدیق' : 'License Verification'}
-          />
+            {/* 2. Financial Ledger (حساب کتاب) */}
+            <QuickActionButton
+              href="#ledger"
+              onClick={() => onNavigate('ledger')}
+              imgSrc={ledgerIconData}
+              fallbackIcon={<BookOpen className="w-12 h-12 text-[#8b9d77]" />}
+              fullName="حساب کتاب (لیجر)"
+              highlight={true}
+            />
 
-          {/* 10. E-Challan Check */}
-          <QuickActionButton
-            href="#verify"
-            onClick={() => onNavigate('verify', 'challan')}
-            imgSrc={echallanIconData}
-            fallbackIcon={<AlertTriangle className="w-12 h-12 text-[#8b9d77]" />}
-            fullName={lang === 'ur' ? 'ای چالان چیکنگ' : 'E-Challan Checking'}
-          />
-        </div>
+            {/* 3. Vehicle Account / Khata */}
+            <QuickActionButton
+              href="#vehicleAccount"
+              onClick={() => onNavigate('vehicleAccount')}
+              imgSrc={gariHisaabIconData}
+              fallbackIcon={<Calculator className="w-12 h-12 text-[#8b9d77]" />}
+              fullName="گاڑی کا حساب"
+              highlight={true}
+            />
+
+            {/* 4. Motorway Toll Tax Calculator */}
+            <QuickActionButton
+              href="#toll"
+              onClick={() => onNavigate('toll')}
+              imgSrc={tollIconData}
+              fallbackIcon={<Milestone className="w-12 h-12 text-[#8b9d77]" />}
+              fullName="موٹروے ٹول ٹیکس"
+              highlight={true}
+            />
+
+            {/* 5. Map & Route Weather */}
+            <QuickActionButton
+              href="#map"
+              onClick={() => onNavigate('map')}
+              imgSrc={mapIconData}
+              fallbackIcon={<MapPin className="w-12 h-12 text-[#8b9d77]" />}
+              fullName="نقشہ و روٹ موسم"
+              highlight={true}
+            />
+
+            {/* 8. Vehicles Verification */}
+            <QuickActionButton
+              href="#verify"
+              onClick={() => onNavigate('verify', 'vehicle')}
+              imgSrc={vehicleIconData}
+              fallbackIcon={<Truck className="w-12 h-12 text-[#8b9d77]" />}
+              fullName="گاڑیوں کی تصدیق"
+            />
+
+            {/* 9. License Verification */}
+            <QuickActionButton
+              href="#verify"
+              onClick={() => onNavigate('verify', 'license')}
+              imgSrc={licenseIconData}
+              fallbackIcon={<ShieldCheck className="w-12 h-12 text-[#8b9d77]" />}
+              fullName="لائسنس کی تصدیق"
+            />
+
+            {/* 10. E-Challan Check */}
+            <QuickActionButton
+              href="#verify"
+              onClick={() => onNavigate('verify', 'challan')}
+              imgSrc={echallanIconData}
+              fallbackIcon={<AlertTriangle className="w-12 h-12 text-[#8b9d77]" />}
+              fullName="ای چالان چیکنگ"
+            />
+          </div>
+        )}
 
         {/* Official Government Disclaimer (Google Play & Palm Store Government Apps Policy Compliance) */}
         <div className="px-1 py-0.5 flex items-start gap-2 text-[10.5px] text-[#8e8e75] leading-relaxed">
@@ -542,10 +683,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#8b9d77]/15 text-[#5a5a40] uppercase tracking-wider mb-2">
                   <BookOpen className="w-3 h-3 text-[#8b9d77]" />
-                  {lang === 'ur' ? 'سفر ڈائری لاگز' : 'Safar Diary Logs'}
+                  {lang === 'ur' ? 'سفر ڈائری لاگز' : 'Trip Diary Logs'}
                 </span>
                 <h2 className="text-2xl md:text-3xl font-serif font-bold text-[#4a4a35]">
-                  {lang === 'ur' ? 'ڈرائیور دوست سفر ڈائری اور ریکارڈ' : 'Driver Dost Safar Diary'}
+                  {lang === 'ur' ? 'ڈرائیور دوست سفر ڈائری اور ریکارڈ' : 'Driver Dost Trip Diary'}
                 </h2>
                 <p className="text-[#8b9d77] italic text-xs mt-1">{currentDate}</p>
               </div>
@@ -662,7 +803,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 onClick={() => setShowSafarDiaryModal(false)}
                 className="px-6 py-2.5 rounded-full bg-[#4a4a35] text-white font-serif font-bold text-xs hover:bg-[#383827] transition-all cursor-pointer shadow-sm"
               >
-                {lang === 'ur' ? 'ڈائری بند کریں' : 'Close Safar Diary'}
+                {lang === 'ur' ? 'ڈائری بند کریں' : 'Close Trip Diary'}
               </button>
             </div>
 

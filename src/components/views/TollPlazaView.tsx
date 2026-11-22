@@ -106,15 +106,15 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
     const toName = CITIES_LIST.find(c => c.id === toCity)?.[isUrdu ? 'nameUr' : 'nameEn'] || toCity;
     const vName = VEHICLE_CLASSES.find(v => v.id === vehicleClass)?.[isUrdu ? 'nameUr' : 'nameEn'] || vehicleClass;
     
-    let text = `🛣️ *Driver Dost - NHA Motorway & Highway Toll (2026)*\n`;
+    let text = `🛣️ *${isUrdu ? 'ڈرائیور دوست - این ایچ اے موٹروے اور ہائی وے ٹول (2026)' : 'Driver Dost - NHA Motorway & Highway Toll (2026)'}*\n`;
     text += `📍 ${isUrdu ? 'روٹ' : 'Route'}: ${fromName} ➔ ${toName}\n`;
     text += `🚚 ${isUrdu ? 'گاڑی کیٹیگری' : 'Vehicle Class'}: ${vName}\n`;
-    text += `💳 ${isUrdu ? 'ایم ٹیگ' : 'M-Tag'}: ${hasMtag ? (isUrdu ? 'فعال (M-Tag لاگو)' : 'Active') : (isUrdu ? 'غیر فعال (+50% کیش جرمانہ)' : 'Non-M-Tag (+50% Surcharge)')}\n`;
+    text += `💳 ${isUrdu ? 'ایم ٹیگ' : 'M-Tag'}: ${hasMtag ? (isUrdu ? 'فعال' : 'Active') : (isUrdu ? 'غیر فعال (+50% کیش سرچارج)' : 'Non-M-Tag (+50% Surcharge)')}\n`;
     text += `💰 ${isUrdu ? 'کل ٹول رقم' : 'Total Toll'}: PKR ${result.total.toLocaleString()}\n`;
     if (result.segments.length > 0) {
-      text += `\n📌 ${isUrdu ? 'موٹروے بریک ڈاؤن' : 'Breakdown'}:\n`;
+      text += `\n📌 ${isUrdu ? 'موٹروے تفصیلات' : 'Breakdown'}:\n`;
       result.segments.forEach(s => {
-        text += `• ${s.code} (${isUrdu ? s.nameUr : s.nameEn}): Rs. ${s.toll.toLocaleString()}\n`;
+        text += `• ${s.code} (${isUrdu ? s.nameUr : s.nameEn}): ${isUrdu ? 'روپے' : 'Rs.'} ${s.toll.toLocaleString()}\n`;
       });
     }
 
@@ -129,15 +129,15 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
     const toName = CITIES_LIST.find(c => c.id === toCity)?.[isUrdu ? 'nameUr' : 'nameEn'] || toCity;
     const vName = VEHICLE_CLASSES.find(v => v.id === vehicleClass)?.[isUrdu ? 'nameUr' : 'nameEn'] || vehicleClass;
     
-    let text = `🛣️ *Driver Dost - NHA Motorway & Highway Toll (2026)*\n`;
+    let text = `🛣️ *${isUrdu ? 'ڈرائیور دوست - این ایچ اے موٹروے اور ہائی وے ٹول (2026)' : 'Driver Dost - NHA Motorway & Highway Toll (2026)'}*\n`;
     text += `📍 ${isUrdu ? 'روٹ' : 'Route'}: ${fromName} ➔ ${toName}\n`;
     text += `🚚 ${isUrdu ? 'گاڑی کیٹیگری' : 'Vehicle Class'}: ${vName}\n`;
-    text += `💳 ${isUrdu ? 'ایم ٹیگ' : 'M-Tag'}: ${hasMtag ? (isUrdu ? 'فعال (M-Tag لاگو)' : 'Active') : (isUrdu ? 'غیر فعال (+50% کیش)' : 'Cash (+50%)')}\n`;
+    text += `💳 ${isUrdu ? 'ایم ٹیگ' : 'M-Tag'}: ${hasMtag ? (isUrdu ? 'فعال' : 'Active') : (isUrdu ? 'کیش (+50% سرچارج)' : 'Cash (+50%)')}\n`;
     text += `💰 *${isUrdu ? 'کل ٹول ٹیکس' : 'Total Toll'}*: *PKR ${result.total.toLocaleString()}*\n`;
     if (result.segments.length > 0) {
       text += `\n📌 ${isUrdu ? 'موٹرویز و شاہراہیں' : 'Motorways'}:\n`;
       result.segments.forEach(s => {
-        text += `• ${s.code} (${isUrdu ? s.nameUr : s.nameEn}): Rs. ${s.toll.toLocaleString()}\n`;
+        text += `• ${s.code} (${isUrdu ? s.nameUr : s.nameEn}): ${isUrdu ? 'روپے' : 'Rs.'} ${s.toll.toLocaleString()}\n`;
       });
     }
 
@@ -186,7 +186,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
               >
                 {CITIES_LIST.map(c => (
                   <option key={`from-${c.id}`} value={c.id}>
-                    {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`} - {c.province}
+                    {isUrdu ? c.nameUr : `${c.nameEn} - ${c.province}`}
                   </option>
                 ))}
               </select>
@@ -204,7 +204,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
               >
                 {CITIES_LIST.map(c => (
                   <option key={`to-${c.id}`} value={c.id}>
-                    {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`} - {c.province}
+                    {isUrdu ? c.nameUr : `${c.nameEn} - ${c.province}`}
                   </option>
                 ))}
               </select>
@@ -218,7 +218,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#5a5a40] flex items-center gap-1.5">
               <Truck className="w-4 h-4 text-[#8b9d77]" />
-              <span>{isUrdu ? 'گاڑی کی سرکاری کیٹیگری (NHA Category):' : 'Official Vehicle Class:'}</span>
+              <span>{isUrdu ? 'گاڑی کی سرکاری کیٹیگری:' : 'Official Vehicle Class:'}</span>
             </label>
             <select
               value={vehicleClass}
@@ -227,7 +227,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
             >
               {VEHICLE_CLASSES.map(v => (
                 <option key={v.id} value={v.id}>
-                  {isUrdu ? `[${v.nhaCode}] ${v.nameUr} (${v.nameEn})` : `[${v.nhaCode}] ${v.nameEn} (${v.nameUr})`}
+                  {isUrdu ? `[${v.nhaCode}] ${v.nameUr}` : `[${v.nhaCode}] ${v.nameEn}`}
                 </option>
               ))}
             </select>
@@ -251,8 +251,8 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-bold font-serif text-[#4a4a35] block">
                   {vehicleClass === 'bike' 
-                    ? (isUrdu ? 'موٹر سائیکل (M-Tag استثنیٰ)' : 'Motorcycle (M-Tag Exempt)') 
-                    : (isUrdu ? 'ایم ٹیگ فعال ہے (M-Tag Active)' : 'Active M-Tag Registered')}
+                    ? (isUrdu ? 'موٹر سائیکل (مستثنیٰ)' : 'Motorcycle (M-Tag Exempt)') 
+                    : (isUrdu ? 'ایم ٹیگ فعال ہے' : 'Active M-Tag Registered')}
                 </span>
                 <span className="text-xs text-[#8e8e75] block mt-0.5">
                   {vehicleClass === 'bike' 
@@ -283,13 +283,13 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
           <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-r from-[#162a4d] to-[#1e3a68] text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <span className="text-xs text-amber-300 uppercase tracking-wider font-bold block">
-                {isUrdu ? 'کل قابلِ ادا ٹول رقم (2026 این ایچ اے ریٹ)' : 'Total Payable Toll Amount'}
+                {isUrdu ? 'کل قابلِ ادا ٹول رقم' : 'Total Payable Toll Amount'}
               </span>
               <div className="font-serif font-black text-2xl sm:text-3xl text-white mt-1">
-                PKR {result.total.toLocaleString()}
+                {isUrdu ? `${result.total.toLocaleString()} روپے` : `PKR ${result.total.toLocaleString()}`}
               </div>
               <div className="text-xs text-white/80 font-mono mt-1">
-                {isUrdu ? result.routeNameUr : result.routeNameEn} {result.totalKm > 0 && `• ${result.totalKm} km`}
+                {isUrdu ? result.routeNameUr : result.routeNameEn} {result.totalKm > 0 && `• ${result.totalKm} ${isUrdu ? 'کلومیٹر' : 'km'}`}
               </div>
             </div>
 
@@ -428,7 +428,7 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
         <button
           type="button"
           onClick={() => setShowMotorwaysGuide(!showMotorwaysGuide)}
-          className="w-full p-4 sm:p-5 flex items-center justify-between text-left cursor-pointer hover:bg-[#fdfbf7] transition-colors"
+          className={`w-full p-4 sm:p-5 flex items-center justify-between ${isUrdu ? 'text-right' : 'text-left'} cursor-pointer hover:bg-[#fdfbf7] transition-colors`}
         >
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-blue-50 text-[#1e3a68]">

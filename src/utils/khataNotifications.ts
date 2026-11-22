@@ -53,7 +53,7 @@ export async function checkAndDispatchDueReminders(lang: Language = 'ur', force 
   if (dueItems.length > 0) {
     const totalReceivable = dueItems.reduce((sum, item) => sum + item.balance, 0);
     const title = isUrdu
-      ? 'کھاتہ ادائیگی کی یاد دہانی • Driver Dost'
+      ? 'کھاتہ ادائیگی کی یاد دہانی • ڈرائیور دوست'
       : 'Payment Due Reminder • Driver Dost';
 
     let summaryBody = '';
@@ -119,7 +119,7 @@ export function initKhataDueDateScheduler(lang: Language = 'ur'): () => void {
     enabled: hasDueTrackedAccounts,
     hour: 9,
     minute: 0,
-    title: isUrdu ? 'کھاتہ ادائیگی کی یاد دہانی • Driver Dost' : 'Payment Due Reminder • Driver Dost',
+    title: isUrdu ? 'کھاتہ ادائیگی کی یاد دہانی • ڈرائیور دوست' : 'Payment Due Reminder • Driver Dost',
     body: isUrdu
       ? 'آج کی واجب الادا کھاتہ ادائیگیوں اور وصولیوں کا جائزہ لیں۔'
       : 'Review today’s due Khata payments and receivables in Driver Dost.'

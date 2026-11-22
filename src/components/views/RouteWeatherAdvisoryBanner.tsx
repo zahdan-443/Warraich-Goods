@@ -183,7 +183,7 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
           titleEn: `Rain Risk Near ${nameEn}`,
           titleUr: `${nameUr} کے قریب بارش کا امکان`,
           descEn: `Possible rain near ${nameEn} (${item.precipitationProbability}% chance) — consider covering the load (tarpaulin).`,
-          descUr: `${nameUr} کے قریب بارش کا امکان (${item.precipitationProbability}%) — کارگو پر ترپال (tirpal) اچھی طرح کس کر باندھیں۔`,
+          descUr: `${nameUr} کے قریب بارش کا امکان (${item.precipitationProbability}%) — کارگو پر ترپال اچھی طرح کس کر باندھیں۔`,
           actionEn: 'Cover freight load with tarpaulin to prevent water damage.',
           actionUr: 'سامان کو بھیگنے سے بچانے کے لیے ترپال اچھی طرح کس کر باندھیں۔'
         };
@@ -213,7 +213,7 @@ export const RouteWeatherAdvisoryBanner: React.FC<RouteWeatherAdvisoryBannerProp
       const riskTypes = [];
       if (item.isThunderstorm) riskTypes.push('طوفانی بارش');
       else if (item.isRain) riskTypes.push(`بارش ${item.precipitationProbability}%`);
-      if (item.isHighWind) riskTypes.push(`تیز ہوا ${item.windSpeed}km/h`);
+      if (item.isHighWind) riskTypes.push(`تیز ہوا ${item.windSpeed} کلومیٹر/گھنٹہ`);
       return `${item.city.nameUr} [${riskTypes.join('، ')}]`;
     });
 

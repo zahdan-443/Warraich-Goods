@@ -146,7 +146,7 @@ export const RouteHazardAdvisoryBanner: React.FC<RouteHazardAdvisoryBannerProps>
                     <Clock className="w-3 h-3 text-gray-400 dark:text-slate-500" />
                     <span>{formatTimeAgo(summary.latestTimestamp, lang)}</span>
                     {summary.count > 1 && (
-                      <span className="font-semibold text-amber-700 dark:text-amber-400 ml-1">
+                      <span className="font-semibold text-amber-700 dark:text-amber-400 ms-1">
                         • {summary.count} {isUrdu ? 'مختلف ڈرائیوروں کی تصدیق' : 'reports'}
                       </span>
                     )}

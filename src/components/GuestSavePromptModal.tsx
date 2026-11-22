@@ -77,7 +77,10 @@ export const GuestSavePromptModal: React.FC<GuestSavePromptModalProps> = ({
         }
       }}
     >
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 pb-[max(env(safe-area-inset-bottom),1.25rem)] animate-in slide-in-from-bottom duration-250">
+      <div
+        dir={isUrdu ? 'rtl' : 'ltr'}
+        className={`w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 pb-[max(env(safe-area-inset-bottom),1.25rem)] animate-in slide-in-from-bottom duration-250 ${isUrdu ? 'text-right' : 'text-left'}`}
+      >
         {/* Mobile Pull Handle */}
         <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden" />
 
@@ -166,7 +169,7 @@ export const GuestSavePromptModal: React.FC<GuestSavePromptModalProps> = ({
             )}
             <span>
               {isUrdu
-                ? 'گوگل اکاؤنٹ سے سائن ان کریں (فائر بیس پر سیو)'
+                ? 'گوگل اکاؤنٹ سے سائن ان کریں'
                 : 'Sign in with Google (Save to Firebase)'}
             </span>
           </button>
@@ -184,7 +187,7 @@ export const GuestSavePromptModal: React.FC<GuestSavePromptModalProps> = ({
             <Smartphone className="w-4 h-4 text-slate-500" />
             <span>
               {isUrdu
-                ? 'صرف فون میموری میں محفوظ رکھیں (آف لائن)'
+                ? 'صرف فون میموری میں محفوظ رکھیں'
                 : 'Save to Phone Memory only (Offline)'}
             </span>
           </button>

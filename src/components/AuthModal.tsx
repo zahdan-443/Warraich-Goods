@@ -99,13 +99,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         }
       }}
     >
-      <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl border border-[#ecece0] overflow-hidden my-auto">
+      <div
+        dir={lang === 'ur' ? 'rtl' : 'ltr'}
+        className={`bg-white w-full max-w-md rounded-[32px] shadow-2xl border border-[#ecece0] overflow-hidden my-auto ${lang === 'ur' ? 'text-right' : 'text-left'}`}
+      >
         {/* Header banner */}
         <div className="bg-gradient-to-r from-[#162a4d] via-[#1e3a68] to-[#162a4d] p-6 text-white relative">
           {onClose && !fullScreen && (
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+              aria-label={lang === 'ur' ? 'بند کریں' : 'Close'}
+              className={`absolute top-4 ${lang === 'ur' ? 'left-4' : 'right-4'} p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer`}
             >
               <X className="w-4 h-4" />
             </button>
@@ -249,7 +253,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 className="text-xs text-[#8e8e75] hover:text-[#162a4d] underline font-medium cursor-pointer transition-colors inline-block"
               >
                 {lang === 'ur'
-                  ? '⚡ دوبارہ کوشش کریں (Retry)'
+                  ? '⚡ دوبارہ کوشش کریں'
                   : '⚡ Retry Authentication'}
               </button>
             </div>
@@ -261,9 +265,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         <div className="px-6 py-3.5 bg-[#f0f0e4] border-t border-[#ecece0] flex items-center justify-between text-[11px] text-[#8e8e75]">
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5 text-[#1e3a68]" />
-            <span>Driver Dost Security</span>
+            <span>{lang === 'ur' ? 'ڈرائیور دوست سیکیورٹی' : 'Driver Dost Security'}</span>
           </span>
-          <span className="font-mono text-[10px] text-emerald-700 font-bold">Google Verified OAuth</span>
+          <span className="font-mono text-[10px] text-emerald-700 font-bold">
+            {lang === 'ur' ? 'گوگل تصدیق شدہ سائن ان' : 'Google Verified OAuth'}
+          </span>
         </div>
       </div>
     </div>

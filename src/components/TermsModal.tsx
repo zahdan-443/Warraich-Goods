@@ -192,16 +192,18 @@ export const TermsModal: React.FC<TermsModalProps> = ({
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex items-center gap-3 pr-24">
+          <div className={`flex items-center gap-3 ${isUrdu ? 'pl-24' : 'pr-24'}`}>
             <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
               <FileText className="w-6 h-6 text-amber-300" />
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-serif font-bold text-white tracking-tight">
-                {isUrdu ? 'شرائط و ضوابط (Terms & Conditions)' : 'Terms & Conditions'}
+                {isUrdu ? 'شرائط و ضوابط' : 'Terms & Conditions'}
               </h2>
               <p className="text-xs text-blue-200 font-sans mt-0.5">
-                Driver Dost · Warraich Goods Transport Company · v{APP_VERSION} · 15 November 2026
+                {isUrdu
+                  ? `ڈرائیور دوست · وڑائچ گڈز ٹرانسپورٹ کمپنی · ورژن ${APP_VERSION} · 15 نومبر 2026`
+                  : `Driver Dost · Warraich Goods Transport Company · v${APP_VERSION} · 15 November 2026`}
               </p>
             </div>
           </div>
@@ -214,7 +216,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({
             <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
             <div className="text-xs text-amber-950 leading-relaxed">
               <span className="font-bold block mb-1">
-                {isUrdu ? 'اہم قانونی اعلان (Official Notice)' : 'Important Notice'}
+                {isUrdu ? 'اہم قانونی اعلان' : 'Important Notice'}
               </span>
               {isUrdu
                 ? 'ڈرائیور دوست ایک آزاد، نجی ایپ ہے۔ یہ سرکاری ایپ نہیں اور کسی سرکاری ادارے سے وابستہ نہیں۔'
@@ -247,7 +249,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({
                 rel="noopener noreferrer"
                 className="text-[#1e3a68] font-bold hover:underline flex items-center gap-1"
               >
-                <span>{isUrdu ? 'ویب پیج شرائط (Web Terms)' : 'Open terms.html'}</span>
+                <span>{isUrdu ? 'ویب پیج شرائط' : 'Full Web Terms & Conditions'}</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>

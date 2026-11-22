@@ -85,6 +85,7 @@ import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
 import { GuestSavePromptModal } from './components/GuestSavePromptModal';
 import { GuestImportPromptModal } from './components/GuestImportPromptModal';
+import { LanguageSelectionModal } from './components/LanguageSelectionModal';
 import { Home, ArrowLeft } from 'lucide-react';
 import { checkExpiringDocuments, processExpiryNotifications } from './utils/documentExpiry';
 import { dispatchDailyDigestNotification } from './utils/dailyDigestNotification';
@@ -117,8 +118,45 @@ export default function App() {
     return true;
   });
 
+  const [showLangPicker, setShowLangPicker] = useState<boolean>(false);
+
+  const shouldPromptLanguageOnOpen = React.useCallback(() => {
+    try {
+      const explicitChoice = localStorage.getItem('ah-lang-user-explicit');
+      if (explicitChoice === 'ur' || explicitChoice === 'en') {
+        return false;
+      }
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramPage = urlParams.get('page') || urlParams.get('view') || urlParams.get('tab');
+      if (
+        paramPage === 'verify' ||
+        urlParams.get('bilty') ||
+        urlParams.get('biltyNo') ||
+        urlParams.get('vdata')
+      ) {
+        return false;
+      }
+    } catch {}
+    return true;
+  }, []);
+
   const handleDismissSplash = React.useCallback(() => {
     setShowSplash(false);
+    if (shouldPromptLanguageOnOpen()) {
+      setShowLangPicker(true);
+    }
+  }, [shouldPromptLanguageOnOpen]);
+
+  const handleSelectInitialLanguage = React.useCallback((selected: Language) => {
+    setLang(selected);
+    try {
+      localStorage.setItem('ah-lang', selected);
+      localStorage.setItem('ah-lang-user-explicit', selected);
+    } catch {}
+    document.documentElement.lang = selected;
+    document.documentElement.dir = selected === 'ur' ? 'rtl' : 'ltr';
+    document.body.classList.toggle('urdu', selected === 'ur');
+    setShowLangPicker(false);
   }, []);
   const [authLoading, setAuthLoading] = useState(false);
   const [showBiltyAccessModal, setShowBiltyAccessModal] = useState(false);
@@ -1372,9 +1410,9 @@ export default function App() {
       subtitleUr: 'موٹروے و ہائی وے آفیشل ٹول ٹیکس'
     },
     vehicleAccount: {
-      title: 'Gari Hisaab (Vehicle Khata)',
-      titleUr: 'گاڑی حساب کتاب (کھاتہ)',
-      subtitle: 'Expense & Revenue Ledger',
+      title: 'Vehicle Account',
+      titleUr: 'گاڑی کا حساب کتاب',
+      subtitle: 'Income, Expenses & Net Profit',
       subtitleUr: 'خرچ، آمدنی اور بچت کا تفصیلی حساب'
     },
     dashcam: {
@@ -1384,10 +1422,10 @@ export default function App() {
       subtitleUr: 'ویڈیو ریکارڈنگ اور اسپیڈومیٹر'
     },
     ledger: {
-      title: 'Financial Party Ledger',
-      titleUr: 'پارٹی اور ڈرائیور لیجر (کھاتہ)',
+      title: 'Financial Ledger',
+      titleUr: 'پارٹی اور ڈرائیور کھاتہ',
       subtitle: 'Credit, Debit & Outstanding Balance',
-      subtitleUr: 'بنام / جمع کھاتہ و بقایا رقم'
+      subtitleUr: 'بنام، جمع کھاتہ اور بقایا رقم'
     }
   };
 
@@ -1395,6 +1433,7 @@ export default function App() {
     <div className="min-h-screen min-h-[100dvh] bg-[#fdfbf7] text-[#4a4a35] flex flex-col font-sans relative">
       {showSplash ? (
         <SplashScreen
+          lang={lang}
           onDismiss={handleDismissSplash}
           onSelectTab={(tab) => {
             handleNavigate(tab);
@@ -1760,6 +1799,11 @@ export default function App() {
       )}
         </>
       )}
+
+      <LanguageSelectionModal
+        isOpen={showLangPicker}
+        onSelectLanguage={handleSelectInitialLanguage}
+      />
     </div>
   );
 }

@@ -145,19 +145,19 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
     const toName = CITIES_LIST.find(c => c.id === toCity)?.[isUrdu ? 'nameUr' : 'nameEn'] || toCity;
     const vName = VEHICLE_CLASSES.find(v => v.id === vehicleClass)?.[isUrdu ? 'nameUr' : 'nameEn'] || vehicleClass;
     
-    let text = `🛣️ *Driver Dost - NHA Motorway & Highway Toll (2026)*\n`;
+    let text = `🛣️ *${isUrdu ? 'ڈرائیور دوست - این ایچ اے موٹروے و شاہراہ ٹول (2026)' : 'Driver Dost - NHA Motorway & Highway Toll (2026)'}*\n`;
     text += `📍 ${isUrdu ? 'روٹ' : 'Route'}: ${fromName} ➔ ${toName}\n`;
     text += `🚚 ${isUrdu ? 'گاڑی کیٹیگری' : 'Vehicle Class'}: ${vName}\n`;
-    text += `💳 ${isUrdu ? 'ایم ٹیگ' : 'M-Tag'}: ${hasMtag ? (isUrdu ? 'فعال (M-Tag لاگو)' : 'Active') : (isUrdu ? 'غیر فعال (+50% کیش جرمانہ)' : 'Non-M-Tag (+50% Surcharge)')}\n`;
-    text += `💰 ${isUrdu ? 'بنیادی ٹول' : 'Base Toll'}: Rs. ${result.baseToll.toLocaleString()}\n`;
+    text += `💳 ${isUrdu ? 'ایم ٹیگ' : 'M-Tag'}: ${hasMtag ? (isUrdu ? 'فعال' : 'Active') : (isUrdu ? 'غیر فعال (+50% کیش جرمانہ)' : 'Non-M-Tag (+50% Surcharge)')}\n`;
+    text += `💰 ${isUrdu ? 'بنیادی ٹول' : 'Base Toll'}: ${isUrdu ? 'روپے' : 'Rs.'} ${result.baseToll.toLocaleString()}\n`;
     if (!hasMtag && result.surcharge > 0) {
-      text += `⚠️ ${isUrdu ? 'بغیر ایم ٹیگ کیش اضافی' : 'Non-M-Tag Cash Surcharge'}: Rs. ${result.surcharge.toLocaleString()}\n`;
+      text += `⚠️ ${isUrdu ? 'بغیر ایم ٹیگ کیش اضافی' : 'Non-M-Tag Cash Surcharge'}: ${isUrdu ? 'روپے' : 'Rs.'} ${result.surcharge.toLocaleString()}\n`;
     }
-    text += `✅ *${isUrdu ? 'کل قابلِ ادا ٹول' : 'Total Payable Toll'}: Rs. ${result.total.toLocaleString()}*\n`;
+    text += `✅ *${isUrdu ? 'کل قابلِ ادا ٹول' : 'Total Payable Toll'}: ${isUrdu ? 'روپے' : 'Rs.'} ${result.total.toLocaleString()}*\n`;
     if (result.segments.length > 0) {
       text += `\n📌 ${isUrdu ? 'موٹروے تفصیلات' : 'Segments Breakdown'}:\n`;
       result.segments.forEach(s => {
-        text += ` • ${isUrdu ? s.nameUr : s.nameEn}: Rs. ${s.toll.toLocaleString()}\n`;
+        text += ` • ${isUrdu ? s.nameUr : s.nameEn}: ${isUrdu ? 'روپے' : 'Rs.'} ${s.toll.toLocaleString()}\n`;
       });
     }
 
@@ -172,19 +172,19 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
     const toName = CITIES_LIST.find(c => c.id === toCity)?.[isUrdu ? 'nameUr' : 'nameEn'] || toCity;
     const vName = VEHICLE_CLASSES.find(v => v.id === vehicleClass)?.[isUrdu ? 'nameUr' : 'nameEn'] || vehicleClass;
     
-    let text = `🛣️ *Driver Dost - NHA Motorway & Highway Toll (2026)*\n`;
+    let text = `🛣️ *${isUrdu ? 'ڈرائیور دوست - این ایچ اے موٹروے و شاہراہ ٹول (2026)' : 'Driver Dost - NHA Motorway & Highway Toll (2026)'}*\n`;
     text += `📍 ${isUrdu ? 'روٹ' : 'Route'}: ${fromName} ➔ ${toName}\n`;
     text += `🚚 ${isUrdu ? 'گاڑی کیٹیگری' : 'Vehicle Class'}: ${vName}\n`;
     text += `💳 ${isUrdu ? 'ایم ٹیگ' : 'M-Tag'}: ${hasMtag ? (isUrdu ? 'فعال' : 'Active') : (isUrdu ? 'غیر فعال (+50% کیش جرمانہ)' : 'Non-M-Tag (+50%)')}\n`;
-    text += `💰 ${isUrdu ? 'بنیادی ٹول' : 'Base Toll'}: Rs. ${result.baseToll.toLocaleString()}\n`;
+    text += `💰 ${isUrdu ? 'بنیادی ٹول' : 'Base Toll'}: ${isUrdu ? 'روپے' : 'Rs.'} ${result.baseToll.toLocaleString()}\n`;
     if (!hasMtag && result.surcharge > 0) {
-      text += `⚠️ ${isUrdu ? 'بغیر ایم ٹیگ کیش اضافی' : 'Non-M-Tag Cash Surcharge'}: Rs. ${result.surcharge.toLocaleString()}\n`;
+      text += `⚠️ ${isUrdu ? 'بغیر ایم ٹیگ کیش اضافی' : 'Non-M-Tag Cash Surcharge'}: ${isUrdu ? 'روپے' : 'Rs.'} ${result.surcharge.toLocaleString()}\n`;
     }
-    text += `✅ *${isUrdu ? 'کل قابلِ ادا ٹول' : 'Total Payable Toll'}: Rs. ${result.total.toLocaleString()}*\n`;
+    text += `✅ *${isUrdu ? 'کل قابلِ ادا ٹول' : 'Total Payable Toll'}: ${isUrdu ? 'روپے' : 'Rs.'} ${result.total.toLocaleString()}*\n`;
     if (result.segments.length > 0) {
       text += `\n📌 ${isUrdu ? 'موٹروے تفصیلات' : 'Segments'}:\n`;
       result.segments.forEach(s => {
-        text += ` • ${isUrdu ? s.nameUr : s.nameEn}: Rs. ${s.toll.toLocaleString()}\n`;
+        text += ` • ${isUrdu ? s.nameUr : s.nameEn}: ${isUrdu ? 'روپے' : 'Rs.'} ${s.toll.toLocaleString()}\n`;
       });
     }
 
@@ -199,12 +199,12 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
 
   const handleCopyMw = () => {
     const vName = VEHICLE_CLASSES.find(v => v.id === mwVehicleClass)?.[isUrdu ? 'nameUr' : 'nameEn'] || mwVehicleClass;
-    let text = `🛣️ *Driver Dost - ${isUrdu ? currentMw.nameUr : currentMw.nameEn} (2026 NHA Rates)*\n`;
-    text += `📍 ${isUrdu ? 'روٹ' : 'Route'}: ${isUrdu ? currentMw.routeUr : currentMw.routeEn} (${currentMw.totalKm} km)\n`;
+    let text = `🛣️ *${isUrdu ? `ڈرائیور دوست - ${currentMw.nameUr} (2026 این ایچ اے ریٹس)` : `Driver Dost - ${currentMw.nameEn} (2026 NHA Rates)`}*\n`;
+    text += `📍 ${isUrdu ? 'روٹ' : 'Route'}: ${isUrdu ? currentMw.routeUr : currentMw.routeEn} (${currentMw.totalKm} ${isUrdu ? 'کلومیٹر' : 'km'})\n`;
     text += `🚚 ${isUrdu ? 'گاڑی' : 'Vehicle'}: ${vName}\n`;
-    text += `💳 ${isUrdu ? 'M-Tag ریٹ' : 'M-Tag Rate'}: Rs. ${mwBaseRate.toLocaleString()}\n`;
+    text += `💳 ${isUrdu ? 'ایم ٹیگ ریٹ' : 'M-Tag Rate'}: ${isUrdu ? 'روپے' : 'Rs.'} ${mwBaseRate.toLocaleString()}\n`;
     if (!mwHasMtag && mwSurcharge > 0) {
-      text += `⚠️ ${isUrdu ? 'بغیر ایم ٹیگ کیش ریٹ (+50%)' : 'Cash Rate (+50%)'}: Rs. ${mwTotal.toLocaleString()}\n`;
+      text += `⚠️ ${isUrdu ? 'بغیر ایم ٹیگ کیش ریٹ (+50%)' : 'Cash Rate (+50%)'}: ${isUrdu ? 'روپے' : 'Rs.'} ${mwTotal.toLocaleString()}\n`;
     }
     text += `📌 ${isUrdu ? 'اہم انٹرچینجز' : 'Key Interchanges'}: ${isUrdu ? currentMw.interchangesUr.join(', ') : currentMw.interchanges.join(', ')}\n`;
 
@@ -215,12 +215,12 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
 
   const handleShareMwWhatsApp = () => {
     const vName = VEHICLE_CLASSES.find(v => v.id === mwVehicleClass)?.[isUrdu ? 'nameUr' : 'nameEn'] || mwVehicleClass;
-    let text = `🛣️ *Driver Dost - ${isUrdu ? currentMw.nameUr : currentMw.nameEn} (2026 NHA Rates)*\n`;
-    text += `📍 ${isUrdu ? 'روٹ' : 'Route'}: ${isUrdu ? currentMw.routeUr : currentMw.routeEn} (${currentMw.totalKm} km)\n`;
+    let text = `🛣️ *${isUrdu ? `ڈرائیور دوست - ${currentMw.nameUr} (2026 این ایچ اے ریٹس)` : `Driver Dost - ${currentMw.nameEn} (2026 NHA Rates)`}*\n`;
+    text += `📍 ${isUrdu ? 'روٹ' : 'Route'}: ${isUrdu ? currentMw.routeUr : currentMw.routeEn} (${currentMw.totalKm} ${isUrdu ? 'کلومیٹر' : 'km'})\n`;
     text += `🚚 ${isUrdu ? 'گاڑی' : 'Vehicle'}: ${vName}\n`;
-    text += `💳 ${isUrdu ? 'M-Tag ریٹ' : 'M-Tag Rate'}: Rs. ${mwBaseRate.toLocaleString()}\n`;
+    text += `💳 ${isUrdu ? 'ایم ٹیگ ریٹ' : 'M-Tag Rate'}: ${isUrdu ? 'روپے' : 'Rs.'} ${mwBaseRate.toLocaleString()}\n`;
     if (!mwHasMtag && mwSurcharge > 0) {
-      text += `⚠️ ${isUrdu ? 'بغیر ایم ٹیگ کیش ریٹ (+50%)' : 'Cash Rate (+50%)'}: Rs. ${mwTotal.toLocaleString()}\n`;
+      text += `⚠️ ${isUrdu ? 'بغیر ایم ٹیگ کیش ریٹ (+50%)' : 'Cash Rate (+50%)'}: ${isUrdu ? 'روپے' : 'Rs.'} ${mwTotal.toLocaleString()}\n`;
     }
     text += `📌 ${isUrdu ? 'اہم انٹرچینجز' : 'Key Interchanges'}: ${isUrdu ? currentMw.interchangesUr.join(', ') : currentMw.interchanges.join(', ')}\n`;
 
@@ -362,7 +362,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
                         >
                           {CITIES_LIST.map(c => (
                             <option key={`from-${c.id}`} value={c.id}>
-                              {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`} - {c.province}
+                              {isUrdu ? `${c.nameUr} - ${c.province}` : `${c.nameEn} - ${c.province}`}
                             </option>
                           ))}
                         </select>
@@ -392,7 +392,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
                         >
                           {CITIES_LIST.map(c => (
                             <option key={`to-${c.id}`} value={c.id}>
-                              {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`} - {c.province}
+                              {isUrdu ? `${c.nameUr} - ${c.province}` : `${c.nameEn} - ${c.province}`}
                             </option>
                           ))}
                         </select>
@@ -416,7 +416,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
                       >
                         {VEHICLE_CLASSES.map(v => (
                           <option key={v.id} value={v.id}>
-                            {isUrdu ? `[${v.nhaCode}] ${v.nameUr} (${v.nameEn})` : `[${v.nhaCode}] ${v.nameEn} (${v.nameUr})`}
+                            {isUrdu ? `[${v.nhaCode}] ${v.nameUr}` : `[${v.nhaCode}] ${v.nameEn}`}
                           </option>
                         ))}
                       </select>
@@ -439,7 +439,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
                         />
                         <div>
                           <span className="text-xs font-bold font-serif text-[#4a4a35] block">
-                            {vehicleClass === 'bike' ? (isUrdu ? 'موٹر سائیکل (M-Tag استثنیٰ)' : 'Motorcycle (M-Tag Exempt)') : (isUrdu ? 'ایم ٹیگ فعال ہے (M-Tag Active)' : t.tollCalc.activeMtag)}
+                            {vehicleClass === 'bike' ? (isUrdu ? 'موٹر سائیکل استثنیٰ' : 'Motorcycle (M-Tag Exempt)') : (isUrdu ? 'ایم ٹیگ فعال ہے' : t.tollCalc.activeMtag)}
                           </span>
                           <span className="text-[9px] text-[#8e8e75] block leading-tight mt-0.5">
                             {vehicleClass === 'bike' ? (isUrdu ? 'صرف مخصوص پلوں پر لاگو' : 'Bridge tokens apply') : (isUrdu ? 'بغیر ایم ٹیگ کے 50% اضافی کیش لاگو ہوگا' : t.tollCalc.mtagSub)}
@@ -511,7 +511,7 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="text-right">
+                    <div className={isUrdu ? 'text-left' : 'text-right'}>
                       <span className={`inline-block px-2 py-0.5 rounded-lg text-[11px] font-bold ${
                         hasMtag 
                           ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30' 

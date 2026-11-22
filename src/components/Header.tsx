@@ -209,10 +209,12 @@ export const Header: React.FC<HeaderProps> = ({
   }, [isMenuOpen, showNotifs]);
 
   const handleShareApp = async () => {
-    const shareTitle = 'Driver Dost - Road Freight, Safar & Fleet Manager';
+    const shareTitle = lang === 'ur'
+      ? 'ڈرائیور دوست - روڈ فریٹ و فلیٹ مینیجر'
+      : 'Driver Dost - Road Freight, Trip & Fleet Manager';
     const shareText = lang === 'ur'
       ? 'ڈرائیور دوست - ٹرپ اخراجات کیلکولیٹر، ٹول ٹیکس، ڈیزل مانیٹر اور فلیٹ مینجمنٹ سسٹم۔'
-      : 'Driver Dost - Road Freight, Safar Diary, Toll Calculator & Fleet Management System.';
+      : 'Driver Dost - Road Freight, Trip Diary, Toll Calculator & Fleet Management System.';
     const shareUrl = resolvePublicAppShareUrl();
 
     const status = await shareTextOrUrl({
@@ -258,13 +260,15 @@ export const Header: React.FC<HeaderProps> = ({
 
             <div className="flex flex-col justify-center min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2 leading-tight">
-                <span className="text-sm sm:text-base md:text-lg font-serif font-bold tracking-tight text-[#4a4a35] dark:text-white whitespace-nowrap">
-                  Driver Dost
-                </span>
-                <span className="text-gray-300 dark:text-slate-600 font-light">|</span>
-                <span className="text-xs sm:text-base font-sans font-bold leading-normal text-[#8b9d77] dark:text-emerald-400 whitespace-nowrap">
-                  ڈرائیور دوست
-                </span>
+                {lang === 'ur' ? (
+                  <span className="text-sm sm:text-base md:text-lg font-sans font-bold leading-normal text-[#4a4a35] dark:text-white whitespace-nowrap">
+                    ڈرائیور دوست
+                  </span>
+                ) : (
+                  <span className="text-sm sm:text-base md:text-lg font-serif font-bold tracking-tight text-[#4a4a35] dark:text-white whitespace-nowrap">
+                    Driver Dost
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -310,7 +314,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="flex items-center gap-3">
                   <CompanyLogo className="w-10 h-10" />
                   <div>
-                    <div className="font-serif font-bold text-base text-[#4a4a35] dark:text-white">{t.appTitle}</div>
+                    <div className="font-serif font-bold text-base text-[#4a4a35] dark:text-white">{t.appTitle} {t.appTitleHighlight}</div>
                     <p className="text-[10px] text-[#8b9d77] dark:text-emerald-400 font-sans uppercase tracking-wider">{lang === 'ur' ? 'سسٹم کنٹرول مینیو' : 'System Controls Menu'}</p>
                   </div>
                 </div>
@@ -361,12 +365,12 @@ export const Header: React.FC<HeaderProps> = ({
                             {isOwnerUser ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold text-[10px] border border-amber-300 dark:border-amber-700/60 mt-0.5">
                                 <Crown className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                                <span>Owner (Active)</span>
+                                <span>{lang === 'ur' ? 'آنر (فعال)' : 'Owner (Active)'}</span>
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800/60 text-[10px] font-bold mt-0.5">
                                 <Truck className="w-3 h-3 text-[#3B82F6] dark:text-blue-400" />
-                                <span>Authorized User</span>
+                                <span>{lang === 'ur' ? 'مجاز صارف' : 'Authorized User'}</span>
                               </span>
                             )}
                           </div>
@@ -461,14 +465,14 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     <div>
                       <div className="font-serif font-bold text-sm text-[#4a4a35] dark:text-white">{lang === 'ur' ? 'زبان تبدیل کریں' : 'App Language'}</div>
-                      <div className="text-xs text-[#8e8e75] dark:text-slate-400">{lang === 'ur' ? 'اردو / English' : 'English / Urdu'}</div>
+                      <div className="text-xs text-[#8e8e75] dark:text-slate-400">{lang === 'ur' ? 'اردو / انگریزی' : 'English / Urdu'}</div>
                     </div>
                   </div>
                   <button
                     onClick={onToggleLang}
                     className="px-4 py-2 rounded-xl bg-[#8b9d77] dark:bg-emerald-700 hover:bg-[#798a67] dark:hover:bg-emerald-600 text-white font-bold text-xs shadow-xs cursor-pointer active:scale-95"
                   >
-                    {lang === 'en' ? 'اردو (UR)' : 'ENG (EN)'}
+                    {lang === 'en' ? 'اردو' : 'English'}
                   </button>
                 </div>
 
@@ -621,7 +625,7 @@ export const Header: React.FC<HeaderProps> = ({
                       </div>
                       <div>
                         <div className="font-serif font-bold text-sm text-[#1e3a68] dark:text-blue-200">
-                          {lang === 'ur' ? 'ایپ انسٹال کریں (PWA)' : 'Install Official App'}
+                          {lang === 'ur' ? 'ایپ انسٹال کریں' : 'Install Official App'}
                         </div>
                         <div className="text-[11px] text-blue-700 dark:text-blue-300/90">
                           {lang === 'ur' ? 'ہوم اسکرین پر آف لائن استعمال کے لیے انسٹال کریں' : 'Install on mobile home screen for quick offline access'}
@@ -711,7 +715,9 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Drawer Footer */}
             <div className="p-4 bg-[#f0f0e4] dark:bg-[#16181e] border-t border-[#ecece0] dark:border-[#2d313b] text-center text-xs text-[#8e8e75] dark:text-slate-400">
-              Driver Dost · Pakistan Logistics & Transport Manager v{APP_VERSION}
+              {lang === 'ur'
+                ? `ڈرائیور دوست · پاکستان لاجسٹکس و ٹرانسپورٹ مینیجر v${APP_VERSION}`
+                : `Driver Dost · Pakistan Logistics & Transport Manager v${APP_VERSION}`}
             </div>
           </div>
         </div>
@@ -839,7 +845,7 @@ export const Header: React.FC<HeaderProps> = ({
                       : 'bg-white dark:bg-[#22252c] text-slate-600 dark:text-slate-300 border-[#d0d0be] dark:border-[#373c48] hover:bg-slate-50 dark:hover:bg-[#2d313b]'
                   }`}
                 >
-                  {digestSettings.enabled ? (lang === 'ur' ? 'آن (ON)' : 'ON') : (lang === 'ur' ? 'آف (OFF)' : 'OFF')}
+                  {digestSettings.enabled ? (lang === 'ur' ? 'آن' : 'ON') : (lang === 'ur' ? 'آف' : 'OFF')}
                 </button>
               </div>
 
@@ -864,7 +870,7 @@ export const Header: React.FC<HeaderProps> = ({
                       : 'bg-white dark:bg-[#22252c] text-slate-600 dark:text-slate-300 border-[#d0d0be] dark:border-[#373c48] hover:bg-slate-50 dark:hover:bg-[#2d313b]'
                   }`}
                 >
-                  {crashConsent ? (lang === 'ur' ? 'آن (ON)' : 'ON') : (lang === 'ur' ? 'آف (OFF)' : 'OFF')}
+                  {crashConsent ? (lang === 'ur' ? 'آن' : 'ON') : (lang === 'ur' ? 'آف' : 'OFF')}
                 </button>
               </div>
 
@@ -877,12 +883,14 @@ export const Header: React.FC<HeaderProps> = ({
 
             <div className="max-h-[380px] overflow-y-auto p-4 space-y-3 bg-[#fdfbf7] dark:bg-[#121316]">
               {notifications.length === 0 ? (
-                <div className="py-8 text-center text-xs text-[#8e8e75] dark:text-slate-400">No cloud alerts received.</div>
+                <div className="py-8 text-center text-xs text-[#8e8e75] dark:text-slate-400">
+                  {lang === 'ur' ? 'کوئی الرٹ موصول نہیں ہوا۔' : 'No alerts received.'}
+                </div>
               ) : (
                 notifications.map((n) => (
                   <div
                     key={n.id}
-                    className={`p-3.5 rounded-2xl border transition-all text-left ${n.unread ? 'bg-white dark:bg-[#1a1c22] border-[#8b9d77]/40 dark:border-emerald-600/40 shadow-xs ring-1 ring-[#8b9d77]/20 dark:ring-emerald-600/20' : 'bg-[#f0f0e4]/50 dark:bg-[#18191e] border-[#ecece0] dark:border-[#2d313b] opacity-85'}`}
+                    className={`p-3.5 rounded-2xl border transition-all ${lang === 'ur' ? 'text-right' : 'text-left'} ${n.unread ? 'bg-white dark:bg-[#1a1c22] border-[#8b9d77]/40 dark:border-emerald-600/40 shadow-xs ring-1 ring-[#8b9d77]/20 dark:ring-emerald-600/20' : 'bg-[#f0f0e4]/50 dark:bg-[#18191e] border-[#ecece0] dark:border-[#2d313b] opacity-85'}`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <span className="font-serif font-bold text-xs text-[#4a4a35] dark:text-white">{n.title}</span>
@@ -891,7 +899,9 @@ export const Header: React.FC<HeaderProps> = ({
                     <p className="text-xs text-[#6b6b55] dark:text-slate-300 font-sans leading-relaxed">{n.message}</p>
                     <div className="mt-2 flex items-center justify-between">
                       <span className="px-2 py-0.5 rounded text-[9px] font-mono uppercase font-bold bg-[#8b9d77]/15 dark:bg-emerald-950/60 text-[#5a5a40] dark:text-emerald-300 border border-transparent dark:border-emerald-800/40">
-                        {n.type} alert
+                        {lang === 'ur'
+                          ? `${n.type === 'fuel' ? 'ایندھن' : n.type === 'fleet' ? 'فلیٹ' : n.type === 'tax' ? 'ٹیکس' : 'سسٹم'} الرٹ`
+                          : `${n.type} alert`}
                       </span>
                       {n.unread && <span className="w-2 h-2 rounded-full bg-[#EF4444]"></span>}
                     </div>

@@ -135,7 +135,7 @@ export const KhataEmployeesPanel: React.FC<KhataEmployeesPanelProps> = ({
     };
 
     return (
-      <div className="space-y-3.5 font-serif">
+      <div dir={isUrdu ? 'rtl' : 'ltr'} className="space-y-3.5 font-serif">
         {/* Top Bar */}
         <div className="flex items-center justify-between gap-2">
           <button
@@ -161,7 +161,7 @@ export const KhataEmployeesPanel: React.FC<KhataEmployeesPanelProps> = ({
               className="min-h-[42px] px-3 rounded-2xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-bold flex items-center gap-1 cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              <span>PDF</span>
+              <span>{isUrdu ? 'پی ڈی ایف' : 'PDF'}</span>
             </button>
             <button
               type="button"
@@ -326,16 +326,16 @@ export const KhataEmployeesPanel: React.FC<KhataEmployeesPanelProps> = ({
 
   // ---------------- RENDER EMPLOYEES LIST ----------------
   return (
-    <div className="space-y-3.5 font-serif">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="space-y-3.5 font-serif">
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[180px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+          <Search className="w-4 h-4 text-slate-400 absolute start-3 top-3.5" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder={isUrdu ? 'ملازم کا نام یا فون تلاش کریں...' : 'Search employee name or phone...'}
-            className="w-full min-h-[44px] pl-9 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm"
+            className="w-full min-h-[44px] ps-9 pe-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm"
           />
         </div>
 
@@ -566,7 +566,7 @@ const EmployeeFormModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[92vh] overflow-y-auto pb-[max(env(safe-area-inset-bottom),1.25rem)]">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
@@ -776,7 +776,7 @@ const EmployeeEntryModal: React.FC<{
   const [entryError, setEntryError] = useState<string | null>(null);
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 pb-[max(env(safe-area-inset-bottom),1.25rem)]">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-black text-slate-900 dark:text-white">

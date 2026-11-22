@@ -2533,8 +2533,8 @@ export function formatAccountStatementWhatsAppMessage(
       `--------------------------------\n` +
       `💰 *${balanceText}*\n` +
       `--------------------------------\n` +
-      `کل دیا (Gave): PKR ${totalGave.toLocaleString('en-US')}\n` +
-      `کل وصولی (Got): PKR ${totalGot.toLocaleString('en-US')}\n` +
+      `کل دیا: PKR ${totalGave.toLocaleString('en-US')}\n` +
+      `کل وصولی: PKR ${totalGot.toLocaleString('en-US')}\n` +
       (txListText ? `\n📝 *حالیہ 5 ٹرانزیکشنز:*\n${txListText}\n` : '') +
       `\n🙏 برائے مہربانی اپنا کھاتہ چیک فرمائیں۔ کسی بھی فرق کی صورت میں رابطہ کریں۔ شکریہ!` +
       `\n— ${business}`

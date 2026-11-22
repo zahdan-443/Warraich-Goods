@@ -63,7 +63,7 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
   };
 
   return (
-    <div className="flex-1 p-6 md:p-10 max-w-5xl mx-auto w-full space-y-8">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="flex-1 p-6 md:p-10 max-w-5xl mx-auto w-full space-y-8">
       <div className="bg-white p-8 md:p-10 rounded-[40px] shadow-sm border border-[#ecece0] space-y-8">
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#ecece0]">
           <div>
@@ -102,7 +102,7 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[10px] uppercase font-bold tracking-widest px-3 py-1 rounded-full bg-[#8b9d77]/15 text-[#5a5a40] font-mono flex items-center gap-1">
-                      <Navigation className="w-3 h-3 text-[#8b9d77]" /> Corridor
+                      <Navigation className="w-3 h-3 text-[#8b9d77]" /> {isUrdu ? 'روٹ' : 'Corridor'}
                     </span>
                     <button
                       type="button"
@@ -111,7 +111,7 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
                         onDeleteRoute(r.id);
                       }}
                       className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                      title="Remove corridor"
+                      title={isUrdu ? 'روٹ حذف کریں' : 'Remove corridor'}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -120,7 +120,7 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
                   <div className="flex items-center gap-3 mt-4">
                     <h2 className="font-serif font-bold text-xl text-[#4a4a35] group-hover:text-[#8b9d77] transition-colors flex items-center gap-2">
                       <span>{r.from}</span>
-                      <ArrowRight className="w-4 h-4 text-[#8b9d77] shrink-0" />
+                      <ArrowRight className={`w-4 h-4 text-[#8b9d77] shrink-0 ${isUrdu ? 'rotate-180' : ''}`} />
                       <span>{r.to}</span>
                     </h2>
                   </div>
@@ -128,13 +128,13 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
 
                 <div className="pt-4 border-t border-[#ecece0] flex items-center justify-between text-xs font-sans">
                   <div className="space-y-0.5 font-mono text-[#8e8e75]">
-                    <div>📏 Length: <span className="font-bold text-[#4a4a35]">{r.dist} km</span></div>
-                    <div>🛣️ Est. Toll: <span className="font-bold text-[#4a4a35]">PKR {r.toll}</span></div>
+                    <div>📏 {isUrdu ? 'فاصلہ:' : 'Length:'} <span className="font-bold text-[#4a4a35]">{r.dist} {isUrdu ? 'کلومیٹر' : 'km'}</span></div>
+                    <div>🛣️ {isUrdu ? 'متوقع ٹول:' : 'Est. Toll:'} <span className="font-bold text-[#4a4a35]">PKR {r.toll}</span></div>
                   </div>
 
                   <div className="px-4 py-2 bg-[#5a5a40] group-hover:bg-[#8b9d77] text-white rounded-full text-[11px] font-bold uppercase tracking-wider transition-colors shadow-2xs flex items-center gap-1.5">
                     <span>{t.applyBtn}</span>
-                    <ArrowRight className="w-3 h-3" />
+                    <ArrowRight className={`w-3 h-3 ${isUrdu ? 'rotate-180' : ''}`} />
                   </div>
                 </div>
               </div>
@@ -148,8 +148,8 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
           <form onSubmit={handleSave} className="bg-white rounded-[32px] border border-[#ecece0] p-8 max-w-md w-full shadow-xl space-y-5 animate-scaleIn">
             <div className="flex items-center gap-3 border-b border-[#ecece0] pb-4">
-              <div className="w-10 h-10 rounded-full bg-[#8b9d77] text-white flex items-center justify-center font-serif italic text-xl">
-                YM
+              <div className="w-10 h-10 rounded-full bg-[#8b9d77] text-white flex items-center justify-center">
+                <MapPin className="w-5 h-5" />
               </div>
               <h2 className="font-serif font-bold text-xl text-[#4a4a35]">{t.addBtn}</h2>
             </div>
@@ -161,7 +161,7 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
                   type="text"
                   value={fromCity}
                   onChange={(e) => setFromCity(e.target.value)}
-                  placeholder="Lahore"
+                  placeholder={isUrdu ? 'لاہور' : 'Lahore'}
                   className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-4 py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none"
                   required
                 />
@@ -173,7 +173,7 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
                   type="text"
                   value={toCity}
                   onChange={(e) => setToCity(e.target.value)}
-                  placeholder="Multan"
+                  placeholder={isUrdu ? 'ملتان' : 'Multan'}
                   className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-4 py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none"
                   required
                 />
@@ -227,13 +227,13 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
                 onClick={() => setShowModal(false)}
                 className="flex-1 py-3.5 rounded-full border border-[#ecece0] bg-white text-[#8e8e75] hover:text-[#4a4a35] text-xs uppercase tracking-widest font-bold transition-all cursor-pointer"
               >
-                Cancel
+                {isUrdu ? 'منسوخ' : 'Cancel'}
               </button>
               <button
                 type="submit"
                 className="flex-1 py-3.5 rounded-full bg-[#5a5a40] hover:bg-[#4a4a35] text-white text-xs uppercase tracking-widest font-bold transition-all cursor-pointer shadow-xs"
               >
-                Save Corridor
+                {isUrdu ? 'روٹ محفوظ کریں' : 'Save Corridor'}
               </button>
             </div>
           </form>

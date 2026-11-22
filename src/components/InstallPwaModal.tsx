@@ -287,7 +287,7 @@ const InstallPwaController: React.FC<InstallPwaModalProps> = ({ lang }) => {
                 type="button"
                 onClick={markDismissed}
                 aria-label={isUrdu ? 'بند کریں' : 'Close'}
-                className="absolute top-4 left-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+                className={`absolute top-4 ${isUrdu ? 'left-4' : 'right-4'} p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer`}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -341,16 +341,16 @@ const InstallPwaController: React.FC<InstallPwaModalProps> = ({ lang }) => {
                 <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 animate-in fade-in space-y-1">
                   <strong className="block font-bold">
                     {ios
-                      ? (isUrdu ? 'آئی فون (Safari) میں انسٹال کرنے کا طریقہ:' : 'How to install on iPhone / iPad:')
+                      ? (isUrdu ? 'آئی فون سفاری میں انسٹال کرنے کا طریقہ:' : 'How to install on iPhone / iPad:')
                       : (isUrdu ? 'براؤزر سے انسٹال کرنے کا طریقہ:' : 'How to install manually:')}
                   </strong>
                   <p className="text-[11px] leading-relaxed text-amber-800">
                     {ios
                       ? (isUrdu
-                          ? 'نیچے Safari کے Share بٹن پر کلک کریں اور "Add to Home Screen" منتخب کریں۔'
+                          ? 'نیچے شیئر بٹن پر کلک کریں اور "Add to Home Screen" منتخب کریں۔'
                           : 'Tap the Safari Share button and select "Add to Home Screen".')
                       : (isUrdu
-                          ? 'اوپر دائیں کونے میں کروم کے تین نقطوں (⋮) پر کلک کریں اور "Install app" یا "Add to Home screen" منتخب کریں۔'
+                          ? 'اوپر کونے میں کروم کے تین نقطوں (⋮) پر کلک کریں اور "انسٹال ایپ" یا "ہوم اسکرین پر شامل کریں" منتخب کریں۔'
                           : 'Tap Chrome menu (⋮) in the top corner and select "Install app" or "Add to Home screen".')}
                   </p>
                 </div>
@@ -363,7 +363,7 @@ const InstallPwaController: React.FC<InstallPwaModalProps> = ({ lang }) => {
                 className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white rounded-2xl font-serif font-bold text-sm tracking-wider flex items-center justify-center gap-2.5 shadow-md cursor-pointer transition-all active:scale-95"
               >
                 <Download className="w-5 h-5 text-emerald-200" />
-                <span>{isUrdu ? 'ایپ ابھی انسٹال کریں (Install Now)' : 'Install Official App Now'}</span>
+                <span>{isUrdu ? 'ایپ ابھی انسٹال کریں' : 'Install Official App Now'}</span>
               </button>
 
               <button
@@ -371,7 +371,7 @@ const InstallPwaController: React.FC<InstallPwaModalProps> = ({ lang }) => {
                 onClick={markDismissed}
                 className="w-full py-2 text-center text-xs text-[#8e8e75] hover:text-[#4a4a35] font-semibold cursor-pointer"
               >
-                {isUrdu ? 'بعد میں کریں (Skip for now)' : 'Skip for now'}
+                {isUrdu ? 'بعد میں کریں' : 'Skip for now'}
               </button>
             </div>
           </div>

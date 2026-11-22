@@ -62,16 +62,16 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
   };
 
   return (
-    <div className="flex-1 p-6 md:p-10 max-w-5xl mx-auto w-full space-y-8">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="flex-1 p-6 md:p-10 max-w-5xl mx-auto w-full space-y-8">
       
       {/* Official PSO POL Archive Notice */}
       <div className="p-5 bg-[#f0f0e4]/80 rounded-3xl border border-[#d8d8c0] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
         <div>
           <div className="font-serif font-bold text-sm text-[#4a4a35]">
-            {lang === 'ur' ? 'پاکستان اسٹیٹ آئل (PSO) سرکاری قیمتیں' : 'Official PSO POL Fuel Price Archives'}
+            {lang === 'ur' ? 'پاکستان اسٹیٹ آئل سرکاری قیمتیں' : 'Official PSO POL Fuel Price Archives'}
           </div>
           <p className="text-xs text-[#8e8e75] mt-0.5">
-            {lang === 'ur' ? 'ڈیزل اور پٹرول کے سرکاری نرخ ایک جیسے نہیں ہوتے۔ تازہ ترین نوٹیفکیشن چیک کریں:' : 'Diesel and Petrol prices vary per Government notification. Verify benchmark rates directly via Pakistan State Oil:'}
+            {lang === 'ur' ? 'ڈیزل اور پٹرول کے سرکاری نرخ مختلف ہوتے ہیں۔ تازہ ترین نوٹیفکیشن چیک کریں:' : 'Diesel and Petrol prices vary per Government notification. Verify benchmark rates directly via Pakistan State Oil:'}
           </p>
         </div>
         <a
@@ -80,7 +80,7 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
           rel="noopener noreferrer"
           className="px-4 py-2 rounded-2xl bg-[#5a5a40] hover:bg-[#4a4a35] text-white text-xs font-serif font-bold transition-all shrink-0 shadow-2xs flex items-center gap-1.5"
         >
-          <span>🌐 PSO POL Archives</span>
+          <span>🌐 {isUrdu ? 'پی ایس او سرکاری نرخ' : 'PSO POL Archives'}</span>
         </a>
       </div>
 
@@ -115,7 +115,7 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
             <div className="p-4 bg-[#fdfbf7] rounded-2xl border border-[#ecece0] focus-within:border-[#8b9d77] transition-colors">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-[#8e8e75] mb-2 flex items-center justify-between">
                 <span>{isUrdu ? '🛢️ ہائی اسپیڈ ڈیزل' : '🛢️ High Speed Diesel'}</span>
-                <span className="text-[10px] font-mono text-[#8b9d77]">PKR/L</span>
+                <span className="text-[10px] font-mono text-[#8b9d77]">{isUrdu ? 'روپے/لیٹر' : 'PKR/L'}</span>
               </label>
               <input
                 type="number"
@@ -130,7 +130,7 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
             <div className="p-4 bg-[#fdfbf7] rounded-2xl border border-[#ecece0] focus-within:border-[#8b9d77] transition-colors">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-[#8e8e75] mb-2 flex items-center justify-between">
                 <span>{isUrdu ? '⛽ سپر پیٹرول' : '⛽ Super Petrol'}</span>
-                <span className="text-[10px] font-mono text-[#8b9d77]">PKR/L</span>
+                <span className="text-[10px] font-mono text-[#8b9d77]">{isUrdu ? 'روپے/لیٹر' : 'PKR/L'}</span>
               </label>
               <input
                 type="number"
@@ -186,7 +186,7 @@ export const FuelLogView: React.FC<FuelLogViewProps> = ({
                 key={item.id}
                 className={`p-5 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
                   idx === 0
-                    ? 'bg-[#fdfbf7] border-l-4 border-[#8b9d77] border-y border-r border-[#ecece0] shadow-2xs'
+                    ? 'bg-[#fdfbf7] border-s-4 border-[#8b9d77] border-y border-e border-[#ecece0] shadow-2xs'
                     : 'bg-white border border-[#ecece0] hover:border-[#8b9d77]'
                 }`}
               >

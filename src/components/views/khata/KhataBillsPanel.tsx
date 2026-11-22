@@ -189,19 +189,19 @@ export const KhataBillsPanel: React.FC<KhataBillsPanelProps> = ({
       {/* Action & Search Row */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[180px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+          <Search className="w-4 h-4 text-slate-400 absolute start-3 top-3.5" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder={isUrdu ? 'بل نمبر، پارٹی یا گاڑی تلاش کریں...' : 'Search bill #, party, vehicle...'}
-            className="w-full min-h-[44px] pl-9 pr-8 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full min-h-[44px] ps-9 pe-9 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+              className="absolute end-2.5 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -380,7 +380,7 @@ export const KhataBillsPanel: React.FC<KhataBillsPanelProps> = ({
                     </h4>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       {bill.date} • {bill.lineItems.length} {isUrdu ? 'آئٹمز' : 'line(s)'}
-                      {bill.linkedDocNo ? ` • Ref ${bill.linkedDocNo}` : ''}
+                      {bill.linkedDocNo ? ` • ${isUrdu ? 'حوالہ' : 'Ref'} ${bill.linkedDocNo}` : ''}
                     </p>
                   </div>
 
@@ -696,7 +696,7 @@ const BillFormModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[92vh] overflow-y-auto pb-[max(env(safe-area-inset-bottom),1.25rem)]">
         <div className="flex items-center justify-between mb-3.5">
           <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
@@ -837,7 +837,7 @@ const BillFormModal: React.FC<{
                   step="any"
                   value={item.qty || ''}
                   onChange={e => updateLine(idx, 'qty', e.target.value)}
-                  placeholder="Qty"
+                  placeholder={isUrdu ? 'تعداد' : 'Qty'}
                   className="col-span-2 min-h-[38px] px-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white"
                 />
                 <input
@@ -846,7 +846,7 @@ const BillFormModal: React.FC<{
                   step="any"
                   value={item.rate || ''}
                   onChange={e => updateLine(idx, 'rate', e.target.value)}
-                  placeholder="Rate"
+                  placeholder={isUrdu ? 'ریٹ' : 'Rate'}
                   className="col-span-3 min-h-[38px] px-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white"
                 />
                 <button
@@ -960,7 +960,7 @@ const ReceivePaymentModal: React.FC<{
   const [payError, setPayError] = useState<string | null>(null);
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 pb-[max(env(safe-area-inset-bottom),1.25rem)]">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">

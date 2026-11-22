@@ -174,7 +174,8 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
           />
 
           <div 
-            className="absolute top-full mt-2 end-0 z-50 w-72 p-3.5 bg-white dark:bg-[#16181e] border border-[#ecece0] dark:border-[#2d313b] rounded-2xl shadow-2xl text-left animate-in fade-in zoom-in-95 duration-150 space-y-3"
+            dir={lang === 'ur' ? 'rtl' : 'ltr'}
+            className="absolute top-full mt-2 end-0 z-50 w-72 p-3.5 bg-white dark:bg-[#16181e] border border-[#ecece0] dark:border-[#2d313b] rounded-2xl shadow-2xl text-start animate-in fade-in zoom-in-95 duration-150 space-y-3"
             role="dialog"
             onClick={(e) => e.stopPropagation()}
           >

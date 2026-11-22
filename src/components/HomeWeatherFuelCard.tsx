@@ -539,12 +539,12 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
 
           {/* City Dropdown Selector (Manual Fallback Option) */}
           <div className="relative inline-flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-2 py-1 text-xs text-[#4a4a35] shadow-2xs hover:border-[#8b9d77]">
-            <MapPin className="w-3.5 h-3.5 text-[#8b9d77] mr-1 shrink-0" />
+            <MapPin className={`w-3.5 h-3.5 text-[#8b9d77] ${isUrdu ? 'ml-1' : 'mr-1'} shrink-0`} />
             <select
               value={selectedCityId}
               onChange={(e) => handleCityChange(e.target.value)}
               aria-label={isUrdu ? 'شہر منتخب کریں' : 'Select City for Weather'}
-              className="bg-transparent text-xs font-bold text-[#4a4a35] focus:outline-none cursor-pointer pr-4"
+              className={`bg-transparent text-xs font-bold text-[#4a4a35] focus:outline-none cursor-pointer ${isUrdu ? 'pl-4' : 'pr-4'}`}
             >
               {PAKISTAN_CITIES_MASTER.map(c => (
                 <option key={c.id} value={c.id}>
@@ -552,7 +552,7 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-3 h-3 text-slate-400 pointer-events-none absolute right-1.5" />
+            <ChevronDown className={`w-3 h-3 text-slate-400 pointer-events-none absolute ${isUrdu ? 'left-1.5' : 'right-1.5'}`} />
           </div>
 
           <button
@@ -601,7 +601,7 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
               </span>
               {isCurrentGpsActive && (
                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                  GPS
+                  {isUrdu ? 'جی پی ایس' : 'GPS'}
                 </span>
               )}
               <span className="text-base font-extrabold font-mono text-emerald-800 dark:text-emerald-400">
@@ -657,7 +657,7 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
           <div className="flex items-center gap-2">
             <span className="px-2 py-0.5 rounded-md bg-emerald-900/10 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-300 font-bold text-[10px] tracking-wide border border-emerald-900/20 dark:border-emerald-700/50 flex items-center gap-1.5 font-sans">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-700 dark:bg-emerald-400 animate-pulse"></span>
-              OGRA / PSO
+              {isUrdu ? 'اوگرا / پی ایس او' : 'OGRA / PSO'}
             </span>
             <h3 className="font-serif font-bold text-xs sm:text-sm text-[#4a4a35] dark:text-[#f8fafc]">
               {isUrdu ? 'پاکستان پول ریٹ مانیٹر' : 'Pakistan POL Rates'}
@@ -687,12 +687,14 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
             <div className="flex items-center justify-between gap-1">
               <span className="text-[11px] sm:text-xs font-bold text-emerald-950 dark:text-emerald-200 flex items-center gap-1 font-serif truncate">
                 <span>🛢️</span>
-                <span>{isUrdu ? 'ڈیزل (HSD)' : 'Diesel (HSD)'}</span>
+                <span>{isUrdu ? 'ڈیزل' : 'Diesel (HSD)'}</span>
               </span>
             </div>
             
             <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-400 font-mono">Rs.</span>
+              <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-400 font-mono">
+                {isUrdu ? 'روپے' : 'Rs.'}
+              </span>
               <span className="text-lg sm:text-2xl font-black font-mono text-emerald-900 dark:text-emerald-300 tracking-tight">
                 <bdi dir="ltr">{dieselPrice}</bdi>
               </span>
@@ -705,12 +707,14 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
             <div className="flex items-center justify-between gap-1">
               <span className="text-[11px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1 font-serif truncate">
                 <span>⛽</span>
-                <span>{isUrdu ? 'پٹرول (PMG)' : 'Petrol (PMG)'}</span>
+                <span>{isUrdu ? 'پٹرول' : 'Petrol (PMG)'}</span>
               </span>
             </div>
 
             <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 font-mono">Rs.</span>
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 font-mono">
+                {isUrdu ? 'روپے' : 'Rs.'}
+              </span>
               <span className="text-lg sm:text-2xl font-black font-mono text-slate-900 dark:text-slate-100 tracking-tight">
                 <bdi dir="ltr">{petrolPrice}</bdi>
               </span>
@@ -727,17 +731,17 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
               {isUrdu ? 'الٹران 97' : 'Altron 97'}
             </span>
             <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] dark:text-slate-100 mt-0.5 block">
-              Rs. <bdi dir="ltr">{hiOctanePrice}</bdi>
+              {isUrdu ? 'روپے' : 'Rs.'} <bdi dir="ltr">{hiOctanePrice}</bdi>
             </span>
           </div>
 
           {/* Light Diesel (LDO) */}
           <div className="bg-white/80 dark:bg-[#1a1c22] p-1.5 rounded-lg border border-[#ecece0]/80 dark:border-[#2d313b] text-center shadow-2xs">
             <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] dark:text-slate-400 block truncate">
-              {isUrdu ? 'لائٹ ڈیزل (LDO)' : 'LDO'}
+              {isUrdu ? 'لائٹ ڈیزل' : 'LDO'}
             </span>
             <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] dark:text-slate-100 mt-0.5 block">
-              Rs. <bdi dir="ltr">{ldoPrice}</bdi>
+              {isUrdu ? 'روپے' : 'Rs.'} <bdi dir="ltr">{ldoPrice}</bdi>
             </span>
           </div>
 
@@ -747,17 +751,17 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
               {isUrdu ? 'مٹی کا تیل' : 'Kerosene'}
             </span>
             <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] dark:text-slate-100 mt-0.5 block">
-              Rs. <bdi dir="ltr">{skoPrice}</bdi>
+              {isUrdu ? 'روپے' : 'Rs.'} <bdi dir="ltr">{skoPrice}</bdi>
             </span>
           </div>
 
           {/* CNG */}
           <div className="bg-white/80 dark:bg-[#1a1c22] p-1.5 rounded-lg border border-[#ecece0]/80 dark:border-[#2d313b] text-center shadow-2xs">
             <span className="text-[9.5px] font-bold uppercase text-[#8e8e75] dark:text-slate-400 block truncate">
-              {isUrdu ? 'سی این جی (CNG)' : 'CNG'}
+              {isUrdu ? 'سی این جی' : 'CNG'}
             </span>
             <span className="text-xs sm:text-[13px] font-black font-mono text-[#4a4a35] dark:text-slate-100 mt-0.5 block">
-              Rs. 200/kg
+              {isUrdu ? '200 روپے / کلو' : 'Rs. 200/kg'}
             </span>
           </div>
         </div>
@@ -883,7 +887,10 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
       {/* Modal to add operational summary */}
       {showAddSummaryModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-[#ecece0] space-y-4 animate-in fade-in zoom-in-95">
+          <div
+            dir={isUrdu ? 'rtl' : 'ltr'}
+            className={`bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-xl border border-[#ecece0] space-y-4 animate-in fade-in zoom-in-95 ${isUrdu ? 'text-right' : 'text-left'}`}
+          >
             <div className="flex items-center justify-between pb-3 border-b border-[#ecece0]">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-[#8b9d77]" />

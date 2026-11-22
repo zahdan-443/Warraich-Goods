@@ -487,8 +487,8 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
 
   // ----------------- RENDER: ACCOUNT DETAIL VIEW -----------------
   if (selectedAccount) {
-    const gaveLabel = isUrdu ? 'آپ نے دیا (دینا / Pay)' : 'You Gave';
-    const gotLabel = isUrdu ? 'آپ کو ملا (لینا / Receive)' : 'You Got';
+    const gaveLabel = isUrdu ? 'آپ نے دیا' : 'You Gave';
+    const gotLabel = isUrdu ? 'آپ کو ملا' : 'You Got';
 
     const hasMoreEntries = selectedAccountEntries.length > entriesLimit;
 
@@ -504,7 +504,10 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
     };
 
     return (
-      <div className="w-full max-w-4xl mx-auto px-2 sm:px-4 flex flex-col h-[calc(100dvh-4.25rem)] overflow-hidden font-serif">
+      <div
+        dir={isUrdu ? 'rtl' : 'ltr'}
+        className="w-full max-w-4xl mx-auto px-2 sm:px-4 flex flex-col h-[calc(100dvh-4.25rem)] overflow-hidden font-serif"
+      >
         {/* Sticky Mobile App Bar */}
         <div className="shrink-0 -mx-2 sm:-mx-4 px-3 sm:px-4 py-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2 mb-2 font-serif">
           <button
@@ -586,9 +589,9 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
             <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 sm:p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
                 {selectedAccountBalance.balance > 0
-                  ? (isUrdu ? 'آپ کو ملنا ہے (لینا / Receivable)' : "You will get (Receivable)")
+                  ? (isUrdu ? 'آپ کو ملنا ہے' : "You will get (Receivable)")
                   : selectedAccountBalance.balance < 0
-                  ? (isUrdu ? 'آپ کو دینا ہے (دینا / Payable)' : "You will give (Payable)")
+                  ? (isUrdu ? 'آپ کو دینا ہے' : "You will give (Payable)")
                   : (isUrdu ? 'حساب بیباق ہے' : 'Settled Balance')}
               </span>
               <div
@@ -705,7 +708,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
                                       : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
                                   }`}
                                 >
-                                  {isGave ? (isUrdu ? 'دینا (Gave)' : 'Gave') : (isUrdu ? 'لینا (Got)' : 'Got')}
+                                  {isGave ? (isUrdu ? 'دینا' : 'Gave') : (isUrdu ? 'لینا' : 'Got')}
                                 </span>
                               </div>
                               {entry.note && (
@@ -791,7 +794,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
               className="min-h-[46px] sm:min-h-[48px] py-2.5 px-3.5 rounded-2xl bg-rose-600 hover:bg-rose-700 active:scale-[0.97] text-white font-bold text-xs sm:text-sm shadow-md shadow-rose-600/25 flex items-center justify-center gap-1.5 transition-all cursor-pointer font-serif"
             >
               <ArrowUpRight className="w-4 h-4" />
-              <span>{isUrdu ? 'دینا (You Gave)' : 'You Gave'}</span>
+              <span>{isUrdu ? 'آپ نے دیا' : 'You Gave'}</span>
             </button>
             <button
               type="button"
@@ -802,7 +805,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
               className="min-h-[46px] sm:min-h-[48px] py-2.5 px-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.97] text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-600/25 flex items-center justify-center gap-1.5 transition-all cursor-pointer font-serif"
             >
               <ArrowDownLeft className="w-4 h-4" />
-              <span>{isUrdu ? 'لینا (You Got)' : 'You Got'}</span>
+              <span>{isUrdu ? 'آپ کو ملا' : 'You Got'}</span>
             </button>
           </div>
         </div>
@@ -839,13 +842,16 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
 
   // ----------------- RENDER: UNIFIED LEDGER MAIN VIEW -----------------
   return (
-    <div className="w-full max-w-4xl mx-auto px-2 sm:px-4 flex flex-col h-[calc(100dvh-4.25rem)] overflow-hidden font-serif">
+    <div
+      dir={isUrdu ? 'rtl' : 'ltr'}
+      className="w-full max-w-4xl mx-auto px-2 sm:px-4 flex flex-col h-[calc(100dvh-4.25rem)] overflow-hidden font-serif"
+    >
       {/* Top Header Bar */}
       <div className="flex items-center justify-between pt-1.5 pb-1 mb-2 shrink-0 font-serif">
         <div>
           <h1 className="text-base sm:text-lg font-bold font-serif text-slate-900 dark:text-white flex items-center gap-2">
             <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 shrink-0" />
-            <span>{isUrdu ? 'لین دین و حساب کتاب (Unified Ledger)' : 'Udhaar & Party Ledger'}</span>
+            <span>{isUrdu ? 'لین دین و حساب کتاب' : 'Udhaar & Party Ledger'}</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
             {settings.businessName ? `${settings.businessName} • ` : ''}
@@ -1002,7 +1008,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 mb-3 font-serif">
         <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-2xl p-3 sm:p-3.5 font-serif">
           <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 block mb-0.5">
-            {isUrdu ? 'آپ نے لینا ہے (وصولی / ملنا ہے)' : 'You will get (Receivable)'}
+            {isUrdu ? 'آپ نے لینا ہے' : 'You will get (Receivable)'}
           </span>
           <div className="text-base sm:text-lg font-bold font-serif text-emerald-600 dark:text-emerald-400 tracking-tight">
             PKR {accountsSummary.totalWillGet.toLocaleString('en-US')}
@@ -1011,7 +1017,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
 
         <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-2xl p-3 sm:p-3.5 font-serif">
           <span className="text-xs font-bold text-rose-800 dark:text-rose-300 block mb-0.5">
-            {isUrdu ? 'آپ نے دینا ہے (واجب الادا / دینا ہے)' : 'You will give (Payable)'}
+            {isUrdu ? 'آپ نے دینا ہے' : 'You will give (Payable)'}
           </span>
           <div className="text-base sm:text-lg font-bold font-serif text-rose-600 dark:text-rose-400 tracking-tight">
             PKR {accountsSummary.totalWillGive.toLocaleString('en-US')}
@@ -1022,19 +1028,19 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
       {/* Search Bar & Add Party Button */}
       <div className="flex items-center gap-2 mb-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+          <Search className="w-4 h-4 text-slate-400 absolute start-3 top-3.5" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder={isUrdu ? 'پارٹی کا نام یا فون نمبر تلاش کریں...' : 'Search by party name or phone...'}
-            className="w-full pl-9 pr-9 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[44px]"
+            className="w-full ps-9 pe-9 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 min-h-[44px]"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center absolute right-0 top-0 text-slate-400 hover:text-slate-600 cursor-pointer"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center absolute end-0 top-0 text-slate-400 hover:text-slate-600 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1078,7 +1084,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
                 : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
             }`}
           >
-            {isUrdu ? 'ملنا ہے (لینا)' : "You'll get"}
+            {isUrdu ? 'ملنا ہے' : "You'll get"}
           </button>
 
           <button
@@ -1090,7 +1096,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
                 : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
             }`}
           >
-            {isUrdu ? 'دینا ہے (دینا)' : "You'll give"}
+            {isUrdu ? 'دینا ہے' : "You'll give"}
           </button>
 
           <button
@@ -1230,9 +1236,9 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
                     </div>
                     <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 block font-semibold whitespace-nowrap leading-tight">
                       {balance > 0
-                        ? (isUrdu ? 'ملنا ہے (لینا)' : "You'll get")
+                        ? (isUrdu ? 'ملنا ہے' : "You'll get")
                         : balance < 0
-                        ? (isUrdu ? 'دینا ہے (دینا)' : "You'll give")
+                        ? (isUrdu ? 'دینا ہے' : "You'll give")
                         : (isUrdu ? 'بیباق' : 'Settled')}
                     </span>
                   </div>
@@ -1258,7 +1264,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
       )}
 
       {/* Floating Action Button */}
-      <div className="fixed bottom-6 right-4 sm:hidden z-30">
+      <div className="fixed bottom-6 end-4 sm:hidden z-30">
         <button
           type="button"
           onClick={() => {
@@ -1385,7 +1391,10 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
     const callUrl = rawPhone ? `tel:${rawPhone}` : null;
 
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div
+        dir={isUrdu ? 'rtl' : 'ltr'}
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      >
         <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 pb-[max(env(safe-area-inset-bottom),1.25rem)]">
           <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden" />
 
@@ -1449,7 +1458,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
                 className="w-full min-h-[48px] py-3 px-4 rounded-2xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-95 transition-all"
               >
                 <Smartphone className="w-4 h-4" />
-                <span>{isUrdu ? 'موبائل ایس ایم ایس (SMS) بھیجیں' : 'Send Direct SMS'}</span>
+                <span>{isUrdu ? 'موبائل ایس ایم ایس بھیجیں' : 'Send Direct SMS'}</span>
               </a>
             )}
 
@@ -1503,7 +1512,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
             onClick={handleExecuteUndo}
             className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white font-extrabold text-xs hover:bg-emerald-700 transition-colors shadow-sm active:scale-95 cursor-pointer"
           >
-            {isUrdu ? 'واپس لائیں (Undo)' : 'Undo (5s)'}
+            {isUrdu ? 'واپس لائیں' : 'Undo (5s)'}
           </button>
         </div>
       </div>
@@ -1652,7 +1661,10 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div
+      dir={isUrdu ? 'rtl' : 'ltr'}
+      className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+    >
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto pb-[max(env(safe-area-inset-bottom),1.25rem)]">
         <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden" />
 
@@ -1721,7 +1733,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                     setPhone('');
                     setPhoneError('');
                   }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="absolute end-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1765,7 +1777,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                           setPhoneError('');
                           setShowManualContactsCard(false);
                         }}
-                        className="text-left px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 hover:border-emerald-400 active:scale-95 transition-all cursor-pointer"
+                        className="text-start px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 hover:border-emerald-400 active:scale-95 transition-all cursor-pointer"
                       >
                         <div className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">{sc.name}</div>
                         <div className="text-xs text-emerald-600 dark:text-emerald-400 font-mono">📞 {formatPhoneForDisplay(sc.phone)}</div>
@@ -1780,7 +1792,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
           {/* Opening Balance */}
           <div>
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-              {isUrdu ? 'شروع کا بقایا بیلنس (Opening Balance)' : 'Opening Balance (PKR)'}
+              {isUrdu ? 'شروع کا بقایا بیلنس' : 'Opening Balance (PKR)'}
             </label>
             <input
               type="text"
@@ -1806,7 +1818,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                 }`}
               >
-                {isUrdu ? 'ملنا ہے (لینا / Get)' : "You will get"}
+                {isUrdu ? 'ملنا ہے' : "You will get"}
               </button>
               <button
                 type="button"
@@ -1817,7 +1829,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                 }`}
               >
-                {isUrdu ? 'دینا ہے (دینا / Give)' : "You will give"}
+                {isUrdu ? 'دینا ہے' : "You will give"}
               </button>
             </div>
           </div>
@@ -1825,7 +1837,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
           {/* Due Date */}
           <div>
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-              {isUrdu ? 'ادائیگی کی آخری تاریخ (Due Date - اختیاری)' : 'Payment Due Date (Optional)'}
+              {isUrdu ? 'ادائیگی کی آخری تاریخ (اختیاری)' : 'Payment Due Date (Optional)'}
             </label>
             <input
               type="date"
@@ -1898,8 +1910,8 @@ const EntryFormModal: React.FC<EntryFormModalProps> = ({
   const isGave = type === 'gave';
 
   const modalTitle = isGave
-    ? isUrdu ? 'آپ نے دیا (دینا / Debit)' : 'You Gave'
-    : isUrdu ? 'آپ کو ملا (لینا / Credit)' : 'You Got';
+    ? isUrdu ? 'آپ نے دیا' : 'You Gave'
+    : isUrdu ? 'آپ کو ملا' : 'You Got';
 
   const [amountStr, setAmountStr] = useState(
     initialEntry?.amount ? String(initialEntry.amount) : ''
@@ -1945,7 +1957,10 @@ const EntryFormModal: React.FC<EntryFormModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div
+      dir={isUrdu ? 'rtl' : 'ltr'}
+      className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+    >
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 pb-[max(env(safe-area-inset-bottom),1.25rem)]">
         <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden" />
 
@@ -2269,7 +2284,10 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div
+      dir={isUrdu ? 'rtl' : 'ltr'}
+      className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+    >
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto pb-[max(env(safe-area-inset-bottom),1.25rem)]">
         <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3 sm:hidden" />
 
@@ -2406,14 +2424,14 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
                   onClick={() => confirmImportMode('merge')}
                   className="flex-1 py-2 rounded-lg bg-emerald-600 text-white font-bold cursor-pointer"
                 >
-                  {isUrdu ? 'ضم کریں (Merge)' : 'Merge'}
+                  {isUrdu ? 'ضم کریں' : 'Merge'}
                 </button>
                 <button
                   type="button"
                   onClick={() => confirmImportMode('replace')}
                   className="flex-1 py-2 rounded-lg bg-rose-600 text-white font-bold cursor-pointer"
                 >
-                  {isUrdu ? 'تبدیل کریں (Replace)' : 'Replace All'}
+                  {isUrdu ? 'سب تبدیل کریں' : 'Replace All'}
                 </button>
                 <button
                   type="button"

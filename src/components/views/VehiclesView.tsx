@@ -86,9 +86,9 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
 
     const payload = {
       reg: reg.trim().toUpperCase(),
-      model: model.trim() || 'General Freight',
+      model: model.trim() || (isUrdu ? 'کمرشل ٹرک' : 'General Freight'),
       mileage: parseFloat(mileage) || 7,
-      owner: owner.trim() || 'Fleet Partner',
+      owner: owner.trim() || (isUrdu ? 'فلیٹ پارٹنر' : 'Fleet Partner'),
       capacity: parseFloat(capacity) || 12,
       regExpiry: regExpiry.trim() || undefined,
       routePermitExpiry: routePermitExpiry.trim() || undefined,
@@ -135,7 +135,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
   };
 
   return (
-    <div className="flex-1 p-6 md:p-10 max-w-5xl mx-auto w-full space-y-8">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="flex-1 p-6 md:p-10 max-w-5xl mx-auto w-full space-y-8">
       
       <div className="bg-white p-8 md:p-10 rounded-[40px] shadow-sm border border-[#ecece0] space-y-8">
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#ecece0]">
@@ -238,21 +238,21 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
                     <div className="grid grid-cols-3 gap-2 py-3 px-4 bg-white rounded-2xl border border-[#ecece0] text-xs">
                       <div className="flex flex-col gap-0.5">
                         <span className="text-[10px] text-[#8e8e75] uppercase tracking-tighter flex items-center gap-1">
-                          <Gauge className="w-3 h-3 text-[#8b9d77]" /> Mileage
+                          <Gauge className="w-3 h-3 text-[#8b9d77]" /> {isUrdu ? 'مائلیج' : 'Mileage'}
                         </span>
-                        <span className="font-mono font-bold text-[#4a4a35]">{v.mileage} km/L</span>
+                        <span className="font-mono font-bold text-[#4a4a35]">{v.mileage} {isUrdu ? 'کلومیٹر/لیٹر' : 'km/L'}</span>
                       </div>
 
                       <div className="flex flex-col gap-0.5">
                         <span className="text-[10px] text-[#8e8e75] uppercase tracking-tighter flex items-center gap-1">
-                          <Weight className="w-3 h-3 text-[#8b9d77]" /> Payload
+                          <Weight className="w-3 h-3 text-[#8b9d77]" /> {isUrdu ? 'وزن گنجائش' : 'Payload'}
                         </span>
-                        <span className="font-mono font-bold text-[#4a4a35]">{v.capacity} Tons</span>
+                        <span className="font-mono font-bold text-[#4a4a35]">{v.capacity} {isUrdu ? 'ٹن' : 'Tons'}</span>
                       </div>
 
                       <div className="flex flex-col gap-0.5">
                         <span className="text-[10px] text-[#8e8e75] uppercase tracking-tighter flex items-center gap-1">
-                          <User className="w-3 h-3 text-[#8b9d77]" /> Owner
+                          <User className="w-3 h-3 text-[#8b9d77]" /> {isUrdu ? 'مالک' : 'Owner'}
                         </span>
                         <span className="font-bold text-[#4a4a35] truncate">{v.owner}</span>
                       </div>
@@ -263,7 +263,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
                       <div className="flex items-center justify-between text-[11px] text-[#8e8e75] font-bold">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3 text-[#8b9d77]" />
-                          <span>{isUrdu ? 'دستاویزات کی میعاد (Expiry Dates):' : 'Document Expiry Tracking:'}</span>
+                          <span>{isUrdu ? 'دستاویزات کی میعاد:' : 'Document Expiry Tracking:'}</span>
                         </span>
                         {onNavigate && (
                           <button
@@ -271,7 +271,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
                             onClick={() => onNavigate('verify', 'vehicle')}
                             className="text-[10px] text-[#8b9d77] hover:underline flex items-center gap-0.5 cursor-pointer"
                           >
-                            <span>MTMIS</span>
+                            <span>{isUrdu ? 'ایکسائز تصدیق' : 'MTMIS'}</span>
                             <ExternalLink className="w-2.5 h-2.5" />
                           </button>
                         )}
@@ -281,7 +281,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[10px]">
                           {/* RC Expiry */}
                           <div className={`p-1.5 rounded-xl border flex flex-col justify-between ${regStatus ? regStatus.colorClass : 'bg-slate-50 border-slate-200'}`}>
-                            <span className="text-[#8e8e75]">{isUrdu ? 'رجسٹریشن (RC)' : 'RC Expiry'}</span>
+                            <span className="text-[#8e8e75]">{isUrdu ? 'رجسٹریشن میعاد' : 'RC Expiry'}</span>
                             <span className="font-mono font-bold">{v.regExpiry || '-'}</span>
                             {regStatus && regStatus.days <= 30 && (
                               <span className="text-[9px] mt-0.5 font-bold">
@@ -318,7 +318,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
                           onClick={() => openEditModal(v)}
                           className="w-full py-1.5 px-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-[11px] border border-dashed border-slate-300 text-center transition-colors cursor-pointer"
                         >
-                          + {isUrdu ? 'میعاد تاریخیں شامل کریں (RC، پرمٹ، فٹنس)' : 'Add expiry dates (RC, Permit, Fitness)'}
+                          + {isUrdu ? 'میعاد کی تاریخیں شامل کریں (رجسٹریشن، پرمٹ، فٹنس)' : 'Add expiry dates (RC, Permit, Fitness)'}
                         </button>
                       )}
                     </div>
@@ -389,7 +389,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
                   type="text"
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  placeholder="Hino 500"
+                  placeholder={isUrdu ? 'ہینو 500' : 'Hino 500'}
                   className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-4 py-2.5 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none"
                 />
               </div>
@@ -414,7 +414,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
                   type="text"
                   value={owner}
                   onChange={(e) => setOwner(e.target.value)}
-                  placeholder="Fleet Partner"
+                  placeholder={isUrdu ? 'فلیٹ پارٹنر' : 'Fleet Partner'}
                   className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-4 py-2.5 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none"
                 />
               </div>
@@ -446,7 +446,7 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
               {/* 1. Registration Expiry */}
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  {isUrdu ? '1. رجسٹریشن (RC) کی آخری تاریخ:' : '1. Registration (RC) Expiry:'}
+                  {isUrdu ? '1. رجسٹریشن کی آخری تاریخ:' : '1. Registration (RC) Expiry:'}
                 </label>
                 <input
                   type="date"

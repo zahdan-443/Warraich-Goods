@@ -129,7 +129,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
   };
 
   return (
-    <div className="flex-1 p-6 md:p-10 max-w-5xl mx-auto w-full space-y-8">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="flex-1 p-6 md:p-10 max-w-5xl mx-auto w-full space-y-8">
       <div className="bg-white p-8 md:p-10 rounded-[40px] shadow-sm border border-[#ecece0] space-y-8">
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#ecece0]">
           <div>
@@ -160,7 +160,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
             <div>
               <p className="font-serif italic text-lg text-[#5a5a40]">{t.empty}</p>
               <p className="text-xs text-[#8e8e75] mt-1">
-                {isUrdu ? 'ٹرانسپورٹ ڈرائیورز، فون نمبرز اور HTV لائسنس کا ریکارڈ محفوظ رکھیں' : 'Keep full records of commercial transport drivers, phone numbers, and HTV licenses'}
+                {isUrdu ? 'ٹرانسپورٹ ڈرائیورز، فون نمبرز اور کمرشل لائسنس کا ریکارڈ محفوظ رکھیں' : 'Keep full records of commercial transport drivers, phone numbers, and HTV licenses'}
               </p>
             </div>
             <div className="pt-2 flex flex-wrap justify-center items-center gap-3">
@@ -184,7 +184,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
                 })}
                 className="px-4 py-2.5 bg-white border border-[#ecece0] hover:border-[#8b9d77] text-[#4a4a35] rounded-2xl text-xs font-bold shadow-2xs cursor-pointer transition-all active:scale-95"
               >
-                {isUrdu ? '+ نمونہ HTV ڈرائیور سیٹ کریں' : '+ Quick Add HTV Driver'}
+                {isUrdu ? '+ نمونہ کمرشل ڈرائیور شامل کریں' : '+ Quick Add HTV Driver'}
               </button>
             </div>
           </div>
@@ -205,7 +205,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
                     <div className="space-y-1 overflow-hidden flex-1">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] uppercase font-bold tracking-widest px-2.5 py-0.5 rounded-full bg-[#8b9d77]/20 text-[#5a5a40] font-mono">
-                          {d.lictype} Class
+                          {d.lictype} {isUrdu ? 'کلاس' : 'Class'}
                         </span>
                         <button
                           type="button"
@@ -224,15 +224,15 @@ export const DriversView: React.FC<DriversViewProps> = ({
                       <div className="space-y-1 pt-2 text-xs text-[#8e8e75] font-sans">
                         <div className="flex items-center gap-2 font-mono">
                           <Phone className="w-3.5 h-3.5 text-[#8b9d77]" />
-                          <span>0{d.phone.replace(/^0/, '')}</span>
+                          <span dir="ltr">0{d.phone.replace(/^0/, '')}</span>
                         </div>
                         <div className="flex items-center gap-2 font-mono">
                           <Shield className="w-3.5 h-3.5 text-[#8b9d77]" />
-                          <span>DL: {d.license}</span>
+                          <span>{isUrdu ? 'لائسنس:' : 'DL:'} {d.license}</span>
                         </div>
                         <div className="flex items-center gap-2 font-mono">
                           <CreditCard className="w-3.5 h-3.5 text-[#8b9d77]" />
-                          <span>CNIC: {d.cnic}</span>
+                          <span>{isUrdu ? 'شناختی کارڈ:' : 'CNIC:'} {d.cnic}</span>
                         </div>
                       </div>
 
@@ -249,7 +249,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
                               onClick={() => onNavigate('verify', 'license')}
                               className="text-[10px] text-[#8b9d77] hover:underline flex items-center gap-0.5 cursor-pointer"
                             >
-                              <span>DLIMS</span>
+                              <span>{isUrdu ? 'لائسنس تصدیق' : 'DLIMS'}</span>
                               <ExternalLink className="w-2.5 h-2.5" />
                             </button>
                           )}
@@ -354,10 +354,10 @@ export const DriversView: React.FC<DriversViewProps> = ({
                   onChange={(e) => setLictype(e.target.value)}
                   className="w-full bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-4 py-2.5 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none"
                 >
-                  <option value="HTV">HTV Heavy</option>
-                  <option value="LTV">LTV Light</option>
-                  <option value="PSV">PSV Public</option>
-                  <option value="HMV">HMV Military</option>
+                  <option value="HTV">{isUrdu ? 'ہیوی ٹرانسپورٹ (HTV)' : 'HTV Heavy'}</option>
+                  <option value="LTV">{isUrdu ? 'لائٹ ٹرانسپورٹ (LTV)' : 'LTV Light'}</option>
+                  <option value="PSV">{isUrdu ? 'پبلک ٹرانسپورٹ (PSV)' : 'PSV Public'}</option>
+                  <option value="HMV">{isUrdu ? 'ایچ ایم وی (HMV)' : 'HMV Military'}</option>
                 </select>
               </div>
             </div>
@@ -393,7 +393,7 @@ export const DriversView: React.FC<DriversViewProps> = ({
                   <Calendar className="w-3.5 h-3.5 text-[#8b9d77]" />
                   <span>{isUrdu ? 'ڈرائیونگ لائسنس کی میعاد (اختیاری):' : 'Driver License Expiry (Optional):'}</span>
                 </span>
-                <span className="text-[10px] text-[#8e8e75]">DLIMS Alert</span>
+                <span className="text-[10px] text-[#8e8e75]">{isUrdu ? 'لائسنس الرٹ' : 'DLIMS Alert'}</span>
               </label>
               <input
                 type="date"

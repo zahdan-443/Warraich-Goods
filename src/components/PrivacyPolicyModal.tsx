@@ -56,7 +56,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             </button>
           </div>
 
-          <div className="flex items-center gap-3 pr-24">
+          <div className={`flex items-center gap-3 ${isUrdu ? 'pl-24' : 'pr-24'}`}>
             <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
               <ShieldCheck className="w-6 h-6 text-emerald-400" />
             </div>
@@ -65,7 +65,9 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
                 {isUrdu ? 'پرائیویسی پالیسی و ڈیٹا تحفظ' : 'Privacy Policy & Data Protection'}
               </h2>
               <p className="text-xs text-blue-200 font-sans mt-0.5">
-                Driver Dost · Warraich Goods Transport Co. · v{APP_VERSION} · 15 November 2026
+                {isUrdu
+                  ? `ڈرائیور دوست · وڑائچ گڈز ٹرانسپورٹ کمپنی · ورژن ${APP_VERSION} · 15 نومبر 2026`
+                  : `Driver Dost · Warraich Goods Transport Co. · v${APP_VERSION} · 15 November 2026`}
               </p>
             </div>
           </div>
@@ -79,7 +81,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
             <div className="text-xs text-emerald-900 leading-relaxed">
               <span className="font-bold block mb-1">
-                {isUrdu ? 'آف لائن فرسٹ (Offline-First) • پرائیویسی کا وعدہ' : 'Offline-First • Privacy Commitment'}
+                {isUrdu ? 'آف لائن فرسٹ • پرائیویسی کا وعدہ' : 'Offline-First • Privacy Commitment'}
               </span>
               {isUrdu 
                 ? 'ڈرائیور دوست ایپ میں بنیادی ریکارڈ آپ کی ڈیوائس پر محفوظ رہتا ہے۔ ہم آپ کا ڈیٹا فروخت نہیں کرتے اور کوئی اشتہار نہیں دکھاتے۔'
@@ -92,7 +94,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
               <Database className="w-4 h-4 text-[#8b9d77]" />
               <h3 className="font-serif font-bold text-sm">
-                {isUrdu ? '1. ہمارا بنیادی اصول (Core Privacy Policy)' : '1. Core Privacy Policy'}
+                {isUrdu ? '1. ہمارا بنیادی اصول' : '1. Core Privacy Policy'}
               </h3>
             </div>
             <p className="text-xs text-[#5a5a40] leading-relaxed">
@@ -107,7 +109,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
               <MapPin className="w-4 h-4 text-[#8b9d77]" />
               <h3 className="font-serif font-bold text-sm">
-                {isUrdu ? '2. مطلوبہ پرمشنز کی وضاحت (Permissions Transparency)' : '2. Permissions Transparency'}
+                {isUrdu ? '2. مطلوبہ پرمشنز کی وضاحت' : '2. Permissions Transparency'}
               </h3>
             </div>
             <ul className="text-xs text-[#5a5a40] space-y-2 list-disc list-inside leading-relaxed">
@@ -135,7 +137,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <h3 className="font-serif font-bold text-sm">
-                {isUrdu ? '3. آن ڈیوائس پروسیسنگ اور پرائیویسی (On-Device Local Privacy)' : '3. On-Device Local Privacy'}
+                {isUrdu ? '3. آن ڈیوائس پروسیسنگ اور پرائیویسی' : '3. On-Device Local Privacy'}
               </h3>
             </div>
             <p className="text-xs text-[#5a5a40] leading-relaxed">
@@ -150,7 +152,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
               <Lock className="w-4 h-4 text-[#8b9d77]" />
               <h3 className="font-serif font-bold text-sm">
-                {isUrdu ? '4. گوگل فائر بیس اور کلاؤڈ سیکیورٹی (Cloud Backup & Firebase)' : '4. Cloud Backup & Firebase'}
+                {isUrdu ? '4. گوگل فائر بیس اور کلاؤڈ سیکیورٹی' : '4. Cloud Backup & Firebase'}
               </h3>
             </div>
             <p className="text-xs text-[#5a5a40] leading-relaxed">
@@ -165,7 +167,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
               <AlertTriangle className="w-4 h-4 text-orange-600" />
               <h3 className="font-serif font-bold text-sm">
-                {isUrdu ? '5. روڈ ہیزرڈ رپورٹس (Road Hazard Reports)' : '5. Road Hazard Reports'}
+                {isUrdu ? '5. روڈ ہیزرڈ رپورٹس' : '5. Road Hazard Reports'}
               </h3>
             </div>
             <p className="text-xs text-[#5a5a40] leading-relaxed">
@@ -180,7 +182,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
               <Globe className="w-4 h-4 text-blue-600" />
               <h3 className="font-serif font-bold text-sm">
-                {isUrdu ? '6. تھرڈ پارٹی سروسز (Third-Party Services)' : '6. Third-Party Services'}
+                {isUrdu ? '6. تھرڈ پارٹی سروسز' : '6. Third-Party Services'}
               </h3>
             </div>
             <p className="text-xs text-[#5a5a40] leading-relaxed">
@@ -195,7 +197,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
               <Trash2 className="w-4 h-4 text-red-600" />
               <h3 className="font-serif font-bold text-sm">
-                {isUrdu ? '7. ڈیٹا حذف کرنا اور 30 دن کی رعایتی مدت (30-Day Grace Period)' : '7. Deleting Your Data (30-Day Grace Period)'}
+                {isUrdu ? '7. ڈیٹا حذف کرنا اور 30 دن کی رعایتی مدت' : '7. Deleting Your Data (30-Day Grace Period)'}
               </h3>
             </div>
             <p className="text-xs text-[#5a5a40] leading-relaxed">
@@ -233,7 +235,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             <div className="flex items-center gap-2 border-b border-[#ecece0] pb-2 text-[#1e3a68]">
               <UserCheck className="w-4 h-4 text-amber-600" />
               <h3 className="font-serif font-bold text-sm">
-                {isUrdu ? '8. عمر کی حد (Age Requirement)' : '8. Age Requirement'}
+                {isUrdu ? '8. عمر کی حد' : '8. Age Requirement'}
               </h3>
             </div>
             <p className="text-xs text-[#5a5a40] leading-relaxed">
@@ -248,7 +250,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             <div className="flex items-center gap-2 border-b border-[#ecece0] dark:border-[#2d313b] pb-2 text-[#1e3a68] dark:text-blue-300">
               <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <h3 className="font-serif font-bold text-sm">
-                {isUrdu ? '9. رابطہ برائے کمپنی و ڈویلپر (Contact & Support)' : '9. Contact & Support Details'}
+                {isUrdu ? '9. رابطہ برائے کمپنی و ڈویلپر' : '9. Contact & Support Details'}
               </h3>
             </div>
             <div className="text-xs text-[#5a5a40] dark:text-slate-300 space-y-2">
@@ -272,7 +274,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
                   className="text-[11px] font-bold text-[#1e3a68] hover:underline flex items-center gap-1"
                 >
                   <FileText className="w-3.5 h-3.5" />
-                  <span>{isUrdu ? 'مکمل ویب پرائیویسی پیج (privacy.html)' : 'Open privacy.html'}</span>
+                  <span>{isUrdu ? 'مکمل ویب پرائیویسی پیج' : 'Full Web Privacy Policy'}</span>
                   <ExternalLink className="w-3 h-3" />
                 </a>
                 <a 
@@ -282,7 +284,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
                   className="text-[11px] font-bold text-[#1e3a68] hover:underline flex items-center gap-1"
                 >
                   <FileText className="w-3.5 h-3.5" />
-                  <span>{isUrdu ? 'شرائط و ضوابط (terms.html)' : 'Terms & Conditions (terms.html)'}</span>
+                  <span>{isUrdu ? 'شرائط و ضوابط' : 'Terms & Conditions'}</span>
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>

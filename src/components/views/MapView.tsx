@@ -886,7 +886,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
             transition: all 0.2s ease;
           ">
             <span style="font-size: 13px;">${weatherEmoji}</span>
-            <span style="color: ${bgBadgeColor};">${city.nameUr.split('/')[0]}</span>
+            <span style="color: ${bgBadgeColor};">${isUrdu ? city.nameUr.split('/')[0] : city.nameEn}</span>
             <span style="
               background: ${bgBadgeColor};
               color: white;
@@ -903,12 +903,12 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
 
       const marker = L.marker([city.lat, city.lng], { icon: customIcon }).addTo(markersGroup);
 
-      const popupContent = `
+      const popupContent = isUrdu ? `
         <div style="font-family: system-ui, sans-serif; text-align: right; direction: rtl; padding: 4px;">
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 8px;">
             <div>
-              <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #111827;">${city.nameUr} (${city.nameEn})</h3>
-              <span style="font-size: 10px; color: #6b7280;">${city.provinceUr} · ${city.elevationMeters}m اونچائی</span>
+              <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #111827;">${city.nameUr}</h3>
+              <span style="font-size: 10px; color: #6b7280;">${city.provinceUr} · ${city.elevationMeters} میٹر اونچائی</span>
             </div>
             <div style="font-size: 20px;">${weatherEmoji}</div>
           </div>
@@ -946,6 +946,51 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
 
           <div style="font-size: 10px; color: #4b5563; margin-bottom: 6px;">
             <strong>منسلک ہائی ویز:</strong> ${city.highways.join(', ')}
+          </div>
+        </div>
+      ` : `
+        <div style="font-family: system-ui, sans-serif; text-align: left; direction: ltr; padding: 4px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 8px;">
+            <div>
+              <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #111827;">${city.nameEn}</h3>
+              <span style="font-size: 10px; color: #6b7280;">${city.provinceEn} · ${city.elevationMeters}m elevation</span>
+            </div>
+            <div style="font-size: 20px;">${weatherEmoji}</div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; margin-bottom: 8px;">
+            <div style="background: #f3f4f6; padding: 4px 6px; border-radius: 6px;">
+              <span style="color: #6b7280; display: block; font-size: 9px;">Temperature</span>
+              <strong style="font-size: 13px; color: #1f2937;">${weather ? `${weather.temp}°C` : '--'}</strong>
+            </div>
+            <div style="background: #f3f4f6; padding: 4px 6px; border-radius: 6px;">
+              <span style="color: #6b7280; display: block; font-size: 9px;">Visibility</span>
+              <strong style="font-size: 13px; color: ${weather && weather.visibilityKm < 1 ? '#dc2626' : '#1f2937'};">${weather ? `${weather.visibilityKm} km` : '--'}</strong>
+            </div>
+            <div style="background: #f3f4f6; padding: 4px 6px; border-radius: 6px;">
+              <span style="color: #6b7280; display: block; font-size: 9px;">Wind Speed</span>
+              <strong style="font-size: 12px; color: #1f2937;">${weather ? `${weather.windSpeed} km/h` : '--'}</strong>
+            </div>
+            <div style="background: #f3f4f6; padding: 4px 6px; border-radius: 6px;">
+              <span style="color: #6b7280; display: block; font-size: 9px;">Humidity</span>
+              <strong style="font-size: 12px; color: #1f2937;">${weather ? `${weather.humidity}%` : '--'}</strong>
+            </div>
+          </div>
+
+          <div style="
+            background: ${weather?.safetyLevel === 'alert' ? '#fee2e2' : weather?.safetyLevel === 'caution' ? '#fef3c7' : '#ecfdf5'};
+            border: 1px solid ${weather?.safetyLevel === 'alert' ? '#f87171' : weather?.safetyLevel === 'caution' ? '#fcd34d' : '#6ee7b7'};
+            border-radius: 8px;
+            padding: 6px 8px;
+            font-size: 10px;
+            margin-bottom: 8px;
+            color: #1f2937;
+          ">
+            <strong>Road Status:</strong> ${weather ? weather.roadStatusEn : '--'}
+          </div>
+
+          <div style="font-size: 10px; color: #4b5563; margin-bottom: 6px;">
+            <strong>Highways:</strong> ${city.highways.join(', ')}
           </div>
         </div>
       `;
@@ -987,7 +1032,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
 
       L.marker([navCurrentPos.lat, navCurrentPos.lng], { icon: vehicleIcon, zIndexOffset: 1000 })
         .addTo(markersGroup)
-        .bindPopup('گاڑی کا لائیو مقام (نیویگیشن موڈ)');
+        .bindPopup(isUrdu ? 'گاڑی کا لائیو مقام (نیویگیشن موڈ)' : 'Live Vehicle Position (Navigation Mode)');
       bounds.extend([navCurrentPos.lat, navCurrentPos.lng]);
     } else if (userLocation) {
       const userIcon = L.divIcon({
@@ -1008,7 +1053,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
       });
       L.marker([userLocation.lat, userLocation.lng], { icon: userIcon })
         .addTo(markersGroup)
-        .bindPopup('آپ کی موجودہ لوکیشن');
+        .bindPopup(isUrdu ? 'آپ کی موجودہ لوکیشن' : 'Your Current Location');
       bounds.extend([userLocation.lat, userLocation.lng]);
     }
 
@@ -1183,7 +1228,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
   // Geolocation trigger
   const handleLocateMe = () => {
     if (!navigator.geolocation) {
-      setLocationError('آپ کے موبائل براؤزر میں لوکیشن کی سہولت موجود نہیں۔');
+      setLocationError(isUrdu ? 'آپ کے موبائل براؤزر میں لوکیشن کی سہولت موجود نہیں۔' : 'Geolocation is not supported by your browser.');
       setTimeout(() => setLocationError(null), 5000);
       return;
     }
@@ -1200,14 +1245,14 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
       },
       () => {
         setLocatingUser(false);
-        setLocationError('لوکیشن حاصل کرنے میں مسئلہ پیش آیا۔ موبائل جی پی ایس آن کریں۔');
+        setLocationError(isUrdu ? 'لوکیشن حاصل کرنے میں مسئلہ پیش آیا۔ موبائل جی پی ایس آن کریں۔' : 'Could not fetch GPS location. Please enable location services.');
         setTimeout(() => setLocationError(null), 5000);
       },
       { timeout: 8000 }
     );
   };
 
-  // Share route weather on WhatsApp in Urdu
+  // Share route weather on WhatsApp
   const handleShareWeatherWhatsApp = () => {
     const origin = routeCities[0];
     const dest = routeCities[routeCities.length - 1];
@@ -1216,22 +1261,42 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
     const originWeather = weatherMap[origin.id];
     const destWeather = weatherMap[dest.id];
 
-    let message = `*🚚 ڈرائیور دوست - روٹ و لائیو موسم رپورٹ (Driver Dost)*\n`;
-    message += `🛣️ *روٹ:* ${origin.nameUr} تا ${dest.nameUr}\n`;
-    message += `📏 *کل فاصلہ:* ${routeMetrics.distanceKm} کلومیٹر | ⏱️ *ٹرک وقت:* ~${routeMetrics.truckTime} گھنٹے\n\n`;
-    
-    message += `📍 *روانگی (${origin.nameUr}):*\n`;
-    message += `• درجہ حرارت: ${originWeather ? `${originWeather.temp}°C (${originWeather.conditionUr})` : '--'}\n`;
-    message += `• حدِ نگاہ: ${originWeather ? `${originWeather.visibilityKm} km` : '--'} | ہوا: ${originWeather ? `${originWeather.windSpeed} km/h` : '--'}\n`;
-    message += `• سڑک کا حال: ${originWeather?.roadStatusUr || '--'}\n\n`;
+    let message = '';
+    if (isUrdu) {
+      message += `*🚚 ڈرائیور دوست - روٹ و لائیو موسم رپورٹ*\n`;
+      message += `🛣️ *روٹ:* ${origin.nameUr} تا ${dest.nameUr}\n`;
+      message += `📏 *کل فاصلہ:* ${routeMetrics.distanceKm} کلومیٹر | ⏱️ *ٹرک وقت:* ~${routeMetrics.truckTime} گھنٹے\n\n`;
+      
+      message += `📍 *روانگی (${origin.nameUr}):*\n`;
+      message += `• درجہ حرارت: ${originWeather ? `${originWeather.temp}°C (${originWeather.conditionUr})` : '--'}\n`;
+      message += `• حدِ نگاہ: ${originWeather ? `${originWeather.visibilityKm} کلومیٹر` : '--'} | ہوا: ${originWeather ? `${originWeather.windSpeed} کلومیٹر/گھنٹہ` : '--'}\n`;
+      message += `• سڑک کا حال: ${originWeather?.roadStatusUr || '--'}\n\n`;
 
-    message += `📍 *منزل (${dest.nameUr}):*\n`;
-    message += `• درجہ حرارت: ${destWeather ? `${destWeather.temp}°C (${destWeather.conditionUr})` : '--'}\n`;
-    message += `• حدِ نگاہ: ${destWeather ? `${destWeather.visibilityKm} km` : '--'} | ہوا: ${destWeather ? `${destWeather.windSpeed} km/h` : '--'}\n`;
-    message += `• سڑک کا حال: ${destWeather?.roadStatusUr || '--'}\n\n`;
+      message += `📍 *منزل (${dest.nameUr}):*\n`;
+      message += `• درجہ حرارت: ${destWeather ? `${destWeather.temp}°C (${destWeather.conditionUr})` : '--'}\n`;
+      message += `• حدِ نگاہ: ${destWeather ? `${destWeather.visibilityKm} کلومیٹر` : '--'} | ہوا: ${destWeather ? `${destWeather.windSpeed} کلومیٹر/گھنٹہ` : '--'}\n`;
+      message += `• سڑک کا حال: ${destWeather?.roadStatusUr || '--'}\n\n`;
 
-    message += `⚠️ *موٹروے پولیس ہیلپ لائن:* 130\n`;
-    message += `📱 *ڈرائیور دوست لائیو ایپ:* https://zahdan-443.github.io/Warraich-Goods/`;
+      message += `⚠️ *موٹروے پولیس ہیلپ لائن:* 130\n`;
+      message += `📱 *ڈرائیور دوست لائیو ایپ:* https://zahdan-443.github.io/Warraich-Goods/`;
+    } else {
+      message += `*🚚 Driver Dost — Route & Live Weather Report*\n`;
+      message += `🛣️ *Route:* ${origin.nameEn} to ${dest.nameEn}\n`;
+      message += `📏 *Total Distance:* ${routeMetrics.distanceKm} KM | ⏱️ *Truck ETA:* ~${routeMetrics.truckTime} hours\n\n`;
+      
+      message += `📍 *Origin (${origin.nameEn}):*\n`;
+      message += `• Temp: ${originWeather ? `${originWeather.temp}°C (${originWeather.conditionEn})` : '--'}\n`;
+      message += `• Visibility: ${originWeather ? `${originWeather.visibilityKm} km` : '--'} | Wind: ${originWeather ? `${originWeather.windSpeed} km/h` : '--'}\n`;
+      message += `• Road Status: ${originWeather?.roadStatusEn || '--'}\n\n`;
+
+      message += `📍 *Destination (${dest.nameEn}):*\n`;
+      message += `• Temp: ${destWeather ? `${destWeather.temp}°C (${destWeather.conditionEn})` : '--'}\n`;
+      message += `• Visibility: ${destWeather ? `${destWeather.visibilityKm} km` : '--'} | Wind: ${destWeather ? `${destWeather.windSpeed} km/h` : '--'}\n`;
+      message += `• Road Status: ${destWeather?.roadStatusEn || '--'}\n\n`;
+
+      message += `⚠️ *NHMP Highway Police Helpline:* 130\n`;
+      message += `📱 *Driver Dost Live App:* https://zahdan-443.github.io/Warraich-Goods/`;
+    }
 
     const encoded = encodeURIComponent(message);
     const waUrl = `https://api.whatsapp.com/send?text=${encoded}`;
@@ -1316,12 +1381,12 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
               >
                 <div className="flex items-center gap-1.5 min-w-0">
                   <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <div className="min-w-0 text-right">
+                  <div className={`min-w-0 ${isUrdu ? 'text-right' : 'text-left'}`}>
                     <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-400 block leading-none mb-0.5">
-                      {isUrdu ? 'روانگی (From)' : 'From (Origin)'}
+                      {isUrdu ? 'روانگی' : 'From (Origin)'}
                     </span>
                     <span className="font-bold text-xs text-[#1f2937] dark:text-[#f8fafc] truncate block">
-                      {isUrdu ? `${originCity.nameUr} (${originCity.nameEn})` : originCity.nameEn}
+                      {isUrdu ? originCity.nameUr : originCity.nameEn}
                     </span>
                   </div>
                 </div>
@@ -1368,7 +1433,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
                           >
                             <div className="flex items-center gap-2">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                              <span>{isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.provinceEn})`}</span>
+                              <span>{isUrdu ? c.nameUr : c.nameEn}</span>
                             </div>
                             <span className="text-[10px] text-[#8e8e75] dark:text-[#94a3b8] bg-[#f0f0e4] dark:bg-[#121316] px-2 py-0.5 rounded-md">
                               {isUrdu ? c.provinceUr : c.provinceEn}
@@ -1399,12 +1464,12 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
               >
                 <div className="flex items-center gap-1.5 min-w-0">
                   <MapPin className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
-                  <div className="min-w-0 text-right">
+                  <div className={`min-w-0 ${isUrdu ? 'text-right' : 'text-left'}`}>
                     <span className="text-[9px] font-bold text-rose-700 dark:text-rose-400 block leading-none mb-0.5">
-                      {isUrdu ? 'منزل (To)' : 'To (Destination)'}
+                      {isUrdu ? 'منزل' : 'To (Destination)'}
                     </span>
                     <span className="font-bold text-xs text-[#1f2937] dark:text-[#f8fafc] truncate block">
-                      {isUrdu ? `${destCity.nameUr} (${destCity.nameEn})` : destCity.nameEn}
+                      {isUrdu ? destCity.nameUr : destCity.nameEn}
                     </span>
                   </div>
                 </div>
@@ -1451,7 +1516,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
                           >
                             <div className="flex items-center gap-2">
                               <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                              <span>{isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.provinceEn})`}</span>
+                              <span>{isUrdu ? c.nameUr : c.nameEn}</span>
                             </div>
                             <span className="text-[10px] text-[#8e8e75] dark:text-[#94a3b8] bg-[#f0f0e4] dark:bg-[#121316] px-2 py-0.5 rounded-md">
                               {isUrdu ? c.provinceUr : c.provinceEn}
@@ -1739,7 +1804,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
 
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-mono text-[#8b9d77] font-bold bg-[#fdfbf7] border border-[#ecece0] px-2 py-0.5 rounded-lg">
-                {originCity.nameUr} ➔ {destCity.nameUr}
+                {isUrdu ? `${originCity.nameUr} ➔ ${destCity.nameUr}` : `${originCity.nameEn} ➔ ${destCity.nameEn}`}
               </span>
             </div>
           </div>

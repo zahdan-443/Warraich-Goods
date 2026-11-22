@@ -161,7 +161,7 @@ export const AccountDeletionModal: React.FC<AccountDeletionModalProps> = ({
               {referenceId && (
                 <div className="p-2.5 bg-white border border-emerald-300 rounded-xl">
                   <div className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">
-                    {isUrdu ? 'تصدیقی ریفرنس نمبر (Reference ID):' : 'Verifiable Reference ID:'}
+                    {isUrdu ? 'تصدیقی ریفرنس نمبر:' : 'Verifiable Reference ID:'}
                   </div>
                   <div className="font-mono font-black text-sm text-emerald-950 tracking-wider">
                     {referenceId}
@@ -193,7 +193,7 @@ export const AccountDeletionModal: React.FC<AccountDeletionModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setDeletionType('grace_period')}
-                    className={`p-3 rounded-2xl border text-right transition-all cursor-pointer ${
+                    className={`p-3 rounded-2xl border ${isUrdu ? 'text-right' : 'text-left'} transition-all cursor-pointer ${
                       deletionType === 'grace_period'
                         ? 'bg-amber-50/80 border-amber-400 ring-2 ring-amber-300/40 text-amber-950'
                         : 'bg-white border-[#ecece0] text-slate-700 hover:bg-slate-50'
@@ -211,7 +211,7 @@ export const AccountDeletionModal: React.FC<AccountDeletionModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setDeletionType('immediate')}
-                    className={`p-3 rounded-2xl border text-right transition-all cursor-pointer ${
+                    className={`p-3 rounded-2xl border ${isUrdu ? 'text-right' : 'text-left'} transition-all cursor-pointer ${
                       deletionType === 'immediate'
                         ? 'bg-red-50/90 border-red-400 ring-2 ring-red-300/40 text-red-950'
                         : 'bg-white border-[#ecece0] text-slate-700 hover:bg-slate-50'

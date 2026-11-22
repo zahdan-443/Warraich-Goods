@@ -429,9 +429,10 @@ export async function sharePdfFileOrWhatsApp(options: {
   fileName: string;
   title: string;
   textSummary: string;
+  lang?: 'ur' | 'en';
   onDownloadedFallback?: () => void;
 }): Promise<void> {
-  const { pdfBlob, fileName, title, textSummary, onDownloadedFallback } = options;
+  const { pdfBlob, fileName, title, textSummary, lang = 'ur', onDownloadedFallback } = options;
 
   const outcome = await shareOrDownloadBlob(pdfBlob, fileName, {
     title,
@@ -447,7 +448,10 @@ export async function sharePdfFileOrWhatsApp(options: {
     onDownloadedFallback();
   }
 
-  openWhatsAppMessage(
-    `${textSummary}\n\n📄 *(نوٹ: مکمل پی ڈی ایف رسید ڈاؤن لوڈ ہو گئی ہے، برائے مہربانی چیٹ میں فائل اٹیچ کر کے بھیج دیں۔)*`
-  );
+  const attachNote =
+    lang === 'en'
+      ? '📄 *(Note: Complete PDF receipt has been downloaded, please attach the file in chat to send.)*'
+      : '📄 *(نوٹ: مکمل پی ڈی ایف رسید ڈاؤن لوڈ ہو گئی ہے، برائے مہربانی چیٹ میں فائل اٹیچ کر کے بھیج دیں۔)*';
+
+  openWhatsAppMessage(`${textSummary}\n\n${attachNote}`);
 }

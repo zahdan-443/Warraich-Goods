@@ -307,7 +307,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
   });
 
   return (
-    <div className={`h-[calc(100dvh-56px)] flex flex-col overflow-hidden bg-[#F4F6F0] select-none ${isUrdu ? 'rtl font-urdu' : 'ltr font-sans'}`}>
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className={`h-[calc(100dvh-56px)] flex flex-col overflow-hidden bg-[#F4F6F0] select-none ${isUrdu ? 'rtl font-urdu' : 'ltr font-sans'}`}>
       
       <div className="flex-1 min-h-0 overflow-y-auto max-w-5xl mx-auto w-full px-3 sm:px-4 py-3 space-y-4 pb-8">
         {/* Error Alert */}
@@ -335,7 +335,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
             <div className="flex items-start gap-2.5">
               <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold">{isUrdu ? 'موبائل براؤزر نوٹس (Mobile Browser Notice)' : 'Mobile Web Browser Screen Lock Notice'}</p>
+                <p className="font-bold">{isUrdu ? 'موبائل براؤزر نوٹس' : 'Mobile Web Browser Screen Lock Notice'}</p>
                 <p className="mt-0.5 leading-relaxed">
                   {isUrdu
                     ? 'جب آپ موبائل براؤزر میں پاور بٹن دباتے ہیں، تو براؤزر سیکیورٹی کے تحت کیمرہ ویڈیو وقتی طور پر فریز کر دیتا ہے۔ ڈرائیونگ کے دوران اسکرین خودکار طور پر بند نہیں ہوگی (ویک لاک فعال ہے)۔ اگر آپ اسکرین کو ڈارک کر کے بیٹری بچانا چاہتے ہیں تو نیچے "سکرین ڈارک کریں" کا بٹن دبائیں۔'
@@ -363,7 +363,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-bold text-amber-900 dark:text-amber-100">
-                      {isUrdu ? 'ڈوئل کیمرہ سپورٹ کی تفصیل (Dual-Camera Capability)' : 'Dual-Camera Hardware Capability Notice'}
+                      {isUrdu ? 'ڈوئل کیمرہ سپورٹ کی تفصیل' : 'Dual-Camera Hardware Capability Notice'}
                     </h3>
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-900/70 text-amber-800 dark:text-amber-200">
                       {isUrdu ? 'سنگل کیمرہ فال بیک' : 'Single Road Fallback'}
@@ -418,7 +418,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
               </span>
               <div>
                 <p className="text-xs font-bold text-emerald-950 dark:text-emerald-100">
-                  {isUrdu ? 'ڈوئل کیمرہ سینسرز فعال ہیں (Concurrent Dual Ready)' : 'Dual-Camera Hardware Supported'}
+                  {isUrdu ? 'ڈوئل کیمرہ سینسرز فعال ہیں' : 'Dual-Camera Hardware Supported'}
                 </p>
                 <p className="text-[11px] text-emerald-700 dark:text-emerald-400/90">
                   {isUrdu ? 'روڈ اور کیبن دونوں کیمرے بیک وقت دو علیحدہ سنکڈ کلپس میں ریکارڈ ہو سکتے ہیں۔' : 'Simultaneous road and cabin recording is fully available.'}
@@ -439,7 +439,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
               <span className={`w-2.5 h-2.5 rounded-full ${platform === 'native' ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'}`} />
               <span className="font-semibold text-gray-800 dark:text-gray-200">
                 {platform === 'native'
-                  ? (isUrdu ? 'پلیٹ فارم: اینڈرائیڈ فار گراؤنڈ سروس (Native CameraX Background Service)' : 'Platform: Native Android Foreground Service (Screen Lock Continuous)')
+                  ? (isUrdu ? 'پلیٹ فارم: اینڈرائیڈ فار گراؤنڈ سروس' : 'Platform: Native Android Foreground Service (Screen Lock Continuous)')
                   : (isUrdu ? 'پلیٹ فارم: ویب موڈ (اسکرین ویک لاک فعال ہے تاکہ ڈرائیونگ کے دوران ڈسپلے سلیپ نہ ہو)' : 'Platform: Web Mode (Screen WakeLock Active • Display Keeps Awake)')}
               </span>
             </div>
@@ -468,7 +468,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 } ${isRecording ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {isUrdu ? 'خودکار (Auto Dual/Road)' : 'Auto (Dual/Road)'}
+                {isUrdu ? 'خودکار (ڈوئل / روڈ)' : 'Auto (Dual/Road)'}
               </button>
 
               <button
@@ -604,7 +604,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
               ) : isRecording ? (
                 <>
                   <Square className="w-6 h-6 fill-current" />
-                  <span>{isUrdu ? 'ریکارڈنگ بند کریں (Stop Recording)' : 'Stop Recording'}</span>
+                  <span>{isUrdu ? 'ریکارڈنگ بند کریں' : 'Stop Recording'}</span>
                 </>
               ) : (
                 <>
@@ -650,7 +650,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
               <div className="flex items-center gap-2">
                 <Film className="w-5 h-5 text-[#1b4332] dark:text-emerald-400" />
                 <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-gray-100">
-                  {isUrdu ? 'محفوظ شدہ کلپس (Saved Clips)' : 'Saved Dashcam Clips'}
+                  {isUrdu ? 'محفوظ شدہ کلپس' : 'Saved Dashcam Clips'}
                 </h2>
                 <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#22252c] text-gray-700 dark:text-gray-300">
                   {clips.length}
@@ -681,7 +681,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                   clipFilter === 'rear' ? 'bg-white dark:bg-[#22252c] text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
-                {isUrdu ? 'روڈ (Road)' : 'Road'}
+                {isUrdu ? 'روڈ' : 'Road'}
               </button>
               <button
                 type="button"
@@ -690,7 +690,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                   clipFilter === 'front' ? 'bg-white dark:bg-[#22252c] text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
-                {isUrdu ? 'کیبن (Cabin)' : 'Cabin'}
+                {isUrdu ? 'کیبن' : 'Cabin'}
               </button>
             </div>
           </div>
@@ -733,12 +733,12 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                           {isCabin ? (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
                               <span>📷</span>
-                              <span>{isUrdu ? 'کیبن کیمرہ (Cabin)' : 'Cabin Camera'}</span>
+                              <span>{isUrdu ? 'کیبن کیمرہ' : 'Cabin Camera'}</span>
                             </span>
                           ) : isRoad ? (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1">
                               <span>🛣️</span>
-                              <span>{isUrdu ? 'روڈ کیمرہ (Road)' : 'Road Camera'}</span>
+                              <span>{isUrdu ? 'روڈ کیمرہ' : 'Road Camera'}</span>
                             </span>
                           ) : (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-200 dark:bg-[#22252c] text-gray-800 dark:text-gray-200">
@@ -780,7 +780,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                         className="flex-1 py-2 px-3 rounded-xl bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm"
                       >
                         <Play className="w-3.5 h-3.5 fill-current" />
-                        <span>{isUrdu ? 'چلائیں (Play)' : 'Play Video'}</span>
+                        <span>{isUrdu ? 'چلائیں' : 'Play Video'}</span>
                       </button>
 
                       {/* Share Video Button */}
@@ -789,7 +789,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
                         onClick={() => handleShareClip(clip)}
                         disabled={sharingClipId === clip.id}
                         className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 transition-colors flex items-center justify-center active:scale-95"
-                        title={isUrdu ? 'ویڈیو شیئر کریں (WhatsApp/Email)' : 'Share Video'}
+                        title={isUrdu ? 'ویڈیو شیئر کریں' : 'Share Video'}
                       >
                         {sharingClipId === clip.id ? (
                           <RefreshCw className="w-4 h-4 animate-spin text-emerald-700 dark:text-emerald-300" />
@@ -828,7 +828,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
       {/* Permissions Explanation Modal */}
       {showPermissionModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-[#16181e] border border-transparent dark:border-[#2d313b] rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5">
+          <div dir={isUrdu ? 'rtl' : 'ltr'} className="bg-white dark:bg-[#16181e] border border-transparent dark:border-[#2d313b] rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5">
             <div className="flex items-start gap-4">
               <div className="p-3 bg-[#1b4332]/10 dark:bg-emerald-950/60 rounded-2xl text-[#1b4332] dark:text-emerald-400 shrink-0">
                 <ShieldCheck className="w-8 h-8" />
@@ -912,7 +912,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
       {/* Delete Confirmation Modal */}
       {clipToDelete && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-[#16181e] border border-transparent dark:border-[#2d313b] rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+          <div dir={isUrdu ? 'rtl' : 'ltr'} className="bg-white dark:bg-[#16181e] border border-transparent dark:border-[#2d313b] rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
@@ -947,7 +947,7 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
       {/* Web In-App Video Player Modal */}
       {selectedClipToPlay && (
         <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-gray-900 rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-white/10 space-y-3 p-4">
+          <div dir={isUrdu ? 'rtl' : 'ltr'} className="bg-gray-900 rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-white/10 space-y-3 p-4">
             <div className="flex items-center justify-between text-white pb-2 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <Film className="w-4 h-4 text-emerald-400" />

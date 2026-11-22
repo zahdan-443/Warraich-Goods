@@ -28,6 +28,16 @@ interface KhataReportsPanelProps {
   trips?: Trip[];
 }
 
+const REPORT_CATEGORY_LABELS: Record<string, { ur: string; en: string }> = {
+  fuel: { ur: 'ڈیزل / فیول', en: 'Fuel' },
+  toll: { ur: 'ٹول ٹیکس', en: 'Toll' },
+  meals: { ur: 'کھانا / چائے', en: 'Meals' },
+  repair: { ur: 'مرمت / مکینک', en: 'Repair' },
+  parking: { ur: 'پارکنگ / اڈہ', en: 'Parking / Adda' },
+  fine: { ur: 'جرمانہ / چالان', en: 'Fine / Challan' },
+  other: { ur: 'دیگر اخراجات', en: 'Other' }
+};
+
 export const KhataReportsPanel: React.FC<KhataReportsPanelProps> = ({
   lang,
   businessName,
@@ -69,7 +79,7 @@ export const KhataReportsPanel: React.FC<KhataReportsPanelProps> = ({
   };
 
   return (
-    <div className="space-y-3.5 font-serif">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="space-y-3.5 font-serif">
       {/* Range Selector + Export Controls */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 space-y-2.5">
         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -114,7 +124,7 @@ export const KhataReportsPanel: React.FC<KhataReportsPanelProps> = ({
               className="min-h-[38px] px-3 rounded-xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-bold flex items-center gap-1 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>{isUrdu ? 'رپورٹ PDF' : 'Export PDF'}</span>
+              <span>{isUrdu ? 'رپورٹ پی ڈی ایف' : 'Export PDF'}</span>
             </button>
             <button
               type="button"
@@ -257,7 +267,7 @@ export const KhataReportsPanel: React.FC<KhataReportsPanelProps> = ({
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30">
               <span className="text-[10px] text-emerald-700 dark:text-emerald-300 block">
-                {isUrdu ? 'لینا ہے (Receivable)' : 'Receivable'}
+                {isUrdu ? 'لینا ہے' : 'Receivable'}
               </span>
               <span className="font-black text-emerald-600">
                 PKR {analytics.partyReceivablePayable.totalReceivable.toLocaleString('en-US')}
@@ -265,7 +275,7 @@ export const KhataReportsPanel: React.FC<KhataReportsPanelProps> = ({
             </div>
             <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/30">
               <span className="text-[10px] text-rose-700 dark:text-rose-300 block">
-                {isUrdu ? 'دینا ہے (Payable)' : 'Payable'}
+                {isUrdu ? 'دینا ہے' : 'Payable'}
               </span>
               <span className="font-black text-rose-600">
                 PKR {analytics.partyReceivablePayable.totalPayable.toLocaleString('en-US')}
@@ -467,8 +477,12 @@ export const KhataReportsPanel: React.FC<KhataReportsPanelProps> = ({
               {analytics.expensesByCategory.items.map(cat => (
                 <div key={cat.category} className="space-y-0.5">
                   <div className="flex justify-between text-[11px]">
-                    <span className="font-bold uppercase text-slate-600 dark:text-slate-300">
-                      {cat.category}
+                    <span className="font-bold text-slate-600 dark:text-slate-300">
+                      {REPORT_CATEGORY_LABELS[cat.category]
+                        ? isUrdu
+                          ? REPORT_CATEGORY_LABELS[cat.category].ur
+                          : REPORT_CATEGORY_LABELS[cat.category].en
+                        : cat.category}
                     </span>
                     <span className="font-mono font-bold">
                       PKR {cat.amount.toLocaleString('en-US')} ({cat.percentage}%)

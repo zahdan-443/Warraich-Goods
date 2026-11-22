@@ -181,7 +181,7 @@ export const KhataDailyExpensesPanel: React.FC<KhataDailyExpensesPanelProps> = (
   };
 
   return (
-    <div className="space-y-3.5 font-serif">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="space-y-3.5 font-serif">
       {toastMsg && (
         <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold px-3.5 py-2.5 rounded-2xl flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -284,7 +284,7 @@ export const KhataDailyExpensesPanel: React.FC<KhataDailyExpensesPanelProps> = (
             step="any"
             value={amount}
             onChange={e => setAmount(e.target.value)}
-            placeholder={isUrdu ? 'رقم (PKR)' : 'Amount (PKR)'}
+            placeholder={isUrdu ? 'رقم (روپے)' : 'Amount (PKR)'}
             className="min-h-[42px] px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-mono font-bold"
           />
           <input

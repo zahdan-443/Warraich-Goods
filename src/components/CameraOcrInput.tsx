@@ -159,7 +159,7 @@ export const CameraOcrInput: React.FC<CameraOcrInputProps> = ({
       </button>
 
       {scanError && (
-        <span className="absolute bottom-full left-0 mb-1 z-30 px-2 py-1 bg-red-600 text-white text-[10px] rounded-lg shadow-md whitespace-nowrap">
+        <span className="absolute bottom-full start-0 mb-1 z-30 px-2 py-1 bg-red-600 text-white text-[10px] rounded-lg shadow-md whitespace-nowrap">
           {scanError}
         </span>
       )}

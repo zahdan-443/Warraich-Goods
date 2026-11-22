@@ -199,8 +199,8 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
 
   const handleReset = () => {
     setIncomes([
-      { id: 'income_1', label: 'کرایہ 1 (جانے کا مال / پارٹی)', amount: 0 },
-      { id: 'income_2', label: 'کرایہ 2 (واپسی کا مال / پارٹی)', amount: 0 },
+      { id: 'income_1', label: isUrdu ? 'کرایہ 1 (جانے کا مال / پارٹی)' : 'Freight 1 (Outbound Cargo / Party)', amount: 0 },
+      { id: 'income_2', label: isUrdu ? 'کرایہ 2 (واپسی کا مال / پارٹی)' : 'Freight 2 (Return Cargo / Party)', amount: 0 },
     ]);
     setDiesel('0');
     setToll('0');
@@ -227,21 +227,30 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
     });
 
     if (!finValidation.isValid) {
-      setFormError(finValidation.error || 'براہ کرم گاڑی کے درست اور مثبت اخراجات درج کریں۔');
+      setFormError(
+        isUrdu
+          ? 'براہ کرم گاڑی کے درست اور مثبت اخراجات درج کریں۔'
+          : (finValidation.error || 'Please enter valid positive vehicle expenses.')
+      );
       return;
     }
 
     if (grandTotalExpenses <= 0 && totalIncome <= 0) {
-      setFormError('براہ کرم پہلے گاڑی کی آمدن یا اخراجات درج کریں۔');
+      setFormError(
+        isUrdu
+          ? 'براہ کرم پہلے گاڑی کی آمدن یا اخراجات درج کریں۔'
+          : 'Please enter vehicle income or expenses first.'
+      );
       return;
     }
 
     if (onSaveTrip) {
+      const defaultVeh = isUrdu ? 'ٹرک' : 'Truck';
       const tripRecord = {
         id: `trip_acc_${Date.now()}`,
-        vehicleNo: vehicleNo || 'ٹرک',
-        from: 'گاڑی حساب',
-        to: 'لیجر ریکارڈ',
+        vehicleNo: vehicleNo || defaultVeh,
+        from: isUrdu ? 'گاڑی حساب' : 'Vehicle Account',
+        to: isUrdu ? 'لیجر ریکارڈ' : 'Ledger Record',
         date: new Date().toISOString(),
         totalExpenses: grandTotalExpenses,
         totalIncome: totalIncome,
@@ -259,7 +268,12 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
         }
       };
 
-      onSaveTrip(tripRecord, `گاڑی حساب (${vehicleNo || 'ٹرک'})`);
+      onSaveTrip(
+        tripRecord,
+        isUrdu
+          ? `گاڑی حساب (${vehicleNo || defaultVeh})`
+          : `Vehicle Account (${vehicleNo || defaultVeh})`
+      );
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 4000);
     }
@@ -286,8 +300,8 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
         if (inc.amount > 0 || inc.label) {
           incomeRowsHtml += `
             <tr style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 8px; font-weight: bold; color: #166534; text-align: right;">${escapeHtml(inc.label || 'کرایہ')}:</td>
-              <td style="padding: 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${fmt(inc.amount || 0)}</td>
+              <td style="padding: 8px; font-weight: bold; color: #166534; text-align: ${isUrdu ? 'right' : 'left'};">${escapeHtml(inc.label || (isUrdu ? 'کرایہ' : 'Freight'))}:</td>
+              <td style="padding: 8px; font-weight: bold; text-align: ${isUrdu ? 'left' : 'right'}; font-family: sans-serif; direction: ltr;">${fmt(inc.amount || 0)}</td>
             </tr>
           `;
         }
@@ -298,18 +312,18 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
         if (c.amount > 0) {
           customRowsHtml += `
             <tr style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: right;">${escapeHtml(c.label || 'اضافی خرچہ')}:</td>
-              <td style="padding: 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${fmt(c.amount)}</td>
+              <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: ${isUrdu ? 'right' : 'left'};">${escapeHtml(c.label || (isUrdu ? 'اضافی خرچہ' : 'Custom Expense'))}:</td>
+              <td style="padding: 8px; font-weight: bold; text-align: ${isUrdu ? 'left' : 'right'}; font-family: sans-serif; direction: ltr;">${fmt(c.amount)}</td>
             </tr>
           `;
         }
       });
 
-      const safeVehicleNo = escapeHtml(vehicleNo || 'ٹرک');
-      const safeDate = escapeHtml(new Date().toLocaleDateString('ur-PK'));
-      const safeTime = escapeHtml(new Date().toLocaleTimeString('ur-PK'));
+      const safeVehicleNo = escapeHtml(vehicleNo || (isUrdu ? 'ٹرک' : 'Truck'));
+      const safeDate = escapeHtml(new Date().toLocaleDateString(isUrdu ? 'ur-PK' : 'en-PK'));
+      const safeTime = escapeHtml(new Date().toLocaleTimeString(isUrdu ? 'ur-PK' : 'en-PK'));
 
-      container.innerHTML = sanitizeHtml(`
+      container.innerHTML = sanitizeHtml(isUrdu ? `
         <div style="border-bottom: 3px solid #8b9d77; padding-bottom: 16px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: flex-start; direction: rtl;">
           <div style="flex: 1; text-align: right;">
             <div style="margin: 0; font-size: 26px; color: #4a4a35; font-weight: 900; font-family: inherit;">ڈرائیور دوست - گاڑی کا مکمل حساب و لیجر</div>
@@ -317,23 +331,22 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             
             <div style="margin-top: 10px; background: #fafaf5; border: 1.5px solid #e0e0d0; padding: 8px 14px; border-radius: 10px; font-size: 12px; line-height: 1.6; display: inline-block;">
               <div style="color: #275e23; font-weight: bold;">ڈرائیور دوست وہیکل کھاتہ سسٹم</div>
-              <div style="direction: ltr; text-align: right; font-weight: 800; color: #222; font-family: sans-serif;">Smart Vehicle Trip Ledger Pakistan</div>
+              <div style="font-weight: 800; color: #222;">اسمارٹ وہیکل ٹرپ لیجر پاکستان</div>
             </div>
           </div>
           
           <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; margin-right: 15px;">
             <div style="width: 76px; height: 76px; border-radius: 50%; border: 3px solid #c59b27; background: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.08); text-align: center;">
               <span style="font-size: 24px; line-height: 1;">🚚</span>
-              <span style="font-size: 8px; font-weight: 900; color: #4a4a35; font-family: sans-serif; letter-spacing: 0.5px; margin-top: 2px;">DRIVER DOST</span>
+              <span style="font-size: 8px; font-weight: 900; color: #4a4a35; margin-top: 2px;">ڈرائیور دوست</span>
             </div>
-            <div style="text-align: center; font-size: 11px; color: #555; font-family: sans-serif; direction: ltr;">
-              <div><strong>Vehicle:</strong> ${safeVehicleNo}</div>
-              <div><strong>Date:</strong> ${safeDate}</div>
+            <div style="text-align: center; font-size: 11px; color: #555;">
+              <div><strong>گاڑی:</strong> <span style="direction: ltr; display: inline-block;">${safeVehicleNo}</span></div>
+              <div><strong>تاریخ:</strong> ${safeDate}</div>
             </div>
           </div>
         </div>
 
-        <!-- Income Breakdown -->
         <div style="background: #f4f9f1; border: 1.5px solid #cde4c5; border-radius: 14px; padding: 16px 18px; margin-bottom: 22px; direction: rtl;">
           <h2 style="font-size: 16px; color: #275e23; margin: 0 0 10px 0; border-bottom: 1.5px solid #cde4c5; padding-bottom: 8px; text-align: right;">
             💵 حاصل شدہ آمدن و کرایہ جات کی تفصیل
@@ -347,7 +360,6 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
           </table>
         </div>
 
-        <!-- Expenses Breakdown -->
         <h2 style="font-size: 16px; color: #4a4a35; border-bottom: 2px solid #8b9d77; padding-bottom: 8px; margin-bottom: 14px; text-align: right;">
           🧾 سفری اخراجات کی مکمل تفصیل
         </h2>
@@ -388,7 +400,6 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
           </tr>
         </table>
 
-        <!-- Net Profit Card -->
         <div style="background: ${netProfit >= 0 ? '#275e23' : '#c0392b'}; color: #ffffff; border-radius: 16px; padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; direction: rtl;">
           <div style="text-align: right;">
             <div style="font-size: 17px; font-weight: 900;">${netProfit >= 0 ? 'خالص منافع / بچت:' : 'خسارہ / بقایا خرچہ:'}</div>
@@ -402,7 +413,102 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             <div style="font-weight: bold; color: #374151;">ڈرائیور دوست وہیکل مینجمنٹ و لیجر سسٹم</div>
             <div style="font-style: italic;">یہ کمپیوٹر سے تیار کردہ تصدیق شدہ سسٹمیٹک رسید ہے۔</div>
           </div>
-          <div style="text-align: left; direction: ltr; font-family: sans-serif; font-size: 11px;">
+          <div style="text-align: left;">
+            <div><strong>تصدیق شدہ گاڑی:</strong> <span style="direction: ltr; display: inline-block;">${safeVehicleNo}</span></div>
+            <div><strong>تیاری وقت:</strong> <span style="direction: ltr; display: inline-block;">${safeTime}</span></div>
+          </div>
+        </div>
+      ` : `
+        <div style="border-bottom: 3px solid #8b9d77; padding-bottom: 16px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: flex-start; direction: ltr;">
+          <div style="flex: 1; text-align: left;">
+            <div style="margin: 0; font-size: 24px; color: #4a4a35; font-weight: 900; font-family: inherit;">Driver Dost — Vehicle Account & Ledger</div>
+            <p style="margin: 4px 0 0 0; font-size: 14px; color: #8b9d77; font-weight: bold;">Detailed Trip Income, Expenses & Net Savings Report</p>
+            
+            <div style="margin-top: 10px; background: #fafaf5; border: 1.5px solid #e0e0d0; padding: 8px 14px; border-radius: 10px; font-size: 12px; line-height: 1.6; display: inline-block;">
+              <div style="color: #275e23; font-weight: bold;">Driver Dost Vehicle Ledger System</div>
+              <div style="font-weight: 800; color: #222;">Smart Vehicle Trip Ledger Pakistan</div>
+            </div>
+          </div>
+          
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; margin-left: 15px;">
+            <div style="width: 76px; height: 76px; border-radius: 50%; border: 3px solid #c59b27; background: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.08); text-align: center;">
+              <span style="font-size: 24px; line-height: 1;">🚚</span>
+              <span style="font-size: 8px; font-weight: 900; color: #4a4a35; letter-spacing: 0.5px; margin-top: 2px;">DRIVER DOST</span>
+            </div>
+            <div style="text-align: center; font-size: 11px; color: #555;">
+              <div><strong>Vehicle:</strong> ${safeVehicleNo}</div>
+              <div><strong>Date:</strong> ${safeDate}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: #f4f9f1; border: 1.5px solid #cde4c5; border-radius: 14px; padding: 16px 18px; margin-bottom: 22px; direction: ltr;">
+          <h2 style="font-size: 16px; color: #275e23; margin: 0 0 10px 0; border-bottom: 1.5px solid #cde4c5; padding-bottom: 8px; text-align: left;">
+            💵 Freight Earnings & Incomes Breakdown
+          </h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px; direction: ltr;">
+            ${incomeRowsHtml}
+            <tr style="border-top: 2px solid #275e23;">
+              <td style="padding: 10px 8px; font-weight: 900; font-size: 14px; color: #1e4620; text-align: left;">Total Freight Earnings:</td>
+              <td style="padding: 10px 8px; font-weight: 900; text-align: right; font-size: 16px; color: #1e4620;">PKR ${totalIncome.toLocaleString('en-US')}</td>
+            </tr>
+          </table>
+        </div>
+
+        <h2 style="font-size: 16px; color: #4a4a35; border-bottom: 2px solid #8b9d77; padding-bottom: 8px; margin-bottom: 14px; text-align: left;">
+          🧾 Detailed Trip Expenses
+        </h2>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 22px; direction: ltr;">
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: left;">1. Diesel Fuel Expense:</td>
+            <td style="padding: 8px; font-weight: bold; text-align: right;">${fmt(dieselVal)}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: left;">2. Toll Plaza & Motorway Tax:</td>
+            <td style="padding: 8px; font-weight: bold; text-align: right;">${fmt(tollVal)}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: left;">3. Traffic Fines & Penalties:</td>
+            <td style="padding: 8px; font-weight: bold; text-align: right;">${fmt(challanVal)}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: left;">4. Driver Meals & Allowance:</td>
+            <td style="padding: 8px; font-weight: bold; text-align: right;">${fmt(rotiVal)}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: left;">5. Security & Terminal Parking:</td>
+            <td style="padding: 8px; font-weight: bold; text-align: right;">${fmt(chowkidaraVal)}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: left;">6. Vehicle Maintenance & Repairs:</td>
+            <td style="padding: 8px; font-weight: bold; text-align: right;">${fmt(gariKaamVal)}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 8px; color: #4b5563; font-weight: bold; text-align: left;">7. Driver Commission / Wages:</td>
+            <td style="padding: 8px; font-weight: bold; text-align: right;">${fmt(commissionVal)}</td>
+          </tr>
+          ${customRowsHtml}
+          <tr style="border-top: 2px solid #8b9d77;">
+            <td style="padding: 10px 8px; font-weight: 900; font-size: 14px; color: #4a4a35; text-align: left;">Total Trip Expenses:</td>
+            <td style="padding: 10px 8px; font-weight: 900; text-align: right; font-size: 16px; color: #4a4a35;">PKR ${grandTotalExpenses.toLocaleString('en-US')}</td>
+          </tr>
+        </table>
+
+        <div style="background: ${netProfit >= 0 ? '#275e23' : '#c0392b'}; color: #ffffff; border-radius: 16px; padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; direction: ltr;">
+          <div style="text-align: left;">
+            <div style="font-size: 17px; font-weight: 900;">${netProfit >= 0 ? 'Net Profit / Savings:' : 'Net Deficit / Loss:'}</div>
+            <div style="font-size: 12px; opacity: 0.95; margin-top: 2px;">Income (PKR ${totalIncome.toLocaleString()}) minus Expenses (PKR ${grandTotalExpenses.toLocaleString()})</div>
+          </div>
+          <div style="font-size: 28px; font-weight: 900;">PKR ${Math.abs(netProfit).toLocaleString('en-US')}</div>
+        </div>
+
+        <div style="border-top: 1.5px solid #d1d5db; padding-top: 16px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 12px; color: #6b7280; line-height: 1.6; direction: ltr;">
+          <div style="text-align: left;">
+            <div style="font-weight: bold; color: #374151;">Driver Dost Vehicle Management & Ledger System</div>
+            <div style="font-style: italic;">Computer-generated systematic vehicle ledger receipt.</div>
+          </div>
+          <div style="text-align: right; font-size: 11px;">
             <div><strong>Verified Vehicle:</strong> ${safeVehicleNo}</div>
             <div><strong>Generated:</strong> ${safeTime}</div>
           </div>
@@ -460,7 +566,49 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
 
   const buildWhatsAppMsg = () => {
     const fmt = (num: number) => 'Rs ' + num.toLocaleString('en-US');
-    let msg = `🚚 *وڑائچ گڈز ٹرانسپورٹ کمپنی*\n` +
+    if (!isUrdu) {
+      let msg = `🚚 *Driver Dost Logistics*\n` +
+        `📋 *Vehicle Trip Account & Ledger Report*\n` +
+        `─────────────────────\n` +
+        `🚛 *Vehicle No:* ${vehicleNo || 'Unknown'}\n` +
+        `📅 *Date:* ${new Date().toLocaleDateString('en-PK')}\n\n` +
+        `*【 Freight Earnings & Incomes 】*\n`;
+
+      incomes.forEach((item, idx) => {
+        if (item.amount > 0 || item.label) {
+          msg += `💵 ${item.label || `Freight ${idx + 1}`}: ${fmt(item.amount || 0)}\n`;
+        }
+      });
+      msg += `👉 *Total Freight Earnings:* ${fmt(totalIncome)}\n\n`;
+
+      msg += `*【 Trip Expenses Breakdown 】*\n` +
+        `⛽ Diesel Fuel: ${fmt(dieselVal)}\n` +
+        `🛣️ Toll Plaza & Taxes: ${fmt(tollVal)}\n` +
+        `🚔 Traffic Fines & Penalties: ${fmt(challanVal)}\n` +
+        `🍲 Meals & Allowance: ${fmt(rotiVal)}\n` +
+        `🛡️ Security & Terminal Parking: ${fmt(chowkidaraVal)}\n` +
+        `🔧 Repairs & Maintenance: ${fmt(gariKaamVal)}\n` +
+        `👨‍✈️ Driver Commission: ${fmt(commissionVal)}\n`;
+
+      if (customExpenses.length > 0) {
+        customExpenses.forEach((item) => {
+          if (item.amount > 0) {
+            msg += `🔧 ${item.label || 'Custom Expense'}: ${fmt(item.amount)}\n`;
+          }
+        });
+      }
+
+      msg += `─────────────────────\n` +
+        `🧾 *Total Trip Expenses:* ${fmt(grandTotalExpenses)}\n` +
+        (netProfit >= 0
+          ? `🟢 *Net Profit:* ${fmt(netProfit)}\n`
+          : `🔴 *Net Deficit:* ${fmt(Math.abs(netProfit))}\n`) +
+        `─────────────────────\n` +
+        `📱 *Driver Dost App Pakistan*`;
+      return msg;
+    }
+
+    let msg = `🚚 *ڈرائیور دوست سمارٹ فلیٹ سسٹم*\n` +
       `📋 *گاڑی کا تفصیلی حساب و لیجر رپورٹ*\n` +
       `─────────────────────\n` +
       `🚛 *گاڑی نمبر:* ${vehicleNo || 'نامعلوم'}\n` +
@@ -494,10 +642,10 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
     msg += `─────────────────────\n` +
       `🧾 *کل سفری اخراجات:* ${fmt(grandTotalExpenses)}\n` +
       (netProfit >= 0
-        ? `🟢 *خالص بچت و منافع (Net Profit):* ${fmt(netProfit)}\n`
+        ? `🟢 *خالص بچت و منافع:* ${fmt(netProfit)}\n`
         : `🔴 *خسارہ / بقایا خرچہ:* ${fmt(Math.abs(netProfit))}\n`) +
       `─────────────────────\n` +
-      `📱 *ڈرائیور دوست ایپ (Driver Dost Pakistan)*`;
+      `📱 *ڈرائیور دوست ایپ پاکستان*`;
     return msg;
   };
 
@@ -526,11 +674,14 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
           preferDownloadOnDesktop: true
         });
       } else {
-        setPdfError('پی ڈی ایف بنانے میں مسئلہ آیا، دوبارہ کوشش کریں۔');
+        setPdfError(isUrdu ? 'پی ڈی ایف بنانے میں مسئلہ آیا، دوبارہ کوشش کریں۔' : 'Could not generate PDF ledger. Please retry.');
       }
     } catch (err) {
       console.error('PDF export failed:', err);
-      setPdfError('پی ڈی ایف بنانے میں مسئلہ آیا: ' + (err instanceof Error ? err.message : String(err)));
+      setPdfError(
+        (isUrdu ? 'پی ڈی ایف بنانے میں مسئلہ آیا: ' : 'PDF generation failed: ') +
+        (err instanceof Error ? err.message : String(err))
+      );
     } finally {
       setIsExportingPdf(false);
     }
@@ -641,7 +792,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                 <div className="flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-[#8b9d77]" />
                   <h3 className="text-sm sm:text-base font-bold text-[#4a4a35]">
-                    {isUrdu ? 'فلیٹ گاڑیوں کا نفع و نقصان (Fleet P&L Summary)' : 'Fleet Vehicles P&L Summary'}
+                    {isUrdu ? 'فلیٹ گاڑیوں کا نفع و نقصان' : 'Fleet Vehicles P&L Summary'}
                   </h3>
                 </div>
 
@@ -710,7 +861,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
               {/* Vehicle Selector */}
               <div className="w-full sm:w-auto flex items-center gap-2">
                 <label className="text-xs font-bold text-[#4a4a35] dark:text-[#f8fafc] shrink-0">
-                  {isUrdu ? 'گاڑی نمبر (Reg No):' : 'Vehicle Reg No:'}
+                  {isUrdu ? 'گاڑی نمبر:' : 'Vehicle Reg No:'}
                 </label>
                 <input
                   type="text"
@@ -1006,7 +1157,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
               {customExpenses.length > 0 && (
                 <div className="space-y-2 pt-2 border-t border-[#ecece0]">
                   <span className="text-xs font-bold text-[#8e8e75] block">
-                    {isUrdu ? 'اضافی اخراجات (Custom Expenses):' : 'Custom Trip Expenses:'}
+                    {isUrdu ? 'اضافی اخراجات:' : 'Custom Trip Expenses:'}
                   </span>
                   {customExpenses.map((c) => (
                     <div key={c.id} className="flex items-center gap-2 bg-white p-3 rounded-2xl border border-[#ecece0]">
@@ -1061,8 +1212,8 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                     <TrendingUp className="w-5 h-5 text-amber-300" />
                     <span className="text-base sm:text-lg font-bold">
                       {netProfit >= 0
-                        ? (isUrdu ? 'خالص بچت و منافع (Net Profit)' : 'Net Profit (Earnings)')
-                        : (isUrdu ? 'خسارہ / بقایا خرچہ (Net Deficit)' : 'Net Deficit (Loss)')}
+                        ? (isUrdu ? 'خالص بچت و منافع' : 'Net Profit (Earnings)')
+                        : (isUrdu ? 'خسارہ / بقایا خرچہ' : 'Net Deficit (Loss)')}
                     </span>
                   </div>
                   <p className="text-xs opacity-90 mt-1">
@@ -1081,7 +1232,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {savedSuccess && (
               <div className="bg-[#eef4ea] border border-[#8b9d77] text-[#3d5a2d] p-3.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-2xs animate-in fade-in">
                 <CheckCircle2 className="w-5 h-5 text-[#8b9d77]" />
-                <span>{isUrdu ? 'گاڑی کا حساب سفر ڈائری لاگز میں کامیابی سے محفوظ ہو گیا ہے۔' : 'Vehicle trip account has been saved to Safar Diary logs.'}</span>
+                <span>{isUrdu ? 'گاڑی کا حساب سفر ڈائری لاگز میں کامیابی سے محفوظ ہو گیا ہے۔' : 'Vehicle trip account has been saved to Trip Diary logs.'}</span>
               </div>
             )}
 
@@ -1146,7 +1297,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-emerald-600" />
                 <h2 className="text-base sm:text-lg font-bold text-[#4a4a35]">
-                  {isUrdu ? 'گاڑی نفع و نقصان کھاتہ (Vehicle P&L Statement)' : 'Vehicle Profit & Loss Statement'}
+                  {isUrdu ? 'گاڑی نفع و نقصان کھاتہ' : 'Vehicle Profit & Loss Statement'}
                 </h2>
               </div>
 
@@ -1209,7 +1360,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
             {/* Detailed Expense Breakdown in P&L */}
             <div className="pt-2">
               <h3 className="text-xs sm:text-sm font-bold text-[#4a4a35] mb-2.5">
-                {isUrdu ? 'اخراجات کی زمرہ وار تفصیل (Category-wise Expenses):' : 'Category-wise Expenses:'}
+                {isUrdu ? 'اخراجات کی زمرہ وار تفصیل:' : 'Category-wise Expenses:'}
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                 <div className="bg-[#fdfbf7] p-2.5 rounded-xl border border-[#ecece0]">
@@ -1403,7 +1554,7 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
                         </div>
                       </div>
 
-                      <div className="text-right">
+                      <div className={isUrdu ? 'text-left' : 'text-right'}>
                         <div className={`text-sm font-black ${isIn ? 'text-emerald-600' : 'text-rose-600'}`}>
                           {isIn ? '+' : '-'} PKR {entry.amount.toLocaleString('en-US')}
                         </div>
@@ -1535,8 +1686,8 @@ const CashFormModal: React.FC<CashFormModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="w-full max-w-md bg-white rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-[#ecece0] pb-[max(env(safe-area-inset-bottom),1.25rem)]">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" dir={isUrdu ? 'rtl' : 'ltr'}>
+      <div className={`w-full max-w-md bg-white rounded-t-[28px] sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-[#ecece0] pb-[max(env(safe-area-inset-bottom),1.25rem)] ${isUrdu ? 'text-right' : 'text-left'}`}>
         <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto mb-3 sm:hidden" />
 
         <div className="flex items-center justify-between mb-3.5">

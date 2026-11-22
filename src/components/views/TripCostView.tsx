@@ -268,7 +268,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
            (c.id && c.id.toLowerCase() === cityName.toLowerCase())
     );
     if (!match) return cityName;
-    return isUrdu ? `${match.nameUr} (${match.nameEn})` : `${match.nameEn} (${match.nameUr})`;
+    return isUrdu ? match.nameUr : match.nameEn;
   };
 
   // Calculate & Navigate to Dedicated Result Screen
@@ -379,7 +379,9 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
 
   const handleSaveToDiary = () => {
     if (!lastCalc) return;
-    const tripName = `${lastCalc.origin || 'سفر'} تا ${lastCalc.dest || 'منزل'}`;
+    const tripName = isUrdu
+      ? `${lastCalc.origin || 'سفر'} تا ${lastCalc.dest || 'منزل'}`
+      : `${lastCalc.origin || 'Trip'} to ${lastCalc.dest || 'Destination'}`;
     const tripToSave = {
       ...lastCalc,
       expectedIncome: lastCalc.expectedIncomeVal,
@@ -406,8 +408,10 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       container.style.backgroundColor = '#ffffff';
       container.style.padding = '36px 40px';
       container.style.color = '#1f2937';
-      container.style.fontFamily = "'Jameel Noori Nastaleeq', 'Noto Nastaliq Urdu', 'PDMS Nastaleeq Nafees', 'Segoe UI', Arial, sans-serif";
-      container.style.direction = 'rtl';
+      container.style.fontFamily = isUrdu
+        ? "'Jameel Noori Nastaleeq', 'Noto Nastaliq Urdu', 'PDMS Nastaleeq Nafees', 'Segoe UI', Arial, sans-serif"
+        : "'Segoe UI', Roboto, Arial, sans-serif";
+      container.style.direction = isUrdu ? 'rtl' : 'ltr';
       container.style.boxSizing = 'border-box';
       container.style.border = '3px solid #8b9d77';
       container.style.opacity = '0.01';
@@ -419,7 +423,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
         ? `<img src="${logoDataUrl}" alt="Driver Dost Logistics Official Emblem" width="76" height="76" style="width: 76px; height: 76px; object-fit: contain; border-radius: 50%; border: 3px solid #c59b27; padding: 2px; background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.08);" />`
         : `<div style="width: 76px; height: 76px; border-radius: 50%; border: 3px solid #c59b27; background: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.08); text-align: center;">
             <span style="font-size: 24px; line-height: 1;">🚚</span>
-            <span style="font-size: 8px; font-weight: 900; color: #4a4a35; font-family: sans-serif; letter-spacing: 0.5px; margin-top: 2px;">DRIVER DOST</span>
+            <span style="font-size: 8px; font-weight: 900; color: #4a4a35; font-family: sans-serif; letter-spacing: 0.5px; margin-top: 2px;">${isUrdu ? 'ڈرائیور دوست' : 'DRIVER DOST'}</span>
           </div>`;
 
       const safeOrigin = escapeHtml(lastCalc.origin || '');
@@ -428,25 +432,25 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       const safeFuelRate = escapeHtml(lastCalc.fuelRateVal);
       const safeMileage = escapeHtml(lastCalc.mileageVal);
       const safeConsumed = escapeHtml(lastCalc.consumed);
-      const safeDate = escapeHtml(lastCalc.date || new Date().toLocaleDateString('en-PK'));
-      const safeTime = escapeHtml(lastCalc.time || new Date().toLocaleTimeString('en-PK'));
+      const safeDate = escapeHtml(lastCalc.date || new Date().toLocaleDateString(isUrdu ? 'ur-PK' : 'en-PK'));
+      const safeTime = escapeHtml(lastCalc.time || new Date().toLocaleTimeString(isUrdu ? 'ur-PK' : 'en-PK'));
 
-      container.innerHTML = sanitizeHtml(`
+      container.innerHTML = sanitizeHtml(isUrdu ? `
         <div style="border-bottom: 3px solid #8b9d77; padding-bottom: 16px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: flex-start; direction: rtl;">
           <div style="flex: 1; text-align: right;">
-            <div style="margin: 0; font-size: 26px; color: #4a4a35; font-weight: 900; font-family: inherit;">ڈرائیور دوست - ٹرانسپورٹ و سفر ڈائری (Driver Dost)</div>
-            <p style="margin: 4px 0 0 0; font-size: 14px; color: #8b9d77; font-weight: bold;">سفری کرایہ، فیول کھپت اور اخراجات کا تفصیلی تخمینہ (Trip Cost Summary)</p>
+            <div style="margin: 0; font-size: 26px; color: #4a4a35; font-weight: 900; font-family: inherit;">ڈرائیور دوست - ٹرانسپورٹ و سفر ڈائری</div>
+            <p style="margin: 4px 0 0 0; font-size: 14px; color: #8b9d77; font-weight: bold;">سفری کرایہ، فیول کھپت اور اخراجات کا تفصیلی تخمینہ</p>
             
             <div style="margin-top: 10px; background: #fafaf5; border: 1.5px solid #e0e0d0; padding: 8px 14px; border-radius: 10px; font-size: 12px; line-height: 1.6; display: inline-block;">
               <div style="color: #275e23; font-weight: bold;">ڈرائیور دوست روڈ لاجسٹکس و روٹ سسٹم</div>
-              <div style="direction: ltr; text-align: right; font-weight: 800; color: #222; font-family: sans-serif;">Smart Freight & Trip Logger Pakistan</div>
+              <div style="font-weight: 800; color: #222;">اسمارٹ فریٹ اینڈ ٹرپ لاگر پاکستان</div>
             </div>
           </div>
           
           <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; margin-right: 15px;">
             ${logoHtml}
-            <div style="text-align: center; font-size: 11px; color: #555; font-family: sans-serif; direction: ltr;">
-              <div><strong>Date:</strong> ${safeDate}</div>
+            <div style="text-align: center; font-size: 11px; color: #555;">
+              <div><strong>تاریخ:</strong> ${safeDate}</div>
             </div>
           </div>
         </div>
@@ -463,7 +467,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
         </div>
 
         <h2 style="font-size: 18px; color: #4a4a35; border-bottom: 2px solid #8b9d77; padding-bottom: 8px; margin-bottom: 16px; text-align: right;">
-          📊 سفری اخراجات کی مکمل تفصیلات (Cost Breakdown)
+          📊 سفری اخراجات کی مکمل تفصیلات
         </h2>
 
         <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 25px; direction: rtl;">
@@ -476,7 +480,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
             <td style="padding: 11px 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${safeMileage} KM / Ltr</td>
           </tr>
           <tr style="border-bottom: 1px solid #e5e7eb;">
-            <td style="padding: 11px 8px; color: #4b5563; font-weight: bold; text-align: right;">ڈیزل کھپت (Fuel Consumed):</td>
+            <td style="padding: 11px 8px; color: #4b5563; font-weight: bold; text-align: right;">ڈیزل کھپت:</td>
             <td style="padding: 11px 8px; font-weight: bold; text-align: left; font-family: sans-serif; direction: ltr;">${safeConsumed} Liters</td>
           </tr>
           <tr style="border-bottom: 1px solid #e5e7eb;">
@@ -490,7 +494,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
         </table>
 
         <div style="background: #8b9d77; color: #ffffff; border-radius: 16px; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; direction: rtl;">
-          <div style="font-size: 18px; font-weight: bold; text-align: right;">کل متوقع سفری خرچہ (Total Freight Cost):</div>
+          <div style="font-size: 18px; font-weight: bold; text-align: right;">کل متوقع سفری خرچہ:</div>
           <div style="font-size: 28px; font-weight: 900; font-family: sans-serif; direction: ltr;">PKR ${lastCalc.total.toLocaleString('en-US')}</div>
         </div>
 
@@ -499,7 +503,80 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
             <div style="font-weight: bold; color: #374151;">ڈرائیور دوست - روڈ لاجسٹکس و فلیٹ سسٹم</div>
             <div style="font-style: italic;">یہ کمپیوٹر سے تیار کردہ تصدیق شدہ سفری رسید ہے۔</div>
           </div>
-          <div style="text-align: left; direction: ltr; font-family: sans-serif; font-size: 11px;">
+          <div style="text-align: left;">
+            <div><strong>تصدیق کنندہ:</strong> ڈرائیور دوست سسٹم</div>
+            <div><strong>وقت:</strong> <span style="direction: ltr; display: inline-block; font-family: sans-serif;">${safeTime}</span></div>
+          </div>
+        </div>
+      ` : `
+        <div style="border-bottom: 3px solid #8b9d77; padding-bottom: 16px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: flex-start; direction: ltr;">
+          <div style="flex: 1; text-align: left;">
+            <div style="margin: 0; font-size: 24px; color: #4a4a35; font-weight: 900; font-family: inherit;">Driver Dost — Transport & Trip Diary</div>
+            <p style="margin: 4px 0 0 0; font-size: 14px; color: #8b9d77; font-weight: bold;">Detailed Trip Cost, Fuel Consumption & Expense Estimate</p>
+            
+            <div style="margin-top: 10px; background: #fafaf5; border: 1.5px solid #e0e0d0; padding: 8px 14px; border-radius: 10px; font-size: 12px; line-height: 1.6; display: inline-block;">
+              <div style="color: #275e23; font-weight: bold;">Driver Dost Road Logistics & Route System</div>
+              <div style="font-weight: 800; color: #222;">Smart Freight & Trip Logger Pakistan</div>
+            </div>
+          </div>
+          
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; margin-left: 15px;">
+            ${logoHtml}
+            <div style="text-align: center; font-size: 11px; color: #555;">
+              <div><strong>Date:</strong> ${safeDate}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: #fdfbf7; border: 1.5px solid #ecece0; padding: 14px 18px; border-radius: 14px; margin-bottom: 22px; font-size: 15px; direction: ltr; text-align: left;">
+          <div style="margin-bottom: 6px;">
+            <strong style="color: #4a4a35;">From:</strong> <span style="font-weight: bold; color: #222;">${safeOrigin}</span> 
+            &nbsp; ➔ &nbsp; 
+            <strong style="color: #4a4a35;">To:</strong> <span style="font-weight: bold; color: #222;">${safeDest}</span>
+          </div>
+          <div style="font-size: 13px; color: #666;">
+            <strong>Total Route Distance:</strong> ${safeDist} KM ${lastCalc.isReturn ? '(Round Trip 2x Distance)' : ''}
+          </div>
+        </div>
+
+        <h2 style="font-size: 18px; color: #4a4a35; border-bottom: 2px solid #8b9d77; padding-bottom: 8px; margin-bottom: 16px; text-align: left;">
+          📊 Trip Cost Breakdown
+        </h2>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 25px; direction: ltr;">
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 11px 8px; color: #4b5563; font-weight: bold; text-align: left;">Diesel Rate:</td>
+            <td style="padding: 11px 8px; font-weight: bold; text-align: right;">PKR ${safeFuelRate} / Ltr</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 11px 8px; color: #4b5563; font-weight: bold; text-align: left;">Vehicle Mileage:</td>
+            <td style="padding: 11px 8px; font-weight: bold; text-align: right;">${safeMileage} KM / Ltr</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 11px 8px; color: #4b5563; font-weight: bold; text-align: left;">Fuel Consumed:</td>
+            <td style="padding: 11px 8px; font-weight: bold; text-align: right;">${safeConsumed} Liters</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 11px 8px; color: #4b5563; font-weight: bold; text-align: left;">Total Fuel Cost:</td>
+            <td style="padding: 11px 8px; font-weight: bold; text-align: right;">${fmt(lastCalc.fuelCost)}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e5e7eb;">
+            <td style="padding: 11px 8px; color: #4b5563; font-weight: bold; text-align: left;">Driver, Toll & Other Expenses:</td>
+            <td style="padding: 11px 8px; font-weight: bold; text-align: right;">${fmt(lastCalc.combinedExpensesVal || 0)}</td>
+          </tr>
+        </table>
+
+        <div style="background: #8b9d77; color: #ffffff; border-radius: 16px; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; direction: ltr;">
+          <div style="font-size: 18px; font-weight: bold; text-align: left;">Total Estimated Trip Cost:</div>
+          <div style="font-size: 28px; font-weight: 900;">PKR ${lastCalc.total.toLocaleString('en-US')}</div>
+        </div>
+
+        <div style="border-top: 1.5px solid #d1d5db; padding-top: 16px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 12px; color: #6b7280; line-height: 1.6; direction: ltr;">
+          <div style="text-align: left;">
+            <div style="font-weight: bold; color: #374151;">Driver Dost — Road Logistics & Fleet System</div>
+            <div style="font-style: italic;">Computer-generated verified trip cost estimate receipt.</div>
+          </div>
+          <div style="text-align: right; font-size: 11px;">
             <div><strong>Verified By:</strong> Driver Dost System</div>
             <div><strong>Time:</strong> ${safeTime}</div>
           </div>
@@ -558,13 +635,30 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   const buildWhatsAppMsg = () => {
     if (!lastCalc) return '';
     const fmt = (n: number) => 'Rs ' + (Number(n) || 0).toLocaleString();
-    return `🚚 *وڑائچ گڈز ٹرانسپورٹ کمپنی*\n` +
+    if (!isUrdu) {
+      return `🚚 *Driver Dost — Smart Transport System*\n` +
+        `📋 *Trip Cost & Expense Estimate*\n` +
+        `─────────────────────\n` +
+        `📍 *From:* ${lastCalc.origin}\n` +
+        `🏁 *To:* ${lastCalc.dest}\n` +
+        `🛣️ *Distance:* ${lastCalc.dist} KM ${lastCalc.isReturn ? '(Round Trip 2x)' : ''}\n` +
+        `⛽ *Diesel Rate:* Rs ${lastCalc.fuelRateVal} / Ltr (Avg: ${lastCalc.mileageVal} KM/L)\n` +
+        `🛢️ *Fuel Consumed:* ${lastCalc.consumed} Liters\n` +
+        `💵 *Total Fuel Cost:* ${fmt(lastCalc.fuelCost)}\n` +
+        `🛣️ *Toll, Driver & Other Expenses:* ${fmt(lastCalc.combinedExpensesVal || 0)}\n` +
+        `─────────────────────\n` +
+        `💰 *Total Estimated Trip Cost:* ${fmt(lastCalc.total)}\n` +
+        `📅 *Date:* ${lastCalc.date || new Date().toLocaleDateString('en-PK')}\n` +
+        `─────────────────────\n` +
+        `📱 *Driver Dost Logistics Pakistan*`;
+    }
+    return `🚚 *ڈرائیور دوست — سمارٹ ٹرانسپورٹ سسٹم*\n` +
       `📋 *سفری لاگت اور اخراجات کا تخمینہ*\n` +
       `─────────────────────\n` +
       `📍 *روانگی (از):* ${lastCalc.origin}\n` +
       `🏁 *منزل (تا):* ${lastCalc.dest}\n` +
-      `🛣️ *روٹ فاصلہ:* ${lastCalc.dist} KM ${lastCalc.isReturn ? '(راؤنڈ ٹرپ دگنا فاصلہ)' : ''}\n` +
-      `⛽ *ڈیزل ریٹ:* Rs ${lastCalc.fuelRateVal} / Ltr (ایوریج: ${lastCalc.mileageVal} KM/L)\n` +
+      `🛣️ *روٹ فاصلہ:* ${lastCalc.dist} کلومیٹر ${lastCalc.isReturn ? '(راؤنڈ ٹرپ دگنا فاصلہ)' : ''}\n` +
+      `⛽ *ڈیزل ریٹ:* روپے ${lastCalc.fuelRateVal} / لٹر (ایوریج: ${lastCalc.mileageVal} کلومیٹر/لٹر)\n` +
       `🛢️ *ڈیزل کھپت:* ${lastCalc.consumed} لٹر\n` +
       `💵 *ڈیزل کا کل خرچہ:* ${fmt(lastCalc.fuelCost)}\n` +
       `🛣️ *ٹول، ڈرائیور و دیگر اخراجات:* ${fmt(lastCalc.combinedExpensesVal || 0)}\n` +
@@ -646,7 +740,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
           }`}
         >
           <Calculator className="w-4 h-4 text-[#8b9d77]" />
-          <span>{isUrdu ? 'سفر خرچہ (کیلکولیٹر)' : 'Trip Cost Calculator'}</span>
+          <span>{isUrdu ? 'سفر خرچہ کیلکولیٹر' : 'Trip Cost Calculator'}</span>
         </button>
 
         <button
@@ -659,7 +753,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
           }`}
         >
           <BookOpen className="w-4 h-4 text-[#8b9d77]" />
-          <span>{isUrdu ? 'سفر ڈائری (لاگز)' : 'Safar Diary Logs'}</span>
+          <span>{isUrdu ? 'سفر ڈائری لاگز' : 'Trip Diary Logs'}</span>
           {trips.length > 0 && (
             <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-black bg-[#8b9d77] text-white">
               {trips.length}
@@ -688,7 +782,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                   >
                     {PAKISTAN_CITIES.map((c) => (
                       <option key={c.nameEn} value={c.nameEn}>
-                        {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`}
+                        {isUrdu ? c.nameUr : c.nameEn}
                       </option>
                     ))}
                   </select>
@@ -707,7 +801,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                   >
                     {PAKISTAN_CITIES.map((c) => (
                       <option key={c.nameEn} value={c.nameEn}>
-                        {isUrdu ? `${c.nameUr} (${c.nameEn})` : `${c.nameEn} (${c.nameUr})`}
+                        {isUrdu ? c.nameUr : c.nameEn}
                       </option>
                     ))}
                   </select>
@@ -723,7 +817,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                     </div>
                     <div>
                       <h3 className="text-xs sm:text-sm font-bold text-[#4a4a35]">
-                        {isUrdu ? 'روٹ موازنہ (کم خرچ بمقابلہ تیز ترین)' : 'Route Comparison (Cheapest vs Fastest)'}
+                        {isUrdu ? 'روٹ موازنہ: کم خرچ بمقابلہ تیز ترین' : 'Route Comparison: Cheapest vs Fastest'}
                       </h3>
                       <p className="text-xs text-[#8e8e75]">
                         {isUrdu ? 'ٹول ٹیکس، فاصلہ و فیول لاگت کا موازنہ' : 'Compare toll, distance & fuel trade-off'}
@@ -1196,7 +1290,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                   className="flex-1 py-4 sm:py-4.5 bg-[#4a4a35] hover:bg-[#383827] active:bg-[#2e2e21] text-white rounded-2xl font-black text-base sm:text-lg shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2.5 border-2 border-[#8b9d77]/60"
                 >
                   <Calculator className="w-5 h-5 sm:w-6 sm:h-6 text-[#8b9d77]" />
-                  <span>{isUrdu ? 'حساب لگائیں (Calculate)' : 'Calculate Cost'}</span>
+                  <span>{isUrdu ? 'حساب لگائیں' : 'Calculate Cost'}</span>
                 </button>
                 <button
                   type="button"
@@ -1249,7 +1343,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                 <div className="w-full space-y-3.5 py-2">
                   <div className="bg-[#8b9d77] text-white p-5 rounded-3xl shadow-md text-center space-y-1">
                     <span className="text-xs sm:text-sm font-bold opacity-90 block">
-                      {isUrdu ? 'کل متوقع سفری اخراجات (Total Freight Cost)' : 'Total Estimated Trip Cost'}
+                      {isUrdu ? 'کل متوقع سفری اخراجات' : 'Total Estimated Trip Cost'}
                     </span>
                     <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight">
                       PKR {(Number(lastCalc.total) || 0).toLocaleString('en-US')}
@@ -1293,7 +1387,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                     <div className="bg-[#eef4ea] border border-[#8b9d77] text-[#3d5a2d] p-3 rounded-2xl text-xs font-bold flex items-center justify-between gap-2 shadow-2xs">
                       <div className="flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4 text-[#8b9d77] shrink-0" />
-                        <span>{isUrdu ? 'یہ ٹرپ سفر ڈائری لاگز میں محفوظ کر لیا گیا ہے۔' : 'Trip saved to Safar Diary logs.'}</span>
+                        <span>{isUrdu ? 'یہ ٹرپ سفر ڈائری لاگز میں محفوظ کر لیا گیا ہے۔' : 'Trip saved to Trip Diary logs.'}</span>
                       </div>
                       <button
                         type="button"
@@ -1422,7 +1516,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
               <div className="p-8 text-center bg-white rounded-3xl border-2 border-dashed border-[#ecece0]">
                 <BookOpen className="w-10 h-10 text-[#8e8e75]/50 mx-auto mb-2" />
                 <p className="text-sm font-bold text-[#8e8e75]">
-                  {isUrdu ? 'سفر ڈائری میں کوئی ٹرپ محفوظ نہیں ہے۔' : 'No trip records saved in Safar Diary.'}
+                  {isUrdu ? 'سفر ڈائری میں کوئی ٹرپ محفوظ نہیں ہے۔' : 'No trip records saved in Trip Diary.'}
                 </p>
                 <button
                   type="button"
@@ -1456,7 +1550,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                       </p>
                     </div>
 
-                    <div className="text-right shrink-0">
+                    <div className={`${isUrdu ? 'text-left' : 'text-right'} shrink-0`}>
                       <span className="font-mono font-black text-base text-[#4a4a35] block">
                         Rs {(trip.total || 0).toLocaleString()}
                       </span>

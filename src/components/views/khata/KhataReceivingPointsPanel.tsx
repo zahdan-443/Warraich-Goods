@@ -112,7 +112,7 @@ export const KhataReceivingPointsPanel: React.FC<KhataReceivingPointsPanelProps>
     };
 
     return (
-      <div className="space-y-3.5 font-serif">
+      <div dir={isUrdu ? 'rtl' : 'ltr'} className="space-y-3.5 font-serif">
         {/* Top Bar */}
         <div className="flex items-center justify-between gap-2">
           <button
@@ -138,7 +138,7 @@ export const KhataReceivingPointsPanel: React.FC<KhataReceivingPointsPanelProps>
               className="min-h-[42px] px-3 rounded-2xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-bold flex items-center gap-1 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>PDF</span>
+              <span>{isUrdu ? 'پی ڈی ایف' : 'PDF'}</span>
             </button>
             <button
               type="button"
@@ -189,7 +189,7 @@ export const KhataReceivingPointsPanel: React.FC<KhataReceivingPointsPanelProps>
                 <p className="text-[11px] text-slate-400 mt-1">{selectedPoint.notes}</p>
               )}
             </div>
-            <div className="text-right shrink-0">
+            <div className="text-end shrink-0">
               <span className="text-[11px] font-bold text-slate-500 block">
                 {isUrdu ? 'بقایا / پینڈنگ' : 'Pending Balance'}
               </span>
@@ -370,7 +370,7 @@ export const KhataReceivingPointsPanel: React.FC<KhataReceivingPointsPanelProps>
   }, [allEntries]);
 
   return (
-    <div className="space-y-3.5 font-serif">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="space-y-3.5 font-serif">
       {/* KPI Header */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-2xl p-2.5">
@@ -402,13 +402,13 @@ export const KhataReceivingPointsPanel: React.FC<KhataReceivingPointsPanelProps>
       {/* Search + Add */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute start-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder={isUrdu ? 'پوائنٹ یا شہر تلاش کریں...' : 'Search receiving point or city...'}
-            className="w-full min-h-[42px] pl-9 pr-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs"
+            className="w-full min-h-[42px] ps-9 pe-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs"
           />
         </div>
         <button
@@ -463,7 +463,7 @@ export const KhataReceivingPointsPanel: React.FC<KhataReceivingPointsPanelProps>
                   </p>
                 </div>
 
-                <div className="text-right shrink-0">
+                <div className="text-end shrink-0">
                   <span
                     className={`text-sm font-black block ${
                       sum.pendingBalance > 0
@@ -547,7 +547,7 @@ const ReceivingPointFormModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto pb-[max(env(safe-area-inset-bottom),1.25rem)]">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-black text-slate-900 dark:text-white">
@@ -636,13 +636,13 @@ const ReceivingPointFormModal: React.FC<{
               </button>
             </div>
             <div className="relative">
-              <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Phone className="w-3.5 h-3.5 text-slate-400 absolute start-3 top-1/2 -translate-y-1/2" />
               <input
                 type="tel"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
                 placeholder="03XX-XXXXXXX"
-                className="w-full min-h-[42px] pl-9 pr-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono"
+                className="w-full min-h-[42px] ps-9 pe-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono"
               />
             </div>
             {showSavedContacts && savedContacts.length > 0 && (
@@ -656,7 +656,7 @@ const ReceivingPointFormModal: React.FC<{
                       setPhone(sc.phone);
                       setShowSavedContacts(false);
                     }}
-                    className="w-full text-left px-2 py-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-xs flex justify-between"
+                    className="w-full text-start px-2 py-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-xs flex justify-between"
                   >
                     <span className="font-bold">{sc.name}</span>
                     <span className="font-mono text-slate-500">{formatPhoneForDisplay(sc.phone)}</span>
@@ -716,7 +716,7 @@ const ReceivingEntryModal: React.FC<{
   const [entryError, setEntryError] = useState<string | null>(null);
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-t-[28px] sm:rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 pb-[max(env(safe-area-inset-bottom),1.25rem)]">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-base font-black text-slate-900 dark:text-white">

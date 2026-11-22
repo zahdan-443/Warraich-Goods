@@ -96,7 +96,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
             <div className="flex items-center gap-2 border-b border-[#ecece0] dark:border-[#2d313b] pb-2">
               <Building2 className="w-5 h-5 text-[#8b9d77] dark:text-emerald-400" />
               <h3 className="font-serif font-bold text-base text-[#1e3a68] dark:text-blue-200">
-                {isUr ? 'ہمارے بارے میں (About Us)' : 'About Warraich Goods'}
+                {isUr ? 'ہمارے بارے میں' : 'About Warraich Goods'}
               </h3>
             </div>
             <p className="text-xs sm:text-sm text-[#5a5a40] dark:text-slate-300 leading-relaxed">
@@ -126,7 +126,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
                   <Truck className="w-4 h-4" />
                 </div>
                 <h4 className="font-serif font-bold text-xs text-[#1e3a68] dark:text-blue-200">
-                  {isUr ? 'فل ٹرک لوڈ (FTL)' : 'Full Truck Load (FTL)'}
+                  {isUr ? 'فل ٹرک لوڈ' : 'Full Truck Load (FTL)'}
                 </h4>
                 <p className="text-[11px] text-[#7a7a60] dark:text-slate-400 leading-normal">
                   {isUr ? 'پورے پاکستان میں سامان کی محفوظ اور تیز رفتاری سے منتقلی۔' : 'Secure and rapid cargo transit across Pakistan.'}
@@ -163,7 +163,7 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
           <div className="p-3.5 bg-amber-500/10 dark:bg-amber-950/40 rounded-2xl border border-amber-500/30 dark:border-amber-700/50 text-amber-950 dark:text-amber-100 text-xs space-y-1">
             <span className="font-bold flex items-center gap-1.5 text-amber-900 dark:text-amber-300">
               <ShieldCheck className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
-              <span>{isUr ? 'سرکاری عدم الحاق کا اعلان (Non-Government Entity Declaration)' : 'Non-Government Entity Declaration'}</span>
+              <span>{isUr ? 'سرکاری عدم الحاق کا اعلان' : 'Non-Government Entity Declaration'}</span>
             </span>
             <p className="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/90">
               {isUr
@@ -201,7 +201,12 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => openWhatsAppMessage('السلام علیکم! وڑائچ گڈز ٹرانسپورٹ انکوائری / بکنگ', '923005370443')}
+                  onClick={() => openWhatsAppMessage(
+                    isUr
+                      ? 'السلام علیکم! وڑائچ گڈز ٹرانسپورٹ انکوائری / بکنگ'
+                      : 'Hello! Warraich Goods Transport inquiry / booking',
+                    '923005370443'
+                  )}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />

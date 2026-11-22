@@ -86,7 +86,7 @@ export const KhataPinLockScreen: React.FC<KhataPinLockScreenProps> = ({
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center p-3 sm:p-4 font-serif">
+    <div dir={isUrdu ? 'rtl' : 'ltr'} className="min-h-[85vh] flex items-center justify-center p-3 sm:p-4 font-serif">
       <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[28px] sm:rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200 dark:border-slate-800 text-center font-serif">
         <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-200 dark:border-emerald-800 shadow-inner">
           <Lock className="w-8 h-8" />
@@ -125,7 +125,7 @@ export const KhataPinLockScreen: React.FC<KhataPinLockScreenProps> = ({
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-2.5 sm:gap-3 mb-4 max-w-[280px] mx-auto select-none">
+        <div dir="ltr" className="grid grid-cols-3 gap-2.5 sm:gap-3 mb-4 max-w-[280px] mx-auto select-none">
           {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
             <button
               key={num}
@@ -187,13 +187,13 @@ export const KhataPinLockScreen: React.FC<KhataPinLockScreenProps> = ({
         </button>
 
         {showForgotDialog && (
-          <div className="mt-4 p-4 rounded-2xl bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-slate-700 text-left space-y-3">
+          <div className="mt-4 p-4 rounded-2xl bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-slate-700 text-start space-y-3">
             <div className="flex items-start gap-2 text-xs text-amber-950 dark:text-amber-200">
               <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <span>
                 {isSignedIn
                   ? isUrdu
-                    ? 'پن لاک ختم کرنے کے لیے گوگل اکاؤنٹ سے دوبارہ تصدیق (Re-authentication) درکار ہے۔'
+                    ? 'پن لاک ختم کرنے کے لیے گوگل اکاؤنٹ سے دوبارہ تصدیق درکار ہے۔'
                     : 'Google account re-authentication is required to reset your Khata PIN lock.'
                   : isUrdu
                   ? 'مہمان موڈ میں پن ختم کرنے کے لیے نیچے RESET PIN لکھ کر تصدیق کریں۔'

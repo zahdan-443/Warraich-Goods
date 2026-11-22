@@ -89,7 +89,7 @@ export class ErrorBoundary extends Component<Props, State> {
               </h1>
               <p className="text-xs sm:text-sm text-[#8e8e75] leading-relaxed">
                 {isUrdu
-                  ? 'سسٹم نے ایک غیر متوقع ایرر کو محفوظ طریقے سے روک لیا ہے۔ آپ کا تمام محفوظ ریکارڈ (حساب و بلٹی) محفوظ ہے۔'
+                  ? 'سسٹم نے ایک غیر متوقع ایرر کو محفوظ طریقے سے روک لیا ہے۔ آپ کا تمام محفوظ ریکارڈ (حساب و ریکارڈ) محفوظ ہے۔'
                   : 'The app encountered an unhandled exception. Your saved records remain safe in device memory.'}
               </p>
             </div>

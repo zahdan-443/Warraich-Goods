@@ -134,12 +134,12 @@ export const HazardReportingModal: React.FC<HazardReportingModalProps> = ({
             ? (isUrdu 
                 ? 'براہ کرم دوبارہ رپورٹ کرنے سے پہلے چند منٹ انتظار کریں۔' 
                 : 'Please wait a few minutes before reporting again.')
-            : (res.error || 'Failed to submit report')
+            : (res.error || (isUrdu ? 'رپورٹ جمع کرنے میں مسئلہ پیش آیا' : 'Failed to submit report'))
         );
         setSubmittingCategory(null);
       }
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Error submitting report.');
+      setErrorMessage(err?.message || (isUrdu ? 'رپورٹ بھیجنے میں خرابی آئی۔' : 'Error submitting report.'));
       setSubmittingCategory(null);
     }
   };
@@ -300,9 +300,6 @@ export const HazardReportingModal: React.FC<HazardReportingModalProps> = ({
                   <div className="flex-1 min-w-0">
                     <p className={`font-bold text-xs sm:text-sm ${meta.badgeText} truncate`}>
                       {isUrdu ? meta.labelUr : meta.labelEn}
-                    </p>
-                    <p className="text-[11px] text-[#5a5a40] truncate">
-                      {isUrdu ? meta.labelEn : meta.labelUr}
                     </p>
                   </div>
                 </button>

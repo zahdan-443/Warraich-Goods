@@ -710,7 +710,7 @@ export const DICTIONARY = {
       dashcam: "Dashcam"
     },
     heroTitle: "Built for Pakistan's Road Freight",
-    heroHighlight: "Safar",
+    heroHighlight: "Logistics",
     heroDesc: "Trip calculations, driver directories, fleet profiles, preset routes & Punjab Government verification portals — beautifully orchestrated.",
     stats: {
       trips: "Trips Logged",
@@ -718,12 +718,12 @@ export const DICTIONARY = {
       drivers: "Registered Drivers"
     },
     quickAccess: "Quick Operations",
-    recentTrips: "Recent Safar Logs",
+    recentTrips: "Recent Trip Logs",
     noTrips: "No trip records saved yet. Launch the Trip Cost calculator to estimate freight expenses.",
     calc: {
       title: "Trip Cost Estimator",
       calculateTab: "Estimate",
-      historyTab: "Safar History",
+      historyTab: "Trip History",
       summaryTab: "Analytics",
       fuelDetails: "Fuel Parameters",
       fuelPrice: "Fuel Price (PKR / L)",
@@ -732,8 +732,8 @@ export const DICTIONARY = {
       routeExtras: "Freight Add-ons",
       toll: "Toll & Motorway (PKR)",
       loading: "Loading / Unloading Labor",
-      driverAllowance: "Driver Kharcha / Allowance",
-      otherCosts: "Miscellaneous Challan / Repair",
+      driverAllowance: "Driver Allowance & Expenses",
+      otherCosts: "Miscellaneous Fine / Repair",
       returnTrip: "Round Trip (Return)",
       returnTripSub: "Automatically doubles route distance",
       calcBtn: "Calculate Total Freight Cost",
@@ -819,8 +819,8 @@ export const DICTIONARY = {
       }
     },
     modals: {
-      saveTripTitle: "Record Safar to Diary",
-      tripNameLbl: "Safar Identifier",
+      saveTripTitle: "Record Trip to Diary",
+      tripNameLbl: "Trip Identifier",
       tripNamePlace: "e.g. Faisalabad to Rawalpindi Wheat",
       cancel: "Discard",
       confirm: "Save Record"
@@ -891,16 +891,16 @@ export const DICTIONARY = {
       title: "Vehicle Trip Account & Net Profit",
       subtitle: "Record freight earnings, trip expenses, and compute net profit ledger",
       vehicleSelector: "Select or Enter Vehicle Reg No:",
-      incomeSection: "1. Freight Incomes & Karaya",
-      addIncome: "Add Freight / Karaya",
+      incomeSection: "1. Freight Income & Charges",
+      addIncome: "Add Freight Income",
       totalIncome: "Total Freight Earnings:",
       expenseSection: "2. Detailed Trip Expenses",
       addExpense: "Add Custom Expense",
       diesel: "1. Diesel Fuel Expense",
       toll: "2. Toll Plaza & Motorway Tax",
-      challan: "3. Traffic Challan & Penalties",
-      roti: "4. Driver Food & Daily Kharcha",
-      chowkidara: "5. Chowkidari & Parking",
+      challan: "3. Traffic Fine & Penalties",
+      roti: "4. Driver Meals & Daily Allowance",
+      chowkidara: "5. Security & Terminal Parking",
       gariKaam: "6. Vehicle Repair & Maintenance",
       driverCommission: "7. Driver Commission / Wage",
       customLabel: "Custom Expense Title",
@@ -909,9 +909,9 @@ export const DICTIONARY = {
       netDeficit: "Net Deficit / Loss",
       whatsappShare: "WhatsApp Ledger",
       pdfDownload: "Download PDF Ledger",
-      saveDiary: "Save to Safar Diary",
+      saveDiary: "Save to Trip Diary",
       resetBtn: "Clear Fields",
-      savedSuccess: "Vehicle account successfully saved to Safar Diary."
+      savedSuccess: "Vehicle account successfully saved to Trip Diary."
     }
   },
   ur: {

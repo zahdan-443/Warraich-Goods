@@ -271,7 +271,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
       iconAnchor: [16, 16]
     });
     originMarkerRef.current = L.marker([originCity.lat, originCity.lng], { icon: originIcon })
-      .bindPopup(`<b>${originCity.nameUr} (${originCity.nameEn})</b><br>${isUrdu ? 'روانگی پوائنٹ' : 'Origin'}`)
+      .bindPopup(`<b>${isUrdu ? originCity.nameUr : originCity.nameEn}</b><br>${isUrdu ? 'روانگی پوائنٹ' : 'Origin'}`)
       .addTo(map);
 
     const destIcon = L.divIcon({
@@ -285,7 +285,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
       iconAnchor: [17, 17]
     });
     destMarkerRef.current = L.marker([destCity.lat, destCity.lng], { icon: destIcon })
-      .bindPopup(`<b>${destCity.nameUr} (${destCity.nameEn})</b><br>${isUrdu ? 'منزل پوائنٹ' : 'Destination'}`)
+      .bindPopup(`<b>${isUrdu ? destCity.nameUr : destCity.nameEn}</b><br>${isUrdu ? 'منزل پوائنٹ' : 'Destination'}`)
       .addTo(map);
   }, [originId, destId, originCity.lat, originCity.lng, originCity.nameUr, originCity.nameEn, destCity.lat, destCity.lng, destCity.nameUr, destCity.nameEn, isUrdu]);
 
@@ -495,7 +495,9 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
       ? `https://maps.google.com/?q=${userLocation.lat},${userLocation.lng}`
       : `https://maps.google.com/?q=${originCity.lat},${originCity.lng}`;
     
-    const text = `🚚 *Driver Dost - حقیقی GPS لوکیشن و روٹ رپورٹ*\n📍 *روٹ*: ${originCity.nameUr} ➔ ${destCity.nameUr}\n📏 *کل فاصلہ*: ${realRouteDistanceKm} کلومیٹر\n⚡ *موجودہ رفتار*: ${realGpsSpeed} km/h\n⏱️ *تخمینی وقت (ETA)*: ${etaDisplay}\n🛰️ *لائیو لوکیشن لنک*: ${locUrl}\n🔗 *گوگل میپس نیویگیشن*: https://www.google.com/maps/dir/?api=1&destination=${destCity.lat},${destCity.lng}&travelmode=driving`;
+    const text = isUrdu
+      ? `🚚 *ڈرائیور دوست - حقیقی GPS لوکیشن و روٹ رپورٹ*\n📍 *روٹ*: ${originCity.nameUr} ➔ ${destCity.nameUr}\n📏 *کل فاصلہ*: ${realRouteDistanceKm} کلومیٹر\n⚡ *موجودہ رفتار*: ${realGpsSpeed} کلومیٹر/گھنٹہ\n⏱️ *تخمینی وقت*: ${etaDisplay}\n🛰️ *لائیو لوکیشن لنک*: ${locUrl}\n🔗 *گوگل میپس نیویگیشن*: https://www.google.com/maps/dir/?api=1&destination=${destCity.lat},${destCity.lng}&travelmode=driving`
+      : `🚚 *Driver Dost — Live GPS Location & Route Report*\n📍 *Route*: ${originCity.nameEn} ➔ ${destCity.nameEn}\n📏 *Total Distance*: ${realRouteDistanceKm} KM\n⚡ *Current Speed*: ${realGpsSpeed} km/h\n⏱️ *ETA*: ${etaDisplay}\n🛰️ *Live Location*: ${locUrl}\n🔗 *Google Maps Navigation*: https://www.google.com/maps/dir/?api=1&destination=${destCity.lat},${destCity.lng}&travelmode=driving`;
     
     openWhatsAppMessage(text);
     setCopiedShare(true);
@@ -677,7 +679,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
                   <div className="flex items-center gap-2.5">
                     <span className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold font-mono">01</span>
                     <div>
-                      <strong className="text-white block">{originCity.nameUr} ({originCity.nameEn})</strong>
+                      <strong className="text-white block">{isUrdu ? originCity.nameUr : originCity.nameEn}</strong>
                       <span className="text-slate-400 text-[11px]">{originCity.highways.join(' • ')}</span>
                     </div>
                   </div>
@@ -708,7 +710,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
                   <div className="flex items-center gap-2.5">
                     <span className="p-2 rounded-xl bg-rose-500/20 text-rose-400 font-bold font-mono">03</span>
                     <div>
-                      <strong className="text-white block">{destCity.nameUr} ({destCity.nameEn})</strong>
+                      <strong className="text-white block">{isUrdu ? destCity.nameUr : destCity.nameEn}</strong>
                       <span className="text-slate-400 text-[11px]">{destCity.highways.join(' • ')}</span>
                     </div>
                   </div>
@@ -786,7 +788,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
                     </span>
                   </div>
                 </div>
-                <span className="text-emerald-400 text-xs font-bold">صاف</span>
+                <span className="text-emerald-400 text-xs font-bold">{isUrdu ? 'صاف' : 'Clean'}</span>
               </div>
             </div>
           </div>

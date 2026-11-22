@@ -45,20 +45,20 @@ export const ExportPrivacyModal: React.FC<ExportPrivacyModalProps> = ({ isOpen, 
       if (type === 'json') {
         const ok = downloadFleetBackupJson();
         if (ok) {
-          setExportFeedback(lang === 'ur' ? 'مکمل فلیٹ و کھاتہ بیک اپ (JSON) ڈاؤن لوڈ ہو گیا!' : 'Full Fleet & Ledger JSON backup downloaded!');
+          setExportFeedback(lang === 'ur' ? 'مکمل فلیٹ و کھاتہ بیک اپ ڈاؤن لوڈ ہو گیا!' : 'Full Fleet & Ledger JSON backup downloaded!');
         } else {
           exportAllBusinessDataJSON(privacyOptions);
-          setExportFeedback(lang === 'ur' ? 'ڈیٹا بیک اپ (JSON) ڈاؤن لوڈ ہو گیا!' : 'Backup downloaded!');
+          setExportFeedback(lang === 'ur' ? 'ڈیٹا بیک اپ ڈاؤن لوڈ ہو گیا!' : 'Backup downloaded!');
         }
       } else if (type === 'bilties') {
         exportAllBiltiesCSV(privacyOptions);
-        setExportFeedback(lang === 'ur' ? 'بلٹی ریکارڈز (CSV) فائل ڈاؤن لوڈ ہو گئی!' : 'Bilties CSV downloaded!');
+        setExportFeedback(lang === 'ur' ? 'دستاویزات کا ریکارڈ ڈاؤن لوڈ ہو گیا!' : 'Business documents CSV downloaded!');
       } else if (type === 'trips') {
         exportAllTripsCSV(privacyOptions);
-        setExportFeedback(lang === 'ur' ? 'ٹرپ ہسٹری (CSV) فائل ڈاؤن لوڈ ہو گئی!' : 'Trip History CSV downloaded!');
+        setExportFeedback(lang === 'ur' ? 'ٹرپ ہسٹری فائل ڈاؤن لوڈ ہو گئی!' : 'Trip History CSV downloaded!');
       } else if (type === 'contacts') {
         exportContactsCSV(privacyOptions);
-        setExportFeedback(lang === 'ur' ? 'کسٹمر و ڈرائیور کانٹیکٹس (CSV) ڈاؤن لوڈ ہو گئی!' : 'Contacts CSV downloaded!');
+        setExportFeedback(lang === 'ur' ? 'کسٹمر و ڈرائیور روابط ڈاؤن لوڈ ہو گئے!' : 'Contacts CSV downloaded!');
       }
     } catch {
       setExportFeedback(lang === 'ur' ? 'ایکسپورٹ میں خرابی پیش آئی۔' : 'Export failed.');
@@ -123,7 +123,7 @@ export const ExportPrivacyModal: React.FC<ExportPrivacyModalProps> = ({ isOpen, 
                   <CreditCard className="w-4 h-4 text-[#1e3a68]" />
                   <div>
                     <div className="text-xs font-bold text-[#4a4a35]">
-                      {lang === 'ur' ? 'شناختی کارڈ (CNIC) ماسک کریں' : 'Mask CNIC Numbers'}
+                      {lang === 'ur' ? 'شناختی کارڈ نمبر ماسک کریں' : 'Mask CNIC Numbers'}
                     </div>
                     <div className="text-[10px] text-[#8e8e75]">
                       {lang === 'ur' ? 'مثال: 35201-******67-1' : 'e.g. 35201-******67-1'}
@@ -165,7 +165,7 @@ export const ExportPrivacyModal: React.FC<ExportPrivacyModalProps> = ({ isOpen, 
                   <UserCheck className="w-4 h-4 text-amber-600" />
                   <div>
                     <div className="text-xs font-bold text-[#4a4a35]">
-                      {lang === 'ur' ? 'شخصی نام گمنام (Anonymize) کریں' : 'Anonymize Person Names'}
+                      {lang === 'ur' ? 'شخصی نام پوشیدہ رکھیں' : 'Anonymize Person Names'}
                     </div>
                     <div className="text-[10px] text-[#8e8e75]">
                       {lang === 'ur' ? 'مثال: M. A***' : 'e.g. M. A***'}
@@ -213,45 +213,45 @@ export const ExportPrivacyModal: React.FC<ExportPrivacyModalProps> = ({ isOpen, 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <button
                 onClick={() => triggerExport('json')}
-                className="p-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-900 font-bold text-xs flex items-center gap-2.5 cursor-pointer transition-all shadow-2xs active:scale-95 text-left"
+                className={`p-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-900 font-bold text-xs flex items-center gap-2.5 cursor-pointer transition-all shadow-2xs active:scale-95 ${lang === 'ur' ? 'text-right' : 'text-left'}`}
               >
                 <Download className="w-4 h-4 text-indigo-600 shrink-0" />
                 <div>
-                  <div>{lang === 'ur' ? 'مکمل بیک اپ (JSON)' : 'Full System Backup'}</div>
-                  <div className="text-[10px] font-normal text-indigo-700">JSON Archive</div>
+                  <div>{lang === 'ur' ? 'مکمل سسٹم بیک اپ' : 'Full System Backup'}</div>
+                  <div className="text-[10px] font-normal text-indigo-700">{lang === 'ur' ? 'جیسن فائل' : 'JSON Archive'}</div>
                 </div>
               </button>
 
               <button
                 onClick={() => triggerExport('bilties')}
-                className="p-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 font-bold text-xs flex items-center gap-2.5 cursor-pointer transition-all shadow-2xs active:scale-95 text-left"
+                className={`p-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 font-bold text-xs flex items-center gap-2.5 cursor-pointer transition-all shadow-2xs active:scale-95 ${lang === 'ur' ? 'text-right' : 'text-left'}`}
               >
                 <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
                 <div>
-                  <div>{lang === 'ur' ? 'بلٹی ریکارڈز (CSV)' : 'Bilties Spreadsheet'}</div>
-                  <div className="text-[10px] font-normal text-emerald-700">CSV Sheet</div>
+                  <div>{lang === 'ur' ? 'دستاویزات ریکارڈز' : 'Documents Spreadsheet'}</div>
+                  <div className="text-[10px] font-normal text-emerald-700">{lang === 'ur' ? 'سی ایس وی شیٹ' : 'CSV Sheet'}</div>
                 </div>
               </button>
 
               <button
                 onClick={() => triggerExport('trips')}
-                className="p-3 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 font-bold text-xs flex items-center gap-2.5 cursor-pointer transition-all shadow-2xs active:scale-95 text-left"
+                className={`p-3 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 font-bold text-xs flex items-center gap-2.5 cursor-pointer transition-all shadow-2xs active:scale-95 ${lang === 'ur' ? 'text-right' : 'text-left'}`}
               >
                 <FileText className="w-4 h-4 text-amber-600 shrink-0" />
                 <div>
-                  <div>{lang === 'ur' ? 'ٹرپ ہسٹری (CSV)' : 'Trip History Logs'}</div>
-                  <div className="text-[10px] font-normal text-amber-700">CSV Sheet</div>
+                  <div>{lang === 'ur' ? 'ٹرپ ہسٹری ریکارڈ' : 'Trip History Logs'}</div>
+                  <div className="text-[10px] font-normal text-amber-700">{lang === 'ur' ? 'سی ایس وی شیٹ' : 'CSV Sheet'}</div>
                 </div>
               </button>
 
               <button
                 onClick={() => triggerExport('contacts')}
-                className="p-3 rounded-2xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-900 font-bold text-xs flex items-center gap-2.5 cursor-pointer transition-all shadow-2xs active:scale-95 text-left"
+                className={`p-3 rounded-2xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-900 font-bold text-xs flex items-center gap-2.5 cursor-pointer transition-all shadow-2xs active:scale-95 ${lang === 'ur' ? 'text-right' : 'text-left'}`}
               >
                 <Users className="w-4 h-4 text-blue-600 shrink-0" />
                 <div>
-                  <div>{lang === 'ur' ? 'رابطہ لسٹ (CSV)' : 'Customer & Drivers'}</div>
-                  <div className="text-[10px] font-normal text-blue-700">CSV Contacts</div>
+                  <div>{lang === 'ur' ? 'گاہک اور ڈرائیور روابط' : 'Customer & Drivers'}</div>
+                  <div className="text-[10px] font-normal text-blue-700">{lang === 'ur' ? 'سی ایس وی روابط' : 'CSV Contacts'}</div>
                 </div>
               </button>
             </div>

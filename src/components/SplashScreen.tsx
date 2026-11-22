@@ -1,17 +1,28 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ActiveTab } from '../types';
+import { ActiveTab, Language } from '../types';
 
 interface SplashScreenProps {
   onDismiss: () => void;
   onSelectTab?: (tab: ActiveTab) => void;
   isBiltyAuthorized?: boolean;
+  lang?: Language;
 }
 
-export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
+export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss, lang }) => {
   const [fadeOut, setFadeOut] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const dismissedRef = useRef(false);
   const onDismissRef = useRef(onDismiss);
+
+  const explicitLang = (() => {
+    try {
+      const saved = localStorage.getItem('ah-lang-user-explicit');
+      if (saved === 'en' || saved === 'ur') return saved;
+    } catch {}
+    return null;
+  })();
+
+  const activeLang: Language | null = explicitLang || (lang ?? null);
 
   // Keep latest onDismiss reference without triggering effect re-runs
   useEffect(() => {
@@ -66,6 +77,22 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
     };
   }, [dismiss]);
 
+  const skipLabel = activeLang === 'en'
+    ? 'Skip ✕'
+    : activeLang === 'ur'
+      ? 'چھوڑیں ✕'
+      : 'Skip • چھوڑیں ✕';
+
+  const loadingLabel = activeLang === 'en'
+    ? 'Loading Driver Dost...'
+    : 'ڈرائیور دوست لوڈ ہو رہا ہے...';
+
+  const tapLabel = activeLang === 'en'
+    ? 'Tap anywhere to continue'
+    : activeLang === 'ur'
+      ? 'آگے بڑھنے کے لئے ٹچ کریں'
+      : 'Tap anywhere to continue • آگے بڑھنے کے لئے ٹچ کریں';
+
   return (
     <div
       id="app-splash-screen"
@@ -93,8 +120,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
           aria-label="Skip splash screen"
           className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#162a4d]/85 hover:bg-[#162a4d] text-white text-xs font-semibold backdrop-blur-md shadow-md border border-white/20 transition-all active:scale-95 cursor-pointer"
         >
-          <span>چھوڑیں</span>
-          <span className="text-[10px] opacity-75">• Skip ✕</span>
+          <span>{skipLabel}</span>
         </button>
       </div>
 
@@ -120,16 +146,16 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDismiss }) => {
         {/* Subtle Brand Loading Status Bar at Bottom */}
         <div 
           className="absolute bottom-5 sm:bottom-8 inset-x-0 flex flex-col items-center justify-center gap-2 pointer-events-none px-4"
-          dir="rtl"
+          dir={activeLang === 'en' ? 'ltr' : 'rtl'}
         >
           <div className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/95 shadow-md border border-slate-200 backdrop-blur-sm">
             <span className="w-2 h-2 rounded-full bg-[#8b9d77] animate-ping" />
             <span className="text-xs font-bold text-[#162a4d]">
-              ڈرائیور دوست لوڈ ہو رہا ہے...
+              {loadingLabel}
             </span>
           </div>
           <span className="text-[11px] text-slate-500 font-medium tracking-wide">
-            Tap anywhere to skip • آگے بڑھنے کے لئے ٹچ کریں
+            {tapLabel}
           </span>
         </div>
       </div>
