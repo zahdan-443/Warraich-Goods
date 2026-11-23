@@ -16,6 +16,7 @@ export interface SystemNotificationOptions {
   vibrate?: number[];
   silent?: boolean;
   renotify?: boolean;
+  bypassThrottle?: boolean;
 }
 
 let lastNotificationTime = 0;
@@ -120,9 +121,9 @@ export async function sendSystemNotification(
   body?: string,
   options: SystemNotificationOptions = {}
 ): Promise<boolean> {
-  // Gentle throttle (at least 500ms between system toasts) to prevent flood
+  // Gentle throttle (at least 500ms between system toasts) to prevent flood unless bypassed
   const now = Date.now();
-  if (now - lastNotificationTime < 500) {
+  if (!options.bypassThrottle && now - lastNotificationTime < 500) {
     return false;
   }
   lastNotificationTime = now;

@@ -88,7 +88,11 @@ import { GuestImportPromptModal } from './components/GuestImportPromptModal';
 import { LanguageSelectionModal } from './components/LanguageSelectionModal';
 import { Home, ArrowLeft } from 'lucide-react';
 import { checkExpiringDocuments, processExpiryNotifications } from './utils/documentExpiry';
-import { dispatchDailyDigestNotification } from './utils/dailyDigestNotification';
+import {
+  dispatchDailyDigestNotification,
+  decodeWeatherAndMotorway,
+  NOTIFICATIONS_UPDATED_EVENT
+} from './utils/dailyDigestNotification';
 import { initKhataDueDateScheduler } from './utils/khataNotifications';
 
 export default function App() {
@@ -796,6 +800,10 @@ export default function App() {
       }
     };
 
+    const handleNotificationsUpdated = () => {
+      setNotifications(getStoredNotifications());
+    };
+
     const handleStorageHydrated = () => {
       setBilties(getStoredBilties());
       setTrips(getStoredTrips());
@@ -803,6 +811,7 @@ export default function App() {
       setDrivers(getStoredDrivers());
       setRoutes(getStoredRoutes());
       setFuelLogs(getStoredFuelLog());
+      setNotifications(getStoredNotifications());
     };
 
     // Keep UI synced on storage/sync events
@@ -815,6 +824,7 @@ export default function App() {
     window.addEventListener('offline', handleOffline);
     window.addEventListener('driverdost:bilties_updated', handleBiltiesUpdated);
     window.addEventListener('driverdost:storage_hydrated', handleStorageHydrated);
+    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, handleNotificationsUpdated);
 
     return () => {
       cleanupAmbient();
@@ -823,6 +833,7 @@ export default function App() {
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('driverdost:bilties_updated', handleBiltiesUpdated);
       window.removeEventListener('driverdost:storage_hydrated', handleStorageHydrated);
+      window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, handleNotificationsUpdated);
     };
   }, [currentUid]);
 
@@ -913,23 +924,23 @@ export default function App() {
             const city = keyCities[idx];
             if (!city || !item.current) return;
             const c = item.current;
-            const temp = Math.round(c.temperature_2m);
+            const decoded = decodeWeatherAndMotorway(c);
             newMap[city.id] = {
-              temp,
-              apparentTemp: Math.round(c.apparent_temperature ?? temp),
-              humidity: Math.round(c.relative_humidity_2m ?? 50),
-              windSpeed: Math.round(c.wind_speed_10m ?? 12),
-              visibilityKm: Math.round((c.visibility ?? 10000) / 1000),
-              precipitationMm: Math.round(c.precipitation ?? 0),
-              weatherCode: c.weather_code ?? 0,
-              conditionUr: 'معتدل / صاف',
-              conditionEn: 'Clear / Moderate',
-              iconType: 'sun',
-              safetyLevel: 'safe',
-              roadStatusUr: 'ہائی وے ٹریفک معمول کے مطابق',
-              roadStatusEn: 'Highway Clear',
-              fogWarning: false,
-              rainWarning: false,
+              temp: decoded.temp,
+              apparentTemp: decoded.apparentTemp,
+              humidity: decoded.humidity,
+              windSpeed: decoded.windSpeed,
+              visibilityKm: decoded.visibilityKm,
+              precipitationMm: decoded.precipitationMm,
+              weatherCode: decoded.weatherCode,
+              conditionUr: decoded.conditionUr,
+              conditionEn: decoded.conditionEn,
+              iconType: decoded.iconType,
+              safetyLevel: decoded.safetyLevel,
+              roadStatusUr: decoded.roadStatusUr,
+              roadStatusEn: decoded.roadStatusEn,
+              fogWarning: decoded.fogWarning,
+              rainWarning: decoded.rainWarning,
               updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
           });

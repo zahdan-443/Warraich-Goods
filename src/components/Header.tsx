@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send, Download, Trash2 } from 'lucide-react';
+import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send, Download, Trash2, Navigation, Loader2 } from 'lucide-react';
 import { DICTIONARY, Language, AppNotification, UserRole } from '../types';
 import { CompanyLogo } from './CompanyLogo';
 import { logoIconData } from '../assets/dashboardIcons';
@@ -19,7 +19,11 @@ import {
   dispatchDailyDigestNotification, 
   getDailyDigestSettings, 
   saveDailyDigestSettings, 
-  DailyDigestSettings 
+  DailyDigestSettings,
+  getActiveNotificationLocationPreview,
+  resolveNotificationLocation,
+  ResolvedNotificationLocation,
+  NOTIFICATION_LOCATION_UPDATED_EVENT
 } from '../utils/dailyDigestNotification';
 import { getCrashReportingConsent, setCrashReportingConsent } from '../utils/crashReportingService';
 import { isOwnerEmail } from '../utils/authUtils';
@@ -111,11 +115,27 @@ export const Header: React.FC<HeaderProps> = ({
 
   const [digestSettings, setDigestSettings] = useState<DailyDigestSettings>(() => getDailyDigestSettings());
   const [crashConsent, setCrashConsent] = useState<boolean>(() => getCrashReportingConsent());
+  const [alertLocation, setAlertLocation] = useState<ResolvedNotificationLocation>(() => getActiveNotificationLocationPreview());
+  const [refreshingLocation, setRefreshingLocation] = useState(false);
+
+  useEffect(() => {
+    const onLocUpdate = (ev: Event) => {
+      const detail = (ev as CustomEvent<ResolvedNotificationLocation>)?.detail;
+      if (detail) setAlertLocation(detail);
+      else setAlertLocation(getActiveNotificationLocationPreview());
+    };
+    window.addEventListener(NOTIFICATION_LOCATION_UPDATED_EVENT, onLocUpdate);
+    return () => window.removeEventListener(NOTIFICATION_LOCATION_UPDATED_EVENT, onLocUpdate);
+  }, []);
 
   useEffect(() => {
     if (showNotifs) {
       setDigestSettings(getDailyDigestSettings());
       setCrashConsent(getCrashReportingConsent());
+      setAlertLocation(getActiveNotificationLocationPreview());
+      resolveNotificationLocation({ passiveOnly: true })
+        .then((loc) => setAlertLocation(loc))
+        .catch(() => {});
     }
   }, [showNotifs]);
 
@@ -131,14 +151,27 @@ export const Header: React.FC<HeaderProps> = ({
     setCrashConsent(nextState);
   };
 
+  const handleRefreshLocationAlerts = async () => {
+    setRefreshingLocation(true);
+    try {
+      const resolved = await resolveNotificationLocation({ passiveOnly: false });
+      setAlertLocation(resolved);
+    } finally {
+      setRefreshingLocation(false);
+    }
+  };
+
   const handleSendTestNotification = async () => {
     setTestSent(true);
-    await sendSystemNotification(
-      lang === 'ur' ? 'ڈرائیور دوست ٹیسٹ الرٹ 🚛' : 'Driver Dost Test Alert 🚛',
-      lang === 'ur' ? 'سسٹم الرٹ اور نوٹیفیکیشن اسٹیٹس بار پر کامیابی سے موصول ہو رہا ہے۔' : 'Transport notification successfully delivered to your device status bar.'
-    );
-    await dispatchDailyDigestNotification(lang, true);
-    setTimeout(() => setTestSent(false), 3000);
+    try {
+      const res = await dispatchDailyDigestNotification(lang, true);
+      if (res.location) {
+        setAlertLocation(res.location);
+      }
+      setNotifPerm(await getNotificationPermission());
+    } finally {
+      setTimeout(() => setTestSent(false), 3000);
+    }
   };
 
   React.useEffect(() => {
@@ -822,6 +855,39 @@ export const Header: React.FC<HeaderProps> = ({
                     <span>{lang === 'ur' ? 'منظور کریں' : 'Enable'}</span>
                   </button>
                 )}
+              </div>
+
+              {/* Active Location for Weather & Motorway Alerts */}
+              <div className="pt-2 border-t border-amber-200/60 dark:border-amber-900/50 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-semibold text-amber-950 dark:text-amber-200 text-[10.5px] flex items-center gap-1 truncate">
+                    <Navigation className={`w-3 h-3 shrink-0 ${alertLocation.source === 'gps' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`} />
+                    <span className="truncate">
+                      {lang === 'ur'
+                        ? `لوکیشن: ${alertLocation.cityUr} (${alertLocation.source === 'gps' ? 'موبائل GPS' : 'ڈیفالٹ'})`
+                        : `Alert City: ${alertLocation.cityEn} (${alertLocation.source === 'gps' ? 'Mobile GPS' : 'Default'})`}
+                    </span>
+                  </div>
+                  <span className="text-[9.5px] text-amber-900/70 dark:text-amber-400/80 block truncate">
+                    {lang === 'ur'
+                      ? `موٹروے کوریڈور: ${alertLocation.highways[0] || 'M-4'} • GPS نہ ہونے پر سمندری ڈیفالٹ`
+                      : `Corridor: ${alertLocation.highways[0] || 'M-4'} • Defaults to Samundri if GPS off`}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRefreshLocationAlerts}
+                  disabled={refreshingLocation}
+                  className="px-2 py-1 rounded-lg bg-white dark:bg-[#22252c] hover:bg-amber-50 dark:hover:bg-[#2d313b] text-amber-900 dark:text-amber-200 border border-amber-300/70 dark:border-amber-800/60 text-[10px] font-bold flex items-center gap-1 shrink-0 cursor-pointer transition-all"
+                  title={lang === 'ur' ? 'موبائل GPS لوکیشن چیک کریں' : 'Detect mobile GPS location'}
+                >
+                  {refreshingLocation ? (
+                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                  ) : (
+                    <MapPin className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                  )}
+                  <span>{refreshingLocation ? (lang === 'ur' ? 'تلاش...' : 'Wait...') : (lang === 'ur' ? 'GPS اپڈیٹ' : 'Use GPS')}</span>
+                </button>
               </div>
 
               {/* Daily Morning Digest (Fuel, Weather, Roads) Toggle */}

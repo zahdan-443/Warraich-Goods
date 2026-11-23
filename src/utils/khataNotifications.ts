@@ -93,6 +93,9 @@ export async function checkAndDispatchDueReminders(lang: Language = 'ur', force 
         type: 'system' as const
       }));
       saveStoredNotifications([...newEntries, ...inAppList].slice(0, 50));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('wg_notifications_updated'));
+      }
     } catch {
       // ignore storage quota errors
     }

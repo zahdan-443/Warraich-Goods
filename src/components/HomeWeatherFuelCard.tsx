@@ -37,6 +37,14 @@ import {
 } from '../utils/fuelPrice';
 import { PAKISTAN_CITIES_MASTER } from '../utils/pakistanCitiesData';
 import { findNearestCity } from '../utils/hazardReports';
+import {
+  SAMUNDRI_DEFAULT_CITY,
+  checkAndDispatchLocationAdvisory,
+  clearCachedGpsLocation,
+  decodeWeatherAndMotorway,
+  getCachedGpsLocation,
+  saveLastGpsLocation
+} from '../utils/dailyDigestNotification';
 
 interface OperationalSummaryItem {
   id: string;
@@ -211,65 +219,27 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
       if (!resp.ok) throw new Error('Weather API error');
       const data = await resp.json();
       const current = data.current;
-      const code = current.weather_code || 0;
-      const visKm = Math.round((current.visibility || 10000) / 100) / 10;
-      const temp = Math.round(current.temperature_2m);
-      const feelsLike = Math.round(current.apparent_temperature);
-      const humidity = Math.round(current.relative_humidity_2m);
-      const windSpeed = Math.round(current.wind_speed_10m);
-
-      let conditionEn = 'Clear Sky';
-      let conditionUr = 'صاف آسمان و موسم';
-      let iconType: 'sun' | 'cloud' | 'rain' | 'fog' | 'wind' = 'sun';
-      let roadStatusEn = 'Dry & Clear Highway';
-      let roadStatusUr = 'سڑک خشک اور محفوظ';
+      const decoded = decodeWeatherAndMotorway(current || {});
       let warning: string | undefined = undefined;
-
-      if (code === 0 || code === 1) {
-        conditionEn = 'Clear & Sunny';
-        conditionUr = 'صاف و خوشگوار';
-        iconType = 'sun';
-      } else if (code === 2 || code === 3) {
-        conditionEn = 'Partly Cloudy';
-        conditionUr = 'جزوی طور پر ابر آلود';
-        iconType = 'cloud';
-      } else if (code === 45 || code === 48 || visKm < 1.0) {
-        conditionEn = visKm < 0.5 ? 'Dense Fog' : 'Smog / Fog';
-        conditionUr = visKm < 0.5 ? 'شدید دھند (کم حدِ نگاہ)' : 'دھند و اسموگ کی چادر';
-        iconType = 'fog';
-        roadStatusEn = 'CAUTION: Foggy - Reduce Speed';
-        roadStatusUr = 'احتیاط: دھند - فوگ لائٹس آن رکھیں';
+      if (decoded.fogWarning) {
         warning = isUrdu ? 'دھند کا انتباہ: حدِ نگاہ کم' : 'Fog Warning: Low Visibility';
-      } else if (code >= 51 && code <= 67) {
-        conditionEn = 'Rain Showers';
-        conditionUr = 'ہلکی تا درمیانی بارش';
-        iconType = 'rain';
-        roadStatusEn = 'Wet Road - Risk of Skidding';
-        roadStatusUr = 'سڑک پر پھسلن، اچانک بریک سے بچیں';
-      } else if (code >= 80 && code <= 99) {
-        conditionEn = 'Heavy Rain / Thunderstorm';
-        conditionUr = 'تیز بارش و طوفان';
-        iconType = 'rain';
-        roadStatusEn = 'Hazard: Waterlogging on Highway';
-        roadStatusUr = 'خطرہ: روڈ پر پانی کھڑا، رفتار دھیمی رکھیں';
+      } else if (decoded.rainWarning && decoded.safetyLevel === 'alert') {
         warning = isUrdu ? 'بارش و طوفان کا الرٹ' : 'Storm Alert';
-      }
-
-      if (windSpeed > 40) {
-        iconType = 'wind';
+      } else if (decoded.windWarning) {
+        warning = isUrdu ? 'تیز ہواؤں کا انتباہ' : 'High Wind Alert';
       }
 
       const weatherObj = {
-        temp,
-        feelsLike,
-        humidity,
-        windSpeed,
-        visibilityKm: visKm,
-        conditionUr,
-        conditionEn,
-        iconType,
-        roadStatusUr,
-        roadStatusEn,
+        temp: decoded.temp,
+        feelsLike: decoded.apparentTemp,
+        humidity: decoded.humidity,
+        windSpeed: decoded.windSpeed,
+        visibilityKm: decoded.visibilityKm,
+        conditionUr: decoded.conditionUr,
+        conditionEn: decoded.conditionEn,
+        iconType: decoded.iconType,
+        roadStatusUr: decoded.roadStatusUr,
+        roadStatusEn: decoded.roadStatusEn,
         cityNameUr,
         cityNameEn,
         warning,
@@ -288,6 +258,29 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
         }));
       } catch {
         // ignore
+      }
+
+      if (decoded.fogWarning || decoded.rainWarning || decoded.windWarning || decoded.safetyLevel !== 'safe') {
+        const matchedMaster = PAKISTAN_CITIES_MASTER.find(c => c.id === cityIdKey);
+        const advisoryLocation = matchedMaster
+          ? {
+              source: (isCurrentGpsActive ? 'gps' : 'default') as 'gps' | 'default',
+              cityId: matchedMaster.id,
+              cityUr: cityNameUr,
+              cityEn: cityNameEn,
+              lat,
+              lng,
+              highways: matchedMaster.highways
+            }
+          : {
+              ...SAMUNDRI_DEFAULT_CITY,
+              cityId: cityIdKey,
+              cityUr: cityNameUr,
+              cityEn: cityNameEn,
+              lat,
+              lng
+            };
+        checkAndDispatchLocationAdvisory(lang, advisoryLocation, decoded, undefined, { force: false }).catch(() => {});
       }
     } catch {
       // Fallback sensible defaults if offline
@@ -315,7 +308,21 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
   // Google Play & Palm Store Compliant On-Demand Location Detection
   const handleDetectCurrentLocation = () => {
     if (!('geolocation' in navigator)) {
-      setLocationStatus(isUrdu ? 'ڈیوائس میں لوکیشن کی سہولت موجود نہیں ہے' : 'Geolocation is not supported by your device.');
+      clearCachedGpsLocation();
+      setIsCurrentGpsActive(false);
+      setSelectedCityId('samundri');
+      fetchWeatherForCoords(
+        SAMUNDRI_DEFAULT_CITY.lat,
+        SAMUNDRI_DEFAULT_CITY.lng,
+        SAMUNDRI_DEFAULT_CITY.cityEn,
+        SAMUNDRI_DEFAULT_CITY.cityUr,
+        SAMUNDRI_DEFAULT_CITY.cityId
+      );
+      setLocationStatus(
+        isUrdu
+          ? 'ڈیوائس میں لوکیشن کی سہولت موجود نہیں، سمندری (ڈیفالٹ) فعال ہے۔'
+          : 'Geolocation unavailable — Samundri set as default.'
+      );
       return;
     }
 
@@ -325,14 +332,14 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        // Resolve closest Pakistani city from master logistics registry
+        // Persist & resolve closest Pakistani city from master logistics registry
+        const resolved = saveLastGpsLocation({ lat: latitude, lng: longitude });
         const nearest = findNearestCity(latitude, longitude);
-        
         const matchedCityMaster = nearest ? PAKISTAN_CITIES_MASTER.find(c => c.nameEn.toLowerCase() === nearest.nameEn.toLowerCase()) : null;
-        
-        const cityIdToSet = matchedCityMaster ? matchedCityMaster.id : (selectedCity ? selectedCity.id : 'samundri');
-        const resolvedUr = nearest ? nearest.nameUr : (selectedCity ? selectedCity.nameUr : 'موجودہ مقام');
-        const resolvedEn = nearest ? nearest.nameEn : (selectedCity ? selectedCity.nameEn : 'Current Location');
+
+        const cityIdToSet = matchedCityMaster ? matchedCityMaster.id : resolved.cityId;
+        const resolvedUr = resolved.cityUr;
+        const resolvedEn = resolved.cityEn;
 
         setSelectedCityId(cityIdToSet);
         setIsCurrentGpsActive(true);
@@ -345,14 +352,34 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
 
         fetchWeatherForCoords(latitude, longitude, resolvedEn, resolvedUr, cityIdToSet);
         setLocatingUser(false);
-        setLocationStatus(isUrdu ? `📍 مقام: ${resolvedUr} کے مطابق لائیو ویدر فعال` : `📍 Detected: ${resolvedEn}`);
+        setLocationStatus(isUrdu ? `📍 مقام: ${resolvedUr} کے مطابق لائیو ویدر و الرٹس فعال` : `📍 Detected: ${resolvedEn} — Live weather & alerts active`);
         setTimeout(() => setLocationStatus(null), 4000);
       },
       (error) => {
         setLocatingUser(false);
-        let msg = isUrdu ? 'لوکیشن تک رسائی حاصل نہیں ہو سکی۔ آپ لسٹ سے شہر منتخب کر سکتے ہیں۔' : 'Could not access location. Please pick a city from the list.';
+        clearCachedGpsLocation();
+        setIsCurrentGpsActive(false);
+        setSelectedCityId('samundri');
+        try {
+          localStorage.setItem('wg_home_selected_city', 'samundri');
+          localStorage.setItem('wg_gps_weather_enabled', 'false');
+        } catch {
+          // ignore
+        }
+        fetchWeatherForCoords(
+          SAMUNDRI_DEFAULT_CITY.lat,
+          SAMUNDRI_DEFAULT_CITY.lng,
+          SAMUNDRI_DEFAULT_CITY.cityEn,
+          SAMUNDRI_DEFAULT_CITY.cityUr,
+          SAMUNDRI_DEFAULT_CITY.cityId
+        );
+        let msg = isUrdu
+          ? 'لوکیشن دستیاب نہیں — سمندری بطور ڈیفالٹ فعال ہے۔ آپ لسٹ سے شہر بدل سکتے ہیں۔'
+          : 'GPS unavailable — Samundri active as default. You can also select a city from the list.';
         if (error.code === error.PERMISSION_DENIED) {
-          msg = isUrdu ? 'لوکیشن کی اجازت نہیں ملی۔ آپ لسٹ سے بغیر کسی رکاوٹ کے شہر منتخب کر سکتے ہیں۔' : 'Location permission denied. You can select your city manually from the list.';
+          msg = isUrdu
+            ? 'لوکیشن کی اجازت نہیں ملی — سمندری بطور ڈیفالٹ فعال ہے۔ آپ لسٹ سے شہر منتخب کر سکتے ہیں۔'
+            : 'Location permission denied — Samundri active as default. Pick any city manually from the list.';
         }
         setLocationStatus(msg);
         setTimeout(() => setLocationStatus(null), 5000);
@@ -393,12 +420,21 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
   // Initial load & live fuel update subscription
   useEffect(() => {
     fetchFuel(false);
-    if (selectedCity) {
+    const cachedGps = isCurrentGpsActive ? getCachedGpsLocation(24 * 60 * 60 * 1000) : null;
+    if (cachedGps) {
       fetchWeatherForCoords(
-        selectedCity.lat, 
-        selectedCity.lng, 
-        selectedCity.nameEn, 
-        selectedCity.nameUr, 
+        cachedGps.lat,
+        cachedGps.lng,
+        cachedGps.cityEn,
+        cachedGps.cityUr,
+        cachedGps.cityId
+      );
+    } else if (selectedCity) {
+      fetchWeatherForCoords(
+        selectedCity.lat,
+        selectedCity.lng,
+        selectedCity.nameEn,
+        selectedCity.nameUr,
         selectedCity.id
       );
     }
