@@ -54,3 +54,12 @@ export const tollIconAltData: string = './toll_icon.png';
 export const splashScreenAltData: string = './splash-screen.png';
 export const companyCardAltData: string = './warraich-card.png';
 
+// English Dashboard Compact Badge Icon Assets (keeping Urdu PNG icons untouched)
+export const tripEnIconData: string = './trip-icon-en.jpg';
+export const ledgerEnIconData: string = './ledger-icon-en.jpg';
+export const vehicleAccountEnIconData: string = './vehicle-account-icon-en.jpg';
+export const tollEnIconData: string = './toll-icon-en.jpg';
+export const mapEnIconData: string = './map-icon-en.jpg';
+export const vehicleCheckEnIconData: string = './vehicle-check-icon-en.jpg';
+export const licenseCheckEnIconData: string = './license-check-icon-en.jpg';
+export const echallanEnIconData: string = './echallan-icon-en.jpg';

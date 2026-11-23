@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { 
   ledgerIconData, 
   quickOpsIconData, 
@@ -9,7 +11,15 @@ import {
   dashcamIconData, 
   vehicleIconData, 
   licenseIconData, 
-  echallanIconData 
+  echallanIconData,
+  tripEnIconData,
+  ledgerEnIconData,
+  vehicleAccountEnIconData,
+  tollEnIconData,
+  mapEnIconData,
+  vehicleCheckEnIconData,
+  licenseCheckEnIconData,
+  echallanEnIconData
 } from '../assets/dashboardIcons';
 
 describe('Navigation Architecture & Store Quality Compliance Test Suite', () => {
@@ -38,6 +48,28 @@ describe('Navigation Architecture & Store Quality Compliance Test Suite', () => 
       expect(quickOpsIconData).toBe('./quick-ops-icon.png');
       // ledger-icon.png is created as a dedicated new asset
       expect(ledgerIconData).toBe('./ledger-icon.png');
+    });
+
+    it('should provide all 8 English dashboard badge icons in public/ and precache them in sw.js', () => {
+      const rootDir = path.resolve(__dirname, '../..');
+      const swContent = fs.readFileSync(path.join(rootDir, 'public/sw.js'), 'utf8');
+      const enAssets = [
+        tripEnIconData,
+        ledgerEnIconData,
+        vehicleAccountEnIconData,
+        tollEnIconData,
+        mapEnIconData,
+        vehicleCheckEnIconData,
+        licenseCheckEnIconData,
+        echallanEnIconData
+      ];
+
+      enAssets.forEach((assetPath) => {
+        const cleanFile = assetPath.replace(/^\.?\//, '');
+        expect(cleanFile.endsWith('-en.jpg')).toBe(true);
+        expect(fs.existsSync(path.join(rootDir, 'public', cleanFile))).toBe(true);
+        expect(swContent).toContain(`'${cleanFile}'`);
+      });
     });
   });
 

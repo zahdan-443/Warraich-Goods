@@ -59,7 +59,15 @@ import {
   mapIconData,
   biltyIconData,
   dashcamIconData,
-  ledgerIconData
+  ledgerIconData,
+  tripEnIconData,
+  ledgerEnIconData,
+  vehicleAccountEnIconData,
+  tollEnIconData,
+  mapEnIconData,
+  vehicleCheckEnIconData,
+  licenseCheckEnIconData,
+  echallanEnIconData
 } from '../../assets/dashboardIcons';
 
 interface HomeViewProps {
@@ -151,34 +159,50 @@ const QuickActionButton: React.FC<{
 
 const EnglishCompactActionButton: React.FC<{
   onClick: () => void;
-  icon: React.ReactNode;
-  iconBgClass: string;
+  imgSrc: string;
+  fallbackIcon: React.ReactNode;
+  fallbackBgClass: string;
   title: string;
   subtitle: string;
   href?: string;
   highlight?: boolean;
 }> = ({
   onClick,
-  icon,
-  iconBgClass,
+  imgSrc,
+  fallbackIcon,
+  fallbackBgClass,
   title,
   subtitle,
   href,
   highlight = false,
 }) => {
-  const cardClasses = `w-full min-h-[100px] sm:min-h-[112px] bg-white dark:bg-[#1a1c22] border ${
+  const cardClasses = `w-full min-h-[118px] sm:min-h-[134px] bg-white dark:bg-[#1a1c22] border ${
     highlight
       ? 'border-[#8b9d77]/55 dark:border-emerald-700/60 shadow-2xs'
       : 'border-[#e4e1cf] dark:border-[#2d313b] shadow-2xs'
-  } hover:border-[#8b9d77] dark:hover:border-emerald-500 hover:shadow-sm active:scale-[0.96] transition-all duration-150 cursor-pointer rounded-2xl p-2.5 sm:p-3.5 flex flex-col items-start justify-between gap-2 text-left group no-underline select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b9d77]`;
+  } hover:border-[#8b9d77] dark:hover:border-emerald-500 hover:shadow-sm active:scale-[0.96] transition-all duration-150 cursor-pointer rounded-2xl p-2.5 sm:p-3 flex flex-col items-center justify-between gap-2 text-center group no-underline select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b9d77]`;
 
   const innerContent = (
     <>
-      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-150 group-hover:scale-105 ${iconBgClass}`}>
-        {icon}
+      <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-[14px] overflow-hidden shrink-0 shadow-2xs ring-1 ring-[#e4e1cf]/80 dark:ring-[#2d313b] transition-transform duration-150 group-hover:scale-[1.04] ${fallbackBgClass}`}>
+        <PublicImage
+          fileName={imgSrc}
+          alt={title}
+          width={128}
+          height={128}
+          fitMode="cover"
+          referrerPolicy="no-referrer"
+          className="w-full h-full"
+          imgClassName="w-full h-full object-cover rounded-[13px]"
+          fallbackIcon={
+            <div className={`w-full h-full flex items-center justify-center ${fallbackBgClass}`}>
+              {fallbackIcon}
+            </div>
+          }
+        />
       </div>
       <div className="w-full min-w-0">
-        <div className="font-serif font-bold text-[12px] sm:text-sm text-[#2b2c20] dark:text-slate-100 leading-tight line-clamp-2">
+        <div className="font-serif font-bold text-[12px] sm:text-sm text-[#2b2c20] dark:text-slate-100 leading-tight line-clamp-2 text-balance">
           {title}
         </div>
         <div className="text-[10px] sm:text-[11px] text-[#555644] dark:text-slate-400 leading-tight truncate mt-0.5 font-sans">
@@ -492,14 +516,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         )}
 
-        {/* FULL DISPLAY APP LAUNCHER: Compact 3-Column Vector Grid in English; Preserved 2-Column Image Grid in Urdu */}
+        {/* FULL DISPLAY APP LAUNCHER: Compact 3-Column Illustrated Badge Grid in English; Preserved 2-Column Image Grid in Urdu */}
         {lang === 'en' ? (
-          <div className="grid grid-cols-3 gap-2 sm:gap-3.5 w-full">
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-3.5 w-full">
             <EnglishCompactActionButton
               href="#calculator"
               onClick={() => onNavigate('calculator')}
-              icon={<Calculator className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 dark:text-emerald-300" />}
-              iconBgClass="bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/60"
+              imgSrc={tripEnIconData}
+              fallbackIcon={<Calculator className="w-6 h-6 text-emerald-700 dark:text-emerald-300" />}
+              fallbackBgClass="bg-emerald-50 dark:bg-emerald-950/70"
               title="Trip Cost"
               subtitle="Fuel & expenses"
               highlight={true}
@@ -508,8 +533,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <EnglishCompactActionButton
               href="#ledger"
               onClick={() => onNavigate('ledger')}
-              icon={<BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-700 dark:text-indigo-300" />}
-              iconBgClass="bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200/80 dark:border-indigo-800/60"
+              imgSrc={ledgerEnIconData}
+              fallbackIcon={<BookOpen className="w-6 h-6 text-violet-700 dark:text-violet-300" />}
+              fallbackBgClass="bg-violet-50 dark:bg-violet-950/70"
               title="Ledger"
               subtitle="Party & cashbook"
               highlight={true}
@@ -518,8 +544,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <EnglishCompactActionButton
               href="#vehicleAccount"
               onClick={() => onNavigate('vehicleAccount')}
-              icon={<Receipt className="w-4 h-4 sm:w-5 sm:h-5 text-amber-700 dark:text-amber-300" />}
-              iconBgClass="bg-amber-50 dark:bg-amber-950/70 border border-amber-200/80 dark:border-amber-800/60"
+              imgSrc={vehicleAccountEnIconData}
+              fallbackIcon={<Receipt className="w-6 h-6 text-teal-700 dark:text-teal-300" />}
+              fallbackBgClass="bg-teal-50 dark:bg-teal-950/70"
               title="Vehicle Account"
               subtitle="Income & profit"
               highlight={true}
@@ -528,8 +555,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <EnglishCompactActionButton
               href="#toll"
               onClick={() => onNavigate('toll')}
-              icon={<Milestone className="w-4 h-4 sm:w-5 sm:h-5 text-sky-700 dark:text-sky-300" />}
-              iconBgClass="bg-sky-50 dark:bg-sky-950/70 border border-sky-200/80 dark:border-sky-800/60"
+              imgSrc={tollEnIconData}
+              fallbackIcon={<Milestone className="w-6 h-6 text-orange-700 dark:text-orange-300" />}
+              fallbackBgClass="bg-orange-50 dark:bg-orange-950/70"
               title="Toll Tax"
               subtitle="Motorway & NHA"
               highlight={true}
@@ -538,8 +566,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <EnglishCompactActionButton
               href="#map"
               onClick={() => onNavigate('map')}
-              icon={<MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-teal-700 dark:text-teal-300" />}
-              iconBgClass="bg-teal-50 dark:bg-teal-950/70 border border-teal-200/80 dark:border-teal-800/60"
+              imgSrc={mapEnIconData}
+              fallbackIcon={<MapPin className="w-6 h-6 text-sky-700 dark:text-sky-300" />}
+              fallbackBgClass="bg-sky-50 dark:bg-sky-950/70"
               title="Route Map"
               subtitle="Live weather"
               highlight={true}
@@ -548,8 +577,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <EnglishCompactActionButton
               href="#verify"
               onClick={() => onNavigate('verify', 'vehicle')}
-              icon={<Truck className="w-4 h-4 sm:w-5 sm:h-5 text-[#1e3a68] dark:text-blue-300" />}
-              iconBgClass="bg-blue-50 dark:bg-blue-950/70 border border-blue-200/80 dark:border-blue-800/60"
+              imgSrc={vehicleCheckEnIconData}
+              fallbackIcon={<Truck className="w-6 h-6 text-indigo-700 dark:text-indigo-300" />}
+              fallbackBgClass="bg-indigo-50 dark:bg-indigo-950/70"
               title="Vehicle Check"
               subtitle="MTMIS ownership"
             />
@@ -557,8 +587,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <EnglishCompactActionButton
               href="#verify"
               onClick={() => onNavigate('verify', 'license')}
-              icon={<ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 dark:text-emerald-300" />}
-              iconBgClass="bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/60"
+              imgSrc={licenseCheckEnIconData}
+              fallbackIcon={<ShieldCheck className="w-6 h-6 text-cyan-700 dark:text-cyan-300" />}
+              fallbackBgClass="bg-cyan-50 dark:bg-cyan-950/70"
               title="License Check"
               subtitle="DLIMS status"
             />
@@ -566,8 +597,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <EnglishCompactActionButton
               href="#verify"
               onClick={() => onNavigate('verify', 'challan')}
-              icon={<AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-rose-700 dark:text-rose-300" />}
-              iconBgClass="bg-rose-50 dark:bg-rose-950/70 border border-rose-200/80 dark:border-rose-800/60"
+              imgSrc={echallanEnIconData}
+              fallbackIcon={<AlertTriangle className="w-6 h-6 text-rose-700 dark:text-rose-300" />}
+              fallbackBgClass="bg-rose-50 dark:bg-rose-950/70"
               title="E-Challan"
               subtitle="Traffic fines"
             />

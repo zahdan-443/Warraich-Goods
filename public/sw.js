@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-1.3.1-r2';
+const CACHE_NAME = 'driver-dost-1.3.1-r3';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const MAX_CACHED_TILES = 350;
 
@@ -35,6 +35,14 @@ const CORE_STATIC_ASSETS = [
   'vehicle-icon.png',
   'license-icon.png',
   'echallan-icon.png',
+  'trip-icon-en.jpg',
+  'ledger-icon-en.jpg',
+  'vehicle-account-icon-en.jpg',
+  'toll-icon-en.jpg',
+  'map-icon-en.jpg',
+  'vehicle-check-icon-en.jpg',
+  'license-check-icon-en.jpg',
+  'echallan-icon-en.jpg',
   'safar-diary-icon.png',
   'scan-me-qr.png',
   'splash.png',

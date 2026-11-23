@@ -90,6 +90,29 @@ export function getAssetCandidates(fileName: string): string[] {
  */
 export const DefaultServiceVector: React.FC<{ name: string; className?: string }> = ({ name, className = "w-full h-full" }) => {
   const clean = (name || '').toLowerCase();
+  const isEn = clean.includes('-en.');
+
+  if (isEn) {
+    const labelMap: Array<{ match: string; title: string; bg: string; icon: React.ReactNode }> = [
+      { match: 'trip', title: 'Trip Cost', bg: 'from-emerald-600 to-emerald-800', icon: <Calculator className="w-6 h-6 text-white" /> },
+      { match: 'ledger', title: 'Ledger', bg: 'from-violet-600 to-purple-800', icon: <BookOpen className="w-6 h-6 text-white" /> },
+      { match: 'vehicle-account', title: 'Account', bg: 'from-teal-600 to-teal-800', icon: <Receipt className="w-6 h-6 text-white" /> },
+      { match: 'toll', title: 'Toll Tax', bg: 'from-orange-500 to-orange-700', icon: <Milestone className="w-6 h-6 text-white" /> },
+      { match: 'map', title: 'Route Map', bg: 'from-sky-500 to-blue-700', icon: <MapPin className="w-6 h-6 text-white" /> },
+      { match: 'vehicle-check', title: 'Vehicle', bg: 'from-indigo-600 to-violet-800', icon: <Truck className="w-6 h-6 text-white" /> },
+      { match: 'license', title: 'License', bg: 'from-cyan-600 to-sky-700', icon: <ShieldCheck className="w-6 h-6 text-white" /> },
+      { match: 'echallan', title: 'E-Challan', bg: 'from-rose-600 to-red-700', icon: <AlertTriangle className="w-6 h-6 text-white" /> }
+    ];
+    const matched = labelMap.find(item => clean.includes(item.match));
+    if (matched) {
+      return (
+        <div className={`w-full h-full bg-gradient-to-br ${matched.bg} rounded-xl p-1.5 text-white flex flex-col items-center justify-center gap-1 ${className}`}>
+          {matched.icon}
+          <span className="text-[9px] font-bold leading-none text-center truncate max-w-full">{matched.title}</span>
+        </div>
+      );
+    }
+  }
 
   if (clean.includes('gari') || clean.includes('hisaab') || clean.includes('vehicle-account')) {
     return (
@@ -347,6 +370,7 @@ export const PublicImage: React.FC<PublicImageProps> = ({
         decoding="async"
         width={width}
         height={height}
+        referrerPolicy={rest.referrerPolicy || 'no-referrer'}
         className={`w-full h-full ${fitClass} transition-opacity duration-150 ${
           loaded ? 'opacity-100 relative z-10' : 'opacity-90 relative z-10'
         } ${imgClassName || ''}`}
