@@ -24,6 +24,7 @@ import {
   ActivityLogItem,
   BiltyAttachmentRecord,
   BiltyRecord,
+  BranchConfig,
   Trip,
   TollRatesConfig,
   CompanyProfile
@@ -69,6 +70,7 @@ import {
 } from '../utils/biltyAttachments';
 import { BackupRestoreConfirmModal } from './BackupRestoreConfirmModal';
 import { ConfirmDialog } from './ConfirmDialog';
+import { OwnerBranchesPanel } from './OwnerBranchesPanel';
 
 interface ManageBiltyAccessModalProps {
   isOpen: boolean;
@@ -77,15 +79,21 @@ interface ManageBiltyAccessModalProps {
   currentUserUid?: string | null;
   currentUserEmail?: string | null;
   onUpdated?: (config: { allowedUIDs: string[]; allowedEmails: string[] }) => void;
+  activeBranchId?: string | null;
+  onSelectActiveBranch?: (branchId: string) => void;
+  onBranchesUpdated?: (branches: BranchConfig[]) => void;
 }
 
-type PanelTab = 'reports' | 'backup' | 'tollRates' | 'logs' | 'deletions';
+type PanelTab = 'reports' | 'branches' | 'backup' | 'tollRates' | 'logs' | 'deletions';
 
 export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
   isOpen,
   onClose,
   lang,
-  currentUserEmail
+  currentUserEmail,
+  activeBranchId,
+  onSelectActiveBranch,
+  onBranchesUpdated
 }) => {
   const isOwner = isOwnerEmail(currentUserEmail);
 
@@ -459,6 +467,19 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
 
           <button
             type="button"
+            onClick={() => setActiveTab('branches')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'branches'
+                ? 'bg-[#1a477a] text-white shadow-xs'
+                : 'bg-[#fdfbf7] dark:bg-slate-800 text-[#5a5a40] dark:text-slate-200 hover:bg-[#f0f0e4] dark:hover:bg-slate-700 border border-[#ecece0] dark:border-slate-700'
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            <span>{lang === 'ur' ? 'برانچز و اسٹاف' : 'Branches & Access'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('backup')}
             className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'backup'
@@ -669,6 +690,19 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
                 </div>
               </div>
             </div>
+          )}
+
+          {/* TAB 2: BRANCHES, ROLES & STAFF ACCESS */}
+          {activeTab === 'branches' && (
+            <OwnerBranchesPanel
+              lang={lang}
+              activeBranchId={activeBranchId}
+              onSelectActiveBranch={branchId => {
+                onSelectActiveBranch?.(branchId);
+                setBilties(getStoredBilties());
+              }}
+              onBranchesUpdated={onBranchesUpdated}
+            />
           )}
 
           {/* TAB 3: BACKUP, EXCEL EXPORT & COMPANY PROFILE */}

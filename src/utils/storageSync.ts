@@ -13,6 +13,7 @@
 
 import {
   BiltyRecord,
+  BranchConfig,
   Driver,
   FuelLogItem,
   OfflineAction,
@@ -38,14 +39,23 @@ import {
 import { getScopedStorageKey } from './calculator';
 import {
   DEFAULT_AUTHORIZED_EMAILS,
+  DEFAULT_HEAD_OFFICE_BRANCH_ID,
   isOwnerEmail,
   normalizeEmail,
   verifyOwnerOrStaffClaim
 } from './authUtils';
+import {
+  getActiveBranchId,
+  getCachedBranchById,
+  isUsingSharedBranchScope
+} from './branchContext';
 import { deleteAllAttachmentsForBilty } from './biltyAttachments';
 import {
   cleanupUploadedLegacyAndStagingKeys,
+  getActiveBiltyScope,
+  getActiveKhataScope,
   getActiveUserScope,
+  getEffectiveScopeForKey,
   getScopedItem,
   removeScopedItem,
   safeStorage,
@@ -266,7 +276,7 @@ export function recordCollectionMutations<T extends Record<string, unknown>>(
   nextItems: T[],
   timestampIso: string = new Date().toISOString()
 ): { deletedKeys: string[]; tombstones: TombstoneMap } {
-  const scope = getActiveUserScope();
+  const scope = getEffectiveScopeForKey(collName);
   const tombstones = getTombstones(collName, scope);
   const nextKeySet = new Set<string>();
 
@@ -481,11 +491,52 @@ export function clearErrorLogs(): void {
 // Document Authorization Helper (#28)
 // ---------------------------------------------------------------------------
 
+function resolveCollectionSyncTarget(
+  collName: SyncCollectionName | string,
+  userUid: string
+): {
+  localScope: string;
+  cloudRoot: readonly ['users', string] | readonly ['branches', string];
+  branchId: string | null;
+} {
+  const branchId = getActiveBranchId();
+  if (collName === 'bilties' && isUsingSharedBranchScope() && branchId) {
+    return {
+      localScope: `branch_${branchId}`,
+      cloudRoot: ['branches', branchId] as const,
+      branchId
+    };
+  }
+  return {
+    localScope: userUid,
+    cloudRoot: ['users', userUid] as const,
+    branchId
+  };
+}
+
 function isCurrentUserBiltyAuthorizedForSync(): boolean {
   const user = auth.currentUser;
   if (!user) return false;
   if (isOwnerEmail(user.email)) return true;
   try {
+    const cleanEmail = normalizeEmail(user.email);
+    if (cleanEmail) {
+      const rawBranchAccess = safeStorage.getItem(`wg_user_branch_access_v1_${cleanEmail}`);
+      if (rawBranchAccess) {
+        const parsed = JSON.parse(rawBranchAccess) as {
+          status?: string;
+          permissions?: { createBilty?: boolean; editDeleteBilty?: boolean; viewAllBilties?: boolean };
+        };
+        if (
+          parsed?.status === 'active' &&
+          (parsed.permissions?.createBilty ||
+            parsed.permissions?.editDeleteBilty ||
+            parsed.permissions?.viewAllBilties)
+        ) {
+          return true;
+        }
+      }
+    }
     const rawUids = safeStorage.getItem('wg_global_bilty_allowed_uids');
     const rawEmails = safeStorage.getItem('wg_global_bilty_allowed_emails');
     const uids: string[] = rawUids ? JSON.parse(rawUids) : [];
@@ -572,6 +623,8 @@ interface PerDocWriteOptions {
   hasCloudTombstonesSnapshot?: boolean;
   existingLegacyData?: Record<string, unknown> | null;
   hasLegacySnapshot?: boolean;
+  cloudRoot?: readonly ['users', string] | readonly ['branches', string];
+  localScopeOverride?: string;
 }
 
 function stableEntityDigest(item: Record<string, unknown>): string {
@@ -594,7 +647,10 @@ async function writePerDocCollectionToFirestore(
   const nowIso = new Date().toISOString();
   const ops: BatchWriteOp[] = [];
   const changedKeySet = Array.isArray(options.changedKeys) ? new Set(options.changedKeys) : null;
-  const localTombstones = getTombstones(collName, uid);
+  const target = resolveCollectionSyncTarget(collName, uid);
+  const cloudRoot = options.cloudRoot || target.cloudRoot;
+  const localScope = options.localScopeOverride || target.localScope;
+  const localTombstones = getTombstones(collName, localScope);
   const safeItems =
     collName === 'bilties'
       ? items.map(item => {
@@ -605,7 +661,7 @@ async function writePerDocCollectionToFirestore(
         })
       : items;
 
-  // 1. Upsert ONLY changed/missing documents into users/{uid}/{coll}Docs/{docId} (#8 + delta)
+  // 1. Upsert ONLY changed/missing documents into {users|branches}/{rootId}/{coll}Docs/{docId}
   for (const item of safeItems) {
     const entityKey = getEntitySyncKey(collName, item);
     if (changedKeySet !== null && !changedKeySet.has(entityKey)) {
@@ -618,7 +674,7 @@ async function writePerDocCollectionToFirestore(
       }
     }
     const docId = toSafeFirestoreDocId(entityKey);
-    const docRef = doc(db, 'users', uid, subColl, docId);
+    const docRef = doc(db, cloudRoot[0], cloudRoot[1], subColl, docId);
     ops.push({
       type: 'set',
       ref: docRef,
@@ -639,7 +695,7 @@ async function writePerDocCollectionToFirestore(
         continue;
       }
       const docId = toSafeFirestoreDocId(delKey);
-      const docRef = doc(db, 'users', uid, subColl, docId);
+      const docRef = doc(db, cloudRoot[0], cloudRoot[1], subColl, docId);
       ops.push({
         type: 'set',
         ref: docRef,
@@ -659,7 +715,7 @@ async function writePerDocCollectionToFirestore(
     : cloudTombsJson !== localTombsJson;
 
   if (tombsChanged) {
-    const tombRef = doc(db, 'users', uid, 'collections', 'tombstones');
+    const tombRef = doc(db, cloudRoot[0], cloudRoot[1], 'collections', 'tombstones');
     ops.push({
       type: 'set',
       ref: tombRef,
@@ -669,7 +725,7 @@ async function writePerDocCollectionToFirestore(
   }
 
   // 4. Maintain legacy doc if payload fits under 600KB; skip redundant rewrites if unchanged (#2, #8)
-  const legacyRef = doc(db, 'users', uid, 'collections', collName);
+  const legacyRef = doc(db, cloudRoot[0], cloudRoot[1], 'collections', collName);
   const serializedSize = JSON.stringify(safeItems).length;
   const existingLegacy = options.existingLegacyData;
 
@@ -732,13 +788,40 @@ export async function syncToFirestore<T>(
       if (Array.isArray(changedKeys) && changedKeys.length === 0 && deletedKeys.length === 0) {
         return true;
       }
+      const target = resolveCollectionSyncTarget(collName, user.uid);
       await writePerDocCollectionToFirestore(
         user.uid,
         collName,
         data as Array<Record<string, unknown>>,
         deletedKeys,
-        changedKeys !== undefined ? { changedKeys } : {}
+        {
+          ...(changedKeys !== undefined ? { changedKeys } : {}),
+          cloudRoot: target.cloudRoot,
+          localScopeOverride: target.localScope
+        }
       );
+
+      // When App Creator writes Bilties on Samundri Head Office, mirror to branches/samundri so Samundri staff stay in sync
+      if (
+        collName === 'bilties' &&
+        target.cloudRoot[0] === 'users' &&
+        isOwnerEmail(user.email)
+      ) {
+        const samundriItems = (data as Array<Record<string, unknown>>).filter(
+          item => !item.branchId || item.branchId === DEFAULT_HEAD_OFFICE_BRANCH_ID
+        );
+        void writePerDocCollectionToFirestore(
+          user.uid,
+          'bilties',
+          samundriItems,
+          deletedKeys,
+          {
+            ...(changedKeys !== undefined ? { changedKeys } : {}),
+            cloudRoot: ['branches', DEFAULT_HEAD_OFFICE_BRANCH_ID] as const,
+            localScopeOverride: target.localScope
+          }
+        ).catch(() => {});
+      }
       return true;
     }
 
@@ -832,7 +915,7 @@ export async function syncPublicBiltyVerification(bilty: Partial<BiltyRecord>): 
   if (!normalizedNo) return false;
 
   // Never upload a public verification record if this biltyNo is currently tombstoned (#3)
-  const biltiesTombstones = getTombstones('bilties', user.uid);
+  const biltiesTombstones = getTombstones('bilties', getActiveBiltyScope());
   if (isEntityTombstoned('bilties', bilty as Record<string, unknown>, biltiesTombstones)) {
     return false;
   }
@@ -941,7 +1024,7 @@ export async function processOfflineQueue(): Promise<{
     }
 
     try {
-      const biltyTombstones = getTombstones('bilties', user.uid);
+      const biltyTombstones = getTombstones('bilties', getActiveBiltyScope());
 
       if ((action.type === 'bilty' || action.type === 'bilties') && Array.isArray(action.data)) {
         const filteredBilties = (action.data as Array<Record<string, unknown>>).filter(
@@ -1168,33 +1251,52 @@ export async function autoReconcileAllLocalToCloud(
       errors: ['Queue execution failed']
     }));
 
-    // 2. Fetch cloud tombstones map once
-    let cloudAllTombstones: Record<string, TombstoneMap> = {};
-    let hasCloudTombstonesSnapshot = false;
-    try {
-      const tombSnap = await withTimeout(getDoc(doc(db, 'users', uid, 'collections', 'tombstones')), 8000).catch(
-        () => null
-      );
-      if (tombSnap) {
-        hasCloudTombstonesSnapshot = true;
-        if (tombSnap.exists()) {
-          cloudAllTombstones = (tombSnap.data() || {}) as Record<string, TombstoneMap>;
-        }
-      }
-    } catch {
-      cloudAllTombstones = {};
-    }
-
+    // 2. Fetch cloud tombstones map per sync root (users/{uid} and optional active branches/{branchId})
     const syncCollections: SyncCollectionName[] = ['bilties', 'trips', 'vehicles', 'drivers', 'fuel', 'routes'];
     let syncErrors = queueResult.errors.length;
 
+    const rootTombstoneCache = new Map<
+      string,
+      { map: Record<string, TombstoneMap>; hasSnapshot: boolean }
+    >();
+    const fetchTombstonesForRoot = async (
+      cloudRoot: readonly ['users', string] | readonly ['branches', string]
+    ) => {
+      const cacheKey = `${cloudRoot[0]}:${cloudRoot[1]}`;
+      const cached = rootTombstoneCache.get(cacheKey);
+      if (cached) return cached;
+      let map: Record<string, TombstoneMap> = {};
+      let hasSnapshot = false;
+      try {
+        const tombSnap = await withTimeout(
+          getDoc(doc(db, cloudRoot[0], cloudRoot[1], 'collections', 'tombstones')),
+          8000
+        ).catch(() => null);
+        if (tombSnap) {
+          hasSnapshot = true;
+          if (tombSnap.exists()) {
+            map = (tombSnap.data() || {}) as Record<string, TombstoneMap>;
+          }
+        }
+      } catch {
+        map = {};
+      }
+      const entry = { map, hasSnapshot };
+      rootTombstoneCache.set(cacheKey, entry);
+      return entry;
+    };
+
     for (const collName of syncCollections) {
       try {
-        const scopedKey = getScopedStorageKey(collName, uid);
+        const target = resolveCollectionSyncTarget(collName, uid);
+        const scopedKey = getScopedStorageKey(collName, target.localScope);
         const rawLocal = safeStorage.getItem(scopedKey);
         const localItems: Array<Record<string, unknown>> = rawLocal ? JSON.parse(rawLocal) : [];
 
-        const localTombstones = getTombstones(collName, uid);
+        const { map: cloudAllTombstones, hasSnapshot: hasCloudTombstonesSnapshot } =
+          await fetchTombstonesForRoot(target.cloudRoot);
+
+        const localTombstones = getTombstones(collName, target.localScope);
         const remoteCollTombstones: TombstoneMap =
           cloudAllTombstones[collName] && typeof cloudAllTombstones[collName] === 'object'
             ? cloudAllTombstones[collName]
@@ -1203,8 +1305,8 @@ export async function autoReconcileAllLocalToCloud(
         // Dual-read: per-document subcollection AND legacy array document (#8)
         const subColl = SYNC_COLLECTION_TO_DOC_SUBCOLL[collName];
         const [legacySnap, docsSnap] = await Promise.all([
-          withTimeout(getDoc(doc(db, 'users', uid, 'collections', collName)), 8000).catch(() => null),
-          withTimeout(getDocs(collection(db, 'users', uid, subColl)), 8000).catch(() => null)
+          withTimeout(getDoc(doc(db, target.cloudRoot[0], target.cloudRoot[1], 'collections', collName)), 8000).catch(() => null),
+          withTimeout(getDocs(collection(db, target.cloudRoot[0], target.cloudRoot[1], subColl)), 8000).catch(() => null)
         ]);
 
         const hasLegacySnapshot = Boolean(legacySnap);
@@ -1266,7 +1368,7 @@ export async function autoReconcileAllLocalToCloud(
 
         // Persist reconciled list (even when empty []) & tombstones (#1, #2)
         safeStorage.setItem(scopedKey, JSON.stringify(mergedList));
-        saveTombstones(collName, mergedTombstones, uid);
+        saveTombstones(collName, mergedTombstones, target.localScope);
 
         // Delta-push reconciled state (#2 + Spark write reduction)
         const deletedToPush = Object.keys(mergedTombstones);
@@ -1276,8 +1378,25 @@ export async function autoReconcileAllLocalToCloud(
           cloudTombstonesForColl: remoteCollTombstones,
           hasCloudTombstonesSnapshot,
           existingLegacyData,
-          hasLegacySnapshot
+          hasLegacySnapshot,
+          cloudRoot: target.cloudRoot,
+          localScopeOverride: target.localScope
         });
+
+        // When Owner reconciles Samundri Head Office Bilties, mirror to branches/samundri so Samundri staff see them
+        if (
+          collName === 'bilties' &&
+          target.cloudRoot[0] === 'users' &&
+          isOwnerEmail(user?.email)
+        ) {
+          const samundriItems = mergedList.filter(
+            item => !item.branchId || item.branchId === DEFAULT_HEAD_OFFICE_BRANCH_ID
+          );
+          void writePerDocCollectionToFirestore(uid, 'bilties', samundriItems, deletedToPush, {
+            cloudRoot: ['branches', DEFAULT_HEAD_OFFICE_BRANCH_ID] as const,
+            localScopeOverride: target.localScope
+          }).catch(() => {});
+        }
         totalSynced += mergedList.length;
 
         // Immediately remove uploaded collection queue entries from localStorage so synced items are not kept queued
@@ -1360,7 +1479,12 @@ export async function autoReconcileAllLocalToCloud(
           }
 
           try {
-            const counterRef = doc(db, 'counters', 'biltyCounter');
+            const activeBranchId = getActiveBranchId();
+            const isCustomBranch = Boolean(
+              activeBranchId && activeBranchId !== DEFAULT_HEAD_OFFICE_BRANCH_ID
+            );
+            const counterDocId = isCustomBranch ? `branch_${activeBranchId}_bilty` : 'biltyCounter';
+            const counterRef = doc(db, 'counters', counterDocId);
             const counterSnap = await withTimeout(getDoc(counterRef), 5000).catch(() => null);
             const currentCloudVal =
               counterSnap && counterSnap.exists()
@@ -1432,6 +1556,98 @@ export async function autoReconcileAllLocalToCloud(
 
 export async function loadFromFirestore(uid: string) {
   return autoReconcileAllLocalToCloud(uid);
+}
+
+/**
+ * Pulls and reconciles Bilty records for a specific branch (`branches/{branchId}`) into local branch scope.
+ * When App Creator is on Samundri Head Office (`samundri`), reconciles via the owner's primary `users/{uid}` store.
+ */
+export async function loadBranchBiltiesFromFirestore(branchId: string): Promise<BiltyRecord[]> {
+  const user = auth.currentUser;
+  if (!user || !db || !branchId) {
+    return getStoredBilties();
+  }
+
+  const cleanBranchId = branchId.trim();
+  const isCreatorOnSamundri =
+    isOwnerEmail(user.email) && cleanBranchId === DEFAULT_HEAD_OFFICE_BRANCH_ID;
+  if (isCreatorOnSamundri) {
+    await autoReconcileAllLocalToCloud(user.uid, { bypassKillSwitch: true }).catch(() => {});
+    return getStoredBilties();
+  }
+
+  const branchScope = `branch_${cleanBranchId}`;
+  const scopedKey = getScopedStorageKey('bilties', branchScope);
+
+  try {
+    const rawLocal = safeStorage.getItem(scopedKey);
+    const localItems: Array<Record<string, unknown>> = rawLocal ? JSON.parse(rawLocal) : [];
+    const localTombstones = getTombstones('bilties', branchScope);
+
+    const [tombSnap, legacySnap, docsSnap] = await Promise.all([
+      withTimeout(getDoc(doc(db, 'branches', cleanBranchId, 'collections', 'tombstones')), 8000).catch(() => null),
+      withTimeout(getDoc(doc(db, 'branches', cleanBranchId, 'collections', 'bilties')), 8000).catch(() => null),
+      withTimeout(getDocs(collection(db, 'branches', cleanBranchId, 'biltiesDocs')), 8000).catch(() => null)
+    ]);
+
+    const remoteTombData =
+      tombSnap && tombSnap.exists() ? ((tombSnap.data() || {}) as Record<string, TombstoneMap>) : {};
+    const remoteCollTombstones: TombstoneMap =
+      remoteTombData.bilties && typeof remoteTombData.bilties === 'object' ? remoteTombData.bilties : {};
+
+    const existingLegacyData =
+      legacySnap && legacySnap.exists() ? (legacySnap.data() as Record<string, unknown>) : null;
+    const legacyItems: Array<Record<string, unknown>> =
+      existingLegacyData && Array.isArray(existingLegacyData.items)
+        ? (existingLegacyData.items as Array<Record<string, unknown>>)
+        : [];
+
+    const subDocItems: Array<Record<string, unknown>> = [];
+    const subDocTombstones: TombstoneMap = {};
+    if (docsSnap) {
+      docsSnap.forEach(d => {
+        const data = d.data() as Record<string, unknown>;
+        if (data?._deleted === true && typeof data.deletedAt === 'string') {
+          subDocTombstones[getEntitySyncKey('bilties', data)] = data.deletedAt;
+        } else if (data && !data._deleted) {
+          const cleaned = { ...data };
+          delete cleaned._deleted;
+          delete cleaned.deletedAt;
+          subDocItems.push(cleaned);
+        }
+      });
+    }
+
+    const mergedTombstones = mergeTombstoneMaps(
+      mergeTombstoneMaps(localTombstones, remoteCollTombstones),
+      subDocTombstones
+    );
+    const mergedMap = new Map<string, Record<string, unknown>>();
+    for (const item of [...legacyItems, ...subDocItems]) {
+      const k = getEntitySyncKey('bilties', item);
+      const prev = mergedMap.get(k);
+      mergedMap.set(k, prev ? resolveEntityLWW(prev, item) : item);
+    }
+    for (const item of localItems) {
+      const k = getEntitySyncKey('bilties', item);
+      const prev = mergedMap.get(k);
+      mergedMap.set(k, prev ? resolveEntityLWW(item, prev) : item);
+    }
+
+    const mergedList: Array<Record<string, unknown>> = [];
+    for (const [k, item] of mergedMap.entries()) {
+      if (isEntityTombstoned('bilties', item, mergedTombstones)) continue;
+      if (mergedTombstones[k]) delete mergedTombstones[k];
+      mergedList.push(item);
+    }
+
+    safeStorage.setItem(scopedKey, JSON.stringify(mergedList));
+    saveTombstones('bilties', mergedTombstones, branchScope);
+  } catch (err) {
+    console.warn(`[BranchSync] Pull notice for ${cleanBranchId}:`, err);
+  }
+
+  return getStoredBilties();
 }
 
 // ---------------------------------------------------------------------------
@@ -1627,8 +1843,10 @@ export function getStoredBilties(): BiltyRecord[] {
         bNo = `WG-${String(candidate).padStart(4, '0')}`;
       } else {
         const rawDigits = bNo.replace(/\D/g, '');
-        const numPart = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10);
-        if (!Number.isNaN(numPart) && numPart >= 1000 && numPart <= 9999) {
+        const activeBranch = getCachedBranchById(getActiveBranchId());
+        const allowOver9999 = Boolean(activeBranch && Number(activeBranch.startingBiltySeq || 1001) > 9999);
+        const numPart = parseInt(!allowOver9999 && rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10);
+        if (!Number.isNaN(numPart) && numPart >= 1000 && numPart <= (allowOver9999 ? 999999 : 9999)) {
           highestSequence = Math.max(highestSequence, numPart);
         }
       }
@@ -1637,7 +1855,11 @@ export function getStoredBilties(): BiltyRecord[] {
     }
 
     if (highestSequence > 1000) {
-      persistBiltyCounterLocally(highestSequence);
+      const currentCounterRaw = getScopedItem('bilty-counter');
+      const currentCounter = currentCounterRaw ? parseInt(currentCounterRaw, 10) : 0;
+      if (Number.isNaN(currentCounter) || highestSequence > currentCounter) {
+        persistBiltyCounterLocally(highestSequence);
+      }
     }
 
     finalRecords.sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
@@ -1719,7 +1941,7 @@ export function applyRestoredCollection(
   restoredItems: Array<Record<string, unknown>>,
   mode: 'merge' | 'overwrite' = 'merge'
 ): Array<Record<string, unknown>> {
-  const scope = getActiveUserScope();
+  const scope = getEffectiveScopeForKey(collName);
   const nowIso = new Date().toISOString();
   const rawPrev = getScopedItem(collName);
   let prevItems: Array<Record<string, unknown>> = [];
@@ -1862,7 +2084,8 @@ export async function confirmBiltyDelivery(
 
     const user = auth.currentUser;
     if (user) {
-      const subDocRef = doc(db, 'users', user.uid, 'biltiesDocs', toSafeFirestoreDocId(normalizedNo));
+      const target = resolveCollectionSyncTarget('bilties', user.uid);
+      const subDocRef = doc(db, target.cloudRoot[0], target.cloudRoot[1], 'biltiesDocs', toSafeFirestoreDocId(normalizedNo));
       const { legalVault: _omittedVault, ...cloudBiltyPayload } = updatedBilty;
       await setDoc(subDocRef, cloudBiltyPayload, { merge: true }).catch(() => {});
     }
@@ -1879,38 +2102,76 @@ export async function confirmBiltyDelivery(
 // Bilty Sequence Counter Helpers (WG-xxxx collision-safe)
 // ---------------------------------------------------------------------------
 
-export function persistBiltyCounterLocally(seq: number): void {
-  const str = String(seq);
-  safeStorage.setItem('wg_bilty_counter', str);
-  setScopedItem('bilty-counter', str);
+export function formatBiltySeqNumber(seq: number): string {
+  const safe = Math.max(1001, Math.floor(Number(seq) || 1001));
+  return safe > 9999 ? `WG-${safe}` : `WG-${String(safe).padStart(4, '0')}`;
 }
 
-export function getStoredHighestBiltySeq(): number {
-  let highest = 1000;
-  const activeScope = getActiveUserScope();
-  const counterKeys = [
-    'wg_bilty_counter',
-    getScopedStorageKey('bilty-counter', activeScope),
-    'wg_v2_guest_bilty-counter',
-    'ah-bilty-counter',
-    'bilty-counter'
-  ];
+export function persistBiltyCounterLocally(seq: number, branchId?: string | null): void {
+  const str = String(seq);
+  const resolvedBranchId = branchId ?? getActiveBranchId();
+  const isCustomBranchScope =
+    Boolean(resolvedBranchId && resolvedBranchId !== DEFAULT_HEAD_OFFICE_BRANCH_ID) ||
+    isUsingSharedBranchScope();
+  if (!isCustomBranchScope) {
+    safeStorage.setItem('wg_bilty_counter', str);
+  }
+  if (branchId && branchId !== DEFAULT_HEAD_OFFICE_BRANCH_ID) {
+    safeStorage.setItem(getScopedStorageKey('bilty-counter', `branch_${branchId}`), str);
+  } else {
+    setScopedItem('bilty-counter', str);
+  }
+}
+
+export function getStoredHighestBiltySeq(branch?: BranchConfig | null): number {
+  const activeBranch = branch || getCachedBranchById(getActiveBranchId());
+  const isCustomBranch = Boolean(activeBranch && activeBranch.id && activeBranch.id !== DEFAULT_HEAD_OFFICE_BRANCH_ID);
+  const minFloor = Math.max(1000, (Number(activeBranch?.startingBiltySeq) || 1001) - 1);
+  let highest = minFloor;
+  const maxAllowed = minFloor >= 9999 ? 999999 : 9999;
+
+  const counterScope = isCustomBranch
+    ? `branch_${activeBranch!.id}`
+    : getEffectiveScopeForKey('bilty-counter');
+
+  const counterKeys = isCustomBranch
+    ? [getScopedStorageKey('bilty-counter', counterScope)]
+    : [
+        'wg_bilty_counter',
+        getScopedStorageKey('bilty-counter', counterScope),
+        'wg_v2_guest_bilty-counter',
+        'ah-bilty-counter',
+        'bilty-counter'
+      ];
+
   for (const k of counterKeys) {
     const val = safeStorage.getItem(k);
     if (val) {
       const parsed = parseInt(val, 10);
-      if (!Number.isNaN(parsed) && parsed >= 1000 && parsed <= 9999 && parsed > highest) {
+      if (!Number.isNaN(parsed) && parsed >= 1000 && parsed <= 999999 && parsed > highest && (parsed <= maxAllowed || minFloor >= 9999)) {
         highest = parsed;
       }
     }
   }
 
-  const bilties = getStoredBilties();
+  let bilties: BiltyRecord[] = [];
+  if (isCustomBranch && activeBranch) {
+    try {
+      const raw = safeStorage.getItem(getScopedStorageKey('bilties', `branch_${activeBranch.id}`));
+      const parsed = raw ? JSON.parse(raw) : [];
+      bilties = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      bilties = [];
+    }
+  } else {
+    bilties = getStoredBilties();
+  }
+
   for (const item of bilties) {
     if (item?.biltyNo) {
       const rawDigits = String(item.biltyNo).replace(/\D/g, '');
-      const numPart = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10);
-      if (!Number.isNaN(numPart) && numPart >= 1000 && numPart <= 9999 && numPart > highest) {
+      const numPart = parseInt(rawDigits.length > 4 && maxAllowed <= 9999 ? rawDigits.slice(-4) : rawDigits, 10);
+      if (!Number.isNaN(numPart) && numPart >= 1000 && numPart <= maxAllowed && numPart > highest) {
         highest = numPart;
       }
     }
@@ -1919,19 +2180,20 @@ export function getStoredHighestBiltySeq(): number {
   return highest;
 }
 
-export function findNextAvailableBiltySeq(startCandidate: number): number {
+export function findNextAvailableBiltySeq(startCandidate: number, allowOver9999 = false): number {
+  const maxSeq = allowOver9999 ? 999999 : 9999;
   const activeNums = new Set<number>();
   for (const b of getStoredBilties()) {
     if (!b?.biltyNo) continue;
     const rawDigits = String(b.biltyNo).replace(/\D/g, '');
-    const parsed = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10);
-    if (!Number.isNaN(parsed) && parsed >= 1001 && parsed <= 9999) {
+    const parsed = parseInt(!allowOver9999 && rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10);
+    if (!Number.isNaN(parsed) && parsed >= 1001 && parsed <= maxSeq) {
       activeNums.add(parsed);
     }
   }
 
-  const first = startCandidate >= 1001 && startCandidate <= 9999 ? startCandidate : 1001;
-  for (let n = first; n <= 9999; n++) {
+  const first = startCandidate >= 1001 && startCandidate <= maxSeq ? startCandidate : 1001;
+  for (let n = first; n <= maxSeq; n++) {
     if (!activeNums.has(n)) return n;
   }
   for (let n = 1001; n < first; n++) {
@@ -1970,27 +2232,38 @@ export async function checkBiltyNoConflict(
   return { conflict: false };
 }
 
-export async function allocateNextBiltyNumber(_userUid?: string): Promise<string> {
+export async function allocateNextBiltyNumber(
+  _userUid?: string,
+  branch?: BranchConfig | null
+): Promise<string> {
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
   const user = auth.currentUser;
-  const baseline = getStoredHighestBiltySeq();
+  const resolvedBranch = branch || getCachedBranchById(getActiveBranchId());
+  const isCustomBranch = Boolean(
+    resolvedBranch && resolvedBranch.id && resolvedBranch.id !== DEFAULT_HEAD_OFFICE_BRANCH_ID
+  );
+  const minStart = Math.max(1001, Number(resolvedBranch?.startingBiltySeq) || 1001);
+  const allowOver9999 = minStart > 9999;
+  const counterDocId = isCustomBranch ? `branch_${resolvedBranch!.id}_bilty` : 'biltyCounter';
+  const baseline = getStoredHighestBiltySeq(resolvedBranch);
 
   if (isOnline && db && user) {
     try {
-      const counterDocRef = doc(db, 'counters', 'biltyCounter');
+      const counterDocRef = doc(db, 'counters', counterDocId);
       const nextSeq = await withTimeout(
         runTransaction(db, async transaction => {
           const snap = await transaction.get(counterDocRef);
-          let cloudCurrent = 1000;
+          let cloudCurrent = minStart - 1;
           if (snap.exists()) {
             const d = snap.data();
             const rawVal = d?.currentValue ?? d?.value;
             const parsed = typeof rawVal === 'number' ? rawVal : parseInt(String(rawVal || ''), 10);
-            if (!Number.isNaN(parsed) && parsed >= 1000 && parsed <= 9999) {
+            if (!Number.isNaN(parsed) && parsed >= 1000 && parsed <= 999999 && parsed > cloudCurrent) {
               cloudCurrent = parsed;
             }
           }
-          const next = findNextAvailableBiltySeq(Math.max(cloudCurrent, baseline) + 1);
+          const seed = Math.max(cloudCurrent, baseline, minStart - 1);
+          const next = findNextAvailableBiltySeq(seed + 1, allowOver9999 || seed > 9999);
           transaction.set(
             counterDocRef,
             {
@@ -2005,24 +2278,28 @@ export async function allocateNextBiltyNumber(_userUid?: string): Promise<string
         8000
       );
 
-      persistBiltyCounterLocally(nextSeq);
-      return `WG-${String(nextSeq).padStart(4, '0')}`;
+      persistBiltyCounterLocally(nextSeq, resolvedBranch?.id);
+      return formatBiltySeqNumber(nextSeq);
     } catch (err) {
       console.warn('Firestore counter transaction error, falling back to local monotonic sequence:', err);
     }
   }
 
-  const nextLocalSeq = findNextAvailableBiltySeq(baseline + 1);
-  persistBiltyCounterLocally(nextLocalSeq);
+  const seed = Math.max(baseline, minStart - 1);
+  const nextLocalSeq = findNextAvailableBiltySeq(seed + 1, allowOver9999 || seed >= 9999);
+  persistBiltyCounterLocally(nextLocalSeq, resolvedBranch?.id);
 
-  return `WG-${String(nextLocalSeq).padStart(4, '0')}`;
+  return formatBiltySeqNumber(nextLocalSeq);
 }
 
-export function getNextBiltyNo(): string {
-  const baseline = getStoredHighestBiltySeq();
-  const nextNo = findNextAvailableBiltySeq(baseline + 1);
-  persistBiltyCounterLocally(nextNo);
-  return `WG-${String(nextNo).padStart(4, '0')}`;
+export function getNextBiltyNo(branch?: BranchConfig | null): string {
+  const resolvedBranch = branch || getCachedBranchById(getActiveBranchId());
+  const minStart = Math.max(1001, Number(resolvedBranch?.startingBiltySeq) || 1001);
+  const baseline = getStoredHighestBiltySeq(resolvedBranch);
+  const seed = Math.max(baseline, minStart - 1);
+  const nextNo = findNextAvailableBiltySeq(seed + 1, minStart > 9999 || seed > 9999);
+  persistBiltyCounterLocally(nextNo, resolvedBranch?.id);
+  return formatBiltySeqNumber(nextNo);
 }
 
 // ---------------------------------------------------------------------------
@@ -2114,10 +2391,10 @@ export function initAmbientSyncEngine(): () => void {
 export function getSyncStatus(): SyncStatusState {
   const isOnline = typeof navigator === 'undefined' || navigator.onLine;
   const queue = getStoredOfflineQueue();
-  const activeScope = getActiveUserScope();
+  const khataScope = getActiveKhataScope();
   let khataQueue: Array<{ id?: string; timestamp?: string; status?: string; lastError?: string; retryCount?: number; collectionPath?: string }> = [];
   try {
-    const rawKhataQueue = safeStorage.getItem(getScopedStorageKey('dd_khata_doc_queue_v2', activeScope));
+    const rawKhataQueue = safeStorage.getItem(getScopedStorageKey('dd_khata_doc_queue_v2', khataScope));
     if (rawKhataQueue) {
       const parsed = JSON.parse(rawKhataQueue);
       if (Array.isArray(parsed)) khataQueue = parsed;

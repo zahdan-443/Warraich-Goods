@@ -30,7 +30,8 @@ import {
   getStoredBilties,
   setScopedItem
 } from './storage';
-import { getActiveUserScope, removeScopedItem, safeStorage } from './storageCore';
+import { getActiveKhataScope, removeScopedItem, safeStorage } from './storageCore';
+import { getActiveBranchId, isUsingSharedBranchScope } from './branchContext';
 import { savePreRestoreSnapshotIdbOnly } from './persistentStorage';
 import {
   getTombstones,
@@ -653,12 +654,28 @@ function computeKhataBackoffMs(retryCount: number): number {
   return Math.min(2000 * Math.pow(2, exp - 1), 5 * 60 * 1000);
 }
 
+function getKhataCloudRoot(uid: string): readonly ['users', string] | readonly ['branches', string] {
+  const branchId = getActiveBranchId();
+  if (isUsingSharedBranchScope() && branchId) {
+    return ['branches', branchId] as const;
+  }
+  return ['users', uid] as const;
+}
+
+function getKhataDigestScope(uid: string): string {
+  const branchId = getActiveBranchId();
+  if (isUsingSharedBranchScope() && branchId) {
+    return `branch_${branchId}`;
+  }
+  return uid;
+}
+
 export function recordKhataDeletionTombstone(
   collectionPath: string,
   docId: string,
   timestampIso: string = new Date().toISOString()
 ): void {
-  const scope = getActiveUserScope();
+  const scope = getActiveKhataScope();
   const key = `khata_${collectionPath}`;
   const map = getTombstones(key, scope);
   map[docId] = timestampIso;
@@ -666,7 +683,7 @@ export function recordKhataDeletionTombstone(
 }
 
 export function clearKhataDeletionTombstone(collectionPath: string, docId: string): void {
-  const scope = getActiveUserScope();
+  const scope = getActiveKhataScope();
   const key = `khata_${collectionPath}`;
   const map = getTombstones(key, scope);
   if (map[docId]) {
@@ -680,7 +697,7 @@ export function isKhataDocTombstoned(
   docId: string,
   cloudUpdatedAt?: string
 ): boolean {
-  const scope = getActiveUserScope();
+  const scope = getActiveKhataScope();
   const map: TombstoneMap = getTombstones(`khata_${collectionPath}`, scope);
   const deletedAt = map[docId];
   if (!deletedAt) return false;
@@ -786,37 +803,38 @@ export async function processKhataDocQueue(): Promise<{
       continue;
     }
 
+    const root = getKhataCloudRoot(user.uid);
     try {
       if (item.collectionPath === 'ledgerAccounts') {
-        const ref = doc(db, 'users', user.uid, 'ledgerAccounts', item.docId);
+        const ref = doc(db, root[0], root[1], 'ledgerAccounts', item.docId);
         if (item.action === 'upsert') {
           await setDoc(ref, item.data || {}, { merge: true });
         } else {
           await deleteDoc(ref);
         }
       } else if (item.collectionPath === 'entries' && item.subPath) {
-        const ref = doc(db, 'users', user.uid, 'ledgerAccounts', item.subPath, 'entries', item.docId);
+        const ref = doc(db, root[0], root[1], 'ledgerAccounts', item.subPath, 'entries', item.docId);
         if (item.action === 'upsert') {
           await setDoc(ref, item.data || {}, { merge: true });
         } else {
           await deleteDoc(ref);
         }
       } else if (item.collectionPath === 'cashbookEntries') {
-        const ref = doc(db, 'users', user.uid, 'cashbookEntries', item.docId);
+        const ref = doc(db, root[0], root[1], 'cashbookEntries', item.docId);
         if (item.action === 'upsert') {
           await setDoc(ref, item.data || {}, { merge: true });
         } else {
           await deleteDoc(ref);
         }
       } else if ((KHATA_FLAT_COLLECTIONS as readonly string[]).includes(item.collectionPath)) {
-        const ref = doc(db, 'users', user.uid, item.collectionPath, item.docId);
+        const ref = doc(db, root[0], root[1], item.collectionPath, item.docId);
         if (item.action === 'upsert') {
           await setDoc(ref, item.data || {}, { merge: true });
         } else {
           await deleteDoc(ref);
         }
       } else if (item.collectionPath === 'khataSettings') {
-        const ref = doc(db, 'users', user.uid, 'khataSettings', item.docId);
+        const ref = doc(db, root[0], root[1], 'khataSettings', item.docId);
         await setDoc(ref, item.data || {}, { merge: true });
       }
       processed++;
@@ -850,8 +868,9 @@ async function mirrorAccountToFirestore(account: LedgerAccount, action: 'upsert'
     return;
   }
 
+  const root = getKhataCloudRoot(user.uid);
   try {
-    const ref = doc(db, 'users', user.uid, 'ledgerAccounts', account.id);
+    const ref = doc(db, root[0], root[1], 'ledgerAccounts', account.id);
     if (action === 'upsert') {
       await setDoc(ref, payload, { merge: true });
     } else {
@@ -877,8 +896,9 @@ async function mirrorEntryToFirestore(entry: LedgerEntry, action: 'upsert' | 'de
     return;
   }
 
+  const root = getKhataCloudRoot(user.uid);
   try {
-    const ref = doc(db, 'users', user.uid, 'ledgerAccounts', entry.accountId, 'entries', entry.id);
+    const ref = doc(db, root[0], root[1], 'ledgerAccounts', entry.accountId, 'entries', entry.id);
     if (action === 'upsert') {
       await setDoc(ref, payload, { merge: true });
     } else {
@@ -905,8 +925,9 @@ async function mirrorCashEntryToFirestore(entry: CashEntry, action: 'upsert' | '
     return;
   }
 
+  const root = getKhataCloudRoot(user.uid);
   try {
-    const ref = doc(db, 'users', user.uid, 'cashbookEntries', entry.id);
+    const ref = doc(db, root[0], root[1], 'cashbookEntries', entry.id);
     if (action === 'upsert') {
       await setDoc(ref, payload, { merge: true });
     } else {
@@ -932,8 +953,9 @@ async function mirrorSettingsToFirestore(settings: KhataSettings): Promise<void>
     return;
   }
 
+  const root = getKhataCloudRoot(user.uid);
   try {
-    const ref = doc(db, 'users', user.uid, 'khataSettings', 'config');
+    const ref = doc(db, root[0], root[1], 'khataSettings', 'config');
     await setDoc(ref, payload, { merge: true });
   } catch (err: unknown) {
     enqueueKhataDocSync({
@@ -947,7 +969,7 @@ async function mirrorSettingsToFirestore(settings: KhataSettings): Promise<void>
   }
 }
 
-function collectAllKhataTombstones(scope: string = getActiveUserScope()): Record<string, TombstoneMap> {
+function collectAllKhataTombstones(scope: string = getActiveKhataScope()): Record<string, TombstoneMap> {
   const keys = [
     'khata_ledgerAccounts',
     'khata_entries',
@@ -967,14 +989,15 @@ function collectAllKhataTombstones(scope: string = getActiveUserScope()): Record
 async function mirrorKhataTombstonesToFirestore(): Promise<void> {
   const user = auth.currentUser;
   if (!user) return;
-  const tombstones = collectAllKhataTombstones(getActiveUserScope());
+  const tombstones = collectAllKhataTombstones(getActiveKhataScope());
   const payload: Record<string, unknown> = { tombstones, schemaVersion: 3 };
   if (!db) {
     enqueueKhataDocSync({ action: 'upsert', collectionPath: 'khataSettings', docId: 'config', data: payload });
     return;
   }
+  const root = getKhataCloudRoot(user.uid);
   try {
-    const ref = doc(db, 'users', user.uid, 'khataSettings', 'config');
+    const ref = doc(db, root[0], root[1], 'khataSettings', 'config');
     await setDoc(ref, payload, { merge: true });
   } catch (err: unknown) {
     enqueueKhataDocSync({
@@ -1002,8 +1025,9 @@ export async function mirrorFlatKhataDocToFirestore(
     return;
   }
 
+  const root = getKhataCloudRoot(user.uid);
   try {
-    const ref = doc(db, 'users', user.uid, collectionPath, docData.id);
+    const ref = doc(db, root[0], root[1], collectionPath, docData.id);
     if (action === 'upsert') {
       await setDoc(ref, docData, { merge: true });
     } else {
@@ -1038,15 +1062,16 @@ export async function fetchKhataFromFirestore(): Promise<void> {
   const user = auth.currentUser;
   if (!user || !db) return;
 
+  const root = getKhataCloudRoot(user.uid);
   try {
     // 0. Fetch Settings & Tombstones FIRST so deleted records never resurrect during collection merge
     try {
-      const setSnap = await getDoc(doc(db, 'users', user.uid, 'khataSettings', 'config'));
+      const setSnap = await getDoc(doc(db, root[0], root[1], 'khataSettings', 'config'));
       if (setSnap.exists()) {
         const rawData = setSnap.data() as KhataSettings & { tombstones?: Record<string, TombstoneMap> };
         const { tombstones: remoteTombstones, ...settingsOnly } = rawData;
         if (remoteTombstones && typeof remoteTombstones === 'object') {
-          const scope = getActiveUserScope();
+          const scope = getActiveKhataScope();
           for (const [collKey, cloudMap] of Object.entries(remoteTombstones)) {
             const normKey = collKey.startsWith('khata_') ? collKey : `khata_${collKey}`;
             const mergedMap = mergeTombstoneMaps(getTombstones(normKey, scope), cloudMap || {});
@@ -1061,7 +1086,7 @@ export async function fetchKhataFromFirestore(): Promise<void> {
     }
 
     // 1. Fetch Accounts
-    const accColl = collection(db, 'users', user.uid, 'ledgerAccounts');
+    const accColl = collection(db, root[0], root[1], 'ledgerAccounts');
     const accSnap = await getDocs(accColl);
     const cloudAccounts: LedgerAccount[] = [];
     const cloudEntries: LedgerEntry[] = [];
@@ -1073,7 +1098,7 @@ export async function fetchKhataFromFirestore(): Promise<void> {
 
         // Fetch subcollection entries
         try {
-          const entryColl = collection(db, 'users', user.uid, 'ledgerAccounts', data.id, 'entries');
+          const entryColl = collection(db, root[0], root[1], 'ledgerAccounts', data.id, 'entries');
           const entrySnap = await getDocs(entryColl);
           for (const ed of entrySnap.docs) {
             const edata = ed.data() as LedgerEntry;
@@ -1128,7 +1153,7 @@ export async function fetchKhataFromFirestore(): Promise<void> {
     }
 
     // 2. Fetch Cashbook
-    const cashColl = collection(db, 'users', user.uid, 'cashbookEntries');
+    const cashColl = collection(db, root[0], root[1], 'cashbookEntries');
     const cashSnap = await getDocs(cashColl);
     const cloudCash: CashEntry[] = [];
     for (const d of cashSnap.docs) {
@@ -1155,7 +1180,7 @@ export async function fetchKhataFromFirestore(): Promise<void> {
     // 3. Fetch v1.3.0 Khata Expansion Collections
     for (const { key, coll } of FLAT_KEY_TO_COLLECTION) {
       try {
-        const collRef = collection(db, 'users', user.uid, coll);
+        const collRef = collection(db, root[0], root[1], coll);
         const snap = await getDocs(collRef);
         const cloudItems: Array<{ id: string; updatedAt?: string }> = [];
         for (const d of snap.docs) {
@@ -1267,7 +1292,9 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
   const cashEntries = getAllCashEntries();
   const settings = getKhataSettings();
 
-  const digestCache = getKhataSyncDigest(user.uid);
+  const root = getKhataCloudRoot(user.uid);
+  const digestScope = getKhataDigestScope(user.uid);
+  const digestCache = getKhataSyncDigest(digestScope);
   const nextDigest: Record<string, string> = { ...digestCache };
 
   type PendingOp = {
@@ -1283,7 +1310,7 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
 
   const settingsPayload = {
     ...settings,
-    tombstones: collectAllKhataTombstones(getActiveUserScope()),
+    tombstones: collectAllKhataTombstones(getActiveKhataScope()),
     schemaVersion: 3
   };
   const settingsDigest = JSON.stringify(settingsPayload);
@@ -1291,7 +1318,7 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
     ops.push({
       pathKey: 'khataSettings/config',
       digest: settingsDigest,
-      ref: doc(db, 'users', user.uid, 'khataSettings', 'config'),
+      ref: doc(db, root[0], root[1], 'khataSettings', 'config'),
       data: settingsPayload,
       kind: 'other'
     });
@@ -1306,7 +1333,7 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
       ops.push({
         pathKey,
         digest: d,
-        ref: doc(db, 'users', user.uid, 'ledgerAccounts', acc.id),
+        ref: doc(db, root[0], root[1], 'ledgerAccounts', acc.id),
         data: acc as unknown as Record<string, unknown>,
         kind: 'account'
       });
@@ -1322,7 +1349,7 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
       ops.push({
         pathKey,
         digest: d,
-        ref: doc(db, 'users', user.uid, 'ledgerAccounts', entry.accountId, 'entries', entry.id),
+        ref: doc(db, root[0], root[1], 'ledgerAccounts', entry.accountId, 'entries', entry.id),
         data: entry as unknown as Record<string, unknown>,
         kind: 'entry'
       });
@@ -1338,7 +1365,7 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
       ops.push({
         pathKey,
         digest: d,
-        ref: doc(db, 'users', user.uid, 'cashbookEntries', cash.id),
+        ref: doc(db, root[0], root[1], 'cashbookEntries', cash.id),
         data: cash as unknown as Record<string, unknown>,
         kind: 'cash'
       });
@@ -1357,7 +1384,7 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
         ops.push({
           pathKey,
           digest: d,
-          ref: doc(db, 'users', user.uid, coll, item.id),
+          ref: doc(db, root[0], root[1], coll, item.id),
           data: item as unknown as Record<string, unknown>,
           kind: 'other'
         });
@@ -1415,7 +1442,7 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
       }
     }
 
-    saveKhataSyncDigest(user.uid, nextDigest);
+    saveKhataSyncDigest(digestScope, nextDigest);
   }
 
   // Delete queued upsert items from localStorage that are confirmed synced
@@ -2226,7 +2253,7 @@ export function importKhataBackup(
     }
 
     const data = validation.data;
-    const scope = getActiveUserScope();
+    const scope = getActiveKhataScope();
     const restoreMode: 'merge' | 'overwrite' = mode === 'replace' ? 'overwrite' : 'merge';
 
     // Capture current state for both pre-restore Undo snapshot (IDB-only 7-day TTL) & replace-mode cloud deletes
@@ -2316,6 +2343,8 @@ export function importKhataBackup(
     // Build batched Firestore commit (single writeBatch pipeline instead of N individual writes)
     const user = auth.currentUser;
     if (user && db) {
+      const root = getKhataCloudRoot(user.uid);
+      const digestScope = getKhataDigestScope(user.uid);
       const batchOps: KhataRestoreBatchOp[] = [];
 
       const settingsPayload = {
@@ -2328,7 +2357,7 @@ export function importKhataBackup(
         collectionPath: 'khataSettings',
         docId: 'config',
         pathKey: 'khataSettings/config',
-        ref: doc(db, 'users', user.uid, 'khataSettings', 'config'),
+        ref: doc(db, root[0], root[1], 'khataSettings', 'config'),
         data: settingsPayload as unknown as Record<string, unknown>,
         digest: JSON.stringify(settingsPayload)
       });
@@ -2342,8 +2371,8 @@ export function importKhataBackup(
           if (!item?.id) continue;
           const sub = getSubPath ? getSubPath(item) : undefined;
           const ref = sub
-            ? doc(db, 'users', user.uid, 'ledgerAccounts', sub, 'entries', item.id)
-            : doc(db, 'users', user.uid, coll, item.id);
+            ? doc(db, root[0], root[1], 'ledgerAccounts', sub, 'entries', item.id)
+            : doc(db, root[0], root[1], coll, item.id);
           const pathKey = sub ? `ledgerAccounts/${sub}/entries/${item.id}` : `${coll}/${item.id}`;
           batchOps.push({
             action: 'upsert',
@@ -2370,8 +2399,8 @@ export function importKhataBackup(
           if (!prev?.id || keptIds.has(prev.id)) continue;
           const sub = getSubPath ? getSubPath(prev) : undefined;
           const ref = sub
-            ? doc(db, 'users', user.uid, 'ledgerAccounts', sub, 'entries', prev.id)
-            : doc(db, 'users', user.uid, coll, prev.id);
+            ? doc(db, root[0], root[1], 'ledgerAccounts', sub, 'entries', prev.id)
+            : doc(db, root[0], root[1], coll, prev.id);
           const pathKey = sub ? `ledgerAccounts/${sub}/entries/${prev.id}` : `${coll}/${prev.id}`;
           batchOps.push({
             action: 'delete',
@@ -2412,7 +2441,7 @@ export function importKhataBackup(
         addReplaceDeletes('khataDailyExpenses', prevExpenses, finalExpenses);
       }
 
-      pendingKhataImportSyncPromise = commitKhataRestoreBatches(user.uid, batchOps).catch(() => {});
+      pendingKhataImportSyncPromise = commitKhataRestoreBatches(digestScope, batchOps).catch(() => {});
     }
 
     return {

@@ -1,6 +1,19 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { BiltyRecord, ContactItem, DICTIONARY, Language, BiltyBranch, BiltyLanguage, KhataReceivingPoint } from '../../types';
+import {
+  BiltyRecord,
+  ContactItem,
+  DICTIONARY,
+  Language,
+  BiltyBranch,
+  BiltyLanguage,
+  KhataReceivingPoint,
+  BranchConfig,
+  BranchPermissions
+} from '../../types';
 import { getAllReceivingPoints } from '../../utils/khataModulesStorage';
+import { DEFAULT_SAMUNDRI_BRANCH, getActiveBranchId, getCachedBranchById } from '../../utils/branchContext';
+import { DEFAULT_HEAD_OFFICE_BRANCH_ID } from '../../utils/authUtils';
+import { formatBiltySeqNumber } from '../../utils/storageSync';
 import {
   Receipt,
   Search,
@@ -54,7 +67,6 @@ import { PublicImage } from '../PublicImage';
 import { biltyOfficialIconData } from '../../assets/dashboardIcons';
 import {
   generateBiltyVerificationQrDataUrl,
-  BILTY_BRANCHES,
   formatBiltyMobile
 } from '../../utils/biltyHelpers';
 import { BiltyDeleteModal } from './bilty/BiltyDeleteModal';
@@ -109,6 +121,10 @@ interface BiltyViewProps {
   onUpdateBilty?: (record: BiltyRecord) => void;
   onDeleteBilty?: (id: number) => void;
   onNavigate?: (tab: string, subSection?: string) => void;
+  activeBranch?: BranchConfig | null;
+  branchPermissions?: BranchPermissions;
+  currentUserEmail?: string | null;
+  currentUserUid?: string | null;
 }
 
 export const BiltyView: React.FC<BiltyViewProps> = ({
@@ -118,14 +134,37 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   onAddBilty,
   onUpdateBilty,
   onDeleteBilty,
-  onNavigate
+  onNavigate,
+  activeBranch,
+  branchPermissions,
+  currentUserEmail,
+  currentUserUid
 }) => {
   const isUrdu = lang === 'ur';
   const t = DICTIONARY[lang].bilty;
 
+  const effectiveBranch = useMemo<BranchConfig>(() => {
+    if (activeBranch) return activeBranch;
+    const cached = getCachedBranchById(getActiveBranchId() || DEFAULT_HEAD_OFFICE_BRANCH_ID);
+    return cached || DEFAULT_SAMUNDRI_BRANCH;
+  }, [activeBranch]);
+
+  const canCreateBilty = branchPermissions ? branchPermissions.createBilty : true;
+  const canEditDeleteBilty = branchPermissions ? branchPermissions.editDeleteBilty : true;
+  const canViewAllBilties = branchPermissions ? branchPermissions.viewAllBilties : true;
+
   // SubTab: 'all' (Sari Bilties) | 'create' (Nai Bilty) | 'search' (Talaash)
   const [subTab, setSubTab] = useState<'all' | 'create' | 'search'>(() => {
-    return initialSubTab || (bilties && bilties.length > 0 ? 'all' : 'create');
+    if (initialSubTab === 'create' && !canCreateBilty) {
+      return canViewAllBilties ? 'all' : 'search';
+    }
+    if (initialSubTab === 'all' && !canViewAllBilties) {
+      return canCreateBilty ? 'create' : 'search';
+    }
+    if (initialSubTab) return initialSubTab;
+    if (bilties && bilties.length > 0 && canViewAllBilties) return 'all';
+    if (canCreateBilty) return 'create';
+    return canViewAllBilties ? 'all' : 'search';
   });
   const subTabHistoryRef = useRef<Array<'all' | 'create' | 'search'>>([]);
   const [showExitCreateConfirm, setShowExitCreateConfirm] = useState(false);
@@ -147,9 +186,15 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   useEffect(() => {
     if (initialSubTab) {
       subTabHistoryRef.current = [];
-      setSubTab(initialSubTab);
+      if (initialSubTab === 'create' && !canCreateBilty) {
+        setSubTab(canViewAllBilties ? 'all' : 'search');
+      } else if (initialSubTab === 'all' && !canViewAllBilties) {
+        setSubTab(canCreateBilty ? 'create' : 'search');
+      } else {
+        setSubTab(initialSubTab);
+      }
     }
-  }, [initialSubTab]);
+  }, [initialSubTab, canCreateBilty, canViewAllBilties]);
 
   // Filters for "All Bilties" view (focused strictly on dispatch records, not payment ledger)
   const [allFilterQuery, setAllFilterQuery] = useState('');
@@ -162,8 +207,16 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const [editingBilty, setEditingBilty] = useState<BiltyRecord | null>(null);
   const [editIsDelivered, setEditIsDelivered] = useState<boolean>(false);
 
-  // Single Head Office (Samundri) and Language Selection State
-  const selectedBranch: BiltyBranch = 'samundri';
+  useEffect(() => {
+    if (subTab === 'create' && !canCreateBilty && !editingBilty) {
+      setSubTab(canViewAllBilties ? 'all' : 'search');
+    } else if (subTab === 'all' && !canViewAllBilties) {
+      setSubTab(canCreateBilty ? 'create' : 'search');
+    }
+  }, [subTab, canCreateBilty, canViewAllBilties, editingBilty]);
+
+  // Active Branch & Language Selection State
+  const selectedBranch: BiltyBranch = effectiveBranch.id || DEFAULT_HEAD_OFFICE_BRANCH_ID;
 
   const [selectedLanguage, setSelectedLanguage] = useState<BiltyLanguage>(() => {
     try {
@@ -511,7 +564,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setActivePrintQrUrl(qrUrl);
     setActivePrintRecord({
       ...record,
-      branch: record.branch || selectedBranch,
+      branch: record.branch || record.branchId || selectedBranch,
+      branchId: record.branchId || effectiveBranch.id,
       language: record.language || selectedLanguage
     });
     setTimeout(async () => {
@@ -580,9 +634,19 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     }
 
     if (editingBilty) {
+      if (!canEditDeleteBilty) {
+        setFormError(selectedLanguage === 'en' ? 'You do not have permission to edit bilties.' : 'آپ کو بلٹی میں ترمیم کی اجازت نہیں ہے۔');
+        return;
+      }
       const updatedRecord: BiltyRecord = {
         ...editingBilty,
-        branch: selectedBranch,
+        branch: (editingBilty.branchId || editingBilty.branch || selectedBranch) as BiltyBranch,
+        branchId: editingBilty.branchId || effectiveBranch.id,
+        branchNameUr: editingBilty.branchNameUr || effectiveBranch.nameUr,
+        branchNameEn: editingBilty.branchNameEn || effectiveBranch.nameEn,
+        branchAddressUr: editingBilty.branchAddressUr || effectiveBranch.addressUr,
+        branchAddressEn: editingBilty.branchAddressEn || effectiveBranch.addressEn,
+        branchPhone: editingBilty.branchPhone || effectiveBranch.phoneNumbers,
         language: selectedLanguage,
         vehicleNo: vehicleNo.trim(),
         date: date.trim() || getTodayFormatted(),
@@ -653,15 +717,21 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       return;
     }
 
-    // Allocate sequential unique Bilty Number via Transaction / Monotonic counter + collision check
-    let allocatedBiltyNo = await allocateNextBiltyNumber();
+    if (!canCreateBilty) {
+      setFormError(selectedLanguage === 'en' ? 'You do not have permission to create new bilties.' : 'آپ کو نئی بلٹی بنانے کی اجازت نہیں ہے۔');
+      return;
+    }
+
+    // Allocate sequential unique Bilty Number per active branch starting number + collision check
+    let allocatedBiltyNo = await allocateNextBiltyNumber(undefined, effectiveBranch);
     const conflictRes = await checkBiltyNoConflict(allocatedBiltyNo).catch(() => ({ conflict: false }));
     if (conflictRes.conflict) {
       try {
+        const allowOver9999 = Number(effectiveBranch.startingBiltySeq || 1001) > 9999;
         const rawDigits = String(allocatedBiltyNo).replace(/\D/g, '');
-        const seqNum = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10) || 1001;
-        const nextSeq = findNextAvailableBiltySeq(seqNum + 1);
-        allocatedBiltyNo = `WG-${nextSeq}`;
+        const seqNum = parseInt(!allowOver9999 && rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10) || (effectiveBranch.startingBiltySeq || 1001);
+        const nextSeq = findNextAvailableBiltySeq(seqNum + 1, allowOver9999);
+        allocatedBiltyNo = formatBiltySeqNumber(nextSeq);
       } catch {
         allocatedBiltyNo = `WG-${Date.now().toString().slice(-6)}`;
       }
@@ -672,6 +742,14 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       biltyNo: allocatedBiltyNo,
       pendingOnlineNumber: isPendingOnline ? true : undefined,
       branch: selectedBranch,
+      branchId: effectiveBranch.id,
+      branchNameUr: effectiveBranch.nameUr,
+      branchNameEn: effectiveBranch.nameEn,
+      branchAddressUr: effectiveBranch.addressUr,
+      branchAddressEn: effectiveBranch.addressEn,
+      branchPhone: effectiveBranch.phoneNumbers,
+      createdByEmail: currentUserEmail || undefined,
+      createdByUid: currentUserUid || undefined,
       language: selectedLanguage,
       vehicleNo: vehicleNo.trim(),
       date: date.trim() || getTodayFormatted(),
@@ -738,7 +816,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setActivePrintQrUrl(qrUrl);
     setActivePrintRecord({
       ...record,
-      branch: record.branch || selectedBranch,
+      branch: record.branch || record.branchId || selectedBranch,
+      branchId: record.branchId || effectiveBranch.id,
       language: record.language || selectedLanguage
     });
     // Allow React state to update DOM and QR code generation
@@ -903,7 +982,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
               </span>
             )}
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#0f2942] text-white">
-              📍 {previewLang === 'en' ? 'Samundri Office' : 'سمندری آفس'}
+              📍 {previewLang === 'en' ? (record.branchNameEn || effectiveBranch.nameEn) : (record.branchNameUr || effectiveBranch.nameUr)}
             </span>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-950 border border-amber-300">
               🌐 {previewLang === 'en' ? '100% English' : 'مکمل اردو'}
@@ -920,7 +999,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             record={record}
             cardDataUrl={preloadedAssets.card}
             logoDataUrl={preloadedAssets.logo}
-            branch="samundri"
+            branch={(record.branchId || record.branch || effectiveBranch.id) as BiltyBranch}
+            branchConfig={effectiveBranch}
             language={previewLang}
           />
         </div>
@@ -1003,7 +1083,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     );
   };
 
-  const branchObj = BILTY_BRANCHES.samundri;
+  const branchObj = effectiveBranch;
   const isEnForm = selectedLanguage === 'en';
 
   return (
@@ -1106,7 +1186,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
 
             {/* Office Address & Watermark Note */}
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
-              <strong>ہیڈ آفس:</strong> {branchObj.addressUr} ({branchObj.addressEn}) • <strong>ہیلپ لائن:</strong> <span dir="ltr">{branchObj.phone}</span>
+              <strong>{branchObj.nameUr}:</strong> {branchObj.addressUr} ({branchObj.addressEn}) • <strong>ہیلپ لائن:</strong> <span dir="ltr">{branchObj.phoneNumbers}</span>
             </div>
 
             {/* Submit & Continue Button */}
@@ -1115,7 +1195,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 type="button"
                 onClick={() => {
                   try {
-                    localStorage.setItem('ah-bilty-branch', 'samundri');
+                    localStorage.setItem('ah-bilty-branch', effectiveBranch.id || DEFAULT_HEAD_OFFICE_BRANCH_ID);
                     localStorage.setItem('ah-bilty-lang', selectedLanguage);
                   } catch {}
                   setIsConfigModalOpen(false);
@@ -1201,31 +1281,35 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             )}
 
             <div className="flex items-center gap-1 sm:gap-1.5 bg-[#fdfbf7] p-1.5 rounded-full border border-[#ecece0] flex-wrap">
-              <button
-                type="button"
-                onClick={() => navigateSubTab('all')}
-                className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  subTab === 'all' ? 'bg-[#5a5a40] text-white shadow-xs' : 'text-[#8e8e75] hover:text-[#4a4a35]'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>{isUrdu ? 'تمام بلٹیاں' : 'All Bilties'}</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                  subTab === 'all' ? 'bg-amber-400 text-slate-950' : 'bg-slate-200 text-slate-700'
-                }`}>
-                  {bilties.length}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => navigateSubTab('create')}
-                className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  subTab === 'create' ? 'bg-[#5a5a40] text-white shadow-xs' : 'text-[#8e8e75] hover:text-[#4a4a35]'
-                }`}
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{t.createTab}</span>
-              </button>
+              {canViewAllBilties && (
+                <button
+                  type="button"
+                  onClick={() => navigateSubTab('all')}
+                  className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    subTab === 'all' ? 'bg-[#5a5a40] text-white shadow-xs' : 'text-[#8e8e75] hover:text-[#4a4a35]'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>{isUrdu ? 'تمام بلٹیاں' : 'All Bilties'}</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                    subTab === 'all' ? 'bg-amber-400 text-slate-950' : 'bg-slate-200 text-slate-700'
+                  }`}>
+                    {bilties.length}
+                  </span>
+                </button>
+              )}
+              {canCreateBilty && (
+                <button
+                  type="button"
+                  onClick={() => navigateSubTab('create')}
+                  className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    subTab === 'create' ? 'bg-[#5a5a40] text-white shadow-xs' : 'text-[#8e8e75] hover:text-[#4a4a35]'
+                  }`}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{t.createTab}</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => navigateSubTab('search')}
@@ -1261,11 +1345,15 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap text-xs sm:text-sm font-black text-slate-800">
                 <span className="flex items-center gap-1 text-[#0f2942]">
-                  📍 {isEnForm ? 'Office:' : 'ہیڈ آفس:'} <strong className="underline underline-offset-2">{isEnForm ? 'Samundri' : 'سمندری'}</strong>
+                  📍 {isEnForm ? 'Office:' : 'برانچ:'} <strong className="underline underline-offset-2">{isEnForm ? branchObj.nameEn : branchObj.nameUr}</strong>
                 </span>
                 <span className="text-slate-300">•</span>
                 <span className="flex items-center gap-1 text-[#0f2942]">
                   🌐 {isEnForm ? 'Language:' : 'زبان:'} <strong className="underline underline-offset-2">{selectedLanguage === 'en' ? 'English' : 'اردو'}</strong>
+                </span>
+                <span className="text-slate-300">•</span>
+                <span className="text-[11px] font-bold text-slate-600 dir-ltr">
+                  📞 {branchObj.phoneNumbers}
                 </span>
               </div>
               <div className="text-[11px] text-slate-600 mt-0.5">
@@ -1317,13 +1405,16 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         </datalist>
 
         {/* ALL BILTIES ARCHIVE / LEDGER */}
-        {subTab === 'all' && (
+        {subTab === 'all' && canViewAllBilties && (
           <BiltyAllRecordsTab
             isUrdu={isUrdu}
             bilties={bilties}
             filteredBilties={filteredBilties}
             dispatchStats={dispatchStats}
             branchAddress={isUrdu ? branchObj.addressUr : branchObj.addressEn}
+            officeTitle={isUrdu ? branchObj.nameUr : branchObj.nameEn}
+            canCreate={canCreateBilty}
+            canEditDelete={canEditDeleteBilty}
             allFilterQuery={allFilterQuery}
             deliveryFilter={deliveryFilter}
             sortBy={sortBy}
@@ -1354,7 +1445,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             }}
             onEditBilty={handleStartEditBilty}
             onDownloadZip={handleDownloadZip}
-            onRequestDelete={onDeleteBilty ? (b) => {
+            onRequestDelete={canEditDeleteBilty && onDeleteBilty ? (b) => {
               if (typeof window !== 'undefined' && window.history?.pushState) {
                 try { window.history.pushState({ tab: 'bilty', modal: 'delete' }, ''); } catch {}
               }
@@ -1363,7 +1454,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           />
         )}
 
-        {subTab === 'create' && (
+        {subTab === 'create' && (canCreateBilty || Boolean(editingBilty && canEditDeleteBilty)) && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
             {/* FORM */}
             <form onSubmit={handleGenerate} className="space-y-4">
@@ -1495,7 +1586,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     type="text"
                     value={sendingCity}
                     onChange={(e) => setSendingCity(e.target.value)}
-                    placeholder={isEnForm ? 'Samundri' : 'سمندری'}
+                    placeholder={isEnForm ? branchObj.nameEn : branchObj.nameUr}
                     className="w-full min-h-[44px] bg-[#fdfbf7] border border-[#ecece0] rounded-xl px-3.5 sm:px-4 py-2.5 sm:py-3 text-sm font-semibold text-[#4a4a35] focus:border-[#8b9d77] focus:outline-none transition-all"
                   />
                 </div>
@@ -2116,7 +2207,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             qrDataUrl={activePrintQrUrl}
             cardDataUrl={preloadedAssets.card}
             logoDataUrl={preloadedAssets.logo}
-            branch="samundri"
+            branch={(activePrintRecord.branchId || activePrintRecord.branch || effectiveBranch.id) as BiltyBranch}
+            branchConfig={effectiveBranch}
             language={activePrintRecord.language || selectedLanguage}
           />
         </div>

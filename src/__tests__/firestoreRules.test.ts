@@ -16,10 +16,15 @@ describe('Firestore Rules Security Audit & Structure', () => {
     expect(rulesContent).toContain("'email_verified' in request.auth.token");
   });
 
-  it('should enforce strict owner-only isBiltyAuthorized() without staff delegation bypasses', () => {
+  it('should enforce branch-scoped RBAC in isBiltyAuthorized() without legacy unsafe isStaffAuthorized delegation', () => {
     expect(rulesContent).toContain('function isBiltyAuthorized()');
-    expect(rulesContent).toMatch(/function isBiltyAuthorized\(\)\s*\{\s*return isOwner\(\);\s*\}/);
+    expect(rulesContent).toContain('function hasActiveUserBranchAccess()');
+    expect(rulesContent).toContain('function isBranchOwner(branchId)');
     expect(rulesContent).not.toContain('function isStaffAuthorized(');
+    expect(rulesContent).toContain('match /branches/{branchId}');
+    expect(rulesContent).toContain('match /userBranchAccess/{emailKey}');
+    expect(rulesContent).toContain('match /signedInDirectory/{emailKey}');
+    expect(rulesContent).toContain("emailKey != 'warraichgoods43@gmail.com'");
   });
 
   it('should explicitly deny top-level bilties collection', () => {

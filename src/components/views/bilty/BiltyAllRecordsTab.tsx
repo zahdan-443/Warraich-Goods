@@ -48,6 +48,9 @@ interface BiltyAllRecordsTabProps {
   onEditBilty: (b: BiltyRecord) => void;
   onDownloadZip: (b: BiltyRecord) => void;
   onRequestDelete?: (b: BiltyRecord) => void;
+  officeTitle?: string;
+  canCreate?: boolean;
+  canEditDelete?: boolean;
 }
 
 export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
@@ -72,7 +75,10 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
   onOpenVault,
   onEditBilty,
   onDownloadZip,
-  onRequestDelete
+  onRequestDelete,
+  officeTitle,
+  canCreate = true,
+  canEditDelete = true
 }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -100,7 +106,7 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
         <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              {isUrdu ? 'سمندری آفس' : 'Samundri Office'}
+              {officeTitle || (isUrdu ? 'سمندری آفس' : 'Samundri Office')}
             </span>
             <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
               <MapPin className="w-4 h-4" />
@@ -170,14 +176,16 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
               <span>{isUrdu ? 'ایکسل شیٹ (CSV)' : 'Export CSV'}</span>
             </button>
 
-            <button
-              type="button"
-              onClick={onNavigateToCreate}
-              className="px-3.5 py-2 bg-[#0f2942] hover:bg-[#1a3a5c] text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-            >
-              <Plus className="w-4 h-4 text-amber-400" />
-              <span>{isUrdu ? 'نئی بلٹی بنائیں' : 'New Bilty'}</span>
-            </button>
+            {canCreate && (
+              <button
+                type="button"
+                onClick={onNavigateToCreate}
+                className="px-3.5 py-2 bg-[#0f2942] hover:bg-[#1a3a5c] text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+              >
+                <Plus className="w-4 h-4 text-amber-400" />
+                <span>{isUrdu ? 'نئی بلٹی بنائیں' : 'New Bilty'}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -254,14 +262,16 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
               : (isUrdu ? 'براہ کرم سرچ کیورڈ یا فلٹرز تبدیل کر کے دوبارہ کوشش کریں۔' : 'Try clearing your search query or adjusting your filters.')}
           </p>
           {bilties.length === 0 ? (
-            <button
-              type="button"
-              onClick={onNavigateToCreate}
-              className="px-5 py-2.5 bg-[#0f2942] hover:bg-[#1a3a5c] text-white rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-2 cursor-pointer transition-all shadow-xs"
-            >
-              <Plus className="w-4 h-4 text-amber-400" />
-              <span>{isUrdu ? 'پہلی بلٹی بنائیں' : 'Create First Bilty'}</span>
-            </button>
+            canCreate ? (
+              <button
+                type="button"
+                onClick={onNavigateToCreate}
+                className="px-5 py-2.5 bg-[#0f2942] hover:bg-[#1a3a5c] text-white rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-2 cursor-pointer transition-all shadow-xs"
+              >
+                <Plus className="w-4 h-4 text-amber-400" />
+                <span>{isUrdu ? 'پہلی بلٹی بنائیں' : 'Create First Bilty'}</span>
+              </button>
+            ) : null
           ) : (
             <button
               type="button"
@@ -313,7 +323,7 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
 
                       <td className="py-3 px-3 whitespace-nowrap">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#0f2942] text-white">
-                          📍 سمندری
+                          📍 {isUrdu ? (b.branchNameUr || 'سمندری') : (b.branchNameEn || 'Samundri')}
                         </span>
                         <div className="text-[10px] text-slate-500 mt-0.5">
                           {b.language === 'en' ? 'English' : 'اردو'}
@@ -421,14 +431,16 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                               </span>
                             )}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => onEditBilty(b)}
-                            className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors cursor-pointer"
-                            title={isUrdu ? 'بلٹی ترمیم کریں' : 'Edit Bilty'}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
+                          {canEditDelete && (
+                            <button
+                              type="button"
+                              onClick={() => onEditBilty(b)}
+                              className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors cursor-pointer"
+                              title={isUrdu ? 'بلٹی ترمیم کریں' : 'Edit Bilty'}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => onDownloadZip(b)}
@@ -437,7 +449,7 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                           >
                             <FileArchive className="w-3.5 h-3.5" />
                           </button>
-                          {onRequestDelete && (
+                          {canEditDelete && onRequestDelete && (
                             <button
                               type="button"
                               onClick={() => onRequestDelete(b)}
@@ -471,7 +483,7 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                         {b.biltyNo}
                       </span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0f2942] text-white">
-                        📍 سمندری
+                        📍 {isUrdu ? (b.branchNameUr || 'سمندری') : (b.branchNameEn || 'Samundri')}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap justify-end">
@@ -553,14 +565,16 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                     </div>
 
                     <div className="grid grid-cols-4 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => onEditBilty(b)}
-                        className="py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors border border-indigo-200 dark:border-indigo-800"
-                      >
-                        <Pencil className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                        <span>{isUrdu ? 'ترمیم' : 'Edit'}</span>
-                      </button>
+                      {canEditDelete && (
+                        <button
+                          type="button"
+                          onClick={() => onEditBilty(b)}
+                          className="py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors border border-indigo-200 dark:border-indigo-800"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                          <span>{isUrdu ? 'ترمیم' : 'Edit'}</span>
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => onOpenVault(b)}
@@ -582,7 +596,7 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                         <FileArchive className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                         <span>ZIP</span>
                       </button>
-                      {onRequestDelete ? (
+                      {canEditDelete && onRequestDelete ? (
                         <button
                           type="button"
                           onClick={() => onRequestDelete(b)}

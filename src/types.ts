@@ -355,7 +355,7 @@ export interface FuelLogItem {
   cng?: number;
 }
 
-export type BiltyBranch = 'samundri' | 'kamalia';
+export type BiltyBranch = string;
 export type BiltyLanguage = 'ur' | 'en';
 export type BiltyColorTheme = 'pink' | 'yellow' | 'green';
 
@@ -458,6 +458,14 @@ export interface BiltyRecord {
   receivedBy?: string;
   pendingOnlineNumber?: boolean;
   branch?: BiltyBranch;
+  branchId?: string;
+  branchNameUr?: string;
+  branchNameEn?: string;
+  branchAddressUr?: string;
+  branchAddressEn?: string;
+  branchPhone?: string;
+  createdByEmail?: string;
+  createdByUid?: string;
   language?: BiltyLanguage;
   colorTheme?: BiltyColorTheme;
   receivingPointId?: string;
@@ -523,6 +531,58 @@ export interface UserProfile {
   lastLogin?: string;
   isBiltyAuthorized?: boolean;
 }
+
+export type BranchPresetRole =
+  | 'branch_owner'
+  | 'branch_manager'
+  | 'munshi'
+  | 'accountant'
+  | 'viewer';
+
+export interface BranchPermissions {
+  createBilty: boolean;
+  editDeleteBilty: boolean;
+  viewAllBilties: boolean;
+  khataAccess: boolean;
+  fleetAccess: boolean;
+  viewBranchReports: boolean;
+  manageBranchStaff: boolean;
+}
+
+export interface BranchConfig {
+  id: string;
+  nameUr: string;
+  nameEn: string;
+  addressUr: string;
+  addressEn: string;
+  phoneNumbers: string;
+  ntn?: string;
+  startingBiltySeq: number;
+  isHeadOffice?: boolean;
+  active: boolean;
+  ownerEmail?: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BranchStaffMember {
+  email: string;
+  uid?: string;
+  displayName?: string;
+  branchId: string;
+  branchNameUr?: string;
+  branchNameEn?: string;
+  branchOwnerEmail?: string;
+  presetRole: BranchPresetRole;
+  permissions: BranchPermissions;
+  status: 'active' | 'revoked';
+  addedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type UserBranchAccess = BranchStaffMember;
 
 export interface ContactItem {
   name: string;

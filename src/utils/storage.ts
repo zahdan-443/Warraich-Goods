@@ -62,6 +62,7 @@ import {
   enqueueOfflineAction,
   extractPublicBiltyVerification,
   findNextAvailableBiltySeq,
+  formatBiltySeqNumber,
   getBiltyAccessConfig,
   getErrorLogs,
   getNextBiltyNo,
@@ -77,6 +78,7 @@ import {
   getTombstones,
   initAmbientSyncEngine,
   isEntityTombstoned,
+  loadBranchBiltiesFromFirestore,
   loadFromFirestore,
   mergeTombstoneMaps,
   normalizeBiltyConfig,
@@ -138,6 +140,7 @@ export {
   extractPublicBiltyVerification,
   fetchAccountDeletionStatus,
   findNextAvailableBiltySeq,
+  formatBiltySeqNumber,
   getAccountDeletionStatus,
   getActiveUserScope,
   getBiltyAccessConfig,
@@ -158,6 +161,7 @@ export {
   initAmbientSyncEngine,
   inspectGuestScopeData,
   isEntityTombstoned,
+  loadBranchBiltiesFromFirestore,
   loadFromFirestore,
   mergeTombstoneMaps,
   normalizeBiltyConfig,
@@ -283,9 +287,9 @@ export function saveLocalRegisteredUsers(users: UserProfile[]): void {
 }
 
 export async function saveUserProfileInFirestore(profile: UserProfile): Promise<void> {
+  const cleanEmail = normalizeEmail(profile.email);
   try {
     const existing = getLocalRegisteredUsers();
-    const cleanEmail = normalizeEmail(profile.email);
     const filtered = existing.filter(
       u => normalizeEmail(u.email) !== cleanEmail && u.uid !== profile.uid
     );
@@ -316,6 +320,17 @@ export async function saveUserProfileInFirestore(profile: UserProfile): Promise<
         ),
         2500
       );
+      if (cleanEmail && !isOwnerEmail(cleanEmail)) {
+        import('./branchService')
+          .then(({ recordSignedInDirectoryUser }) =>
+            recordSignedInDirectoryUser({
+              email: cleanEmail,
+              displayName: profile.name || cleanEmail.split('@')[0],
+              uid: profile.uid
+            })
+          )
+          .catch(() => {});
+      }
     } catch {
       // Graceful offline fallback
     }

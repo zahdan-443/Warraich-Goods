@@ -195,6 +195,88 @@
         "status": { "type": "string" }
       },
       "required": ["biltyNo", "biltyDate", "origin", "destination", "goodsDescription", "weightOrQty", "vehicleNo", "status"]
+    },
+    "BranchConfig": {
+      "title": "BranchConfig",
+      "description": "Branch configuration with localized name, address, phone, starting Bilty sequence, and active flag",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64, "pattern": "^[a-z0-9_-]+$" },
+        "code": { "type": "string", "maxLength": 16 },
+        "nameUr": { "type": "string", "maxLength": 160 },
+        "nameEn": { "type": "string", "maxLength": 160 },
+        "addressUr": { "type": "string", "maxLength": 300 },
+        "addressEn": { "type": "string", "maxLength": 300 },
+        "phone": { "type": "string", "maxLength": 120 },
+        "startingBiltySeq": { "type": "number" },
+        "ownerEmail": { "type": "string", "maxLength": 160 },
+        "isHeadOffice": { "type": "boolean" },
+        "active": { "type": "boolean" },
+        "createdBy": { "type": "string", "maxLength": 160 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "nameUr", "nameEn", "addressUr", "addressEn", "phone", "startingBiltySeq", "active"]
+    },
+    "BranchStaffMember": {
+      "title": "BranchStaffMember",
+      "description": "Branch-scoped staff member role, custom permission toggles, and status (never stores App Creator)",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 160 },
+        "uid": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "branchId": { "type": "string", "maxLength": 64 },
+        "branchNameUr": { "type": "string", "maxLength": 160 },
+        "branchNameEn": { "type": "string", "maxLength": 160 },
+        "branchOwnerEmail": { "type": "string", "maxLength": 160 },
+        "presetRole": {
+          "type": "string",
+          "enum": ["branch_owner", "branch_manager", "munshi", "accountant", "viewer"]
+        },
+        "permissions": { "type": "object" },
+        "status": { "type": "string", "enum": ["active", "revoked"] },
+        "addedBy": { "type": "string", "maxLength": 160 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["email", "branchId", "presetRole", "permissions", "status"]
+    },
+    "UserBranchAccess": {
+      "title": "UserBranchAccess",
+      "description": "Flat per-email mirror of active or revoked branch assignment for instant auth lookup",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 160 },
+        "uid": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "branchId": { "type": "string", "maxLength": 64 },
+        "branchNameUr": { "type": "string", "maxLength": 160 },
+        "branchNameEn": { "type": "string", "maxLength": 160 },
+        "branchOwnerEmail": { "type": "string", "maxLength": 160 },
+        "presetRole": {
+          "type": "string",
+          "enum": ["branch_owner", "branch_manager", "munshi", "accountant", "viewer"]
+        },
+        "permissions": { "type": "object" },
+        "status": { "type": "string", "enum": ["active", "revoked"] },
+        "addedBy": { "type": "string", "maxLength": 160 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["email", "branchId", "presetRole", "permissions", "status"]
+    },
+    "SignedInDirectoryEntry": {
+      "title": "SignedInDirectoryEntry",
+      "description": "Signed-in Google user directory entry for branch staff onboarding (never records App Creator)",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 160 },
+        "uid": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "lastLogin": { "type": "string" }
+      },
+      "required": ["email", "uid", "lastLogin"]
     }
   },
   "firestore": {
@@ -209,6 +291,70 @@
     "/users/{userId}/collections/{collectionId}": {
       "schema": "UserData",
       "description": "User isolated nested collections for trips, vehicles, drivers, routes, fuel, and bilties"
+    },
+    "/branches/{branchId}": {
+      "schema": "BranchConfig",
+      "description": "Multi-branch definitions managed by App Creator"
+    },
+    "/branches/{branchId}/staff/{emailKey}": {
+      "schema": "BranchStaffMember",
+      "description": "Branch staff roster keyed by lowercase Gmail (Creator excluded)"
+    },
+    "/branches/{branchId}/collections/{collectionId}": {
+      "schema": "UserData",
+      "description": "Branch-scoped legacy collection mirrors and tombstones"
+    },
+    "/branches/{branchId}/biltiesDocs/{docId}": {
+      "schema": "BiltyRecord",
+      "description": "Branch-scoped individual Bilty documents"
+    },
+    "/branches/{branchId}/khataSettings/{settingId}": {
+      "schema": "UserData",
+      "description": "Branch-scoped Khata settings and tombstones config"
+    },
+    "/branches/{branchId}/ledgerAccounts/{accountId}": {
+      "schema": "UserData",
+      "description": "Branch-scoped party ledger accounts"
+    },
+    "/branches/{branchId}/ledgerAccounts/{accountId}/entries/{entryId}": {
+      "schema": "UserData",
+      "description": "Branch-scoped party ledger entries"
+    },
+    "/branches/{branchId}/cashbookEntries/{cashId}": {
+      "schema": "UserData",
+      "description": "Branch-scoped cashbook entries"
+    },
+    "/branches/{branchId}/khataBills/{billId}": {
+      "schema": "UserData",
+      "description": "Branch-scoped Khata invoices and bills"
+    },
+    "/branches/{branchId}/khataEmployees/{employeeId}": {
+      "schema": "UserData",
+      "description": "Branch-scoped employee master records"
+    },
+    "/branches/{branchId}/khataEmployeeEntries/{entryId}": {
+      "schema": "UserData",
+      "description": "Branch-scoped employee salary and advance entries"
+    },
+    "/branches/{branchId}/khataReceivingPoints/{pointId}": {
+      "schema": "UserData",
+      "description": "Branch-scoped receiving point master records"
+    },
+    "/branches/{branchId}/khataReceivingEntries/{entryId}": {
+      "schema": "UserData",
+      "description": "Branch-scoped receiving point ledger entries"
+    },
+    "/branches/{branchId}/khataDailyExpenses/{expenseId}": {
+      "schema": "UserData",
+      "description": "Branch-scoped categorized daily expenses"
+    },
+    "/userBranchAccess/{emailKey}": {
+      "schema": "UserBranchAccess",
+      "description": "Per-email branch assignment and permission mirror"
+    },
+    "/signedInDirectory/{emailKey}": {
+      "schema": "SignedInDirectoryEntry",
+      "description": "Non-owner signed-in Google user directory for easy staff selection"
     },
     "/publicBiltyVerifications/{docId}": {
       "schema": "PublicBiltyVerification",

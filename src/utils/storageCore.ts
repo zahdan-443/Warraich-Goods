@@ -10,6 +10,7 @@
 
 import { auth } from './firebase';
 import { getStorageScope, getScopedStorageKey } from './calculator';
+import { isOwnerEmail } from './authUtils';
 import {
   clearKeyDeletedForHydration,
   idbDelete,
@@ -110,6 +111,35 @@ export const KHATA_BASE_KEYS = [
   'dd_ledger_vehicle_expenses',
   'dd_ledger_vehicle_income'
 ] as const;
+
+const BRANCH_SCOPED_KEY_SET = new Set<string>([
+  'bilties',
+  'bilty-counter',
+  ...KHATA_BASE_KEYS
+]);
+
+export function isBranchScopedKey(baseKey: string): boolean {
+  return BRANCH_SCOPED_KEY_SET.has(baseKey);
+}
+
+export function getEffectiveScopeForKey(baseKey: string): string {
+  if (isBranchScopedKey(baseKey)) {
+    const branchId = safeStorage.getItem('wg_active_branch_id_v1');
+    const localEmail = safeStorage.getItem('ah-gmail-user');
+    if (branchId && branchId.trim() && !(isOwnerEmail(localEmail) && branchId.trim() === 'samundri')) {
+      return `branch_${branchId.trim()}`;
+    }
+  }
+  return getActiveUserScope();
+}
+
+export function getActiveBiltyScope(): string {
+  return getEffectiveScopeForKey('bilties');
+}
+
+export function getActiveKhataScope(): string {
+  return getEffectiveScopeForKey('dd_khata_accounts_v2');
+}
 
 function hasNonEmptyArrayJson(raw: string | null): boolean {
   if (!raw || raw === '[]') return false;
@@ -446,17 +476,17 @@ export function cleanupUploadedLegacyAndStagingKeys(targetScope: string): string
  * - Never treats `'[]'` as missing and never refills from guest/legacy/other emails.
  */
 export function getScopedItem(baseKey: string): string | null {
-  const scope = getActiveUserScope();
+  const scope = getEffectiveScopeForKey(baseKey);
   runOneTimeV2ToV3Migration(scope);
   const scopedKey = getScopedStorageKey(baseKey, scope);
   return safeStorage.getItem(scopedKey);
 }
 
 /**
- * Writes data strictly to the active user-scoped storage key.
+ * Writes data strictly to the active user/branch-scoped storage key.
  */
 export function setScopedItem(baseKey: string, value: string): void {
-  const scope = getActiveUserScope();
+  const scope = getEffectiveScopeForKey(baseKey);
   runOneTimeV2ToV3Migration(scope);
   const scopedKey = getScopedStorageKey(baseKey, scope);
   safeStorage.setItem(scopedKey, value);
@@ -466,7 +496,7 @@ export function setScopedItem(baseKey: string, value: string): void {
  * Explicitly clears a key across the active scope (plus its legacy aliases when requested).
  */
 export function removeScopedItem(baseKey: string, includeLegacyAliases = true): void {
-  const scope = getActiveUserScope();
+  const scope = getEffectiveScopeForKey(baseKey);
   safeStorage.removeItem(getScopedStorageKey(baseKey, scope));
   if (includeLegacyAliases) {
     safeStorage.removeItem(`${baseKey}_${scope}`);

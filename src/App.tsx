@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { ActiveTab, BiltyRecord, Driver, FuelLogItem, Language, RoutePreset, Trip, Vehicle, AppNotification, OfflineAction, UserRole } from './types';
+import { ActiveTab, BiltyRecord, BranchConfig, BranchPermissions, Driver, FuelLogItem, Language, RoutePreset, Trip, Vehicle, AppNotification, OfflineAction, UserBranchAccess, UserRole } from './types';
 import {
   getStoredDrivers,
   getStoredFuelLog,
@@ -23,6 +23,8 @@ import {
   deletePublicBiltyVerification,
   getNextBiltyNo,
   loadFromFirestore,
+  loadBranchBiltiesFromFirestore,
+  formatBiltySeqNumber,
   getBiltyAccessConfig,
   subscribeToBiltyAccess,
   updateBiltyAccessInFirestore,
@@ -41,7 +43,31 @@ import {
   type GuestScopeSummary,
   type AccountDeletionRequest
 } from './utils/storage';
-import { OWNER_EMAIL, DEFAULT_AUTHORIZED_EMAILS, isOwnerEmail } from './utils/authUtils';
+import {
+  OWNER_EMAIL,
+  DEFAULT_AUTHORIZED_EMAILS,
+  DEFAULT_HEAD_OFFICE_BRANCH_ID,
+  FULL_OWNER_PERMISSIONS,
+  hasAnyBiltyPermission,
+  isOwnerEmail,
+  resolveEffectivePermissions
+} from './utils/authUtils';
+import {
+  DEFAULT_SAMUNDRI_BRANCH,
+  getActiveBranchId,
+  getCachedBranchById,
+  getCachedBranches,
+  setActiveBranchId
+} from './utils/branchContext';
+import {
+  ensureSamundriBranchInFirestore,
+  fetchBranchById,
+  getCachedUserBranchAccess,
+  recordSignedInDirectoryUser,
+  subscribeToBranchesForOwner,
+  subscribeToUserBranchAccess
+} from './utils/branchService';
+import { fetchKhataFromFirestore } from './utils/ledgerStorage';
 import { fetchLiveFuelPrices } from './utils/fuelPrice';
 import { runScheduledDailyCloudBackup } from './utils/backupService';
 import { pruneExpiredPreRestoreSnapshotsIdbOnly } from './utils/persistentStorage';
@@ -82,6 +108,7 @@ const DashcamView = import.meta.env.VITE_STORE_BUILD === 'true'
 const LedgerView = React.lazy(() => import('./components/views/LedgerView').then(m => ({ default: m.LedgerView })));
 import { ViewHeader } from './components/ViewHeader';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
+import { BranchStaffModal } from './components/BranchStaffModal';
 import { InstallPwaModal } from './components/InstallPwaModal';
 import { GuestSavePromptModal } from './components/GuestSavePromptModal';
 import { GuestImportPromptModal } from './components/GuestImportPromptModal';
@@ -193,10 +220,66 @@ export default function App() {
   const [notifications, setNotifications] = useState<AppNotification[]>(() => getStoredNotifications());
   const [isOffline, setIsOffline] = useState(false);
   const [showTopMenu, setShowTopMenu] = useState(false);
+  const [branches, setBranches] = useState<BranchConfig[]>(() => getCachedBranches());
+  const [selectedOwnerBranchId, setSelectedOwnerBranchId] = useState<string>(() => {
+    return getActiveBranchId() || DEFAULT_HEAD_OFFICE_BRANCH_ID;
+  });
+  const [userBranchAccess, setUserBranchAccess] = useState<UserBranchAccess | null>(() => {
+    const email = localStorage.getItem('ah-gmail-user');
+    return email && !isOwnerEmail(email) ? getCachedUserBranchAccess(email) : null;
+  });
+  const [staffBranchConfig, setStaffBranchConfig] = useState<BranchConfig | null>(() => {
+    const email = localStorage.getItem('ah-gmail-user');
+    const cached = email && !isOwnerEmail(email) ? getCachedUserBranchAccess(email) : null;
+    return cached?.status === 'active' ? getCachedBranchById(cached.branchId) : null;
+  });
+  const [showBranchStaffModal, setShowBranchStaffModal] = useState(false);
 
-  // Authorization check via centralized owner helper
+  // Authorization & active branch resolution
   const isOwner = isOwnerEmail(userEmail);
-  const isBiltyAuthorized = isOwner;
+  const activeBranch: BranchConfig | null = React.useMemo(() => {
+    if (isOwner) {
+      return (
+        branches.find(b => b.id === selectedOwnerBranchId) ||
+        getCachedBranchById(selectedOwnerBranchId) ||
+        DEFAULT_SAMUNDRI_BRANCH
+      );
+    }
+    if (userBranchAccess && userBranchAccess.status === 'active') {
+      return (
+        staffBranchConfig ||
+        getCachedBranchById(userBranchAccess.branchId) || {
+          ...DEFAULT_SAMUNDRI_BRANCH,
+          id: userBranchAccess.branchId,
+          nameUr: userBranchAccess.branchNameUr || userBranchAccess.branchId,
+          nameEn: userBranchAccess.branchNameEn || userBranchAccess.branchId,
+          addressUr: DEFAULT_SAMUNDRI_BRANCH.addressUr,
+          addressEn: DEFAULT_SAMUNDRI_BRANCH.addressEn,
+          phoneNumbers: DEFAULT_SAMUNDRI_BRANCH.phoneNumbers,
+          startingBiltySeq: 1001,
+          active: true,
+          createdAt: userBranchAccess.updatedAt,
+          updatedAt: userBranchAccess.updatedAt
+        }
+      );
+    }
+    return null;
+  }, [isOwner, branches, selectedOwnerBranchId, userBranchAccess, staffBranchConfig]);
+
+  const effectiveBranchPermissions: BranchPermissions = React.useMemo(() => {
+    if (isOwner) return { ...FULL_OWNER_PERMISSIONS };
+    return resolveEffectivePermissions(userEmail, userBranchAccess, activeBranch);
+  }, [isOwner, userEmail, userBranchAccess, activeBranch]);
+
+  const isBiltyAuthorized = isOwner || hasAnyBiltyPermission(effectiveBranchPermissions);
+  const canManageBranchStaff = !isOwner && Boolean(effectiveBranchPermissions.manageBranchStaff && activeBranch);
+  const khataAllowed =
+    !isOwner && userBranchAccess && userBranchAccess.status === 'active'
+      ? effectiveBranchPermissions.khataAccess
+      : true;
+
+  const selectedOwnerBranchIdRef = useRef(selectedOwnerBranchId);
+  selectedOwnerBranchIdRef.current = selectedOwnerBranchId;
 
   // Stored state
   const [trips, setTrips] = useState<Trip[]>(() => getStoredTrips());
@@ -393,6 +476,9 @@ export default function App() {
   const showBiltyAccessModalRef = useRef(showBiltyAccessModal);
   showBiltyAccessModalRef.current = showBiltyAccessModal;
 
+  const showBranchStaffModalRef = useRef(showBranchStaffModal);
+  showBranchStaffModalRef.current = showBranchStaffModal;
+
   useEffect(() => {
     // 1. Android Notification Channel & Permission setup on app initialization
     if (Capacitor.isNativePlatform()) {
@@ -412,6 +498,10 @@ export default function App() {
         }
         if (showBiltyAccessModalRef.current) {
           setShowBiltyAccessModal(false);
+          return;
+        }
+        if (showBranchStaffModalRef.current) {
+          setShowBranchStaffModal(false);
           return;
         }
 
@@ -458,6 +548,10 @@ export default function App() {
       }
       if (showBiltyAccessModalRef.current) {
         setShowBiltyAccessModal(false);
+        return;
+      }
+      if (showBranchStaffModalRef.current) {
+        setShowBranchStaffModal(false);
         return;
       }
 
@@ -754,11 +848,32 @@ export default function App() {
     logoutUser();
     setUserEmail(null);
     setCurrentUid(null);
+    setUserBranchAccess(null);
+    setStaffBranchConfig(null);
+    setShowBranchStaffModal(false);
+    setActiveBranchId(null);
     setPendingGuestImport(null);
     localStorage.removeItem('ah-gmail-user');
     localStorage.removeItem('ah-user-role');
     setRole('driver');
     saveStoredRole('driver');
+    setBilties(getStoredBilties());
+    window.dispatchEvent(new CustomEvent('driverdost:storage_hydrated'));
+  };
+
+  const handleSelectOwnerBranch = async (branchId: string) => {
+    if (!isOwner) return;
+    const targetId = branchId || DEFAULT_HEAD_OFFICE_BRANCH_ID;
+    setSelectedOwnerBranchId(targetId);
+    setActiveBranchId(targetId);
+    try {
+      await Promise.all([
+        loadBranchBiltiesFromFirestore(targetId),
+        fetchKhataFromFirestore()
+      ]);
+    } catch {}
+    setBilties(getStoredBilties());
+    window.dispatchEvent(new CustomEvent('driverdost:storage_hydrated'));
   };
 
   // Route protection: if active tab is bilty and user is not authorized, redirect to home
@@ -981,6 +1096,8 @@ export default function App() {
     });
 
     let unsubBilty: (() => void) | null = null;
+    let unsubBranches: (() => void) | null = null;
+    let unsubUserAccess: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -989,22 +1106,75 @@ export default function App() {
         setCurrentUid(user.uid);
         localStorage.setItem('ah-gmail-user', userMail);
 
-        const isOwnerEmail = userMail.toLowerCase() === OWNER_EMAIL.toLowerCase();
-        const activeRole: UserRole = isOwnerEmail ? 'owner' : 'driver';
+        const ownerAccount = isOwnerEmail(userMail);
+        const activeRole: UserRole = ownerAccount ? 'owner' : 'driver';
         setRole(activeRole);
         saveStoredRole(activeRole);
 
-        // Strictly Fleet Owner warraichgoods43@gmail.com can fetch and subscribe to confidential bilty access config
-        if (isOwnerEmail && !unsubBilty) {
-          unsubBilty = subscribeToBiltyAccess((config) => {
-            setBiltyAllowedUIDs(config.allowedUIDs);
-            setBiltyAllowedEmails(config.allowedEmails);
+        if (ownerAccount) {
+          if (unsubUserAccess) {
+            unsubUserAccess();
+            unsubUserAccess = null;
+          }
+          setUserBranchAccess(null);
+          setStaffBranchConfig(null);
+          const ownerBranchId = selectedOwnerBranchIdRef.current || DEFAULT_HEAD_OFFICE_BRANCH_ID;
+          setActiveBranchId(ownerBranchId);
+
+          if (!unsubBilty) {
+            unsubBilty = subscribeToBiltyAccess((config) => {
+              setBiltyAllowedUIDs(config.allowedUIDs);
+              setBiltyAllowedEmails(config.allowedEmails);
+            });
+          }
+          ensureSamundriBranchInFirestore().catch(() => {});
+          if (!unsubBranches) {
+            unsubBranches = subscribeToBranchesForOwner((list) => {
+              setBranches(list);
+            });
+          }
+        } else {
+          if (unsubBilty) {
+            unsubBilty();
+            unsubBilty = null;
+            setBiltyAllowedUIDs([]);
+            setBiltyAllowedEmails([]);
+          }
+          if (unsubBranches) {
+            unsubBranches();
+            unsubBranches = null;
+          }
+          if (unsubUserAccess) {
+            unsubUserAccess();
+            unsubUserAccess = null;
+          }
+
+          recordSignedInDirectoryUser({
+            uid: user.uid,
+            email: userMail,
+            displayName: user.displayName || undefined
+          }).catch(() => {});
+
+          unsubUserAccess = subscribeToUserBranchAccess(userMail, async (access) => {
+            setUserBranchAccess(access);
+            if (access && access.status === 'active') {
+              setActiveBranchId(access.branchId);
+              const fetchedBranch = await fetchBranchById(access.branchId).catch(() => null);
+              setStaffBranchConfig(fetchedBranch);
+              await Promise.all([
+                loadBranchBiltiesFromFirestore(access.branchId).catch(() => {}),
+                fetchKhataFromFirestore().catch(() => {})
+              ]);
+              setBilties(getStoredBilties());
+              window.dispatchEvent(new CustomEvent('driverdost:storage_hydrated'));
+            } else {
+              setStaffBranchConfig(null);
+              setActiveBranchId(null);
+              setShowBranchStaffModal(false);
+              setBilties(getStoredBilties());
+              window.dispatchEvent(new CustomEvent('driverdost:storage_hydrated'));
+            }
           });
-        } else if (!isOwnerEmail && unsubBilty) {
-          unsubBilty();
-          unsubBilty = null;
-          setBiltyAllowedUIDs([]);
-          setBiltyAllowedEmails([]);
         }
 
         // Sync user profile in Firestore
@@ -1017,6 +1187,15 @@ export default function App() {
 
         try {
           await loadFromFirestore(user.uid);
+          if (ownerAccount) {
+            const ownerBranchId = selectedOwnerBranchIdRef.current || DEFAULT_HEAD_OFFICE_BRANCH_ID;
+            if (ownerBranchId !== DEFAULT_HEAD_OFFICE_BRANCH_ID) {
+              await Promise.all([
+                loadBranchBiltiesFromFirestore(ownerBranchId).catch(() => {}),
+                fetchKhataFromFirestore().catch(() => {})
+              ]);
+            }
+          }
         } catch (err) {
           console.warn("Firestore load skipped:", err);
         }
@@ -1026,7 +1205,7 @@ export default function App() {
         setRoutes(getStoredRoutes());
         setFuelLogs(getStoredFuelLog());
         setBilties(getStoredBilties());
-        if (isOwnerEmail) {
+        if (ownerAccount) {
           migrateLegacyBiltyLegalVaults(user.uid)
             .then(() => pullRemoteBiltyAttachmentsForOwner(user.uid))
             .then(() => runDailyBiltyAttachmentCleanup(user.uid))
@@ -1039,8 +1218,20 @@ export default function App() {
           unsubBilty();
           unsubBilty = null;
         }
+        if (unsubBranches) {
+          unsubBranches();
+          unsubBranches = null;
+        }
+        if (unsubUserAccess) {
+          unsubUserAccess();
+          unsubUserAccess = null;
+        }
         setBiltyAllowedUIDs([]);
         setBiltyAllowedEmails([]);
+        setUserBranchAccess(null);
+        setStaffBranchConfig(null);
+        setShowBranchStaffModal(false);
+        setActiveBranchId(null);
         setUserEmail(null);
         setCurrentUid(null);
         localStorage.removeItem('ah-gmail-user');
@@ -1059,6 +1250,8 @@ export default function App() {
 
     return () => {
       if (typeof unsubBilty === 'function') unsubBilty();
+      if (typeof unsubBranches === 'function') unsubBranches();
+      if (typeof unsubUserAccess === 'function') unsubUserAccess();
       unsubscribeAuth();
     };
   }, []);
@@ -1284,10 +1477,11 @@ export default function App() {
     );
     if (existingSameNo) {
       try {
+        const allowOver9999 = Number(activeBranch?.startingBiltySeq || 1001) > 9999;
         const rawDigits = String(finalBiltyNo).replace(/\D/g, '');
-        const seqNum = parseInt(rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10) || 1001;
-        const nextSeq = findNextAvailableBiltySeq(seqNum + 1);
-        finalBiltyNo = `WG-${nextSeq}`;
+        const seqNum = parseInt(!allowOver9999 && rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10) || (activeBranch?.startingBiltySeq || 1001);
+        const nextSeq = findNextAvailableBiltySeq(seqNum + 1, allowOver9999);
+        finalBiltyNo = formatBiltySeqNumber(nextSeq);
       } catch {
         finalBiltyNo = `WG-${Date.now().toString().slice(-6)}`;
       }
@@ -1296,6 +1490,14 @@ export default function App() {
     const nowIso = new Date().toISOString();
     const newRecord: BiltyRecord = {
       ...recordObj,
+      branchId: recordObj.branchId || activeBranch?.id || DEFAULT_HEAD_OFFICE_BRANCH_ID,
+      branchNameUr: recordObj.branchNameUr || activeBranch?.nameUr,
+      branchNameEn: recordObj.branchNameEn || activeBranch?.nameEn,
+      branchAddressUr: recordObj.branchAddressUr || activeBranch?.addressUr,
+      branchAddressEn: recordObj.branchAddressEn || activeBranch?.addressEn,
+      branchPhone: recordObj.branchPhone || activeBranch?.phoneNumbers,
+      createdByEmail: recordObj.createdByEmail || userEmail || undefined,
+      createdByUid: recordObj.createdByUid || currentUid || undefined,
       biltyNo: finalBiltyNo,
       id: Date.now(),
       createdAt: recordObj.createdAt || nowIso,
@@ -1318,6 +1520,7 @@ export default function App() {
   };
 
   const handleUpdateBilty = (updatedRecord: BiltyRecord) => {
+    if (!isOwner && !effectiveBranchPermissions.editDeleteBilty) return;
     const current = getStoredBilties();
     const existing = current.find((b) => b.id === updatedRecord.id);
     const stampedRecord: BiltyRecord = {
@@ -1345,6 +1548,7 @@ export default function App() {
   };
 
   const handleDeleteBilty = (id: number) => {
+    if (!isOwner && !effectiveBranchPermissions.editDeleteBilty) return;
     const current = getStoredBilties();
     const target = current.find((b) => b.id === id);
     const updated = current.filter((b) => b.id !== id);
@@ -1479,6 +1683,9 @@ export default function App() {
               onCloseTopMenu={() => setShowTopMenu(false)}
               onOpenBiltyAccess={() => setShowBiltyAccessModal(true)}
               authLoading={authLoading}
+              activeBranch={activeBranch}
+              canManageBranchStaff={canManageBranchStaff}
+              onOpenBranchStaffModal={() => setShowBranchStaffModal(true)}
             />
           )}
 
@@ -1550,6 +1757,12 @@ export default function App() {
                   onOpenBiltyAccess={() => setShowBiltyAccessModal(true)}
                   onSaveTrip={handleSaveTrip}
                   onLogFuelPrice={handleLogFuelPrice}
+                  activeBranch={activeBranch}
+                  branches={isOwner ? branches : (activeBranch ? [activeBranch] : [])}
+                  branchPermissions={effectiveBranchPermissions}
+                  canManageBranchStaff={canManageBranchStaff}
+                  onSelectBranch={isOwner ? handleSelectOwnerBranch : undefined}
+                  onOpenBranchStaffModal={canManageBranchStaff ? () => setShowBranchStaffModal(true) : undefined}
                 />
               )}
 
@@ -1637,6 +1850,10 @@ export default function App() {
               onUpdateBilty={handleUpdateBilty}
               onDeleteBilty={handleDeleteBilty}
               onNavigate={handleNavigate}
+              activeBranch={activeBranch}
+              branchPermissions={effectiveBranchPermissions}
+              currentUserEmail={userEmail}
+              currentUserUid={currentUid}
             />
           )}
 
@@ -1689,6 +1906,8 @@ export default function App() {
               onNavigate={handleNavigate}
               userEmail={userEmail}
               currentUserUid={currentUid}
+              activeBranch={activeBranch}
+              khataAllowed={khataAllowed}
             />
           )}
         </React.Suspense>
@@ -1706,6 +1925,22 @@ export default function App() {
             setBiltyAllowedEmails(allowedEmails);
           }}
           lang={lang}
+          activeBranchId={activeBranch?.id || selectedOwnerBranchId}
+          onSelectActiveBranch={(branchId) => {
+            void handleSelectOwnerBranch(branchId);
+          }}
+          onBranchesUpdated={(updatedBranches) => {
+            setBranches(updatedBranches);
+          }}
+        />
+
+        <BranchStaffModal
+          isOpen={showBranchStaffModal && canManageBranchStaff}
+          onClose={() => setShowBranchStaffModal(false)}
+          lang={lang}
+          branch={activeBranch}
+          currentUserEmail={userEmail}
+          canManageStaff={canManageBranchStaff}
         />
 
         <InstallPwaModal lang={lang} />

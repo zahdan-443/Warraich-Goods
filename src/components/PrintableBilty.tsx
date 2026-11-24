@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { BiltyRecord, BiltyBranch, BiltyLanguage, BiltyColorTheme } from '../types';
+import { BiltyRecord, BiltyBranch, BiltyLanguage, BiltyColorTheme, BranchConfig } from '../types';
 import { getCachedCompanyProfile } from '../utils/storage';
+import { DEFAULT_SAMUNDRI_BRANCH, getCachedBranchById } from '../utils/branchContext';
 import { biltyOfficialIconData } from '../assets/dashboardIcons';
 import { handleEmblemImgError } from '../utils/assetResolver';
 import { getLogoBase64 } from '../utils/pdfHelper';
@@ -19,6 +20,7 @@ interface PrintableBiltyProps {
   cardDataUrl?: string;
   logoDataUrl?: string;
   branch?: BiltyBranch;
+  branchConfig?: BranchConfig | null;
   language?: BiltyLanguage;
   colorTheme?: BiltyColorTheme;
 }
@@ -51,6 +53,8 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
   record,
   qrDataUrl: propQrUrl,
   logoDataUrl: propLogoUrl,
+  branch: propBranch,
+  branchConfig: propBranchConfig,
   language: propLanguage
 }) => {
   const [internalQrUrl, setInternalQrUrl] = useState<string>('');
@@ -62,12 +66,27 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
   const isEn = activeLang === 'en';
   const theme = UNIFIED_BILTY_PALETTE;
 
-  const branchInfo = BILTY_BRANCHES.samundri;
+  const lookupBranchId = record.branchId || record.branch || propBranch;
+  const cachedBranch =
+    (propBranchConfig && (!lookupBranchId || propBranchConfig.id === lookupBranchId)
+      ? propBranchConfig
+      : null) ||
+    getCachedBranchById(lookupBranchId) ||
+    propBranchConfig ||
+    DEFAULT_SAMUNDRI_BRANCH;
+
+  const branchInfo = {
+    nameUr: record.branchNameUr || cachedBranch.nameUr || BILTY_BRANCHES.samundri.nameUr,
+    nameEn: record.branchNameEn || cachedBranch.nameEn || BILTY_BRANCHES.samundri.nameEn,
+    addressUr: record.branchAddressUr || cachedBranch.addressUr || BILTY_BRANCHES.samundri.addressUr,
+    addressEn: record.branchAddressEn || cachedBranch.addressEn || BILTY_BRANCHES.samundri.addressEn,
+    phone: record.branchPhone || cachedBranch.phoneNumbers || BILTY_BRANCHES.samundri.phone
+  };
   const cleanUrduCompanyName = (company.nameUr || 'وڑائچ گڈز ٹرانسپورٹ کمپنی')
     .replace(/\s*\(رجسٹرڈ\)\s*/g, '')
     .trim();
   const phoneLines = branchInfo.phone
-    .split(',')
+    .split(/[,/\n]+/)
     .map((p) => p.trim())
     .filter(Boolean);
 

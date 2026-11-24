@@ -8,7 +8,8 @@ import {
   Trip,
   Driver,
   BiltyRecord,
-  LedgerSubTab
+  LedgerSubTab,
+  BranchConfig
 } from '../../types';
 import {
   getLedgerAccounts,
@@ -74,7 +75,9 @@ import {
   Receipt,
   MapPin,
   Wallet,
-  BarChart3
+  BarChart3,
+  Building2,
+  Lock
 } from 'lucide-react';
 import { GoogleAuthProvider, reauthenticateWithPopup, signInWithPopup } from 'firebase/auth';
 import { auth } from '../../utils/firebase';
@@ -98,6 +101,8 @@ interface LedgerViewProps {
   onNavigate?: (tab: string) => void;
   userEmail?: string | null;
   currentUserUid?: string | null;
+  activeBranch?: BranchConfig | null;
+  khataAllowed?: boolean;
 }
 
 export const LedgerView: React.FC<LedgerViewProps> = ({
@@ -109,7 +114,9 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
   isBiltyAuthorized = false,
   onNavigate,
   userEmail = null,
-  currentUserUid = null
+  currentUserUid = null,
+  activeBranch = null,
+  khataAllowed = true
 }) => {
   const isUrdu = lang === 'ur';
   const [activeModule, setActiveModule] = useState<LedgerSubTab>('parties');
@@ -195,7 +202,16 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
 
   useEffect(() => {
     reloadData();
-  }, [isBiltyAuthorized]);
+    const onHydrated = () => reloadData();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('driverdost:storage_hydrated', onHydrated);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('driverdost:storage_hydrated', onHydrated);
+      }
+    };
+  }, [isBiltyAuthorized, activeBranch?.id]);
 
   // Handle PIN Lock Initialization & Auto-Lock on Backgrounding
   useEffect(() => {
@@ -466,6 +482,38 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
         : 'Sign in with Google to save document balances securely on Firebase Cloud.'
     );
   };
+
+  if (khataAllowed === false) {
+    return (
+      <div
+        dir={isUrdu ? 'rtl' : 'ltr'}
+        className="w-full max-w-xl mx-auto px-4 py-12 font-serif"
+      >
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 flex items-center justify-center mx-auto">
+            <Lock className="w-7 h-7" />
+          </div>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+            {isUrdu ? 'کھاتہ و لیجر تک رسائی محدود ہے' : 'Khata Module Restricted'}
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            {isUrdu
+              ? 'آپ کی موجودہ برانچ کی ذمہ داری میں کھاتہ و لیجر ماڈیول فعال نہیں ہے۔ رسائی کے لیے اپنے برانچ ایڈمن سے رابطہ کریں۔'
+              : 'The Khata and Ledger module is currently disabled for your branch role. Please contact your branch administrator for access.'}
+          </p>
+          {onNavigate && (
+            <button
+              type="button"
+              onClick={() => onNavigate('home')}
+              className="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold cursor-pointer hover:bg-slate-800 transition-colors"
+            >
+              {isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // ----------------- RENDER: PIN LOCK SCREEN -----------------
   if (!isUnlocked && settings.pinHash) {
@@ -849,9 +897,15 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
       {/* Top Header Bar */}
       <div className="flex items-center justify-between pt-1.5 pb-1 mb-2 shrink-0 font-serif">
         <div>
-          <h1 className="text-base sm:text-lg font-bold font-serif text-slate-900 dark:text-white flex items-center gap-2">
+          <h1 className="text-base sm:text-lg font-bold font-serif text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
             <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 shrink-0" />
             <span>{isUrdu ? 'لین دین و حساب کتاب' : 'Udhaar & Party Ledger'}</span>
+            {activeBranch && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#0f2942] text-amber-300">
+                <Building2 className="w-3 h-3" />
+                <span>{isUrdu ? activeBranch.nameUr : activeBranch.nameEn}</span>
+              </span>
+            )}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
             {settings.businessName ? `${settings.businessName} • ` : ''}

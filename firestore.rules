@@ -15,9 +15,115 @@ service cloud.firestore {
         (!('email_verified' in request.auth.token) || request.auth.token.email_verified == true);
     }
 
-    // Helper function to check if user is authorized to manage official documents (strictly verified Fleet Owner)
+    // Verified non-owner caller helpers for Multi-Branch RBAC
+    function isVerifiedCaller() {
+      return isSignedIn() &&
+        request.auth.token != null &&
+        request.auth.token.email != null &&
+        (!('email_verified' in request.auth.token) || request.auth.token.email_verified == true);
+    }
+
+    function callerEmailLower() {
+      return request.auth.token.email.lower();
+    }
+
+    function getUserAccessPath(emailKey) {
+      return /databases/$(database)/documents/userBranchAccess/$(emailKey);
+    }
+
+    function getBranchPath(branchId) {
+      return /databases/$(database)/documents/branches/$(branchId);
+    }
+
+    function getActiveAccessData() {
+      return get(getUserAccessPath(callerEmailLower())).data;
+    }
+
+    function hasActiveUserBranchAccess() {
+      return isVerifiedCaller() &&
+        exists(getUserAccessPath(callerEmailLower())) &&
+        getActiveAccessData().status == 'active' &&
+        getActiveAccessData().branchId is string &&
+        exists(getBranchPath(getActiveAccessData().branchId)) &&
+        get(getBranchPath(getActiveAccessData().branchId)).data.active == true;
+    }
+
+    function hasActiveBranchAccessDoc(branchId) {
+      return isVerifiedCaller() &&
+        exists(getUserAccessPath(callerEmailLower())) &&
+        getActiveAccessData().status == 'active' &&
+        getActiveAccessData().branchId == branchId &&
+        exists(getBranchPath(branchId)) &&
+        get(getBranchPath(branchId)).data.active == true;
+    }
+
+    function isActiveBranchMember(branchId) {
+      return isOwner() || hasActiveBranchAccessDoc(branchId);
+    }
+
+    function isBranchOwner(branchId) {
+      return isOwner() || (
+        hasActiveBranchAccessDoc(branchId) &&
+        (
+          getActiveAccessData().presetRole == 'branch_owner' ||
+          ('permissions' in getActiveAccessData() && getActiveAccessData().permissions.manageBranchStaff == true)
+        )
+      );
+    }
+
+    function hasBranchBiltyWrite(branchId) {
+      return isOwner() || (
+        hasActiveBranchAccessDoc(branchId) &&
+        'permissions' in getActiveAccessData() &&
+        (
+          getActiveAccessData().permissions.createBilty == true ||
+          getActiveAccessData().permissions.editDeleteBilty == true
+        )
+      );
+    }
+
+    function hasBranchBiltyDelete(branchId) {
+      return isOwner() || (
+        hasActiveBranchAccessDoc(branchId) &&
+        'permissions' in getActiveAccessData() &&
+        getActiveAccessData().permissions.editDeleteBilty == true
+      );
+    }
+
+    function hasBranchBiltyRead(branchId) {
+      return isOwner() || (
+        hasActiveBranchAccessDoc(branchId) &&
+        'permissions' in getActiveAccessData() &&
+        (
+          getActiveAccessData().permissions.createBilty == true ||
+          getActiveAccessData().permissions.editDeleteBilty == true ||
+          getActiveAccessData().permissions.viewAllBilties == true
+        )
+      );
+    }
+
+    function hasBranchKhataAccess(branchId) {
+      return isOwner() || (
+        hasActiveBranchAccessDoc(branchId) &&
+        'permissions' in getActiveAccessData() &&
+        (
+          getActiveAccessData().permissions.khataAccess == true ||
+          getActiveAccessData().permissions.viewBranchReports == true
+        )
+      );
+    }
+
+    // Helper function to check if caller is authorized for official Bilty counters & public verification writes
     function isBiltyAuthorized() {
-      return isOwner();
+      return isOwner() || (
+        hasActiveUserBranchAccess() &&
+        'permissions' in getActiveAccessData() &&
+        (
+          getActiveAccessData().permissions.createBilty == true ||
+          getActiveAccessData().permissions.editDeleteBilty == true ||
+          getActiveAccessData().permissions.viewAllBilties == true
+        )
+      );
     }
 
     // Helper function to prevent non-owners from promoting themselves or setting admin/owner roles
@@ -157,9 +263,116 @@ service cloud.firestore {
       allow read, write: if isOwner();
     }
 
-    // Explicitly DENY top-level private bilties (private bilties live strictly under users/{userId}/collections/bilties)
+    // Explicitly DENY top-level private bilties (private bilties live strictly under users/{userId}/collections/bilties or branches/{branchId}/biltiesDocs)
     match /bilties/{biltyId} {
       allow read, write: if false;
+    }
+
+    // Multi-Branch configuration, staff rosters (App Creator excluded), and branch-scoped Bilty & Khata data
+    match /branches/{branchId} {
+      allow read: if isActiveBranchMember(branchId);
+      allow write: if isOwner();
+
+      // Staff roster managed by App Owner or that branch's Branch Owner (Creator Gmail never allowed)
+      match /staff/{emailKey} {
+        allow read: if isBranchOwner(branchId);
+        allow create, update: if isBranchOwner(branchId) &&
+                                 emailKey == emailKey.lower() &&
+                                 emailKey != 'warraichgoods43@gmail.com' &&
+                                 request.resource.data.email is string &&
+                                 request.resource.data.email.lower() == emailKey &&
+                                 request.resource.data.branchId == branchId &&
+                                 request.resource.data.presetRole in ['branch_owner', 'branch_manager', 'munshi', 'accountant', 'viewer'] &&
+                                 request.resource.data.status in ['active', 'revoked'];
+        allow delete: if isBranchOwner(branchId);
+      }
+
+      // Branch-scoped Bilty individual documents
+      match /biltiesDocs/{docId} {
+        allow read: if hasBranchBiltyRead(branchId);
+        allow create, update: if hasBranchBiltyWrite(branchId);
+        allow delete: if hasBranchBiltyDelete(branchId);
+      }
+
+      // Branch-scoped collection mirrors & tombstones
+      match /collections/{collectionId} {
+        allow read: if (collectionId == 'bilties' && hasBranchBiltyRead(branchId)) ||
+                       (collectionId == 'tombstones' && (hasBranchBiltyRead(branchId) || hasBranchKhataAccess(branchId))) ||
+                       isOwner();
+        allow write: if (collectionId == 'bilties' && hasBranchBiltyWrite(branchId)) ||
+                        (collectionId == 'tombstones' && (hasBranchBiltyWrite(branchId) || hasBranchKhataAccess(branchId))) ||
+                        isOwner();
+      }
+
+      // Branch-scoped Khata & Ledger modules
+      match /khataSettings/{settingId} {
+        allow read, write: if hasBranchKhataAccess(branchId);
+      }
+      match /ledgerAccounts/{accountId} {
+        allow read, write: if hasBranchKhataAccess(branchId);
+        match /entries/{entryId} {
+          allow read, write: if hasBranchKhataAccess(branchId);
+        }
+      }
+      match /cashbookEntries/{cashId} {
+        allow read, write: if hasBranchKhataAccess(branchId);
+      }
+      match /khataBills/{billId} {
+        allow read, write: if hasBranchKhataAccess(branchId);
+      }
+      match /khataEmployees/{employeeId} {
+        allow read, write: if hasBranchKhataAccess(branchId);
+      }
+      match /khataEmployeeEntries/{entryId} {
+        allow read, write: if hasBranchKhataAccess(branchId);
+      }
+      match /khataReceivingPoints/{pointId} {
+        allow read, write: if hasBranchKhataAccess(branchId);
+      }
+      match /khataReceivingEntries/{entryId} {
+        allow read, write: if hasBranchKhataAccess(branchId);
+      }
+      match /khataDailyExpenses/{expenseId} {
+        allow read, write: if hasBranchKhataAccess(branchId);
+      }
+    }
+
+    // Per-email branch assignment mirror (Creator cannot be listed here)
+    match /userBranchAccess/{emailKey} {
+      allow read: if isOwner() ||
+                     (isVerifiedCaller() && callerEmailLower() == emailKey) ||
+                     (resource != null && resource.data.branchId is string && isBranchOwner(resource.data.branchId));
+      allow create, update: if emailKey == emailKey.lower() &&
+                               emailKey != 'warraichgoods43@gmail.com' &&
+                               request.resource.data.email is string &&
+                               request.resource.data.email.lower() == emailKey &&
+                               request.resource.data.branchId is string &&
+                               isBranchOwner(request.resource.data.branchId) &&
+                               request.resource.data.presetRole in ['branch_owner', 'branch_manager', 'munshi', 'accountant', 'viewer'] &&
+                               request.resource.data.status in ['active', 'revoked'];
+      allow delete: if isOwner() ||
+                       (resource != null && resource.data.branchId is string && isBranchOwner(resource.data.branchId));
+    }
+
+    // Signed-in Gmail directory for branch staff selection (strictly excludes App Creator)
+    match /signedInDirectory/{emailKey} {
+      allow read: if isOwner() ||
+                     (isVerifiedCaller() &&
+                       exists(getUserAccessPath(callerEmailLower())) &&
+                       getActiveAccessData().status == 'active' &&
+                       (getActiveAccessData().presetRole == 'branch_owner' ||
+                         ('permissions' in getActiveAccessData() && getActiveAccessData().permissions.manageBranchStaff == true)));
+      allow create, update: if isVerifiedCaller() &&
+                               emailKey == emailKey.lower() &&
+                               emailKey != 'warraichgoods43@gmail.com' &&
+                               callerEmailLower() == emailKey &&
+                               request.resource.data.keys().hasAll(['email', 'uid', 'lastLogin']) &&
+                               request.resource.data.keys().hasOnly(['email', 'uid', 'displayName', 'lastLogin']) &&
+                               request.resource.data.uid == request.auth.uid &&
+                               request.resource.data.email is string &&
+                               request.resource.data.email.lower() == emailKey &&
+                               request.resource.data.email.size() <= 160;
+      allow delete: if isOwner() || (isSignedIn() && callerEmailLower() == emailKey);
     }
 
     // Public bilty verification records (#23: single-document get by QR code allowed; bulk collection list restricted to authorized accounts)

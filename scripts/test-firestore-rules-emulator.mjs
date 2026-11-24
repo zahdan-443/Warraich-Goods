@@ -143,6 +143,23 @@ check('Owner email check verifies email_verified claim and limits access/biltyAc
   assert.ok(adminsBlock.includes('allow read, write: if isOwner();'));
 });
 
+check('Multi-branch RBAC verifies active branch/staff status and strictly excludes App Creator from branch staff rosters', () => {
+  const branchBlock = extractBlock('match /branches/{branchId}');
+  assert.ok(branchBlock.includes('allow read: if isActiveBranchMember(branchId);'));
+  assert.ok(branchBlock.includes('allow write: if isOwner();'));
+  assert.ok(branchBlock.includes("emailKey != 'warraichgoods43@gmail.com'"));
+  assert.ok(branchBlock.includes('hasBranchBiltyWrite(branchId)'));
+  assert.ok(branchBlock.includes('hasBranchKhataAccess(branchId)'));
+
+  const userAccessBlock = extractBlock('match /userBranchAccess/{emailKey}');
+  assert.ok(userAccessBlock.includes("emailKey != 'warraichgoods43@gmail.com'"));
+  assert.ok(userAccessBlock.includes('isBranchOwner(request.resource.data.branchId)'));
+
+  const dirBlock = extractBlock('match /signedInDirectory/{emailKey}');
+  assert.ok(dirBlock.includes("emailKey != 'warraichgoods43@gmail.com'"));
+  assert.ok(dirBlock.includes('callerEmailLower() == emailKey'));
+});
+
 // ---------------------------------------------------------------------------
 // 2. Behavioral Policy Matrix Simulation against Parsed Rules Constraints
 // ---------------------------------------------------------------------------

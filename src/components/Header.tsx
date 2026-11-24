@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send, Download, Trash2, Navigation, Loader2 } from 'lucide-react';
-import { DICTIONARY, Language, AppNotification, UserRole } from '../types';
+import { Globe, LogIn, LogOut, Bell, Shield, CheckCheck, X, Crown, Truck, Briefcase, Menu, Palette, Sun, Moon, Monitor, Share2, Phone, MapPin, Mail, Info, Building2, ChevronLeft, ChevronRight, Sparkles, Send, Download, Trash2, Navigation, Loader2, Users } from 'lucide-react';
+import { DICTIONARY, Language, AppNotification, UserRole, BranchConfig } from '../types';
 import { CompanyLogo } from './CompanyLogo';
 import { logoIconData } from '../assets/dashboardIcons';
 import { AboutUsModal } from './AboutUsModal';
@@ -51,6 +51,9 @@ interface HeaderProps {
   onCloseTopMenu?: () => void;
   onOpenBiltyAccess?: () => void;
   authLoading?: boolean;
+  activeBranch?: BranchConfig | null;
+  canManageBranchStaff?: boolean;
+  onOpenBranchStaffModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -73,7 +76,10 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenTopMenu,
   onCloseTopMenu,
   onOpenBiltyAccess,
-  authLoading = false
+  authLoading = false,
+  activeBranch = null,
+  canManageBranchStaff = false,
+  onOpenBranchStaffModal
 }) => {
   const t = DICTIONARY[lang];
   const [logoErr, setLogoErr] = useState(false);
@@ -315,7 +321,13 @@ export const Header: React.FC<HeaderProps> = ({
                 title={userEmail}
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="max-w-[70px] sm:max-w-[120px] truncate">{isOwnerUser ? (lang === 'ur' ? 'آنر' : 'Owner') : (lang === 'ur' ? 'ڈرائیور' : 'Driver')}</span>
+                <span className="max-w-[70px] sm:max-w-[120px] truncate">
+                  {isOwnerUser
+                    ? (lang === 'ur' ? 'آنر' : 'Owner')
+                    : canManageBranchStaff
+                    ? (lang === 'ur' ? 'برانچ آنر' : 'Branch')
+                    : (lang === 'ur' ? 'ڈرائیور' : 'Driver')}
+                </span>
               </button>
             )}
 
@@ -403,8 +415,18 @@ export const Header: React.FC<HeaderProps> = ({
                             ) : (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800/60 text-[10px] font-bold mt-0.5">
                                 <Truck className="w-3 h-3 text-[#3B82F6] dark:text-blue-400" />
-                                <span>{lang === 'ur' ? 'مجاز صارف' : 'Authorized User'}</span>
+                                <span>
+                                  {canManageBranchStaff
+                                    ? (lang === 'ur' ? 'برانچ ایڈمن' : 'Branch Admin')
+                                    : (lang === 'ur' ? 'مجاز صارف' : 'Authorized User')}
+                                </span>
                               </span>
+                            )}
+                            {activeBranch && (
+                              <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[10px] font-bold">
+                                <Building2 className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                <span>{lang === 'ur' ? activeBranch.nameUr : activeBranch.nameEn}</span>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -420,6 +442,19 @@ export const Header: React.FC<HeaderProps> = ({
                         >
                           <Crown className="w-4 h-4 text-amber-100" />
                           <span>{lang === 'ur' ? 'آنر کنٹرول پینل (بلٹی رسائی)' : 'Owner Control Panel'}</span>
+                        </button>
+                      )}
+
+                      {!isOwnerUser && canManageBranchStaff && onOpenBranchStaffModal && (
+                        <button
+                          onClick={() => {
+                            handleCloseMenu();
+                            onOpenBranchStaffModal();
+                          }}
+                          className="w-full py-2.5 px-3 rounded-xl bg-[#0f2942] hover:bg-[#1a3a5c] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-all border border-[#1a3a5c]"
+                        >
+                          <Users className="w-4 h-4 text-amber-400" />
+                          <span>{lang === 'ur' ? 'برانچ اسٹاف مینیج کریں' : 'Manage Branch Staff'}</span>
                         </button>
                       )}
 
