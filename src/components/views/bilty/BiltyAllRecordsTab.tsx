@@ -51,6 +51,7 @@ interface BiltyAllRecordsTabProps {
   officeTitle?: string;
   canCreate?: boolean;
   canEditDelete?: boolean;
+  canManageAttachments?: boolean;
 }
 
 export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
@@ -78,7 +79,8 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
   onRequestDelete,
   officeTitle,
   canCreate = true,
-  canEditDelete = true
+  canEditDelete = true,
+  canManageAttachments = false
 }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -418,19 +420,21 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                           >
                             <Share2 className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => onOpenVault(b)}
-                            className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors cursor-pointer relative"
-                            title={isUrdu ? 'قانونی والٹ (دستاویزات و کالز)' : 'Legal Vault'}
-                          >
-                            <ShieldCheck className="w-3.5 h-3.5" />
-                            {vaultCount > 0 && (
-                              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-blue-600 text-white text-[8px] rounded-full flex items-center justify-center font-bold">
-                                {vaultCount}
-                              </span>
-                            )}
-                          </button>
+                          {canManageAttachments && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenVault(b)}
+                              className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors cursor-pointer relative"
+                              title={isUrdu ? 'قانونی والٹ (دستاویزات و کالز)' : 'Legal Vault'}
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                              {vaultCount > 0 && (
+                                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-blue-600 text-white text-[8px] rounded-full flex items-center justify-center font-bold">
+                                  {vaultCount}
+                                </span>
+                              )}
+                            </button>
+                          )}
                           {canEditDelete && (
                             <button
                               type="button"
@@ -441,14 +445,16 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => onDownloadZip(b)}
-                            className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 transition-colors cursor-pointer"
-                            title={isUrdu ? 'ZIP والٹ ڈاؤن لوڈ کریں' : 'Download ZIP Vault'}
-                          >
-                            <FileArchive className="w-3.5 h-3.5" />
-                          </button>
+                          {canManageAttachments && (
+                            <button
+                              type="button"
+                              onClick={() => onDownloadZip(b)}
+                              className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 transition-colors cursor-pointer"
+                              title={isUrdu ? 'ZIP والٹ ڈاؤن لوڈ کریں' : 'Download ZIP Vault'}
+                            >
+                              <FileArchive className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           {canEditDelete && onRequestDelete && (
                             <button
                               type="button"
@@ -575,27 +581,31 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                           <span>{isUrdu ? 'ترمیم' : 'Edit'}</span>
                         </button>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => onOpenVault(b)}
-                        className="py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-800 dark:text-blue-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors relative border border-blue-200 dark:border-blue-800"
-                      >
-                        <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                        <span>والٹ</span>
-                        {vaultCount > 0 && (
-                          <span className="bg-blue-600 text-white text-[9px] px-1 rounded-full font-bold">
-                            {vaultCount}
-                          </span>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDownloadZip(b)}
-                        className="py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors border border-amber-200 dark:border-amber-800"
-                      >
-                        <FileArchive className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                        <span>ZIP</span>
-                      </button>
+                      {canManageAttachments && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenVault(b)}
+                          className="py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-800 dark:text-blue-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors relative border border-blue-200 dark:border-blue-800"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          <span>والٹ</span>
+                          {vaultCount > 0 && (
+                            <span className="bg-blue-600 text-white text-[9px] px-1 rounded-full font-bold">
+                              {vaultCount}
+                            </span>
+                          )}
+                        </button>
+                      )}
+                      {canManageAttachments && (
+                        <button
+                          type="button"
+                          onClick={() => onDownloadZip(b)}
+                          className="py-2 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1 cursor-pointer transition-colors border border-amber-200 dark:border-amber-800"
+                        >
+                          <FileArchive className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                          <span>ZIP</span>
+                        </button>
+                      )}
                       {canEditDelete && onRequestDelete ? (
                         <button
                           type="button"

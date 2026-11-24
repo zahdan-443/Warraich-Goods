@@ -13,6 +13,7 @@ import {
   BILTY_TERMS_UR,
   BILTY_TERMS_EN
 } from '../utils/biltyHelpers';
+import { resolveEffectiveCompanyDetails } from '../utils/addaBillingStorage';
 
 interface PrintableBiltyProps {
   record: BiltyRecord;
@@ -67,24 +68,25 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
   const theme = UNIFIED_BILTY_PALETTE;
 
   const lookupBranchId = record.branchId || record.branch || propBranch;
-  const cachedBranch =
+  const exactCachedBranch =
     (propBranchConfig && (!lookupBranchId || propBranchConfig.id === lookupBranchId)
       ? propBranchConfig
-      : null) ||
-    getCachedBranchById(lookupBranchId) ||
-    propBranchConfig ||
-    DEFAULT_SAMUNDRI_BRANCH;
+      : null) || getCachedBranchById(lookupBranchId);
+  const cachedBranch = exactCachedBranch || propBranchConfig || DEFAULT_SAMUNDRI_BRANCH;
+  const resolvedCompany = resolveEffectiveCompanyDetails(cachedBranch, company);
 
   const branchInfo = {
-    nameUr: record.branchNameUr || cachedBranch.nameUr || BILTY_BRANCHES.samundri.nameUr,
-    nameEn: record.branchNameEn || cachedBranch.nameEn || BILTY_BRANCHES.samundri.nameEn,
-    addressUr: record.branchAddressUr || cachedBranch.addressUr || BILTY_BRANCHES.samundri.addressUr,
-    addressEn: record.branchAddressEn || cachedBranch.addressEn || BILTY_BRANCHES.samundri.addressEn,
-    phone: record.branchPhone || cachedBranch.phoneNumbers || BILTY_BRANCHES.samundri.phone
+    nameUr: exactCachedBranch?.nameUr || record.branchNameUr || cachedBranch.nameUr || BILTY_BRANCHES.samundri.nameUr,
+    nameEn: exactCachedBranch?.nameEn || record.branchNameEn || cachedBranch.nameEn || BILTY_BRANCHES.samundri.nameEn,
+    addressUr: exactCachedBranch?.addressUr || record.branchAddressUr || cachedBranch.addressUr || BILTY_BRANCHES.samundri.addressUr,
+    addressEn: exactCachedBranch?.addressEn || record.branchAddressEn || cachedBranch.addressEn || BILTY_BRANCHES.samundri.addressEn,
+    phone: exactCachedBranch?.phoneNumbers || record.branchPhone || cachedBranch.phoneNumbers || BILTY_BRANCHES.samundri.phone
   };
-  const cleanUrduCompanyName = (company.nameUr || 'وڑائچ گڈز ٹرانسپورٹ کمپنی')
-    .replace(/\s*\(رجسٹرڈ\)\s*/g, '')
-    .trim();
+  const cleanUrduCompanyName = resolvedCompany.nameUr || 'وڑائچ گڈز ٹرانسپورٹ کمپنی';
+  const cleanEnCompanyName = resolvedCompany.nameEn || 'WARRAICH GOODS TRANSPORT COMPANY';
+  const displayProprietorEn = resolvedCompany.proprietorEn || 'ZAHDAN NASAR WARRAICH';
+  const displayProprietorUr = resolvedCompany.proprietorUr || 'زاہدان نصر وڑائچ';
+  const displayNtn = resolvedCompany.ntn || '7779394-1';
   const phoneLines = branchInfo.phone
     .split(/[,/\n]+/)
     .map((p) => p.trim())
@@ -341,7 +343,9 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                     }}
                   >
                     {isEn ? (
-                      <span style={{ fontWeight: 800 }}>NTN: 7779394-1</span>
+                      <span style={{ fontWeight: 800 }}>
+                        {displayNtn === '7779394-1' ? 'NTN: 7779394-1' : `NTN: ${displayNtn}`}
+                      </span>
                     ) : (
                       <>
                         <span>این ٹی این نمبر:</span>
@@ -355,7 +359,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                             unicodeBidi: 'isolate'
                           }}
                         >
-                          7779394-1
+                          {displayNtn}
                         </span>
                       </>
                     )}
@@ -379,7 +383,7 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                         textShadow: '0 1px 0 rgba(217, 119, 6, 0.22)'
                       }}
                     >
-                      WARRAICH GOODS TRANSPORT COMPANY
+                      {cleanEnCompanyName}
                       <sup
                         style={{
                           fontSize: '10px',
@@ -520,13 +524,13 @@ export const PrintableBilty: React.FC<PrintableBiltyProps> = ({
                         PROPRIETOR:
                       </span>
                       <span style={{ color: theme.primaryColor, fontSize: '11.5px', fontWeight: 900, letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>
-                        ZAHDAN NASAR WARRAICH
+                        {displayProprietorEn}
                       </span>
                     </div>
                   ) : (
                     <div style={{ whiteSpace: 'nowrap' }}>
                       <span style={{ color: theme.maroonAccent, fontWeight: 800 }}>پروپرائیٹر:</span>{' '}
-                      <span style={{ color: theme.primaryColor, fontWeight: 900 }}>زاہدان نصر وڑائچ</span>
+                      <span style={{ color: theme.primaryColor, fontWeight: 900 }}>{displayProprietorUr}</span>
                     </div>
                   )}
                 </div>

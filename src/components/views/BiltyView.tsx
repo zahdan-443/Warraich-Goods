@@ -12,8 +12,14 @@ import {
 } from '../../types';
 import { getAllReceivingPoints } from '../../utils/khataModulesStorage';
 import { DEFAULT_SAMUNDRI_BRANCH, getActiveBranchId, getCachedBranchById } from '../../utils/branchContext';
-import { DEFAULT_HEAD_OFFICE_BRANCH_ID } from '../../utils/authUtils';
+import { DEFAULT_HEAD_OFFICE_BRANCH_ID, isOwnerEmail } from '../../utils/authUtils';
 import { formatBiltySeqNumber } from '../../utils/storageSync';
+import {
+  getAddaPendingCommissions,
+  getAddaPendingFreight,
+  upsertAddaPendingCommission,
+  upsertAddaPendingFreight
+} from '../../utils/addaBillingStorage';
 import {
   Receipt,
   Search,
@@ -149,6 +155,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     return cached || DEFAULT_SAMUNDRI_BRANCH;
   }, [activeBranch]);
 
+  const isCreatorUser = isOwnerEmail(currentUserEmail);
   const canCreateBilty = branchPermissions ? branchPermissions.createBilty : true;
   const canEditDeleteBilty = branchPermissions ? branchPermissions.editDeleteBilty : true;
   const canViewAllBilties = branchPermissions ? branchPermissions.viewAllBilties : true;
@@ -280,14 +287,25 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     };
   }, []);
 
-  // Isolated Legal Vault draft attachments for newly created/edited bilty
+  // Optional Isolated Adda Freight Pending & Commission Pending prompts
+  const [freightPendingEnabled, setFreightPendingEnabled] = useState(false);
+  const [freightPendingPartyName, setFreightPendingPartyName] = useState('');
+  const [freightPendingPartyMobile, setFreightPendingPartyMobile] = useState('');
+  const [freightPendingAmount, setFreightPendingAmount] = useState('');
+
+  const [commissionPendingEnabled, setCommissionPendingEnabled] = useState(false);
+  const [commissionPendingFromName, setCommissionPendingFromName] = useState('');
+  const [commissionPendingFromMobile, setCommissionPendingFromMobile] = useState('');
+  const [commissionPendingAmount, setCommissionPendingAmount] = useState('');
+
+  // Isolated Legal Vault draft attachments for newly created/edited bilty (Creator-only)
   const [pendingAttachments, setPendingAttachments] = useState<PendingDraftAttachment[]>([]);
   const [draftLegalHold, setDraftLegalHold] = useState(false);
   const [draftAttachmentError, setDraftAttachmentError] = useState<string | null>(null);
   const [processingDraftSlot, setProcessingDraftSlot] = useState<string | null>(null);
   const [isLegalVaultExpanded, setIsLegalVaultExpanded] = useState(false);
 
-  // Legal Vault modal for existing bilties
+  // Legal Vault modal for existing bilties (Creator-only)
   const [vaultModalBilty, setVaultModalBilty] = useState<BiltyRecord | null>(null);
   const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
@@ -321,6 +339,14 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setDraftAttachmentError(null);
     setProcessingDraftSlot(null);
     setIsLegalVaultExpanded(false);
+    setFreightPendingEnabled(false);
+    setFreightPendingPartyName('');
+    setFreightPendingPartyMobile('');
+    setFreightPendingAmount('');
+    setCommissionPendingEnabled(false);
+    setCommissionPendingFromName('');
+    setCommissionPendingFromMobile('');
+    setCommissionPendingAmount('');
     setEditingBilty(null);
     setEditIsDelivered(false);
     setFormError(null);
@@ -448,6 +474,35 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setPendingAttachments([]);
     setDraftLegalHold(Boolean(record.legalHold));
     setDraftAttachmentError(null);
+    const branchIdForEdit = record.branchId || effectiveBranch.id;
+    const existingFreight = getAddaPendingFreight(branchIdForEdit).find(
+      (f) => f.biltyId === record.id || f.biltyNo === record.biltyNo
+    );
+    if (existingFreight) {
+      setFreightPendingEnabled(true);
+      setFreightPendingPartyName(existingFreight.partyName || '');
+      setFreightPendingPartyMobile(existingFreight.partyMobile || '');
+      setFreightPendingAmount(String(existingFreight.amount || ''));
+    } else {
+      setFreightPendingEnabled(false);
+      setFreightPendingPartyName('');
+      setFreightPendingPartyMobile('');
+      setFreightPendingAmount('');
+    }
+    const existingComm = getAddaPendingCommissions(branchIdForEdit).find(
+      (c) => c.biltyId === record.id || c.biltyNo === record.biltyNo
+    );
+    if (existingComm) {
+      setCommissionPendingEnabled(true);
+      setCommissionPendingFromName(existingComm.fromWhomName || '');
+      setCommissionPendingFromMobile(existingComm.fromWhomMobile || '');
+      setCommissionPendingAmount(String(existingComm.amount || ''));
+    } else {
+      setCommissionPendingEnabled(false);
+      setCommissionPendingFromName('');
+      setCommissionPendingFromMobile('');
+      setCommissionPendingAmount('');
+    }
     if (record.language) setSelectedLanguage(record.language);
     setIsConfigModalOpen(false);
     setSelectedModalBilty(null);
@@ -691,25 +746,58 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         saveStoredBilties(nextList);
       }
 
-      if (draftLegalHold !== Boolean(editingBilty.legalHold)) {
-        await setBiltyLegalHold(updatedRecord, draftLegalHold).catch(() => {});
-      }
-      if (pendingAttachments.length > 0) {
-        for (const att of pendingAttachments) {
-          await saveBiltyAttachment(updatedRecord, {
-            slot: att.slot,
-            kind: att.kind,
-            dataUrl: att.dataUrl,
-            mimeType: att.mimeType,
-            name: att.name,
-            width: att.width,
-            height: att.height,
-            allowReplaceSlot: true,
-            createdAtMs: att.createdAtMs
-          }).catch(() => {});
+      if (isCreatorUser) {
+        if (draftLegalHold !== Boolean(editingBilty.legalHold)) {
+          await setBiltyLegalHold(updatedRecord, draftLegalHold).catch(() => {});
         }
-        const savedAtts = await getAttachmentsForBilty(updatedRecord).catch(() => []);
-        updatedRecord.attachmentCount = savedAtts.length;
+        if (pendingAttachments.length > 0) {
+          for (const att of pendingAttachments) {
+            await saveBiltyAttachment(updatedRecord, {
+              slot: att.slot,
+              kind: att.kind,
+              dataUrl: att.dataUrl,
+              mimeType: att.mimeType,
+              name: att.name,
+              width: att.width,
+              height: att.height,
+              allowReplaceSlot: true,
+              createdAtMs: att.createdAtMs
+            }).catch(() => {});
+          }
+          const savedAtts = await getAttachmentsForBilty(updatedRecord).catch(() => []);
+          updatedRecord.attachmentCount = savedAtts.length;
+        }
+      }
+
+      const routeText = `${updatedRecord.sendingCity || '-'} -> ${updatedRecord.receivingCity || '-'}`;
+      const branchIdSaved = updatedRecord.branchId || effectiveBranch.id;
+      if (freightPendingEnabled && freightPendingPartyName.trim() && Number(freightPendingAmount) > 0) {
+        upsertAddaPendingFreight({
+          branchId: branchIdSaved,
+          biltyId: updatedRecord.id,
+          biltyNo: updatedRecord.biltyNo,
+          date: updatedRecord.date,
+          vehicleNo: updatedRecord.vehicleNo,
+          route: routeText,
+          partyName: freightPendingPartyName.trim(),
+          partyMobile: freightPendingPartyMobile.trim(),
+          amount: Math.max(0, Number(freightPendingAmount) || 0),
+          createdByEmail: currentUserEmail || undefined
+        });
+      }
+      if (commissionPendingEnabled && commissionPendingFromName.trim() && Number(commissionPendingAmount) > 0) {
+        upsertAddaPendingCommission({
+          branchId: branchIdSaved,
+          biltyId: updatedRecord.id,
+          biltyNo: updatedRecord.biltyNo,
+          date: updatedRecord.date,
+          vehicleNo: updatedRecord.vehicleNo,
+          route: routeText,
+          fromWhomName: commissionPendingFromName.trim(),
+          fromWhomMobile: commissionPendingFromMobile.trim(),
+          amount: Math.max(0, Number(commissionPendingAmount) || 0),
+          createdByEmail: currentUserEmail || undefined
+        });
       }
 
       setLastBilty(updatedRecord);
@@ -774,13 +862,13 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       advance: validation.advance,
       payable: validation.payable,
       remarks: remarks.trim() || undefined,
-      legalHold: draftLegalHold || undefined,
-      attachmentCount: pendingAttachments.length > 0 ? pendingAttachments.length : undefined
+      ...(isCreatorUser ? { legalHold: draftLegalHold || undefined } : {}),
+      ...(isCreatorUser && pendingAttachments.length > 0 ? { attachmentCount: pendingAttachments.length } : {})
     };
 
     const saved = await Promise.resolve(onAddBilty(record));
     const finalSavedRecord: BiltyRecord = (saved as BiltyRecord) || { ...record, id: Date.now() };
-    if (pendingAttachments.length > 0) {
+    if (isCreatorUser && pendingAttachments.length > 0) {
       for (const att of pendingAttachments) {
         await saveBiltyAttachment(finalSavedRecord, {
           slot: att.slot,
@@ -797,6 +885,39 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       const savedAtts = await getAttachmentsForBilty(finalSavedRecord).catch(() => []);
       finalSavedRecord.attachmentCount = savedAtts.length;
     }
+
+    // Save optional Pending Freight & Pending Commission strictly to isolated Adda billing storage
+    const routeStr = `${finalSavedRecord.sendingCity || '-'} -> ${finalSavedRecord.receivingCity || '-'}`;
+    const branchIdForPending = finalSavedRecord.branchId || effectiveBranch.id;
+    if (freightPendingEnabled && freightPendingPartyName.trim() && Number(freightPendingAmount) > 0) {
+      upsertAddaPendingFreight({
+        branchId: branchIdForPending,
+        biltyId: finalSavedRecord.id,
+        biltyNo: finalSavedRecord.biltyNo,
+        date: finalSavedRecord.date,
+        vehicleNo: finalSavedRecord.vehicleNo,
+        route: routeStr,
+        partyName: freightPendingPartyName.trim(),
+        partyMobile: freightPendingPartyMobile.trim(),
+        amount: Math.max(0, Number(freightPendingAmount) || 0),
+        createdByEmail: currentUserEmail || undefined
+      });
+    }
+    if (commissionPendingEnabled && commissionPendingFromName.trim() && Number(commissionPendingAmount) > 0) {
+      upsertAddaPendingCommission({
+        branchId: branchIdForPending,
+        biltyId: finalSavedRecord.id,
+        biltyNo: finalSavedRecord.biltyNo,
+        date: finalSavedRecord.date,
+        vehicleNo: finalSavedRecord.vehicleNo,
+        route: routeStr,
+        fromWhomName: commissionPendingFromName.trim(),
+        fromWhomMobile: commissionPendingFromMobile.trim(),
+        amount: Math.max(0, Number(commissionPendingAmount) || 0),
+        createdByEmail: currentUserEmail || undefined
+      });
+    }
+
     setLastBilty(finalSavedRecord);
 
     // Reset fields
@@ -897,6 +1018,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   };
 
   const handleDownloadZip = async (record: BiltyRecord) => {
+    if (!isCreatorUser) return;
     if (isDownloadingZip) return;
     setIsDownloadingZip(true);
     try {
@@ -1005,7 +1127,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${isCreatorUser ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-2.5 pt-1`}>
           <button
             type="button"
             onClick={() => handlePrintBuilty(record)}
@@ -1037,48 +1159,52 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             <span>{previewLang === 'en' ? 'WhatsApp PDF Share' : 'واٹس ایپ PDF شیئر'}</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => handleDownloadZip(record)}
-            disabled={isDownloadingZip || isGeneratingPdf}
-            className="w-full py-3 bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs active:scale-98"
-            title="بلٹی پی ڈی ایف، تصاویر اور صوتی فائلوں کی مکمل ZIP فائل ڈاؤن لوڈ کریں"
-          >
-            {isDownloadingZip ? <Loader2 className="w-4 h-4 animate-spin text-slate-950" /> : <FileArchive className="w-4 h-4" />}
-            <span>{isDownloadingZip ? (previewLang === 'en' ? 'Packaging ZIP...' : 'ZIP پیک ہو رہی ہے...') : (previewLang === 'en' ? 'Download ZIP Vault' : 'ڈاؤن لوڈ ZIP والٹ')}</span>
-          </button>
+          {isCreatorUser && (
+            <button
+              type="button"
+              onClick={() => handleDownloadZip(record)}
+              disabled={isDownloadingZip || isGeneratingPdf}
+              className="w-full py-3 bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs active:scale-98"
+              title="بلٹی پی ڈی ایف، تصاویر اور صوتی فائلوں کی مکمل ZIP فائل ڈاؤن لوڈ کریں"
+            >
+              {isDownloadingZip ? <Loader2 className="w-4 h-4 animate-spin text-slate-950" /> : <FileArchive className="w-4 h-4" />}
+              <span>{isDownloadingZip ? (previewLang === 'en' ? 'Packaging ZIP...' : 'ZIP پیک ہو رہی ہے...') : (previewLang === 'en' ? 'Download ZIP Vault' : 'ڈاؤن لوڈ ZIP والٹ')}</span>
+            </button>
+          )}
         </div>
 
-        {/* Legal Vault Button Banner */}
-        <div className="pt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200">
-          <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>
-              {previewLang === 'en'
-                ? 'Legal Evidence Vault (Driver/Vehicle/Party IDs & Voice Notes)'
-                : 'قانونی دستاویزات و صوتی والٹ (محفوظ کلاؤڈ اسٹوریج)'}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              if (typeof window !== 'undefined' && window.history?.pushState) {
-                try { window.history.pushState({ tab: 'bilty', modal: 'vault' }, ''); } catch {}
-              }
-              setVaultModalBilty(record);
-              setIsVaultModalOpen(true);
-            }}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors border border-slate-300 shadow-2xs"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-            <span>{previewLang === 'en' ? 'Manage Legal Vault' : 'دستاویزات والٹ کھولیں'}</span>
-            {countBiltyAttachments(record) > 0 && (
-              <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-bold">
-                {countBiltyAttachments(record)}
+        {/* Legal Vault Button Banner (App Creator Only) */}
+        {isCreatorUser && (
+          <div className="pt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200">
+            <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                {previewLang === 'en'
+                  ? 'Legal Evidence Vault (Driver/Vehicle/Party IDs & Voice Notes)'
+                  : 'قانونی دستاویزات و صوتی والٹ (محفوظ کلاؤڈ اسٹوریج)'}
               </span>
-            )}
-          </button>
-        </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.history?.pushState) {
+                  try { window.history.pushState({ tab: 'bilty', modal: 'vault' }, ''); } catch {}
+                }
+                setVaultModalBilty(record);
+                setIsVaultModalOpen(true);
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors border border-slate-300 shadow-2xs"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+              <span>{previewLang === 'en' ? 'Manage Legal Vault' : 'دستاویزات والٹ کھولیں'}</span>
+              {countBiltyAttachments(record) > 0 && (
+                <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-bold">
+                  {countBiltyAttachments(record)}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -1415,6 +1541,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             officeTitle={isUrdu ? branchObj.nameUr : branchObj.nameEn}
             canCreate={canCreateBilty}
             canEditDelete={canEditDeleteBilty}
+            canManageAttachments={isCreatorUser}
             allFilterQuery={allFilterQuery}
             deliveryFilter={deliveryFilter}
             sortBy={sortBy}
@@ -1805,13 +1932,246 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                 />
               </div>
 
-              {/* Optional Legal Vault Attachments (Driver, Vehicle, Sender, Receiver Photos/CNIC & Audio) */}
-              <div className="border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => setIsLegalVaultExpanded(!isLegalVaultExpanded)}
-                  className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100 flex items-center justify-between transition-colors text-right cursor-pointer"
-                >
+              {/* Optional 1: Is Freight Pending on this Bilty? (Isolated to Adda Panel) */}
+              <div className="border border-blue-200 rounded-2xl bg-blue-50/50 p-3.5 space-y-3">
+                <label className="flex items-center justify-between gap-2 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={freightPendingEnabled}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setFreightPendingEnabled(checked);
+                        if (checked) {
+                          if (!freightPendingPartyName.trim()) {
+                            setFreightPendingPartyName(senderName.trim() || receiverName.trim());
+                            setFreightPendingPartyMobile(
+                              senderName.trim() ? senderMobile.trim() : receiverMobile.trim()
+                            );
+                          }
+                          if (!freightPendingAmount) {
+                            const net = Math.max(0, (Number(total) || 0) - (Number(advance) || 0));
+                            if (net > 0) setFreightPendingAmount(String(net));
+                          }
+                        }
+                      }}
+                      className="w-4 h-4 rounded accent-[#0f2942]"
+                    />
+                    <div>
+                      <div className="text-xs font-black text-[#0f2942]">
+                        {isEnForm
+                          ? '1. Is Freight Pending on this Bilty? (Optional)'
+                          : '1. کیا اس بلٹی کا کرایہ باقی (Pending) ہے؟ (اختیاری)'}
+                      </div>
+                      <div className="text-[10px] text-slate-600">
+                        {isEnForm
+                          ? 'Recorded only inside Adda Freight Pending & Bills (not main ledger)'
+                          : 'صرف اڈا پینل کے کرایہ باقی و بل سیکشن میں محفوظ ہوگا (مرکزی کھاتہ سے الگ)'}
+                      </div>
+                    </div>
+                  </div>
+                </label>
+
+                {freightPendingEnabled && (
+                  <div className="space-y-2.5 pt-2 border-t border-blue-200/70 animate-in fade-in duration-150">
+                    {(senderName.trim() || receiverName.trim()) && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {senderName.trim() && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFreightPendingPartyName(senderName.trim());
+                              if (senderMobile.trim()) setFreightPendingPartyMobile(senderMobile.trim());
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-[10px] font-bold text-[#0f2942] hover:bg-blue-100 cursor-pointer"
+                          >
+                            {isEnForm ? `Use Sender: ${senderName}` : `بھیجنے والا: ${senderName}`}
+                          </button>
+                        )}
+                        {receiverName.trim() && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFreightPendingPartyName(receiverName.trim());
+                              if (receiverMobile.trim()) setFreightPendingPartyMobile(receiverMobile.trim());
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-white border border-blue-200 text-[10px] font-bold text-[#0f2942] hover:bg-blue-100 cursor-pointer"
+                          >
+                            {isEnForm ? `Use Receiver: ${receiverName}` : `وصول کنندہ: ${receiverName}`}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                          {isEnForm ? 'Company / Sending / Payee Name' : 'کمپنی / پارٹی / ادائیگی کنندہ کا نام'}
+                        </label>
+                        <input
+                          type="text"
+                          list="contacts-autocomplete"
+                          value={freightPendingPartyName}
+                          onChange={(e) => setFreightPendingPartyName(e.target.value)}
+                          placeholder={isEnForm ? 'Payee name' : 'پارٹی کا نام'}
+                          className="w-full min-h-[40px] bg-white border border-blue-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:border-[#0f2942] focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                          {isEnForm ? 'Mobile Number' : 'موبائل نمبر'}
+                        </label>
+                        <input
+                          type="text"
+                          value={freightPendingPartyMobile}
+                          onChange={(e) => setFreightPendingPartyMobile(formatBiltyMobile(e.target.value))}
+                          placeholder="03XX-XXXXXXX"
+                          className="w-full min-h-[40px] bg-white border border-blue-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-slate-900 focus:border-[#0f2942] focus:outline-none dir-ltr"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                          {isEnForm ? 'Pending Freight (Rs)' : 'باقی کرایہ رقم (روپے)'}
+                        </label>
+                        <input
+                          type="number"
+                          value={freightPendingAmount}
+                          onChange={(e) => setFreightPendingAmount(e.target.value)}
+                          placeholder="0"
+                          className="w-full min-h-[40px] bg-white border border-blue-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:border-[#0f2942] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Optional 2: Is Commission Pending on this Bilty? (Isolated to Adda Panel) */}
+              <div className="border border-amber-200 rounded-2xl bg-amber-50/60 p-3.5 space-y-3">
+                <label className="flex items-center justify-between gap-2 cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={commissionPendingEnabled}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setCommissionPendingEnabled(checked);
+                        if (checked && !commissionPendingFromName.trim()) {
+                          setCommissionPendingFromName(senderName.trim() || driverName.trim());
+                          setCommissionPendingFromMobile(
+                            senderName.trim() ? senderMobile.trim() : mobileNo.trim()
+                          );
+                        }
+                      }}
+                      className="w-4 h-4 rounded accent-amber-600"
+                    />
+                    <div>
+                      <div className="text-xs font-black text-amber-950">
+                        {isEnForm
+                          ? '2. Is Commission Pending on this Bilty? (Optional)'
+                          : '2. کیا اس بلٹی کا کمیشن باقی (Pending) ہے؟ (اختیاری)'}
+                      </div>
+                      <div className="text-[10px] text-amber-800">
+                        {isEnForm
+                          ? 'Recorded only inside Adda Commission Pending & Bills (not main ledger)'
+                          : 'صرف اڈا پینل کے کمیشن باقی و بل سیکشن میں محفوظ ہوگا'}
+                      </div>
+                    </div>
+                  </div>
+                </label>
+
+                {commissionPendingEnabled && (
+                  <div className="space-y-2.5 pt-2 border-t border-amber-200/80 animate-in fade-in duration-150">
+                    {(senderName.trim() || receiverName.trim() || driverName.trim()) && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {senderName.trim() && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCommissionPendingFromName(senderName.trim());
+                              if (senderMobile.trim()) setCommissionPendingFromMobile(senderMobile.trim());
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-white border border-amber-200 text-[10px] font-bold text-amber-950 hover:bg-amber-100 cursor-pointer"
+                          >
+                            {isEnForm ? `From Sender: ${senderName}` : `بھیجنے والا: ${senderName}`}
+                          </button>
+                        )}
+                        {receiverName.trim() && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCommissionPendingFromName(receiverName.trim());
+                              if (receiverMobile.trim()) setCommissionPendingFromMobile(receiverMobile.trim());
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-white border border-amber-200 text-[10px] font-bold text-amber-950 hover:bg-amber-100 cursor-pointer"
+                          >
+                            {isEnForm ? `From Receiver: ${receiverName}` : `وصول کنندہ: ${receiverName}`}
+                          </button>
+                        )}
+                        {driverName.trim() && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCommissionPendingFromName(driverName.trim());
+                              if (mobileNo.trim()) setCommissionPendingFromMobile(mobileNo.trim());
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-white border border-amber-200 text-[10px] font-bold text-amber-950 hover:bg-amber-100 cursor-pointer"
+                          >
+                            {isEnForm ? `From Driver: ${driverName}` : `ڈرائیور: ${driverName}`}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                          {isEnForm ? 'From Whom to Receive (Name)' : 'کس سے وصول کرنا ہے (نام)'}
+                        </label>
+                        <input
+                          type="text"
+                          list="contacts-autocomplete"
+                          value={commissionPendingFromName}
+                          onChange={(e) => setCommissionPendingFromName(e.target.value)}
+                          placeholder={isEnForm ? 'Person / party name' : 'شخص یا پارٹی کا نام'}
+                          className="w-full min-h-[40px] bg-white border border-amber-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:border-amber-600 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                          {isEnForm ? 'Mobile Number' : 'موبائل نمبر'}
+                        </label>
+                        <input
+                          type="text"
+                          value={commissionPendingFromMobile}
+                          onChange={(e) => setCommissionPendingFromMobile(formatBiltyMobile(e.target.value))}
+                          placeholder="03XX-XXXXXXX"
+                          className="w-full min-h-[40px] bg-white border border-amber-200 rounded-xl px-3 py-2 text-xs font-mono font-semibold text-slate-900 focus:border-amber-600 focus:outline-none dir-ltr"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-600 mb-1">
+                          {isEnForm ? 'Commission Amount (Rs)' : 'کمیشن رقم (روپے)'}
+                        </label>
+                        <input
+                          type="number"
+                          value={commissionPendingAmount}
+                          onChange={(e) => setCommissionPendingAmount(e.target.value)}
+                          placeholder="0"
+                          className="w-full min-h-[40px] bg-white border border-amber-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:border-amber-600 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Optional Legal Vault Attachments (App Creator ONLY) */}
+              {isCreatorUser && (
+                <div className="border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setIsLegalVaultExpanded(!isLegalVaultExpanded)}
+                    className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100 flex items-center justify-between transition-colors text-right cursor-pointer"
+                  >
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                     <div>
@@ -2029,7 +2389,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     )}
                   </div>
                 )}
-              </div>
+                </div>
+              )}
 
               <button
                 type="submit"
@@ -2154,8 +2515,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         }}
       />
 
-      {/* Legal Vault Modal for viewing, editing, and uploading attachments */}
-      {vaultModalBilty && (
+      {/* Legal Vault Modal for viewing, editing, and uploading attachments (Creator Only) */}
+      {isCreatorUser && vaultModalBilty && (
         <BiltyLegalVaultModal
           isOpen={isVaultModalOpen}
           onClose={() => {

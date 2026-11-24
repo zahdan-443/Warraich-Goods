@@ -415,13 +415,14 @@ export const BranchStaffModal: React.FC<BranchStaffModalProps> = ({
 
               <div>
                 <label className="block text-[10px] font-bold text-[#6b6b55] dark:text-slate-400 mb-1">
-                  {isUr ? 'نام (اختیاری)' : 'Display Name (Optional)'}
+                  {isUr ? 'شخص کا نام (خوش آمدید نوٹ کیلئے) *' : 'Assigned Person Name (Welcome Note) *'}
                 </label>
                 <input
                   type="text"
+                  required
                   value={nameInput}
                   onChange={e => setNameInput(e.target.value)}
-                  placeholder={isUr ? 'مثلاً علی منشی' : 'e.g. Ali Munshi'}
+                  placeholder={isUr ? 'مثلاً علی خان' : 'e.g. Ali Khan'}
                   className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-[#d6c3b0] dark:border-slate-600 rounded-xl focus:outline-none focus:border-[#1a477a]"
                 />
               </div>

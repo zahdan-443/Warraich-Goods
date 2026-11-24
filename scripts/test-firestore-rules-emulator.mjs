@@ -146,10 +146,15 @@ check('Owner email check verifies email_verified claim and limits access/biltyAc
 check('Multi-branch RBAC verifies active branch/staff status and strictly excludes App Creator from branch staff rosters', () => {
   const branchBlock = extractBlock('match /branches/{branchId}');
   assert.ok(branchBlock.includes('allow read: if isActiveBranchMember(branchId);'));
-  assert.ok(branchBlock.includes('allow write: if isOwner();'));
+  assert.ok(branchBlock.includes('allow create, delete: if isOwner();'));
+  assert.ok(branchBlock.includes("affectedKeys().hasAny"));
+  assert.ok(branchBlock.includes("'startingBiltySeq'"));
   assert.ok(branchBlock.includes("emailKey != 'warraichgoods43@gmail.com'"));
   assert.ok(branchBlock.includes('hasBranchBiltyWrite(branchId)'));
   assert.ok(branchBlock.includes('hasBranchKhataAccess(branchId)'));
+  assert.ok(branchBlock.includes('match /addaPendingFreight/{itemId}'));
+  assert.ok(branchBlock.includes('match /addaPendingCommissions/{itemId}'));
+  assert.ok(branchBlock.includes('match /addaBills/{billId}'));
 
   const userAccessBlock = extractBlock('match /userBranchAccess/{emailKey}');
   assert.ok(userAccessBlock.includes("emailKey != 'warraichgoods43@gmail.com'"));

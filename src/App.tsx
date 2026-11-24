@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { ActiveTab, BiltyRecord, BranchConfig, BranchPermissions, Driver, FuelLogItem, Language, RoutePreset, Trip, Vehicle, AppNotification, OfflineAction, UserBranchAccess, UserRole } from './types';
+import { ActiveTab, BiltyRecord, BranchConfig, BranchPermissions, CompanyProfile, Driver, FuelLogItem, Language, RoutePreset, Trip, Vehicle, AppNotification, OfflineAction, UserBranchAccess, UserRole } from './types';
 import {
   getStoredDrivers,
   getStoredFuelLog,
@@ -19,6 +19,8 @@ import {
   saveStoredRole,
   getStoredBilties,
   saveStoredBilties,
+  getCachedCompanyProfile,
+  getStoredCompanyProfile,
   syncPublicBiltyVerification,
   deletePublicBiltyVerification,
   getNextBiltyNo,
@@ -68,6 +70,7 @@ import {
   subscribeToUserBranchAccess
 } from './utils/branchService';
 import { fetchKhataFromFirestore } from './utils/ledgerStorage';
+import { fetchAddaFromFirestore } from './utils/addaBillingStorage';
 import { fetchLiveFuelPrices } from './utils/fuelPrice';
 import { runScheduledDailyCloudBackup } from './utils/backupService';
 import { pruneExpiredPreRestoreSnapshotsIdbOnly } from './utils/persistentStorage';
@@ -106,6 +109,7 @@ const DashcamView = import.meta.env.VITE_STORE_BUILD === 'true'
   ? null
   : React.lazy(() => import('./components/views/DashcamView').then(m => ({ default: m.DashcamView })));
 const LedgerView = React.lazy(() => import('./components/views/LedgerView').then(m => ({ default: m.LedgerView })));
+const AddaPanelView = React.lazy(() => import('./components/views/AddaPanelView').then(m => ({ default: m.AddaPanelView })));
 import { ViewHeader } from './components/ViewHeader';
 import { ManageBiltyAccessModal } from './components/ManageBiltyAccessModal';
 import { BranchStaffModal } from './components/BranchStaffModal';
@@ -234,6 +238,8 @@ export default function App() {
     return cached?.status === 'active' ? getCachedBranchById(cached.branchId) : null;
   });
   const [showBranchStaffModal, setShowBranchStaffModal] = useState(false);
+  const [userDisplayName, setUserDisplayName] = useState<string | null>(() => auth.currentUser?.displayName || null);
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile>(() => getCachedCompanyProfile());
 
   // Authorization & active branch resolution
   const isOwner = isOwnerEmail(userEmail);
@@ -432,6 +438,10 @@ export default function App() {
         nav: 'navigation',
         ledger: 'ledger',
         khata: 'ledger',
+        addapanel: 'addaPanel',
+        'adda-panel': 'addaPanel',
+        adda: 'addaPanel',
+        ownerpanel: 'addaPanel',
         home: 'home',
       };
       const resolved = map[rawHash.toLowerCase()];
@@ -869,19 +879,23 @@ export default function App() {
     try {
       await Promise.all([
         loadBranchBiltiesFromFirestore(targetId),
-        fetchKhataFromFirestore()
+        fetchKhataFromFirestore(),
+        fetchAddaFromFirestore(targetId)
       ]);
     } catch {}
     setBilties(getStoredBilties());
     window.dispatchEvent(new CustomEvent('driverdost:storage_hydrated'));
   };
 
-  // Route protection: if active tab is bilty and user is not authorized, redirect to home
+  // Route protection: if active tab is bilty/addaPanel and user is not authorized, redirect to home
   useEffect(() => {
     if (activeTab === 'bilty' && !isBiltyAuthorized) {
       setActiveTab('home');
     }
-  }, [activeTab, isBiltyAuthorized]);
+    if (activeTab === 'addaPanel' && !isBiltyAuthorized && !canManageBranchStaff) {
+      setActiveTab('home');
+    }
+  }, [activeTab, isBiltyAuthorized, canManageBranchStaff]);
 
   // Real Network Connectivity and Ambient Auto-Sync Engine
   useEffect(() => {
@@ -935,10 +949,21 @@ export default function App() {
       setBilties(getStoredBilties());
     });
 
+    const handleCompanyUpdated = () => {
+      setCompanyProfile(getCachedCompanyProfile());
+      const updatedBranches = getCachedBranches();
+      setBranches(updatedBranches);
+      const currentActiveId = getActiveBranchId();
+      if (currentActiveId) {
+        setStaffBranchConfig(getCachedBranchById(currentActiveId));
+      }
+    };
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('driverdost:bilties_updated', handleBiltiesUpdated);
     window.addEventListener('driverdost:storage_hydrated', handleStorageHydrated);
+    window.addEventListener('driverdost:company_updated', handleCompanyUpdated);
     window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, handleNotificationsUpdated);
 
     return () => {
@@ -948,6 +973,7 @@ export default function App() {
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('driverdost:bilties_updated', handleBiltiesUpdated);
       window.removeEventListener('driverdost:storage_hydrated', handleStorageHydrated);
+      window.removeEventListener('driverdost:company_updated', handleCompanyUpdated);
       window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, handleNotificationsUpdated);
     };
   }, [currentUid]);
@@ -975,8 +1001,9 @@ export default function App() {
       }
     }).catch(() => {});
 
-    // 1. Live Fuel Prices API
+    // 1. Live Fuel Prices API & Company Profile sync
     fetchLiveFuelPrices(true).catch(err => console.warn('App-open fuel prefetch notice:', err));
+    getStoredCompanyProfile().then(setCompanyProfile).catch(() => {});
 
     // 2. Cloud Sync & Bidirectional Offline Reconciliation
     if (navigator.onLine) {
@@ -1103,6 +1130,7 @@ export default function App() {
       if (user) {
         const userMail = user.email || user.displayName || 'Authenticated User';
         setUserEmail(userMail);
+        setUserDisplayName(user.displayName || null);
         setCurrentUid(user.uid);
         localStorage.setItem('ah-gmail-user', userMail);
 
@@ -1163,7 +1191,8 @@ export default function App() {
               setStaffBranchConfig(fetchedBranch);
               await Promise.all([
                 loadBranchBiltiesFromFirestore(access.branchId).catch(() => {}),
-                fetchKhataFromFirestore().catch(() => {})
+                fetchKhataFromFirestore().catch(() => {}),
+                fetchAddaFromFirestore(access.branchId).catch(() => {})
               ]);
               setBilties(getStoredBilties());
               window.dispatchEvent(new CustomEvent('driverdost:storage_hydrated'));
@@ -1184,11 +1213,13 @@ export default function App() {
           role: activeRole,
           name: user.displayName || userMail || 'User'
         });
+        getStoredCompanyProfile().then(setCompanyProfile).catch(() => {});
 
         try {
           await loadFromFirestore(user.uid);
           if (ownerAccount) {
             const ownerBranchId = selectedOwnerBranchIdRef.current || DEFAULT_HEAD_OFFICE_BRANCH_ID;
+            await fetchAddaFromFirestore(ownerBranchId).catch(() => {});
             if (ownerBranchId !== DEFAULT_HEAD_OFFICE_BRANCH_ID) {
               await Promise.all([
                 loadBranchBiltiesFromFirestore(ownerBranchId).catch(() => {}),
@@ -1233,6 +1264,7 @@ export default function App() {
         setShowBranchStaffModal(false);
         setActiveBranchId(null);
         setUserEmail(null);
+        setUserDisplayName(null);
         setCurrentUid(null);
         localStorage.removeItem('ah-gmail-user');
         localStorage.removeItem('ah-user-role');
@@ -1258,12 +1290,15 @@ export default function App() {
 
   // Notification permission is strictly on-demand (e.g. from Notification modal / settings)
 
-  // Route Protection for Bilty Generator
+  // Route Protection for Bilty Generator & Adda Panel
   useEffect(() => {
     if (activeTab === 'bilty' && !isBiltyAuthorized) {
       setActiveTab('home');
     }
-  }, [activeTab, isBiltyAuthorized]);
+    if (activeTab === 'addaPanel' && !isBiltyAuthorized && !canManageBranchStaff) {
+      setActiveTab('home');
+    }
+  }, [activeTab, isBiltyAuthorized, canManageBranchStaff]);
 
   // Sync lang class to body
   useEffect(() => {
@@ -1641,6 +1676,12 @@ export default function App() {
       titleUr: 'پارٹی اور ڈرائیور کھاتہ',
       subtitle: 'Credit, Debit & Outstanding Balance',
       subtitleUr: 'بنام، جمع کھاتہ اور بقایا رقم'
+    },
+    addaPanel: {
+      title: 'Adda / Owner Panel',
+      titleUr: 'اڈا / اونر کنٹرول پینل',
+      subtitle: 'Branches, Pending Freight, Commissions, Bills & Staff',
+      subtitleUr: 'برانچز، بقایا کرایہ، کمیشن، بل، اسٹاف اور بزنس رپورٹ'
     }
   };
 
@@ -1747,6 +1788,9 @@ export default function App() {
                   bilties={bilties}
                   userRole={role}
                   userEmail={userEmail}
+                  userDisplayName={userDisplayName}
+                  userBranchAccess={userBranchAccess}
+                  companyProfile={companyProfile}
                   isBiltyAuthorized={isBiltyAuthorized}
                   onNavigate={handleNavigate}
                   onOpenMenu={() => {
@@ -1908,6 +1952,23 @@ export default function App() {
               currentUserUid={currentUid}
               activeBranch={activeBranch}
               khataAllowed={khataAllowed}
+            />
+          )}
+
+          {activeTab === 'addaPanel' && (isBiltyAuthorized || canManageBranchStaff) && (
+            <AddaPanelView
+              lang={lang}
+              bilties={bilties}
+              activeBranch={activeBranch}
+              branches={isOwner ? branches : (activeBranch ? [activeBranch] : [])}
+              branchPermissions={effectiveBranchPermissions}
+              userEmail={userEmail}
+              userBranchAccess={userBranchAccess}
+              companyProfile={companyProfile}
+              onNavigate={handleNavigate}
+              onSelectBranch={isOwner ? handleSelectOwnerBranch : undefined}
+              onBranchesUpdated={(updatedBranches) => setBranches(updatedBranches)}
+              onOpenBiltyAccess={isOwner ? () => setShowBiltyAccessModal(true) : undefined}
             />
           )}
         </React.Suspense>

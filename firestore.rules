@@ -271,7 +271,17 @@ service cloud.firestore {
     // Multi-Branch configuration, staff rosters (App Creator excluded), and branch-scoped Bilty & Khata data
     match /branches/{branchId} {
       allow read: if isActiveBranchMember(branchId);
-      allow write: if isOwner();
+      allow create, delete: if isOwner();
+      allow update: if isOwner() || (
+        hasActiveBranchAccessDoc(branchId) &&
+        (
+          getActiveAccessData().presetRole == 'branch_owner' ||
+          resource.data.ownerEmail == callerEmailLower()
+        ) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'id', 'active', 'startingBiltySeq', 'ownerEmail', 'isHeadOffice', 'createdBy'
+        ])
+      );
 
       // Staff roster managed by App Owner or that branch's Branch Owner (Creator Gmail never allowed)
       match /staff/{emailKey} {
@@ -297,11 +307,22 @@ service cloud.firestore {
       // Branch-scoped collection mirrors & tombstones
       match /collections/{collectionId} {
         allow read: if (collectionId == 'bilties' && hasBranchBiltyRead(branchId)) ||
-                       (collectionId == 'tombstones' && (hasBranchBiltyRead(branchId) || hasBranchKhataAccess(branchId))) ||
+                       (collectionId == 'tombstones' && (hasBranchBiltyRead(branchId) || hasBranchKhataAccess(branchId) || isBranchOwner(branchId))) ||
                        isOwner();
         allow write: if (collectionId == 'bilties' && hasBranchBiltyWrite(branchId)) ||
-                        (collectionId == 'tombstones' && (hasBranchBiltyWrite(branchId) || hasBranchKhataAccess(branchId))) ||
+                        (collectionId == 'tombstones' && (hasBranchBiltyWrite(branchId) || hasBranchKhataAccess(branchId) || isBranchOwner(branchId))) ||
                         isOwner();
+      }
+
+      // Branch-scoped isolated Adda Pending Freight, Commissions & Party Billing
+      match /addaPendingFreight/{itemId} {
+        allow read, write: if hasBranchKhataAccess(branchId) || hasBranchBiltyWrite(branchId) || isBranchOwner(branchId);
+      }
+      match /addaPendingCommissions/{itemId} {
+        allow read, write: if hasBranchKhataAccess(branchId) || hasBranchBiltyWrite(branchId) || isBranchOwner(branchId);
+      }
+      match /addaBills/{billId} {
+        allow read, write: if hasBranchKhataAccess(branchId) || hasBranchBiltyWrite(branchId) || isBranchOwner(branchId);
       }
 
       // Branch-scoped Khata & Ledger modules

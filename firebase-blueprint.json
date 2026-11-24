@@ -208,6 +208,13 @@
         "addressUr": { "type": "string", "maxLength": 300 },
         "addressEn": { "type": "string", "maxLength": 300 },
         "phone": { "type": "string", "maxLength": 120 },
+        "ntn": { "type": "string", "maxLength": 40 },
+        "companyHeaderUr": { "type": "string", "maxLength": 200 },
+        "companyHeaderEn": { "type": "string", "maxLength": 200 },
+        "proprietorNameUr": { "type": "string", "maxLength": 160 },
+        "proprietorNameEn": { "type": "string", "maxLength": 160 },
+        "taglineUr": { "type": "string", "maxLength": 300 },
+        "ownerDisplayName": { "type": "string", "maxLength": 120 },
         "startingBiltySeq": { "type": "number" },
         "ownerEmail": { "type": "string", "maxLength": 160 },
         "isHeadOffice": { "type": "boolean" },
@@ -307,6 +314,18 @@
     "/branches/{branchId}/biltiesDocs/{docId}": {
       "schema": "BiltyRecord",
       "description": "Branch-scoped individual Bilty documents"
+    },
+    "/branches/{branchId}/addaPendingFreight/{itemId}": {
+      "schema": "UserData",
+      "description": "Branch-scoped isolated pending freight receivables inside Adda Panel"
+    },
+    "/branches/{branchId}/addaPendingCommissions/{itemId}": {
+      "schema": "UserData",
+      "description": "Branch-scoped isolated pending commissions inside Adda Panel"
+    },
+    "/branches/{branchId}/addaBills/{billId}": {
+      "schema": "UserData",
+      "description": "Branch-scoped isolated party freight & commission bills inside Adda Panel"
     },
     "/branches/{branchId}/khataSettings/{settingId}": {
       "schema": "UserData",

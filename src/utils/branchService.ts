@@ -309,6 +309,7 @@ export async function saveBranchConfig(
     ownerEmailClean && !isOwnerEmail(ownerEmailClean) ? ownerEmailClean : undefined;
 
   const startingSeq = Math.max(1001, Math.min(999999, Math.floor(Number(input.startingBiltySeq) || 1001)));
+  const cleanOwnerDisplayName = (input.ownerDisplayName ?? existing?.ownerDisplayName ?? '').trim();
 
   const branchDoc: BranchConfig = {
     id: branchId,
@@ -317,11 +318,37 @@ export async function saveBranchConfig(
     addressUr: (input.addressUr || '').trim(),
     addressEn: (input.addressEn || '').trim(),
     phoneNumbers: (input.phoneNumbers || '').trim(),
-    ntn: (input.ntn || DEFAULT_SAMUNDRI_BRANCH.ntn || '7779394-1').trim(),
+    ntn: (input.ntn ?? existing?.ntn ?? DEFAULT_SAMUNDRI_BRANCH.ntn ?? '7779394-1').trim(),
+    ...(input.companyHeaderUr !== undefined
+      ? { companyHeaderUr: input.companyHeaderUr.trim() }
+      : existing?.companyHeaderUr
+      ? { companyHeaderUr: existing.companyHeaderUr }
+      : {}),
+    ...(input.companyHeaderEn !== undefined
+      ? { companyHeaderEn: input.companyHeaderEn.trim() }
+      : existing?.companyHeaderEn
+      ? { companyHeaderEn: existing.companyHeaderEn }
+      : {}),
+    ...(input.proprietorNameUr !== undefined
+      ? { proprietorNameUr: input.proprietorNameUr.trim() }
+      : existing?.proprietorNameUr
+      ? { proprietorNameUr: existing.proprietorNameUr }
+      : {}),
+    ...(input.proprietorNameEn !== undefined
+      ? { proprietorNameEn: input.proprietorNameEn.trim() }
+      : existing?.proprietorNameEn
+      ? { proprietorNameEn: existing.proprietorNameEn }
+      : {}),
+    ...(input.taglineUr !== undefined
+      ? { taglineUr: input.taglineUr.trim() }
+      : existing?.taglineUr
+      ? { taglineUr: existing.taglineUr }
+      : {}),
     startingBiltySeq: startingSeq,
     isHeadOffice: branchId === DEFAULT_HEAD_OFFICE_BRANCH_ID || Boolean(input.isHeadOffice),
     active: input.active !== false,
     ...(effectiveOwnerEmail ? { ownerEmail: effectiveOwnerEmail } : {}),
+    ...(cleanOwnerDisplayName ? { ownerDisplayName: cleanOwnerDisplayName } : {}),
     createdBy: existing?.createdBy || callerEmail,
     createdAt: existing?.createdAt || nowIso,
     updatedAt: nowIso
@@ -330,6 +357,9 @@ export async function saveBranchConfig(
   // Update local cache immediately
   const merged = [...getCachedBranches().filter(b => b.id !== branchId), branchDoc];
   setCachedBranches(merged);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('driverdost:company_updated', { detail: branchDoc }));
+  }
 
   if (db && auth.currentUser && (typeof navigator === 'undefined' || navigator.onLine)) {
     const path = `branches/${branchId}`;
@@ -359,6 +389,7 @@ export async function saveBranchConfig(
         await upsertBranchStaffMember({
           branch: branchDoc,
           email: effectiveOwnerEmail,
+          displayName: cleanOwnerDisplayName || undefined,
           presetRole: 'branch_owner',
           permissions: getPresetPermissions('branch_owner'),
           status: 'active'
@@ -370,6 +401,82 @@ export async function saveBranchConfig(
   }
 
   return branchDoc;
+}
+
+export interface BranchCompanyDetailsPatch {
+  nameUr?: string;
+  nameEn?: string;
+  addressUr?: string;
+  addressEn?: string;
+  phoneNumbers?: string;
+  ntn?: string;
+  companyHeaderUr?: string;
+  companyHeaderEn?: string;
+  proprietorNameUr?: string;
+  proprietorNameEn?: string;
+  taglineUr?: string;
+}
+
+/**
+ * Updates branch-level Company Details (Header Name, Proprietor, NTN, Address, Phones)
+ * used live on Printed Bilties & Adda Bills.
+ * Allowed for App Creator on any branch OR Branch Owner on their own branch.
+ */
+export async function saveBranchCompanyDetails(
+  branchId: string,
+  details: BranchCompanyDetailsPatch
+): Promise<BranchConfig> {
+  const callerEmail = normalizeEmail(auth.currentUser?.email);
+  const existing = getCachedBranchById(branchId) || DEFAULT_SAMUNDRI_BRANCH;
+  const cachedAccess = getCachedUserBranchAccess(callerEmail);
+  const isBranchOwnerCaller =
+    Boolean(callerEmail) &&
+    (normalizeEmail(existing.ownerEmail) === callerEmail ||
+      (cachedAccess?.branchId === branchId &&
+        cachedAccess?.status === 'active' &&
+        cachedAccess?.presetRole === 'branch_owner'));
+
+  if (!isOwnerEmail(callerEmail) && !isBranchOwnerCaller) {
+    throw new Error('Only the Branch Owner or App Creator can edit company details.');
+  }
+
+  const nowIso = new Date().toISOString();
+  const safePatch: BranchCompanyDetailsPatch & { updatedAt: string } = {
+    nameUr: (details.nameUr ?? existing.nameUr).trim() || existing.nameUr,
+    nameEn: (details.nameEn ?? existing.nameEn).trim() || existing.nameEn,
+    addressUr: (details.addressUr ?? existing.addressUr).trim(),
+    addressEn: (details.addressEn ?? existing.addressEn).trim(),
+    phoneNumbers: (details.phoneNumbers ?? existing.phoneNumbers).trim(),
+    ntn: (details.ntn ?? existing.ntn ?? '7779394-1').trim(),
+    companyHeaderUr: (details.companyHeaderUr ?? existing.companyHeaderUr ?? '').trim(),
+    companyHeaderEn: (details.companyHeaderEn ?? existing.companyHeaderEn ?? '').trim(),
+    proprietorNameUr: (details.proprietorNameUr ?? existing.proprietorNameUr ?? '').trim(),
+    proprietorNameEn: (details.proprietorNameEn ?? existing.proprietorNameEn ?? '').trim(),
+    taglineUr: (details.taglineUr ?? existing.taglineUr ?? '').trim(),
+    updatedAt: nowIso
+  };
+
+  const updatedBranch: BranchConfig = {
+    ...existing,
+    ...safePatch
+  };
+
+  const merged = [...getCachedBranches().filter(b => b.id !== branchId), updatedBranch];
+  setCachedBranches(merged);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('driverdost:company_updated', { detail: updatedBranch }));
+  }
+
+  if (db && auth.currentUser && (typeof navigator === 'undefined' || navigator.onLine)) {
+    const path = `branches/${branchId}`;
+    try {
+      await setDoc(doc(db, 'branches', branchId), safePatch, { merge: true });
+    } catch (err) {
+      throwBranchFirestoreError(err, BranchFirestoreOp.UPDATE, path);
+    }
+  }
+
+  return updatedBranch;
 }
 
 export async function toggleBranchActive(branchId: string, active: boolean): Promise<void> {

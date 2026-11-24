@@ -1,6 +1,6 @@
 export type Language = 'en' | 'ur';
 export type FuelType = 'diesel' | 'petrol' | 'cng';
-export type ActiveTab = 'home' | 'calculator' | 'vehicle' | 'drivers' | 'routes' | 'fuel' | 'verify' | 'bilty' | 'vehicleAccount' | 'map' | 'toll' | 'navigation' | 'dashcam' | 'ledger';
+export type ActiveTab = 'home' | 'calculator' | 'vehicle' | 'drivers' | 'routes' | 'fuel' | 'verify' | 'bilty' | 'addaPanel' | 'vehicleAccount' | 'map' | 'toll' | 'navigation' | 'dashcam' | 'ledger';
 export type CalcSubTab = 'calc' | 'history' | 'summary';
 export type LedgerSubTab =
   | 'parties'
@@ -557,13 +557,102 @@ export interface BranchConfig {
   addressEn: string;
   phoneNumbers: string;
   ntn?: string;
+  companyHeaderUr?: string;
+  companyHeaderEn?: string;
+  proprietorNameUr?: string;
+  proprietorNameEn?: string;
+  taglineUr?: string;
   startingBiltySeq: number;
   isHeadOffice?: boolean;
   active: boolean;
   ownerEmail?: string;
+  ownerDisplayName?: string;
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export type AddaPendingStatus = 'pending' | 'billed' | 'paid';
+
+export interface AddaPendingFreight {
+  id: string;
+  branchId: string;
+  biltyId?: number;
+  biltyNo: string;
+  date: string;
+  vehicleNo?: string;
+  route?: string;
+  partyName: string;
+  partyMobile: string;
+  amount: number;
+  status: AddaPendingStatus;
+  billId?: string;
+  billNumber?: string;
+  notes?: string;
+  createdByEmail?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AddaPendingCommission {
+  id: string;
+  branchId: string;
+  biltyId?: number;
+  biltyNo: string;
+  date: string;
+  vehicleNo?: string;
+  route?: string;
+  fromWhomName: string;
+  fromWhomMobile: string;
+  amount: number;
+  status: AddaPendingStatus;
+  billId?: string;
+  billNumber?: string;
+  notes?: string;
+  createdByEmail?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AddaBillItemSnapshot {
+  itemId: string;
+  itemType: 'freight' | 'commission';
+  biltyNo: string;
+  date: string;
+  vehicleNo?: string;
+  route?: string;
+  description: string;
+  amount: number;
+}
+
+export interface AddaBillRecord {
+  id: string;
+  branchId: string;
+  billNumber: string;
+  date: string;
+  partyName: string;
+  partyMobile?: string;
+  items: AddaBillItemSnapshot[];
+  subtotal: number;
+  extraCharges: number;
+  discount: number;
+  totalAmount: number;
+  status: 'billed' | 'paid';
+  paidAt?: string;
+  notes?: string;
+  companySnapshot: {
+    nameUr: string;
+    nameEn: string;
+    proprietorUr: string;
+    proprietorEn: string;
+    addressUr: string;
+    addressEn: string;
+    phone: string;
+    ntn: string;
+  };
+  createdByEmail?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface BranchStaffMember {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ActiveTab, BiltyRecord, BranchConfig, BranchPermissions, DICTIONARY, Driver, Language, Trip, UserRole, Vehicle } from '../../types';
+import { ActiveTab, BiltyRecord, BranchConfig, BranchPermissions, CompanyProfile, DICTIONARY, Driver, Language, Trip, UserBranchAccess, UserRole, Vehicle } from '../../types';
 import { 
   Calculator, 
   Truck, 
@@ -38,13 +38,16 @@ import {
   Camera,
   Info,
   RefreshCw,
-  Building2
+  Building2,
+  Briefcase
 } from 'lucide-react';
 import { HomeWeatherFuelCard } from '../HomeWeatherFuelCard';
 import { TermsModal } from '../TermsModal';
 import { PrivacyPolicyModal } from '../PrivacyPolicyModal';
 import { TollCalculatorModal } from '../TollCalculatorModal';
 import { checkExpiringDocuments, processExpiryNotifications, ExpiringDocumentItem } from '../../utils/documentExpiry';
+import { resolveEffectiveCompanyDetails } from '../../utils/addaBillingStorage';
+import { isOwnerEmail } from '../../utils/authUtils';
 
 // Embedded high-resolution base64 images - 100% offline proof, zero 404s, works across all Android PWA & APK wrappers
 import {
@@ -79,6 +82,9 @@ interface HomeViewProps {
   bilties?: BiltyRecord[];
   userRole?: UserRole;
   userEmail?: string | null;
+  userDisplayName?: string | null;
+  userBranchAccess?: UserBranchAccess | null;
+  companyProfile?: CompanyProfile | null;
   isBiltyAuthorized?: boolean;
   onNavigate: (tab: ActiveTab, subSection?: string) => void;
   onOpenMenu?: () => void;
@@ -258,6 +264,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
   bilties = [],
   userRole = 'owner',
   userEmail = null,
+  userDisplayName = null,
+  userBranchAccess = null,
+  companyProfile = null,
   isBiltyAuthorized = false,
   onNavigate, 
   onOpenMenu,
@@ -356,81 +365,100 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <div className="flex flex-col gap-5 sm:gap-6 w-full">
         
         {/* Authenticated App Owner / Branch Panel: Simple Buttons Only (No Logo/Images) */}
-        {(isBiltyAuthorized || canManageBranchStaff) && (
-          <div className="space-y-2.5 animate-in fade-in">
-            {(activeBranch || (branches && branches.length > 0)) && (
-              <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-[#0f2942] text-white shadow-xs border border-[#1a3a5c]">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Building2 className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span className="text-xs font-bold truncate">
-                    {activeBranch
-                      ? (lang === 'ur' ? activeBranch.nameUr : activeBranch.nameEn)
-                      : (lang === 'ur' ? 'سمندری ہیڈ آفس' : 'Samundri Head Office')}
-                  </span>
-                </div>
-                {onSelectBranch && branches && branches.length > 1 ? (
-                  <select
-                    aria-label={lang === 'ur' ? 'برانچ منتخب کریں' : 'Select Active Branch'}
-                    value={activeBranch?.id || branches[0]?.id || 'samundri'}
-                    onChange={(e) => onSelectBranch(e.target.value)}
-                    className="bg-white/15 hover:bg-white/25 text-white border border-white/25 rounded-xl px-2.5 py-1 text-xs font-bold cursor-pointer focus:outline-none"
-                  >
-                    {branches.map((br) => (
-                      <option key={br.id} value={br.id} className="text-slate-900 bg-white">
-                        {lang === 'ur' ? br.nameUr : br.nameEn}
-                      </option>
-                    ))}
-                  </select>
-                ) : activeBranch?.phoneNumbers ? (
-                  <span className="text-[11px] font-mono text-amber-300 dir-ltr">
-                    {activeBranch.phoneNumbers}
-                  </span>
-                ) : null}
-              </div>
-            )}
+        {(isBiltyAuthorized || canManageBranchStaff) && (() => {
+          const isCreatorUser = isOwnerEmail(userEmail);
+          const resolvedCompany = resolveEffectiveCompanyDetails(activeBranch, companyProfile);
+          const companyTitle = lang === 'ur' ? resolvedCompany.nameUr : resolvedCompany.nameEn;
 
-            {isBiltyAuthorized && (
-              <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-                {(branchPermissions ? branchPermissions.createBilty : true) && (
+          const assignedPersonName = (() => {
+            if (!isCreatorUser) {
+              const staffAssigned = userBranchAccess?.displayName?.trim();
+              if (staffAssigned) return staffAssigned;
+              const branchOwnerAssigned = activeBranch?.ownerDisplayName?.trim();
+              if (branchOwnerAssigned) return branchOwnerAssigned;
+              const prop = userDisplayName?.trim();
+              if (prop) return prop;
+              return userEmail ? userEmail.split('@')[0] : (lang === 'ur' ? 'صارف' : 'Member');
+            }
+            if (lang === 'ur') {
+              return resolvedCompany.proprietorUr || 'زاہدان نصر وڑائچ';
+            }
+            return resolvedCompany.proprietorEn || 'Zahdan Nasar Warraich';
+          })();
+
+          const canCreateBilty = branchPermissions ? branchPermissions.createBilty : true;
+
+          return (
+            <div
+              data-testid="home-owner-adda-panel"
+              className="rounded-3xl bg-[#0f2942] text-white p-4 sm:p-5 shadow-sm border border-[#1e4068] space-y-3.5 animate-in fade-in"
+            >
+              {/* Company Name Header + Branch Switcher */}
+              <div className="flex flex-wrap items-start justify-between gap-2.5 border-b border-white/15 pb-3">
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-amber-400 shrink-0" />
+                    <h2 className="text-sm sm:text-base font-black text-amber-300 tracking-wide truncate">
+                      {companyTitle}
+                    </h2>
+                  </div>
+                  <p
+                    data-testid="home-welcome-note"
+                    className="text-xs sm:text-sm font-bold text-white/95"
+                  >
+                    {lang === 'ur'
+                      ? `خوش آمدید جناب ${assignedPersonName}`
+                      : `Welcome Mr ${assignedPersonName}`}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {onSelectBranch && branches && branches.length > 1 ? (
+                    <select
+                      aria-label={lang === 'ur' ? 'برانچ منتخب کریں' : 'Select Active Branch'}
+                      value={activeBranch?.id || branches[0]?.id || 'samundri'}
+                      onChange={(e) => onSelectBranch(e.target.value)}
+                      className="bg-white/15 hover:bg-white/25 text-white border border-white/25 rounded-xl px-2.5 py-1.5 text-xs font-bold cursor-pointer focus:outline-none"
+                    >
+                      {branches.map((br) => (
+                        <option key={br.id} value={br.id} className="text-slate-900 bg-white">
+                          {lang === 'ur' ? br.nameUr : br.nameEn}
+                        </option>
+                      ))}
+                    </select>
+                  ) : activeBranch ? (
+                    <span className="px-2.5 py-1 rounded-xl bg-white/10 border border-white/15 text-[11px] font-bold text-amber-200">
+                      {lang === 'ur' ? activeBranch.nameUr : activeBranch.nameEn}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Strictly 2 Primary Buttons */}
+              <div className={`grid gap-2.5 sm:gap-3 ${isBiltyAuthorized && canCreateBilty ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('addaPanel')}
+                  className="w-full min-h-[48px] px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm rounded-2xl shadow-xs cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-95"
+                >
+                  <Briefcase className="w-4 h-4 shrink-0" />
+                  <span>{lang === 'ur' ? 'اڈا / اونر پینل' : 'Adda / Owner Panel'}</span>
+                </button>
+
+                {isBiltyAuthorized && canCreateBilty && (
                   <button
                     type="button"
                     onClick={() => onNavigate('bilty', 'create')}
-                    className="w-full min-h-[48px] px-4 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-95"
+                    className="w-full min-h-[48px] px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm rounded-2xl shadow-xs cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-95 border border-emerald-400/30"
                   >
                     <Plus className="w-4 h-4 shrink-0" />
-                    <span>{lang === 'ur' ? 'نئی بلٹی بنائیں' : 'Create Bilty'}</span>
-                  </button>
-                )}
-
-                {(branchPermissions ? branchPermissions.viewAllBilties : true) && (
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('bilty', 'ledger')}
-                    className="w-full min-h-[48px] px-4 py-3 bg-[#0f2942] hover:bg-[#1a3a5c] text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-95"
-                  >
-                    <Receipt className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>
-                      {lang === 'ur'
-                        ? `تمام بلٹیاں دیکھیں (${bilties.length})`
-                        : `View All Bilties (${bilties.length})`}
-                    </span>
+                    <span>{lang === 'ur' ? 'نئی بلٹی بنائیں' : 'Create New Bilty'}</span>
                   </button>
                 )}
               </div>
-            )}
-
-            {canManageBranchStaff && onOpenBranchStaffModal && (
-              <button
-                type="button"
-                onClick={onOpenBranchStaffModal}
-                className="w-full min-h-[44px] px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xs cursor-pointer transition-all flex items-center justify-center gap-2 active:scale-95"
-              >
-                <Users className="w-4 h-4 shrink-0" />
-                <span>{lang === 'ur' ? 'برانچ اسٹاف مینیج کریں' : 'Manage Branch Staff'}</span>
-              </button>
-            )}
-          </div>
-        )}
+            </div>
+          );
+        })()}
 
         {/* Documents Expiring Soon Reminder Section (Feature A) */}
         {expiringDocs.length > 0 && !isExpiryBannerDismissed && (

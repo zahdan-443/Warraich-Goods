@@ -107,6 +107,7 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
   const [phoneNumbers, setPhoneNumbers] = useState('');
   const [startingBiltySeq, setStartingBiltySeq] = useState<number>(2001);
   const [branchOwnerEmail, setBranchOwnerEmail] = useState('');
+  const [ownerDisplayName, setOwnerDisplayName] = useState('');
   const [branchActive, setBranchActive] = useState(true);
 
   // Staff Form
@@ -160,6 +161,7 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
     setPhoneNumbers('');
     setStartingBiltySeq(2001);
     setBranchOwnerEmail('');
+    setOwnerDisplayName('');
     setBranchActive(true);
   };
 
@@ -172,6 +174,7 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
     setPhoneNumbers(b.phoneNumbers);
     setStartingBiltySeq(b.startingBiltySeq || 1001);
     setBranchOwnerEmail(b.ownerEmail && !isOwnerEmail(b.ownerEmail) ? b.ownerEmail : '');
+    setOwnerDisplayName(b.ownerDisplayName || '');
     setBranchActive(b.active !== false);
     setFeedback(null);
   };
@@ -223,6 +226,7 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
         ntn: '7779394-1',
         startingBiltySeq: Math.max(1001, Number(startingBiltySeq) || 1001),
         ownerEmail: cleanOwner || undefined,
+        ownerDisplayName: ownerDisplayName.trim() || undefined,
         active: branchActive
       });
       const updated = await fetchAllBranches();
@@ -484,7 +488,8 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
 
                 {b.ownerEmail && !isOwnerEmail(b.ownerEmail) && (
                   <div className="text-[10px] font-mono text-[#4a4a35] bg-[#f8f6ef] px-2 py-1 rounded-lg">
-                    {isUr ? 'برانچ آنر:' : 'Branch Owner:'} {b.ownerEmail}
+                    {isUr ? 'برانچ آنر:' : 'Branch Owner:'}{' '}
+                    {b.ownerDisplayName ? `${b.ownerDisplayName} (${b.ownerEmail})` : b.ownerEmail}
                   </div>
                 )}
 
@@ -664,7 +669,7 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
             />
           </div>
 
-          <div className="sm:col-span-2">
+          <div>
             <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
               {isUr ? 'برانچ آنر جی میل (اختیاری)' : 'Assigned Branch Owner Gmail (Optional)'}
             </label>
@@ -675,6 +680,19 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
               placeholder="branchowner@gmail.com"
               dir="ltr"
               className="w-full px-3 py-2 bg-white border border-[#d6c3b0] rounded-xl font-mono focus:outline-none focus:border-[#1a477a]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
+              {isUr ? 'آنر کا نام (ڈیش بورڈ خوش آمدید نوٹ کیلئے)' : 'Branch Owner Name (for Welcome Note)'}
+            </label>
+            <input
+              type="text"
+              value={ownerDisplayName}
+              onChange={e => setOwnerDisplayName(e.target.value)}
+              placeholder={isUr ? 'مثلاً حمزہ وڑائچ' : 'e.g. Hamza Warraich'}
+              className="w-full px-3 py-2 bg-white border border-[#d6c3b0] rounded-xl focus:outline-none focus:border-[#1a477a]"
             />
           </div>
         </div>
@@ -804,13 +822,14 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
 
             <div>
               <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
-                {isUr ? 'نام (اختیاری)' : 'Display Name (Optional)'}
+                {isUr ? 'شخص کا نام (خوش آمدید نوٹ کیلئے) *' : 'Assigned Person Name (Welcome Note) *'}
               </label>
               <input
                 type="text"
+                required
                 value={staffName}
                 onChange={e => setStaffName(e.target.value)}
-                placeholder={isUr ? 'نام لکھیں' : 'Staff Name'}
+                placeholder={isUr ? 'مثلاً علی خان' : 'e.g. Ali Khan'}
                 className="w-full px-3 py-2 bg-[#fdfbf7] border border-[#d6c3b0] rounded-xl focus:outline-none focus:border-[#1a477a]"
               />
             </div>

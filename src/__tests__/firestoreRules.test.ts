@@ -22,6 +22,9 @@ describe('Firestore Rules Security Audit & Structure', () => {
     expect(rulesContent).toContain('function isBranchOwner(branchId)');
     expect(rulesContent).not.toContain('function isStaffAuthorized(');
     expect(rulesContent).toContain('match /branches/{branchId}');
+    expect(rulesContent).toContain('match /addaPendingFreight/{itemId}');
+    expect(rulesContent).toContain('match /addaPendingCommissions/{itemId}');
+    expect(rulesContent).toContain('match /addaBills/{billId}');
     expect(rulesContent).toContain('match /userBranchAccess/{emailKey}');
     expect(rulesContent).toContain('match /signedInDirectory/{emailKey}');
     expect(rulesContent).toContain("emailKey != 'warraichgoods43@gmail.com'");
