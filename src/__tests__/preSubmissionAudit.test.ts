@@ -230,25 +230,15 @@ describe('Pre-Submission APK Audit & Security Hardening Suite', () => {
       expect(html).not.toContain(':runQuery');
     });
 
-    it('ensures public-facing verification UI copy avoids restricted Bilty terminology', () => {
-      const verifySrc = fs.readFileSync(path.join(root, 'src/components/views/VerifyView.tsx'), 'utf8');
+    it('keeps public verification card free of sensitive PII/financial amounts while supporting bilingual Bilty wording', () => {
       const cardSrc = fs.readFileSync(path.join(root, 'src/components/views/BiltyVerificationCard.tsx'), 'utf8');
-      const appSrc = fs.readFileSync(path.join(root, 'src/App.tsx'), 'utf8');
+      const privacyHtml = fs.readFileSync(path.join(root, 'public/privacy.html'), 'utf8');
 
-      // Check rendered user-facing UI strings (ignoring internal TS type/variable/URL query identifiers)
-      expect(cardSrc).not.toContain('بلٹی');
-      expect(cardSrc).not.toMatch(/\bBilty\s+(?:No|Date|Verification|Document)\b/i);
       expect(cardSrc).toContain('VERIFIED OFFICIAL DOCUMENT');
-      expect(cardSrc).toContain('Document No');
-
-      expect(verifySrc).not.toContain('بلٹی');
-      const verifyUiLines = verifySrc
-        .split('\n')
-        .filter((line) => !line.includes('console.warn') && !line.includes('console.error') && !line.trim().startsWith('import '))
-        .join('\n');
-      expect(verifyUiLines).not.toMatch(/['"`>][^'"`\n<]*\bBilty\s+(?:No|Number|Verification|QR|Record|Lookup)\b[^'"`\n<]*['"`<]/i);
-      expect(verifySrc).toContain('Document Verification');
-      expect(appSrc).toContain("subtitle: 'Vehicles, Licenses, Challans & Document QR'");
+      expect(cardSrc).not.toContain('senderCnic');
+      expect(cardSrc).not.toContain('payable');
+      expect(privacyHtml).toContain('6 months (180 days)');
+      expect(privacyHtml).toContain('Legal Hold');
     });
   });
 });

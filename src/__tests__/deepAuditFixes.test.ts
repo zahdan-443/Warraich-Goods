@@ -148,7 +148,7 @@ describe('Deep Audit Fixes Verification Suite', () => {
       expect(num3).toBe('WG-1003');
     });
 
-    it('should disambiguate colliding duplicate WG-1001 records and preserve both', async () => {
+    it('should preserve colliding duplicate WG-1001 records intact and flag numberConflict for manual resolution', async () => {
       const { getStoredBilties, safeStorage } = await import('../utils/storage');
       const mockRecord1 = {
         id: 1730000001,
@@ -161,7 +161,7 @@ describe('Deep Audit Fixes Verification Suite', () => {
       };
       const mockRecord2 = {
         id: 1730000002,
-        biltyNo: 'WG-1001', // Colliding number from previous bug
+        biltyNo: 'WG-1001', // Genuine colliding number across offline devices
         vehicleNo: 'FSD-2222',
         senderName: 'Sender B',
         receiverName: 'Receiver B',
@@ -172,9 +172,9 @@ describe('Deep Audit Fixes Verification Suite', () => {
       safeStorage.setItem('ah-bilties', JSON.stringify([mockRecord1, mockRecord2]));
       const restored = getStoredBilties();
       expect(restored.length).toBe(2);
-      const numbers = restored.map(b => b.biltyNo);
-      expect(numbers).toContain('WG-1001');
-      expect(numbers).toContain('WG-1002');
+      expect(restored.every(b => b.biltyNo === 'WG-1001')).toBe(true);
+      expect(restored.every(b => b.numberConflict === true)).toBe(true);
+      expect(restored.every(b => Boolean(b.conflictNote))).toBe(true);
     });
   });
 

@@ -9,13 +9,14 @@ import {
   AlertCircle,
   Database
 } from 'lucide-react';
-import { getSyncStatus, subscribeToSyncEvents } from '../utils/storage';
+import { getSyncStatus, subscribeToSyncEvents, triggerFullResync } from '../utils/storage';
 import type { Language, SyncStatusState } from '../types';
 
 interface SyncStatusBadgeProps {
   lang: Language;
   userEmail?: string | null;
   onSyncTrigger?: () => Promise<void> | void;
+  onFullResyncTrigger?: () => Promise<void> | void;
   onSignIn?: () => void;
   className?: string;
 }
@@ -28,6 +29,7 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
   lang,
   userEmail,
   onSyncTrigger,
+  onFullResyncTrigger,
   onSignIn,
   className = ''
 }) => {
@@ -72,7 +74,7 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
     }
   };
 
-  const handleManualSyncClick = async (e: React.MouseEvent) => {
+  const handleManualSyncClick = async (e: React.MouseEvent, fullResync = false) => {
     e.stopPropagation();
     if (isManualSyncing) return;
 
@@ -87,7 +89,13 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
     setIsManualSyncing(true);
     setSyncFeedbackMsg(null);
     try {
-      if (onSyncTrigger) {
+      if (fullResync) {
+        if (onFullResyncTrigger) {
+          await onFullResyncTrigger();
+        } else {
+          await triggerFullResync();
+        }
+      } else if (onSyncTrigger) {
         await onSyncTrigger();
       }
       const nextStatus = getSyncStatus();
@@ -105,7 +113,11 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
             : `${nextStatus.pendingCount} item(s) still queued for retry`
         );
       } else {
-        setSyncFeedbackMsg(lang === 'ur' ? 'ڈیٹا کامیابی سے ہم آہنگ ہو گیا!' : 'Data synced successfully!');
+        setSyncFeedbackMsg(
+          fullResync
+            ? (lang === 'ur' ? 'مکمل کلاؤڈ دوبارہ سنک مکمل ہو گیا!' : 'Full cloud resync complete!')
+            : (lang === 'ur' ? 'ڈیٹا کامیابی سے ہم آہنگ ہو گیا!' : 'Data synced successfully!')
+        );
       }
       setTimeout(() => setSyncFeedbackMsg(null), 3500);
     } catch (err) {
@@ -257,7 +269,7 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
             )}
 
             {/* Action Buttons */}
-            <div>
+            <div className="space-y-1.5">
               {isGuest ? (
                 <button
                   type="button"
@@ -271,23 +283,38 @@ export const SyncStatusBadge: React.FC<SyncStatusBadgeProps> = ({
                   <span>{lang === 'ur' ? 'گوگل سے سائن ان کریں' : 'Sign In with Google'}</span>
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={handleManualSyncClick}
-                  disabled={isManualSyncing || isOffline}
-                  className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 ${
-                    isManualSyncing || isOffline
-                      ? 'bg-gray-200 dark:bg-[#22252c] text-gray-500 dark:text-slate-500 cursor-not-allowed'
-                      : 'bg-[#1b4332] hover:bg-[#2d6a4f] text-white cursor-pointer'
-                  }`}
-                >
-                  <RefreshCw className={`w-4 h-4 ${isManualSyncing ? 'animate-spin' : ''}`} />
-                  <span>
-                    {isManualSyncing
-                      ? (lang === 'ur' ? 'ہم آہنگ ہو رہا ہے...' : 'Syncing Data...')
-                      : (lang === 'ur' ? 'ابھی سنک کریں' : 'Sync Now')}
-                  </span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => void handleManualSyncClick(e, false)}
+                    disabled={isManualSyncing || isOffline}
+                    className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 ${
+                      isManualSyncing || isOffline
+                        ? 'bg-gray-200 dark:bg-[#22252c] text-gray-500 dark:text-slate-500 cursor-not-allowed'
+                        : 'bg-[#1b4332] hover:bg-[#2d6a4f] text-white cursor-pointer'
+                    }`}
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isManualSyncing ? 'animate-spin' : ''}`} />
+                    <span>
+                      {isManualSyncing
+                        ? (lang === 'ur' ? 'ہم آہنگ ہو رہا ہے...' : 'Syncing Data...')
+                        : (lang === 'ur' ? 'ابھی سنک کریں' : 'Sync Now')}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => void handleManualSyncClick(e, true)}
+                    disabled={isManualSyncing || isOffline}
+                    className={`w-full py-1.5 px-3 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                      isManualSyncing || isOffline
+                        ? 'bg-gray-100 dark:bg-[#1a1c22] text-gray-400 border-gray-200 dark:border-[#2d313b] cursor-not-allowed'
+                        : 'bg-white dark:bg-[#1a1c22] hover:bg-slate-50 dark:hover:bg-[#22252c] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-[#2d313b] cursor-pointer'
+                    }`}
+                  >
+                    <Cloud className="w-3.5 h-3.5" />
+                    <span>{lang === 'ur' ? 'مکمل دوبارہ سنک (Full Resync)' : 'Full Resync'}</span>
+                  </button>
+                </>
               )}
             </div>
           </div>

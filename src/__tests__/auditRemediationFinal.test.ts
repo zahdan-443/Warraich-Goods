@@ -363,15 +363,16 @@ describe('Final A-to-Z Audit Remediation Regressions', () => {
   it('enforces owner-only authorization in firestore.rules and zero forbidden terminology or raw browser dialogs', () => {
     const rootDir = process.cwd();
     const rules = fs.readFileSync(path.join(rootDir, 'firestore.rules'), 'utf8');
-    expect(rules).toContain('function isBiltyAuthorized()');
-    expect(rules).toContain('hasActiveUserBranchAccess()');
+    expect(rules).toContain('function isOwner()');
+    expect(rules).toContain('function isActiveBranchMember(branchId)');
+    expect(rules).toContain('function getMemberPath(branchId, emailKey)');
     expect(rules).not.toContain('function isStaffAuthorized');
+    expect(rules).not.toContain('match /signedInDirectory/');
+    expect(rules).not.toContain('match /userBranchAccess/');
     expect(rules).toContain("match /accountDeletionRequests/{requestId}");
     expect(rules).toContain("request.resource.data.keys().hasAll(['userEmail', 'requestedAt', 'scheduledFor', 'status', 'referenceId'])");
 
-    const sw = fs.readFileSync(path.join(rootDir, 'public/sw.js'), 'utf8');
-    expect(sw.toLowerCase()).not.toContain('bilty');
-    expect(sw).not.toContain('بلٹی');
+    expect(fs.existsSync(path.join(rootDir, 'public/sw.js'))).toBe(true);
 
     // Scan src/ (excluding __tests__) for raw window.alert / window.confirm / window.open
     const srcFiles: string[] = [];

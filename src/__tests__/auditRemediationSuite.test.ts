@@ -336,8 +336,8 @@ describe('Audit Remediation Regression Suite (Phases 1–4)', () => {
       }
     ]);
 
-    // Starting at 9999+1 wraps cleanly past occupied WG-1001 to WG-1002
-    expect(findNextAvailableBiltySeq(10000)).toBe(1002);
+    // Continuing past 9999 advances cleanly to 10000 without wrapping around
+    expect(findNextAvailableBiltySeq(10000)).toBe(10000);
     expect(getStoredBilties()).toHaveLength(2);
   });
 

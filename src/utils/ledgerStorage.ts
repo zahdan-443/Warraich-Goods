@@ -31,7 +31,6 @@ import {
   setScopedItem
 } from './storage';
 import { getActiveKhataScope, removeScopedItem, safeStorage } from './storageCore';
-import { getActiveBranchId, isUsingSharedBranchScope } from './branchContext';
 import { savePreRestoreSnapshotIdbOnly } from './persistentStorage';
 import {
   getTombstones,
@@ -654,19 +653,11 @@ function computeKhataBackoffMs(retryCount: number): number {
   return Math.min(2000 * Math.pow(2, exp - 1), 5 * 60 * 1000);
 }
 
-function getKhataCloudRoot(uid: string): readonly ['users', string] | readonly ['branches', string] {
-  const branchId = getActiveBranchId();
-  if (isUsingSharedBranchScope() && branchId) {
-    return ['branches', branchId] as const;
-  }
+function getKhataCloudRoot(uid: string): readonly ['users', string] {
   return ['users', uid] as const;
 }
 
 function getKhataDigestScope(uid: string): string {
-  const branchId = getActiveBranchId();
-  if (isUsingSharedBranchScope() && branchId) {
-    return `branch_${branchId}`;
-  }
   return uid;
 }
 
@@ -815,7 +806,7 @@ export async function processKhataDocQueue(): Promise<{
       } else if (item.collectionPath === 'entries' && item.subPath) {
         const ref = doc(db, root[0], root[1], 'ledgerAccounts', item.subPath, 'entries', item.docId);
         if (item.action === 'upsert') {
-          await setDoc(ref, item.data || {}, { merge: true });
+          await setDoc(ref, { ...(item.data || {}), ownerUid: user.uid }, { merge: true });
         } else {
           await deleteDoc(ref);
         }
@@ -890,7 +881,10 @@ async function mirrorAccountToFirestore(account: LedgerAccount, action: 'upsert'
 
 async function mirrorEntryToFirestore(entry: LedgerEntry, action: 'upsert' | 'delete'): Promise<void> {
   const user = auth.currentUser;
-  const payload = entry as unknown as Record<string, unknown>;
+  const payload = {
+    ...(entry as unknown as Record<string, unknown>),
+    ...(user?.uid ? { ownerUid: user.uid } : {})
+  };
   if (!user || !db) {
     if (user) enqueueKhataDocSync({ action, collectionPath: 'entries', docId: entry.id, subPath: entry.accountId, data: payload });
     return;
@@ -1095,20 +1089,79 @@ export async function fetchKhataFromFirestore(): Promise<void> {
       const data = d.data() as LedgerAccount;
       if (data && data.id) {
         cloudAccounts.push(data);
+      }
+    }
 
-        // Fetch subcollection entries
+    // 1b. Fetch all ledger entries in a single ownerUid-scoped collectionGroup query (eliminates N+1 loop)
+    const collectionGroupFn = (
+      firestoreModule as unknown as { collectionGroup?: typeof firestoreModule.collectionGroup }
+    ).collectionGroup;
+    const queryFn = (firestoreModule as unknown as { query?: typeof firestoreModule.query }).query;
+    const whereFn = (firestoreModule as unknown as { where?: typeof firestoreModule.where }).where;
+
+    const uidBackfillKey = `wg_v3_khata_entries_uid_migrated_${user.uid}`;
+    let fetchedViaCollectionGroup = false;
+
+    if (
+      typeof collectionGroupFn === 'function' &&
+      typeof queryFn === 'function' &&
+      typeof whereFn === 'function'
+    ) {
+      try {
+        const cgQuery = queryFn(collectionGroupFn(db, 'entries'), whereFn('ownerUid', '==', user.uid));
+        const cgSnap = await getDocs(cgQuery);
+        for (const ed of cgSnap.docs) {
+          const edata = ed.data() as LedgerEntry;
+          if (edata && edata.id) {
+            cloudEntries.push(edata);
+          }
+        }
+        fetchedViaCollectionGroup = true;
+        if (cgSnap.docs.length > 0) {
+          try {
+            safeStorage.setItem(uidBackfillKey, '1');
+          } catch {}
+        }
+      } catch (e) {
+        console.warn('[KhataStorage] collectionGroup(entries) query fallback notice:', e);
+      }
+    }
+
+    const needsOneTimeLegacyCheck =
+      fetchedViaCollectionGroup &&
+      cloudEntries.length === 0 &&
+      cloudAccounts.length > 0 &&
+      !safeStorage.getItem(uidBackfillKey);
+
+    if (!fetchedViaCollectionGroup || needsOneTimeLegacyCheck) {
+      for (const acc of cloudAccounts) {
         try {
-          const entryColl = collection(db, root[0], root[1], 'ledgerAccounts', data.id, 'entries');
+          const entryColl = collection(db, root[0], root[1], 'ledgerAccounts', acc.id, 'entries');
           const entrySnap = await getDocs(entryColl);
           for (const ed of entrySnap.docs) {
             const edata = ed.data() as LedgerEntry;
             if (edata && edata.id) {
-              cloudEntries.push(edata);
+              if (!edata.ownerUid) {
+                const stamped: LedgerEntry = { ...edata, ownerUid: user.uid };
+                cloudEntries.push(stamped);
+                void setDoc(
+                  doc(db, root[0], root[1], 'ledgerAccounts', acc.id, 'entries', edata.id),
+                  { ownerUid: user.uid },
+                  { merge: true }
+                ).catch(() => {});
+              } else {
+                cloudEntries.push(edata);
+              }
             }
           }
         } catch (e) {
-          console.warn(`Sub-entries fetch notice for ${data.id}:`, e);
+          console.warn(`Sub-entries fetch notice for ${acc.id}:`, e);
         }
+      }
+      if (needsOneTimeLegacyCheck) {
+        try {
+          safeStorage.setItem(uidBackfillKey, '1');
+        } catch {}
       }
     }
 
@@ -1344,13 +1397,14 @@ export async function syncAllKhataToFirestore(): Promise<{ pushedAccounts: numbe
 
   for (const entry of entries) {
     const pathKey = `ledgerAccounts/${entry.accountId}/entries/${entry.id}`;
-    const d = JSON.stringify(entry);
+    const stampedEntry = entry.ownerUid === user.uid ? entry : { ...entry, ownerUid: user.uid };
+    const d = JSON.stringify(stampedEntry);
     if (digestCache[pathKey] !== d) {
       ops.push({
         pathKey,
         digest: d,
         ref: doc(db, root[0], root[1], 'ledgerAccounts', entry.accountId, 'entries', entry.id),
-        data: entry as unknown as Record<string, unknown>,
+        data: stampedEntry as unknown as Record<string, unknown>,
         kind: 'entry'
       });
     } else {
@@ -1562,6 +1616,7 @@ export function saveOrUpdateLedgerEntry(
   const entries = getAllLedgerEntries();
   const now = new Date().toISOString();
 
+  const currentUid = auth.currentUser?.uid;
   let target: LedgerEntry;
   const existingIdx = data.id ? entries.findIndex(e => e.id === data.id) : -1;
 
@@ -1569,6 +1624,7 @@ export function saveOrUpdateLedgerEntry(
     target = {
       ...entries[existingIdx],
       ...data,
+      ...(currentUid ? { ownerUid: currentUid } : {}),
       amount: Math.abs(fromPaisa(toPaisa(Number(data.amount) || 0))),
       updatedAt: now
     };
@@ -1577,6 +1633,7 @@ export function saveOrUpdateLedgerEntry(
     target = {
       id: data.id || `entry_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       accountId: data.accountId,
+      ...(currentUid ? { ownerUid: currentUid } : {}),
       type: data.type,
       amount: Math.abs(fromPaisa(toPaisa(Number(data.amount) || 0))),
       date: data.date,
@@ -2374,6 +2431,10 @@ export function importKhataBackup(
             ? doc(db, root[0], root[1], 'ledgerAccounts', sub, 'entries', item.id)
             : doc(db, root[0], root[1], coll, item.id);
           const pathKey = sub ? `ledgerAccounts/${sub}/entries/${item.id}` : `${coll}/${item.id}`;
+          const payloadData =
+            coll === 'entries'
+              ? { ...(item as unknown as Record<string, unknown>), ownerUid: user.uid }
+              : (item as unknown as Record<string, unknown>);
           batchOps.push({
             action: 'upsert',
             collectionPath: coll,
@@ -2381,8 +2442,8 @@ export function importKhataBackup(
             subPath: sub,
             pathKey,
             ref,
-            data: item as unknown as Record<string, unknown>,
-            digest: JSON.stringify(item)
+            data: payloadData,
+            digest: JSON.stringify(payloadData)
           });
         }
       };

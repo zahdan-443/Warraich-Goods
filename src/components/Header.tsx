@@ -45,6 +45,7 @@ interface HeaderProps {
   isOffline: boolean;
   onToggleOffline: () => void;
   onSyncOffline: () => void;
+  onFullResync?: () => Promise<void> | void;
   isDashboard?: boolean;
   showTopMenuExternal?: boolean;
   onOpenTopMenu?: () => void;
@@ -71,6 +72,7 @@ export const Header: React.FC<HeaderProps> = ({
   isOffline,
   onToggleOffline,
   onSyncOffline,
+  onFullResync,
   isDashboard = false,
   showTopMenuExternal,
   onOpenTopMenu,
@@ -389,6 +391,7 @@ export const Header: React.FC<HeaderProps> = ({
                     lang={lang} 
                     userEmail={userEmail} 
                     onSyncTrigger={onSyncOffline} 
+                    onFullResyncTrigger={onFullResync}
                     onSignIn={() => {
                       handleCloseMenu();
                       if (onSignIn) onSignIn();

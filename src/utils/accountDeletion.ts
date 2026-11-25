@@ -20,7 +20,8 @@ import {
   where
 } from 'firebase/firestore';
 import { getScopedStorageKey } from './calculator';
-import { isOwnerEmail } from './authUtils';
+import { isOwnerEmail, normalizeEmail } from './authUtils';
+import { clearLocalBranchAndAddaCaches, getActiveBranchId, getCachedBranches } from './branchContext';
 import {
   deletePreRestoreSnapshotIdbOnly,
   idbClearAllBiltyAttachments,
@@ -60,13 +61,21 @@ export interface OwnerDeletionQueueItem extends Partial<AccountDeletionRequest> 
 
 const FIRESTORE_PURGE_BATCH_LIMIT = 400;
 
+function safeGetAccountFirestoreExport<T>(name: string): T | undefined {
+  try {
+    return (firestoreModule as unknown as Record<string, T | undefined>)[name];
+  } catch {
+    return undefined;
+  }
+}
+
 async function commitDeleteRefsInBatches(
   refs: Array<ReturnType<typeof doc>>,
   timeoutMs = 15000
 ): Promise<void> {
   if (refs.length === 0 || !db) return;
 
-  const writeBatchFn = (firestoreModule as unknown as { writeBatch?: typeof firestoreModule.writeBatch }).writeBatch;
+  const writeBatchFn = safeGetAccountFirestoreExport<typeof firestoreModule.writeBatch>('writeBatch');
   if (typeof writeBatchFn === 'function') {
     for (let i = 0; i < refs.length; i += FIRESTORE_PURGE_BATCH_LIMIT) {
       const chunk = refs.slice(i, i + FIRESTORE_PURGE_BATCH_LIMIT);
@@ -269,6 +278,7 @@ export async function clearLocalAndIndexedDbForUser(userId: string): Promise<voi
   }
   removeLegacyLocalPreRestoreKeys(userId);
   clearOfflineQueue();
+  await clearLocalBranchAndAddaCaches();
 
   try {
     await deletePreRestoreSnapshotIdbOnly(userId);
@@ -451,7 +461,48 @@ export async function purgeAllUserFirestoreData(userId: string): Promise<void> {
     })
   ]);
 
-  // 6. Purge root docs
+  // 6. Remove ONLY the staff member's own membership docs (`branches/{branchId}/members/{emailKey}`)
+  //    Shared business records (Bilties, Adda Freight/Commission/Bills) MUST remain untouched.
+  await runStep('branchMemberships', async () => {
+    const emailLower = normalizeEmail(auth.currentUser?.email);
+    if (!emailLower || isOwnerEmail(emailLower)) return;
+
+    const memberRefs = new Map<string, ReturnType<typeof doc>>();
+    const collGroupFn = safeGetAccountFirestoreExport<typeof firestoreModule.collectionGroup>('collectionGroup');
+    if (typeof collGroupFn === 'function' && typeof query === 'function' && typeof where === 'function') {
+      try {
+        const memSnap = await withTimeout(
+          getDocs(query(collGroupFn(firestore, 'members'), where('email', '==', emailLower))),
+          10000
+        ).catch(() => null);
+        memSnap?.docs.forEach(d => {
+          memberRefs.set(d.ref.path, d.ref);
+        });
+      } catch {
+        // fallback below
+      }
+    }
+
+    const candidateBranchIds = new Set<string>();
+    const activeB = getActiveBranchId();
+    if (activeB) candidateBranchIds.add(activeB);
+    for (const b of getCachedBranches()) {
+      if (b?.id) candidateBranchIds.add(b.id);
+    }
+    for (const bId of candidateBranchIds) {
+      const ref = doc(firestore, 'branches', bId, 'members', emailLower);
+      if (!memberRefs.has(ref.path)) {
+        const snap = await withTimeout(getDoc(ref), 5000).catch(() => null);
+        if (snap && snap.exists()) {
+          memberRefs.set(ref.path, ref);
+        }
+      }
+    }
+
+    await commitDeleteRefsInBatches(Array.from(memberRefs.values()), 15000);
+  });
+
+  // 7. Purge root docs
   await Promise.all([
     runStep('usersRoot', async () => {
       await withTimeout(deleteDoc(doc(firestore, 'users', userId)), 10000);

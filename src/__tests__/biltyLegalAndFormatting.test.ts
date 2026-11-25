@@ -28,21 +28,23 @@ describe('Bilty Mobile Phone Formatting', () => {
   });
 });
 
-describe('Strict 4-Digit Bilty Number Ceiling (WG-XXXX)', () => {
-  it('formats numeric and string bilty numbers strictly into 4 digits', () => {
+describe('Continuous Bilty Numbering (WG-1001+, WG-<CODE>-<SEQ>, 5+ Digits Supported)', () => {
+  it('formats numeric and string bilty numbers cleanly with minimum 4 digits', () => {
     expect(formatStrictBiltyNumber('1001')).toBe('WG-1001');
     expect(formatStrictBiltyNumber('WG-1001')).toBe('WG-1001');
     expect(formatStrictBiltyNumber('WG-9999')).toBe('WG-9999');
   });
 
-  it('clamps numbers smaller than 4 digits to 4 zero-padded digits', () => {
+  it('zero-pads numbers smaller than 4 digits to 4 digits', () => {
     expect(formatStrictBiltyNumber('WG-42')).toBe('WG-0042');
     expect(formatStrictBiltyNumber('5')).toBe('WG-0005');
   });
 
-  it('clamps numbers larger than 4 digits to the last 4 digits (max 4 digits)', () => {
-    expect(formatStrictBiltyNumber('WG-12345')).toBe('WG-2345');
-    expect(formatStrictBiltyNumber('WG-100000')).toBe('WG-0000');
+  it('preserves 5+ digit sequences beyond 9999 without truncation and formats branch codes', () => {
+    expect(formatStrictBiltyNumber('WG-12345')).toBe('WG-12345');
+    expect(formatStrictBiltyNumber('WG-100000')).toBe('WG-100000');
+    expect(formatStrictBiltyNumber('1001', 'LHR')).toBe('WG-LHR-1001');
+    expect(formatStrictBiltyNumber('10001', 'LHR')).toBe('WG-LHR-10001');
   });
 
   const createMockBilty = (biltyNo: string): BiltyRecord => ({
@@ -67,21 +69,21 @@ describe('Strict 4-Digit Bilty Number Ceiling (WG-XXXX)', () => {
     weight: '100'
   });
 
-  it('getNextBiltyNo produces numbers strictly within WG-1001 to WG-9999 range', () => {
+  it('getNextBiltyNo produces continuous sequential numbers starting at WG-1001', () => {
     const list: BiltyRecord[] = [createMockBilty('WG-1001')];
     saveStoredBilties(list);
     setScopedItem('bilty-counter', '1001');
     const nextNo = getNextBiltyNo();
-    expect(nextNo).toMatch(/^WG-\d{4}$/);
+    expect(nextNo).toMatch(/^WG-\d{4,}$/);
     expect(nextNo).toBe('WG-1002');
   });
 
-  it('cycles back to 4 digits if existing counter reaches WG-9999', () => {
+  it('continues continuously past WG-9999 to WG-10000 without wrapping back', () => {
     const list: BiltyRecord[] = [createMockBilty('WG-9999')];
     saveStoredBilties(list);
     setScopedItem('bilty-counter', '9999');
     const nextNo = getNextBiltyNo();
-    expect(nextNo).toBe('WG-1001');
+    expect(nextNo).toBe('WG-10000');
   });
 });
 

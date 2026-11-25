@@ -59,8 +59,8 @@ describe('Public Bilty Verification Lifecycle (Create, Update, Delete)', () => {
     });
   });
 
-  it('writes sanitized 8-field copy to publicBiltyVerifications/{UPPERCASE_BILTY_NO} when saving', async () => {
-    const { syncPublicBiltyVerification } = await import('../utils/storage');
+  it('writes sanitized copy (+ branchId & biltyId for rules) to publicBiltyVerifications/{UPPERCASE_BILTY_NO} when saving', async () => {
+    const { extractPublicBiltyVerification, syncPublicBiltyVerification } = await import('../utils/storage');
 
     const bilty: BiltyRecord = {
       id: 101,
@@ -99,9 +99,23 @@ describe('Public Bilty Verification Lifecycle (Create, Update, Delete)', () => {
       goodsDescription: 'Cotton Bales',
       weightOrQty: '40 Bales / 8000 kg',
       vehicleNo: 'LES-20-4124',
-      status: 'Verified'
+      status: 'Verified',
+      branchId: 'head',
+      biltyId: 101
     });
     expect(Object.keys(writtenPayload).sort()).toEqual([
+      'biltyDate',
+      'biltyId',
+      'biltyNo',
+      'branchId',
+      'destination',
+      'goodsDescription',
+      'origin',
+      'status',
+      'vehicleNo',
+      'weightOrQty'
+    ]);
+    expect(Object.keys(extractPublicBiltyVerification(writtenPayload)).sort()).toEqual([
       'biltyDate',
       'biltyNo',
       'destination',

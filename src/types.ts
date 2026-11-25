@@ -30,6 +30,7 @@ export interface LedgerAccount {
 export interface LedgerEntry {
   id: string;
   accountId: string;
+  ownerUid?: string;
   type: 'gave' | 'got';
   amount: number; // (> 0)
   date: string; // 'YYYY-MM-DD'
@@ -426,6 +427,8 @@ export interface BiltyAttachmentRecord {
   legalHold: boolean;
   ownerUid?: string;
   migratedFromLegacy?: boolean;
+  localOnly?: boolean;
+  localOnlyReason?: 'audio_local_only' | 'quota_exceeded';
 }
 
 export interface BiltyRecord {
@@ -478,6 +481,15 @@ export interface BiltyRecord {
   legalHold?: boolean;
   /** @deprecated Legacy embedded vault kept optional solely for verified one-time migration read */
   legalVault?: BiltyLegalVault;
+  /** Linked Adda pending item IDs for bidirectional lifecycle locking */
+  pendingFreightId?: string;
+  pendingCommissionId?: string;
+  /** Flag set if duplicate bilty number is detected during cross-device sync (never overwrite silently) */
+  numberConflict?: boolean;
+  conflictNote?: string;
+  _deleted?: boolean;
+  _deletedAt?: string;
+  serverUpdatedAt?: unknown;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -539,6 +551,8 @@ export type BranchPresetRole =
   | 'accountant'
   | 'viewer';
 
+export type BranchSalutation = 'Mr' | 'Ms' | 'none';
+
 export interface BranchPermissions {
   createBilty: boolean;
   editDeleteBilty: boolean;
@@ -551,6 +565,8 @@ export interface BranchPermissions {
 
 export interface BranchConfig {
   id: string;
+  /** Immutable 2-3 uppercase letter branch code for non-Head branches (e.g., LHR, MLT -> WG-LHR-1001) */
+  branchCode?: string;
   nameUr: string;
   nameEn: string;
   addressUr: string;
@@ -568,11 +584,12 @@ export interface BranchConfig {
   ownerEmail?: string;
   ownerDisplayName?: string;
   createdBy?: string;
+  serverUpdatedAt?: unknown;
   createdAt?: string;
   updatedAt?: string;
 }
 
-export type AddaPendingStatus = 'pending' | 'billed' | 'paid';
+export type AddaPendingStatus = 'pending' | 'billed' | 'paid' | 'cancelled';
 
 export interface AddaPendingFreight {
   id: string;
@@ -582,14 +599,19 @@ export interface AddaPendingFreight {
   date: string;
   vehicleNo?: string;
   route?: string;
+  partyId?: string;
   partyName: string;
   partyMobile: string;
   amount: number;
+  amountPaisa?: number;
   status: AddaPendingStatus;
   billId?: string;
   billNumber?: string;
   notes?: string;
   createdByEmail?: string;
+  _deleted?: boolean;
+  _deletedAt?: string;
+  serverUpdatedAt?: unknown;
   createdAt: string;
   updatedAt: string;
 }
@@ -602,14 +624,34 @@ export interface AddaPendingCommission {
   date: string;
   vehicleNo?: string;
   route?: string;
+  partyId?: string;
   fromWhomName: string;
   fromWhomMobile: string;
   amount: number;
+  amountPaisa?: number;
   status: AddaPendingStatus;
   billId?: string;
   billNumber?: string;
   notes?: string;
   createdByEmail?: string;
+  _deleted?: boolean;
+  _deletedAt?: string;
+  serverUpdatedAt?: unknown;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AddaPartyRecord {
+  id: string;
+  branchId: string;
+  name: string;
+  normalizedName: string;
+  mobile: string;
+  normalizedMobile: string;
+  city?: string;
+  notes?: string;
+  _deleted?: boolean;
+  serverUpdatedAt?: unknown;
   createdAt: string;
   updatedAt: string;
 }
@@ -623,6 +665,17 @@ export interface AddaBillItemSnapshot {
   route?: string;
   description: string;
   amount: number;
+  amountPaisa?: number;
+}
+
+export interface AddaPaymentEntry {
+  id: string;
+  idempotencyKey: string;
+  amountPaisa: number;
+  kind: 'payment' | 'reversal';
+  note?: string;
+  recordedByName?: string;
+  recordedAt: string;
 }
 
 export interface AddaBillRecord {
@@ -630,14 +683,22 @@ export interface AddaBillRecord {
   branchId: string;
   billNumber: string;
   date: string;
+  partyId?: string;
   partyName: string;
   partyMobile?: string;
   items: AddaBillItemSnapshot[];
   subtotal: number;
+  subtotalPaisa?: number;
   extraCharges: number;
+  extraChargesPaisa?: number;
   discount: number;
+  discountPaisa?: number;
   totalAmount: number;
-  status: 'billed' | 'paid';
+  totalAmountPaisa?: number;
+  paidAmount?: number;
+  paidAmountPaisa?: number;
+  paymentHistory?: AddaPaymentEntry[];
+  status: 'billed' | 'unpaid' | 'partial' | 'paid';
   paidAt?: string;
   notes?: string;
   companySnapshot: {
@@ -651,6 +712,9 @@ export interface AddaBillRecord {
     ntn: string;
   };
   createdByEmail?: string;
+  _deleted?: boolean;
+  _deletedAt?: string;
+  serverUpdatedAt?: unknown;
   createdAt: string;
   updatedAt: string;
 }
@@ -659,10 +723,13 @@ export interface BranchStaffMember {
   email: string;
   uid?: string;
   displayName?: string;
+  salutation?: BranchSalutation;
   branchId: string;
+  branchCode?: string;
   branchNameUr?: string;
   branchNameEn?: string;
   branchOwnerEmail?: string;
+  branchActive?: boolean;
   presetRole: BranchPresetRole;
   permissions: BranchPermissions;
   status: 'active' | 'revoked';

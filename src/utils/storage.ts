@@ -45,15 +45,21 @@ import {
   setScopedItem
 } from './storageCore';
 import {
+  BRANCH_NUMBER_BLOCK_LOW_WATER,
+  BRANCH_NUMBER_BLOCK_SIZE,
   BiltyAccessConfigData,
+  OfflineBlockExhaustedError,
+  OfflineNumberBlock,
   PublicBiltyVerification,
   SYNC_COLLECTION_TO_DOC_SUBCOLL,
   SyncCollectionName,
   TOMBSTONE_TTL_DAYS,
   TombstoneMap,
+  allocateBranchBlockNumber,
   allocateNextBiltyNumber,
   applyRestoredCollection,
   autoReconcileAllLocalToCloud,
+  buildPublicBiltyCloudPayload,
   checkBiltyNoConflict,
   clearErrorLogs,
   clearOfflineQueue,
@@ -65,7 +71,10 @@ import {
   formatBiltySeqNumber,
   getBiltyAccessConfig,
   getErrorLogs,
+  getLocalNumberBlock,
   getNextBiltyNo,
+  getRemainingBlockCount,
+  getRemoteSyncKillSwitchState,
   getStoredBilties,
   getStoredDrivers,
   getStoredFuelLog,
@@ -81,12 +90,17 @@ import {
   loadBranchBiltiesFromFirestore,
   loadFromFirestore,
   mergeTombstoneMaps,
+  migrateHeadOfficeToBranchesHead,
   normalizeBiltyConfig,
   notifySyncListeners,
+  parseBiltySeqDigits,
   persistBiltyCounterLocally,
   processOfflineQueue,
   pruneTombstoneMap,
   recordCollectionMutations,
+  reserveNextNumberBlockTransaction,
+  resetRemoteSyncKillSwitchCacheForTests,
+  resolveBiltyNumberConflict,
   resolveEntityLWW,
   saveStoredBilties,
   saveStoredDrivers,
@@ -101,10 +115,15 @@ import {
   subscribeToSyncEvents,
   syncPublicBiltyVerification,
   syncToFirestore,
+  triggerFullResync,
   triggerManualSync,
   updateBiltyAccessInFirestore,
   withTimeout
 } from './storageSync';
+import {
+  applyAuthorizedBranchBackups,
+  collectAuthorizedBranchBackups
+} from './branchBackupHelper';
 import {
   AccountDeletionRequest,
   USER_FIRESTORE_SUBCOLLECTIONS,
@@ -120,14 +139,19 @@ import {
 
 // Re-export modularized APIs for seamless compatibility
 export {
+  BRANCH_NUMBER_BLOCK_LOW_WATER,
+  BRANCH_NUMBER_BLOCK_SIZE,
   DEFAULT_AUTHORIZED_EMAILS,
+  OfflineBlockExhaustedError,
   SYNC_COLLECTION_TO_DOC_SUBCOLL,
   TOMBSTONE_TTL_DAYS,
   USER_FIRESTORE_SUBCOLLECTIONS,
   V3_MIGRATION_FLAG_PREFIX,
+  allocateBranchBlockNumber,
   allocateNextBiltyNumber,
   applyRestoredCollection,
   autoReconcileAllLocalToCloud,
+  buildPublicBiltyCloudPayload,
   cancelAccountDeletion,
   checkBiltyNoConflict,
   clearErrorLogs,
@@ -145,7 +169,10 @@ export {
   getActiveUserScope,
   getBiltyAccessConfig,
   getErrorLogs,
+  getLocalNumberBlock,
   getNextBiltyNo,
+  getRemainingBlockCount,
+  getRemoteSyncKillSwitchState,
   getScopedItem,
   getStoredBilties,
   getStoredDrivers,
@@ -164,8 +191,10 @@ export {
   loadBranchBiltiesFromFirestore,
   loadFromFirestore,
   mergeTombstoneMaps,
+  migrateHeadOfficeToBranchesHead,
   normalizeBiltyConfig,
   notifySyncListeners,
+  parseBiltySeqDigits,
   persistBiltyCounterLocally,
   processOfflineQueue,
   pruneTombstoneMap,
@@ -175,6 +204,9 @@ export {
   cleanupUploadedLegacyAndStagingKeys,
   removeScopedItem,
   requestAccountDeletion,
+  reserveNextNumberBlockTransaction,
+  resetRemoteSyncKillSwitchCacheForTests,
+  resolveBiltyNumberConflict,
   resolveEntityLWW,
   runOneTimeV2ToV3Migration,
   safeStorage,
@@ -192,6 +224,7 @@ export {
   subscribeToSyncEvents,
   syncPublicBiltyVerification,
   syncToFirestore,
+  triggerFullResync,
   triggerManualSync,
   updateBiltyAccessInFirestore,
   withTimeout
@@ -200,6 +233,7 @@ export type {
   AccountDeletionRequest,
   BiltyAccessConfigData,
   GuestScopeSummary,
+  OfflineNumberBlock,
   PublicBiltyVerification,
   SyncCollectionName,
   TombstoneMap
@@ -320,17 +354,6 @@ export async function saveUserProfileInFirestore(profile: UserProfile): Promise<
         ),
         2500
       );
-      if (cleanEmail && !isOwnerEmail(cleanEmail)) {
-        import('./branchService')
-          .then(({ recordSignedInDirectoryUser }) =>
-            recordSignedInDirectoryUser({
-              email: cleanEmail,
-              displayName: profile.name || cleanEmail.split('@')[0],
-              uid: profile.uid
-            })
-          )
-          .catch(() => {});
-      }
     } catch {
       // Graceful offline fallback
     }
@@ -905,7 +928,8 @@ export function restoreFullBackupFromJson(
     receivingPoints: readScopedJsonArray('dd_khata_receiving_points_v2'),
     receivingEntries: readScopedJsonArray('dd_khata_receiving_entries_v2'),
     dailyExpenses: readScopedJsonArray('dd_khata_daily_expenses_v2'),
-    company: getCachedCompanyProfile()
+    company: getCachedCompanyProfile(),
+    branchBackups: collectAuthorizedBranchBackups()
   };
 
   try {
@@ -941,7 +965,8 @@ export function restoreFullBackupFromJson(
       'employeeEntries',
       'receivingPoints',
       'receivingEntries',
-      'dailyExpenses'
+      'dailyExpenses',
+      'branchBackups'
     ];
     const hasRecognized = recognizedKeys.some(k => k in payload);
     if (!hasRecognized) {
@@ -1065,6 +1090,11 @@ export function restoreFullBackupFromJson(
       safeStorage.setItem('ah-company-profile', JSON.stringify(payload.company));
     }
 
+    if (payload.branchBackups && typeof payload.branchBackups === 'object') {
+      const branchRes = applyAuthorizedBranchBackups(payload.branchBackups, mode);
+      restoredCount += branchRes.restoredRecords;
+    }
+
     void logActivity('Backup Restored', `Restored ${restoredCount} records from backup (${mode})`, 'settings');
     return { success: true, message: 'Backup successfully restored!', count: restoredCount };
   } catch (err: unknown) {
@@ -1092,6 +1122,9 @@ export function restoreFullBackupFromJson(
       setScopedItem('dd_khata_receiving_entries_v2', JSON.stringify(snapshot.receivingEntries));
       setScopedItem('dd_khata_daily_expenses_v2', JSON.stringify(snapshot.dailyExpenses));
       safeStorage.setItem('ah-company-profile', JSON.stringify(snapshot.company));
+      if (snapshot.branchBackups) {
+        applyAuthorizedBranchBackups(snapshot.branchBackups, 'overwrite');
+      }
     } catch {
       // ignore rollback error
     }

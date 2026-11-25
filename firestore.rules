@@ -6,16 +6,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check if user is the verified App Owner (case-insensitive email)
-    function isOwner() {
-      return isSignedIn() &&
-        request.auth.token != null &&
-        request.auth.token.email != null &&
-        request.auth.token.email.lower() == 'warraichgoods43@gmail.com' &&
-        (!('email_verified' in request.auth.token) || request.auth.token.email_verified == true);
-    }
-
-    // Verified non-owner caller helpers for Multi-Branch RBAC
+    // Verified caller with verified email claim
     function isVerifiedCaller() {
       return isSignedIn() &&
         request.auth.token != null &&
@@ -27,103 +18,124 @@ service cloud.firestore {
       return request.auth.token.email.lower();
     }
 
-    function getUserAccessPath(emailKey) {
-      return /databases/$(database)/documents/userBranchAccess/$(emailKey);
-    }
-
-    function getBranchPath(branchId) {
-      return /databases/$(database)/documents/branches/$(branchId);
-    }
-
-    function getActiveAccessData() {
-      return get(getUserAccessPath(callerEmailLower())).data;
-    }
-
-    function hasActiveUserBranchAccess() {
+    // Verified App Creator (case-insensitive email)
+    function isOwner() {
       return isVerifiedCaller() &&
-        exists(getUserAccessPath(callerEmailLower())) &&
-        getActiveAccessData().status == 'active' &&
-        getActiveAccessData().branchId is string &&
-        exists(getBranchPath(getActiveAccessData().branchId)) &&
-        get(getBranchPath(getActiveAccessData().branchId)).data.active == true;
+        callerEmailLower() == 'warraichgoods43@gmail.com';
     }
 
-    function hasActiveBranchAccessDoc(branchId) {
-      return isVerifiedCaller() &&
-        exists(getUserAccessPath(callerEmailLower())) &&
-        getActiveAccessData().status == 'active' &&
-        getActiveAccessData().branchId == branchId &&
-        exists(getBranchPath(branchId)) &&
-        get(getBranchPath(branchId)).data.active == true;
+    // Single-get() per-branch membership lookup under branches/{branchId}/members/{emailKey}
+    function getMemberPath(branchId, emailKey) {
+      return /databases/$(database)/documents/branches/$(branchId)/members/$(emailKey);
+    }
+
+    function memberDocExists(branchId) {
+      return isVerifiedCaller() && exists(getMemberPath(branchId, callerEmailLower()));
+    }
+
+    function memberData(branchId) {
+      return get(getMemberPath(branchId, callerEmailLower())).data;
     }
 
     function isActiveBranchMember(branchId) {
-      return isOwner() || hasActiveBranchAccessDoc(branchId);
+      return isOwner() || (
+        memberDocExists(branchId) &&
+        memberData(branchId).status == 'active' &&
+        (!('branchActive' in memberData(branchId)) || memberData(branchId).branchActive == true)
+      );
     }
 
     function isBranchOwner(branchId) {
       return isOwner() || (
-        hasActiveBranchAccessDoc(branchId) &&
+        isActiveBranchMember(branchId) &&
         (
-          getActiveAccessData().presetRole == 'branch_owner' ||
-          ('permissions' in getActiveAccessData() && getActiveAccessData().permissions.manageBranchStaff == true)
+          memberData(branchId).presetRole == 'branch_owner' ||
+          ('permissions' in memberData(branchId) && memberData(branchId).permissions.manageBranchStaff == true)
         )
       );
     }
 
     function hasBranchBiltyWrite(branchId) {
       return isOwner() || (
-        hasActiveBranchAccessDoc(branchId) &&
-        'permissions' in getActiveAccessData() &&
+        isActiveBranchMember(branchId) &&
+        'permissions' in memberData(branchId) &&
         (
-          getActiveAccessData().permissions.createBilty == true ||
-          getActiveAccessData().permissions.editDeleteBilty == true
+          memberData(branchId).permissions.createBilty == true ||
+          memberData(branchId).permissions.editDeleteBilty == true
         )
       );
     }
 
     function hasBranchBiltyDelete(branchId) {
       return isOwner() || (
-        hasActiveBranchAccessDoc(branchId) &&
-        'permissions' in getActiveAccessData() &&
-        getActiveAccessData().permissions.editDeleteBilty == true
+        isActiveBranchMember(branchId) &&
+        'permissions' in memberData(branchId) &&
+        memberData(branchId).permissions.editDeleteBilty == true
       );
     }
 
     function hasBranchBiltyRead(branchId) {
       return isOwner() || (
-        hasActiveBranchAccessDoc(branchId) &&
-        'permissions' in getActiveAccessData() &&
+        isActiveBranchMember(branchId) &&
+        'permissions' in memberData(branchId) &&
         (
-          getActiveAccessData().permissions.createBilty == true ||
-          getActiveAccessData().permissions.editDeleteBilty == true ||
-          getActiveAccessData().permissions.viewAllBilties == true
+          memberData(branchId).permissions.createBilty == true ||
+          memberData(branchId).permissions.editDeleteBilty == true ||
+          memberData(branchId).permissions.viewAllBilties == true
         )
       );
     }
 
-    function hasBranchKhataAccess(branchId) {
+    function hasBranchAddaWrite(branchId) {
       return isOwner() || (
-        hasActiveBranchAccessDoc(branchId) &&
-        'permissions' in getActiveAccessData() &&
+        isActiveBranchMember(branchId) &&
         (
-          getActiveAccessData().permissions.khataAccess == true ||
-          getActiveAccessData().permissions.viewBranchReports == true
+          memberData(branchId).presetRole in ['branch_owner', 'branch_manager', 'munshi', 'accountant'] ||
+          (
+            'permissions' in memberData(branchId) &&
+            (
+              memberData(branchId).permissions.khataAccess == true ||
+              memberData(branchId).permissions.createBilty == true ||
+              memberData(branchId).permissions.editDeleteBilty == true
+            )
+          )
         )
       );
     }
 
-    // Helper function to check if caller is authorized for official Bilty counters & public verification writes
-    function isBiltyAuthorized() {
+    function hasBranchAddaBillManager(branchId) {
       return isOwner() || (
-        hasActiveUserBranchAccess() &&
-        'permissions' in getActiveAccessData() &&
+        isActiveBranchMember(branchId) &&
         (
-          getActiveAccessData().permissions.createBilty == true ||
-          getActiveAccessData().permissions.editDeleteBilty == true ||
-          getActiveAccessData().permissions.viewAllBilties == true
+          memberData(branchId).presetRole in ['branch_owner', 'branch_manager', 'accountant'] ||
+          ('permissions' in memberData(branchId) && memberData(branchId).permissions.khataAccess == true)
         )
       );
+    }
+
+    function hasBranchAddaRead(branchId) {
+      return hasBranchAddaWrite(branchId) ||
+        hasBranchBiltyRead(branchId) ||
+        (
+          isActiveBranchMember(branchId) &&
+          'permissions' in memberData(branchId) &&
+          memberData(branchId).permissions.viewBranchReports == true
+        );
+    }
+
+    function isValidAddaItemUpdate(branchId) {
+      let prevStatus = resource.data.status;
+      let nextStatus = request.resource.data.status;
+      let validMoney = (!('amountPaisa' in request.resource.data) || (request.resource.data.amountPaisa is int && request.resource.data.amountPaisa > 0));
+      let sameBill = (!('billId' in resource.data) && !('billId' in request.resource.data)) ||
+        (('billId' in resource.data) && ('billId' in request.resource.data) && request.resource.data.billId == resource.data.billId);
+      let safeBillingTransition =
+        nextStatus != 'billed' ||
+        prevStatus == 'pending' ||
+        (prevStatus == 'billed' && sameBill);
+      return validMoney &&
+        safeBillingTransition &&
+        (hasBranchAddaBillManager(branchId) || (hasBranchAddaWrite(branchId) && prevStatus == 'pending' && nextStatus in ['pending', 'cancelled']));
     }
 
     // Helper function to prevent non-owners from promoting themselves or setting admin/owner roles
@@ -137,12 +149,17 @@ service cloud.firestore {
     }
 
     // Helper function to enforce strictly sanitized non-PII, non-financial fields in public verifications
-    // Allowed ONLY: biltyNo, biltyDate, origin, destination, goodsDescription, weightOrQty, vehicleNo, status
+    // Allowed ONLY: biltyNo, biltyDate, origin, destination, goodsDescription, weightOrQty, vehicleNo, status (+ optional branchId, biltyId)
     // Strictly FORBIDDEN: CNICs, phone numbers, freight amounts, payment, driver details, or party names
     function hasOnlyPublicBiltyFields() {
-      let allowedKeys = [
+      let requiredKeys = [
         'biltyNo', 'biltyDate', 'origin', 'destination',
         'goodsDescription', 'weightOrQty', 'vehicleNo', 'status'
+      ];
+      let allowedKeys = [
+        'biltyNo', 'biltyDate', 'origin', 'destination',
+        'goodsDescription', 'weightOrQty', 'vehicleNo', 'status',
+        'branchId', 'biltyId'
       ];
       let forbiddenKeys = [
         'senderCnic', 'receiverCnic', 'driverCnic', 'cnic',
@@ -152,7 +169,7 @@ service cloud.firestore {
         'podConfirmation', 'receivedBy', 'ownerUid'
       ];
       let payload = request.resource.data;
-      return payload.keys().hasAll(allowedKeys) &&
+      return payload.keys().hasAll(requiredKeys) &&
              payload.keys().hasOnly(allowedKeys) &&
              !payload.keys().hasAny(forbiddenKeys) &&
              payload.biltyNo is string && payload.biltyNo.size() >= 1 && payload.biltyNo.size() <= 64 &&
@@ -162,7 +179,9 @@ service cloud.firestore {
              payload.goodsDescription is string && payload.goodsDescription.size() <= 300 &&
              payload.weightOrQty is string && payload.weightOrQty.size() <= 120 &&
              payload.vehicleNo is string && payload.vehicleNo.size() <= 64 &&
-             payload.status is string && payload.status.size() >= 1 && payload.status.size() <= 64;
+             payload.status is string && payload.status.size() >= 1 && payload.status.size() <= 64 &&
+             (!('branchId' in payload) || (payload.branchId is string && payload.branchId.size() <= 64)) &&
+             (!('biltyId' in payload) || (payload.biltyId is number || payload.biltyId is string));
     }
 
     // Helper function to validate atomic single-increment unique-UID hazard flagging (#24)
@@ -190,12 +209,26 @@ service cloud.firestore {
         );
     }
 
-    // Global default deny catch-all
+    // Global default deny catch-all (covers legacy signedInDirectory & userBranchAccess)
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Strict user data isolation: every user only has their own data and backups
+    // Self collectionGroup lookup so signed-in staff can discover only their own membership doc
+    match /{path=**}/members/{emailKey} {
+      allow read: if isOwner() || (
+        isVerifiedCaller() &&
+        resource.data.email is string &&
+        resource.data.email.lower() == callerEmailLower()
+      );
+    }
+
+    // User-isolated collectionGroup lookup so each user loads all their Khata entries in 1 query
+    match /{path=**}/entries/{entryId} {
+      allow read: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // Strict user data isolation: every user only has their own personal data, Khata, and backups
     match /usersData/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
 
@@ -206,10 +239,8 @@ service cloud.firestore {
 
     // Play Store account deletion requests (30-day grace period tracking & external web form submission)
     match /accountDeletionRequests/{requestId} {
-      // Strictly authenticated request owners or Fleet Owner only (never expose deletion request PII publicly)
       allow read, update, delete: if isSignedIn() && (request.auth.uid == requestId || (resource != null && resource.data.userId == request.auth.uid) || isOwner());
 
-      // Allow creation by authenticated users (via in-app modal) OR external deletion web form with strict schema/id/status validation (#25)
       allow create: if (requestId.matches('^(web_|app_)[a-zA-Z0-9_-]{3,80}$') || (isSignedIn() && requestId == request.auth.uid) || isOwner()) &&
                     request.resource.data.keys().hasAll(['userEmail', 'requestedAt', 'scheduledFor', 'status', 'referenceId']) &&
                     request.resource.data.keys().hasOnly(['userId', 'userEmail', 'requestedAt', 'scheduledFor', 'status', 'referenceId', 'reason', 'source']) &&
@@ -232,11 +263,11 @@ service cloud.firestore {
     }
 
     // User profile entries and user-isolated nested collections
-    // (trips, vehicles, drivers, routes, fuel, private ledger, private bilties)
+    // (trips, vehicles, drivers, routes, fuel, personal Khata ledger, personal/legacy bilties)
     match /users/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId && isNotSelfPromoting();
 
-      // Strictly owner-only freight attachments (<= 400 KB hard cap, 180-day TTL / legal hold)
+      // Strictly App Creator-only freight attachments (<= 400 KB hard cap, 180-day TTL / legal hold)
       match /biltyAttachments/{attachmentId} {
         allow read, delete: if isOwner() && request.auth.uid == userId;
         allow create, update: if isOwner() &&
@@ -258,48 +289,84 @@ service cloud.firestore {
       }
     }
 
-    // Access configuration for Bilty Generator authorization (Confidential: ONLY Fleet Owner can read or write)
+    // Access configuration for Bilty Generator authorization (Confidential: ONLY App Creator)
     match /access/biltyAccess {
       allow read, write: if isOwner();
     }
 
-    // Explicitly DENY top-level private bilties (private bilties live strictly under users/{userId}/collections/bilties or branches/{branchId}/biltiesDocs)
+    // Explicitly DENY top-level private bilties (branch bilties live under branches/{branchId}/bilties)
     match /bilties/{biltyId} {
       allow read, write: if false;
     }
 
-    // Multi-Branch configuration, staff rosters (App Creator excluded), and branch-scoped Bilty & Khata data
+    // Multi-Branch configuration, single-source members subcollection, atomic counters, and branch-scoped Bilty & Adda data
     match /branches/{branchId} {
       allow read: if isActiveBranchMember(branchId);
       allow create, delete: if isOwner();
       allow update: if isOwner() || (
-        hasActiveBranchAccessDoc(branchId) &&
-        (
-          getActiveAccessData().presetRole == 'branch_owner' ||
-          resource.data.ownerEmail == callerEmailLower()
-        ) &&
+        isBranchOwner(branchId) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'id', 'active', 'startingBiltySeq', 'ownerEmail', 'isHeadOffice', 'createdBy'
+          'id', 'active', 'startingBiltySeq', 'ownerEmail', 'isHeadOffice', 'createdBy',
+          'branchCode', 'ntn', 'companyHeaderUr', 'companyHeaderEn',
+          'proprietorNameUr', 'proprietorNameEn', 'taglineUr'
         ])
       );
 
-      // Staff roster managed by App Owner or that branch's Branch Owner (Creator Gmail never allowed)
-      match /staff/{emailKey} {
-        allow read: if isBranchOwner(branchId);
-        allow create, update: if isBranchOwner(branchId) &&
-                                 emailKey == emailKey.lower() &&
+      // Branch membership registry (single source of truth; App Creator strictly excluded)
+      match /members/{emailKey} {
+        allow get: if (isVerifiedCaller() && callerEmailLower() == emailKey) || isBranchOwner(branchId);
+        allow list: if isBranchOwner(branchId);
+        allow create, update: if emailKey == emailKey.lower() &&
                                  emailKey != 'warraichgoods43@gmail.com' &&
                                  request.resource.data.email is string &&
                                  request.resource.data.email.lower() == emailKey &&
                                  request.resource.data.branchId == branchId &&
-                                 request.resource.data.presetRole in ['branch_owner', 'branch_manager', 'munshi', 'accountant', 'viewer'] &&
-                                 request.resource.data.status in ['active', 'revoked'];
-        allow delete: if isBranchOwner(branchId);
+                                 request.resource.data.status in ['active', 'revoked'] &&
+                                 (
+                                   (
+                                     isOwner() &&
+                                     request.resource.data.presetRole in ['branch_owner', 'branch_manager', 'munshi', 'accountant', 'viewer']
+                                   ) ||
+                                   (
+                                     isBranchOwner(branchId) &&
+                                     emailKey != callerEmailLower() &&
+                                     request.resource.data.presetRole in ['branch_manager', 'munshi', 'accountant', 'viewer'] &&
+                                     (!('permissions' in request.resource.data) || request.resource.data.permissions.manageBranchStaff == false)
+                                   )
+                                 );
+        allow delete: if isOwner() ||
+                         (isBranchOwner(branchId) && emailKey != callerEmailLower()) ||
+                         (isVerifiedCaller() && callerEmailLower() == emailKey);
       }
 
-      // Branch-scoped Bilty individual documents
+      // Legacy staff mirror retained read-only for App Creator migration
+      match /staff/{emailKey} {
+        allow read: if isOwner();
+        allow write: if false;
+      }
+
+      // Monotonic atomic counters per branch (`bilty`, `bill`) for collision-free block reservation
+      match /counters/{counterId} {
+        allow read: if isActiveBranchMember(branchId);
+        allow create: if (hasBranchBiltyWrite(branchId) || hasBranchAddaBillManager(branchId)) &&
+                         counterId in ['bilty', 'bill'] &&
+                         request.resource.data.keys().hasOnly(['branchId', 'nextSeq', 'currentValue', 'value', 'updatedAt']) &&
+                         (!('nextSeq' in request.resource.data) || (request.resource.data.nextSeq is int && request.resource.data.nextSeq >= 1));
+        allow update: if (hasBranchBiltyWrite(branchId) || hasBranchAddaBillManager(branchId)) &&
+                         counterId in ['bilty', 'bill'] &&
+                         request.resource.data.keys().hasOnly(['branchId', 'nextSeq', 'currentValue', 'value', 'updatedAt']) &&
+                         (!('nextSeq' in request.resource.data) || !('nextSeq' in resource.data) || (request.resource.data.nextSeq is int && request.resource.data.nextSeq > resource.data.nextSeq));
+        allow delete: if isOwner();
+      }
+
+      // Branch-scoped Bilty documents (new canonical `bilties` + transitional `biltiesDocs`)
+      match /bilties/{docId} {
+        allow read: if hasBranchBiltyRead(branchId) || hasBranchAddaRead(branchId);
+        allow create, update: if hasBranchBiltyWrite(branchId);
+        allow delete: if hasBranchBiltyDelete(branchId);
+      }
       match /biltiesDocs/{docId} {
-        allow read: if hasBranchBiltyRead(branchId);
+        allow read: if hasBranchBiltyRead(branchId) || hasBranchAddaRead(branchId);
         allow create, update: if hasBranchBiltyWrite(branchId);
         allow delete: if hasBranchBiltyDelete(branchId);
       }
@@ -307,114 +374,144 @@ service cloud.firestore {
       // Branch-scoped collection mirrors & tombstones
       match /collections/{collectionId} {
         allow read: if (collectionId == 'bilties' && hasBranchBiltyRead(branchId)) ||
-                       (collectionId == 'tombstones' && (hasBranchBiltyRead(branchId) || hasBranchKhataAccess(branchId) || isBranchOwner(branchId))) ||
+                       (collectionId == 'tombstones' && (hasBranchBiltyRead(branchId) || hasBranchAddaRead(branchId) || isBranchOwner(branchId))) ||
                        isOwner();
         allow write: if (collectionId == 'bilties' && hasBranchBiltyWrite(branchId)) ||
-                        (collectionId == 'tombstones' && (hasBranchBiltyWrite(branchId) || hasBranchKhataAccess(branchId) || isBranchOwner(branchId))) ||
+                        (collectionId == 'tombstones' && (hasBranchBiltyWrite(branchId) || hasBranchAddaWrite(branchId) || isBranchOwner(branchId))) ||
                         isOwner();
       }
 
-      // Branch-scoped isolated Adda Pending Freight, Commissions & Party Billing
-      match /addaPendingFreight/{itemId} {
-        allow read, write: if hasBranchKhataAccess(branchId) || hasBranchBiltyWrite(branchId) || isBranchOwner(branchId);
-      }
-      match /addaPendingCommissions/{itemId} {
-        allow read, write: if hasBranchKhataAccess(branchId) || hasBranchBiltyWrite(branchId) || isBranchOwner(branchId);
-      }
-      match /addaBills/{billId} {
-        allow read, write: if hasBranchKhataAccess(branchId) || hasBranchBiltyWrite(branchId) || isBranchOwner(branchId);
+      // Branch-scoped isolated Adda Pending Freight/Commission Items, Bills & Normalized Parties
+      match /adda_items/{itemId} {
+        allow read: if hasBranchAddaRead(branchId);
+        allow create: if isOwner() || (
+          hasBranchAddaWrite(branchId) &&
+          (!('amountPaisa' in request.resource.data) || (request.resource.data.amountPaisa is int && request.resource.data.amountPaisa > 0)) &&
+          (!('status' in request.resource.data) || request.resource.data.status in ['pending', 'cancelled'])
+        );
+        allow update: if isValidAddaItemUpdate(branchId);
+        allow delete: if (hasBranchAddaBillManager(branchId) || isOwner()) &&
+                         resource.data.status != 'paid' &&
+                         resource.data.status != 'billed';
       }
 
-      // Branch-scoped Khata & Ledger modules
+      match /adda_bills/{billId} {
+        allow read: if hasBranchAddaRead(branchId);
+        allow create, update: if hasBranchAddaBillManager(branchId) &&
+                                 (!('totalAmountPaisa' in request.resource.data) || (request.resource.data.totalAmountPaisa is int && request.resource.data.totalAmountPaisa >= 0));
+        allow delete: if (hasBranchAddaBillManager(branchId) || isOwner()) &&
+                         resource.data.status != 'paid' &&
+                         (!('paidAmountPaisa' in resource.data) || resource.data.paidAmountPaisa == 0);
+      }
+
+      match /adda_parties/{partyId} {
+        allow read: if hasBranchAddaRead(branchId);
+        allow create, update: if hasBranchAddaWrite(branchId);
+        allow delete: if hasBranchAddaBillManager(branchId);
+      }
+
+      // Legacy Adda collections protected with identical financial transition guards during migration
+      match /addaPendingFreight/{itemId} {
+        allow read: if hasBranchAddaRead(branchId);
+        allow create: if isOwner() || (hasBranchAddaWrite(branchId) && (!('status' in request.resource.data) || request.resource.data.status in ['pending', 'cancelled']));
+        allow update: if isValidAddaItemUpdate(branchId);
+        allow delete: if (hasBranchAddaBillManager(branchId) || isOwner()) && resource.data.status != 'paid' && resource.data.status != 'billed';
+      }
+      match /addaPendingCommissions/{itemId} {
+        allow read: if hasBranchAddaRead(branchId);
+        allow create: if isOwner() || (hasBranchAddaWrite(branchId) && (!('status' in request.resource.data) || request.resource.data.status in ['pending', 'cancelled']));
+        allow update: if isValidAddaItemUpdate(branchId);
+        allow delete: if (hasBranchAddaBillManager(branchId) || isOwner()) && resource.data.status != 'paid' && resource.data.status != 'billed';
+      }
+      match /addaBills/{billId} {
+        allow read: if hasBranchAddaRead(branchId);
+        allow create, update: if hasBranchAddaBillManager(branchId);
+        allow delete: if (hasBranchAddaBillManager(branchId) || isOwner()) && resource.data.status != 'paid';
+      }
+
+      // Legacy branch Khata collections locked read-only to Creator for migration; Khata is strictly personal under users/{userId}
       match /khataSettings/{settingId} {
-        allow read, write: if hasBranchKhataAccess(branchId);
+        allow read: if isOwner();
+        allow write: if false;
       }
       match /ledgerAccounts/{accountId} {
-        allow read, write: if hasBranchKhataAccess(branchId);
+        allow read: if isOwner();
+        allow write: if false;
         match /entries/{entryId} {
-          allow read, write: if hasBranchKhataAccess(branchId);
+          allow read: if isOwner();
+          allow write: if false;
         }
       }
       match /cashbookEntries/{cashId} {
-        allow read, write: if hasBranchKhataAccess(branchId);
+        allow read: if isOwner();
+        allow write: if false;
       }
       match /khataBills/{billId} {
-        allow read, write: if hasBranchKhataAccess(branchId);
+        allow read: if isOwner();
+        allow write: if false;
       }
       match /khataEmployees/{employeeId} {
-        allow read, write: if hasBranchKhataAccess(branchId);
+        allow read: if isOwner();
+        allow write: if false;
       }
       match /khataEmployeeEntries/{entryId} {
-        allow read, write: if hasBranchKhataAccess(branchId);
+        allow read: if isOwner();
+        allow write: if false;
       }
       match /khataReceivingPoints/{pointId} {
-        allow read, write: if hasBranchKhataAccess(branchId);
+        allow read: if isOwner();
+        allow write: if false;
       }
       match /khataReceivingEntries/{entryId} {
-        allow read, write: if hasBranchKhataAccess(branchId);
+        allow read: if isOwner();
+        allow write: if false;
       }
       match /khataDailyExpenses/{expenseId} {
-        allow read, write: if hasBranchKhataAccess(branchId);
+        allow read: if isOwner();
+        allow write: if false;
       }
     }
 
-    // Per-email branch assignment mirror (Creator cannot be listed here)
-    match /userBranchAccess/{emailKey} {
-      allow read: if isOwner() ||
-                     (isVerifiedCaller() && callerEmailLower() == emailKey) ||
-                     (resource != null && resource.data.branchId is string && isBranchOwner(resource.data.branchId));
-      allow create, update: if emailKey == emailKey.lower() &&
-                               emailKey != 'warraichgoods43@gmail.com' &&
-                               request.resource.data.email is string &&
-                               request.resource.data.email.lower() == emailKey &&
-                               request.resource.data.branchId is string &&
-                               isBranchOwner(request.resource.data.branchId) &&
-                               request.resource.data.presetRole in ['branch_owner', 'branch_manager', 'munshi', 'accountant', 'viewer'] &&
-                               request.resource.data.status in ['active', 'revoked'];
-      allow delete: if isOwner() ||
-                       (resource != null && resource.data.branchId is string && isBranchOwner(resource.data.branchId));
-    }
-
-    // Signed-in Gmail directory for branch staff selection (strictly excludes App Creator)
-    match /signedInDirectory/{emailKey} {
-      allow read: if isOwner() ||
-                     (isVerifiedCaller() &&
-                       exists(getUserAccessPath(callerEmailLower())) &&
-                       getActiveAccessData().status == 'active' &&
-                       (getActiveAccessData().presetRole == 'branch_owner' ||
-                         ('permissions' in getActiveAccessData() && getActiveAccessData().permissions.manageBranchStaff == true)));
-      allow create, update: if isVerifiedCaller() &&
-                               emailKey == emailKey.lower() &&
-                               emailKey != 'warraichgoods43@gmail.com' &&
-                               callerEmailLower() == emailKey &&
-                               request.resource.data.keys().hasAll(['email', 'uid', 'lastLogin']) &&
-                               request.resource.data.keys().hasOnly(['email', 'uid', 'displayName', 'lastLogin']) &&
-                               request.resource.data.uid == request.auth.uid &&
-                               request.resource.data.email is string &&
-                               request.resource.data.email.lower() == emailKey &&
-                               request.resource.data.email.size() <= 160;
-      allow delete: if isOwner() || (isSignedIn() && callerEmailLower() == emailKey);
-    }
-
-    // Public bilty verification records (#23: single-document get by QR code allowed; bulk collection list restricted to authorized accounts)
+    // Public bilty verification records (#23: single-document get publicly; list restricted to App Creator)
+    // Branch-scoped create/update/delete validates caller's permission on matching branchId
     match /publicBiltyVerifications/{docId} {
       allow get: if true;
-      allow list: if isBiltyAuthorized();
-      allow create, update: if isBiltyAuthorized() &&
-                               docId is string &&
-                               docId.size() >= 1 &&
-                               docId.size() <= 64 &&
-                               docId == docId.upper() &&
-                               request.resource.data.biltyNo == docId &&
-                               hasOnlyPublicBiltyFields();
-      allow delete: if isBiltyAuthorized();
+      allow list: if isOwner();
+      allow create: if docId is string &&
+                       docId.size() >= 1 &&
+                       docId.size() <= 64 &&
+                       docId == docId.upper() &&
+                       request.resource.data.biltyNo == docId &&
+                       hasOnlyPublicBiltyFields() &&
+                       (
+                         isOwner() ||
+                         ('branchId' in request.resource.data &&
+                           request.resource.data.branchId is string &&
+                           hasBranchBiltyWrite(request.resource.data.branchId))
+                       );
+      allow update: if docId is string &&
+                       docId.size() >= 1 &&
+                       docId.size() <= 64 &&
+                       docId == docId.upper() &&
+                       request.resource.data.biltyNo == docId &&
+                       hasOnlyPublicBiltyFields() &&
+                       (
+                         isOwner() ||
+                         ('branchId' in resource.data &&
+                           resource.data.branchId is string &&
+                           (!('branchId' in request.resource.data) || request.resource.data.branchId == resource.data.branchId) &&
+                           hasBranchBiltyWrite(resource.data.branchId))
+                       );
+      allow delete: if isOwner() ||
+                       ('branchId' in resource.data &&
+                         resource.data.branchId is string &&
+                         hasBranchBiltyDelete(resource.data.branchId));
     }
 
-    // Counters collection for transaction-based sequential Bilty allocation
-    // Restrict write strictly to authorized bilty accounts with integer counter values
+    // Legacy top-level counters restricted to App Creator (branches use branches/{branchId}/counters/{counterId})
     match /counters/{counterId} {
       allow read: if isSignedIn();
-      allow write: if isBiltyAuthorized() &&
+      allow write: if isOwner() &&
                    request.resource.data.keys().hasOnly(['currentValue', 'value', 'updatedAt']) &&
                    (
                      ('currentValue' in request.resource.data && (request.resource.data.currentValue is int || request.resource.data.currentValue is number) && request.resource.data.currentValue >= 0) ||
@@ -422,18 +519,18 @@ service cloud.firestore {
                    );
     }
 
-    // Company Profile and System Settings (All can read, ONLY Owner can write)
+    // Company Profile and System Settings (All can read, ONLY App Creator can write)
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isOwner();
     }
 
-    // System Admins collection (ONLY Owner can read and write)
+    // System Admins collection (ONLY App Creator)
     match /admins/{adminId} {
       allow read, write: if isOwner();
     }
 
-    // Activity Log (Owner can read and manage, signed-in users can create schema-validated entries and delete their own on account deletion #18)
+    // Activity Log
     match /activityLog/{logId} {
       allow read: if isOwner() || (isSignedIn() && resource.data.uid == request.auth.uid);
       allow create: if isSignedIn() &&

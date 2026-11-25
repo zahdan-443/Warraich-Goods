@@ -48,6 +48,7 @@ interface BiltyAllRecordsTabProps {
   onEditBilty: (b: BiltyRecord) => void;
   onDownloadZip: (b: BiltyRecord) => void;
   onRequestDelete?: (b: BiltyRecord) => void;
+  onResolveConflict?: (b: BiltyRecord) => void;
   officeTitle?: string;
   canCreate?: boolean;
   canEditDelete?: boolean;
@@ -77,6 +78,7 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
   onEditBilty,
   onDownloadZip,
   onRequestDelete,
+  onResolveConflict,
   officeTitle,
   canCreate = true,
   canEditDelete = true,
@@ -308,10 +310,19 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                   return (
                     <tr key={b.id || b.biltyNo} className="hover:bg-amber-50/40 transition-colors">
                       <td className="py-3 px-3.5 font-mono">
-                        <div className="font-black text-slate-900 flex items-center gap-1.5">
-                          <span className="bg-slate-900 text-white px-2 py-0.5 rounded text-[11px]">
+                        <div className="font-black text-slate-900 flex items-center gap-1.5 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded text-[11px] ${b.numberConflict ? 'bg-rose-700 text-white' : 'bg-slate-900 text-white'}`}>
                             {b.biltyNo}
                           </span>
+                          {b.numberConflict && (
+                            <span
+                              title={b.conflictNote || (isUrdu ? 'بلٹی نمبر متصادم ہے — نیا نمبر تفویض کریں' : 'Duplicate Bilty # — resolve conflict')}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300 text-[9px] font-bold font-sans"
+                            >
+                              <AlertTriangle className="w-2.5 h-2.5 text-rose-600" />
+                              <span>{isUrdu ? 'متصادم #' : 'Conflict'}</span>
+                            </span>
+                          )}
                           {b.pendingOnlineNumber && (
                             <span title="آن لائن نمبر التواء">
                               <AlertTriangle className="w-3 h-3 text-amber-500" />
@@ -455,6 +466,17 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                               <FileArchive className="w-3.5 h-3.5" />
                             </button>
                           )}
+                          {b.numberConflict && canEditDelete && onResolveConflict && (
+                            <button
+                              type="button"
+                              onClick={() => onResolveConflict(b)}
+                              className="px-2 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold transition-colors cursor-pointer flex items-center gap-1"
+                              title={isUrdu ? 'نیا بلٹی نمبر تفویض کریں' : 'Assign fresh sequential Bilty #'}
+                            >
+                              <RefreshCw className="w-3 h-3" />
+                              <span>{isUrdu ? 'نیا نمبر' : 'Resolve #'}</span>
+                            </button>
+                          )}
                           {canEditDelete && onRequestDelete && (
                             <button
                               type="button"
@@ -484,10 +506,19 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                   className="bg-white dark:bg-[#1a1c22] rounded-2xl border border-slate-200 dark:border-[#2d313b] p-4 space-y-3 shadow-xs"
                 >
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#2d313b] pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-slate-900 dark:bg-slate-950 text-white font-mono text-xs font-black px-2.5 py-1 rounded border border-slate-700">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`${b.numberConflict ? 'bg-rose-700' : 'bg-slate-900 dark:bg-slate-950'} text-white font-mono text-xs font-black px-2.5 py-1 rounded border border-slate-700`}>
                         {b.biltyNo}
                       </span>
+                      {b.numberConflict && (
+                        <span
+                          title={b.conflictNote}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300"
+                        >
+                          <AlertTriangle className="w-3 h-3 text-rose-600" />
+                          <span>{isUrdu ? 'متصادم نمبر' : 'Conflict #'}</span>
+                        </span>
+                      )}
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0f2942] text-white">
                         📍 {isUrdu ? (b.branchNameUr || 'سمندری') : (b.branchNameEn || 'Samundri')}
                       </span>
@@ -623,6 +654,16 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>تصدیق</span>
+                        </button>
+                      )}
+                      {b.numberConflict && canEditDelete && onResolveConflict && (
+                        <button
+                          type="button"
+                          onClick={() => onResolveConflict(b)}
+                          className="col-span-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[11px] font-bold flex flex-row items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>{isUrdu ? 'تصادم حل کریں — نیا بلٹی نمبر تفویض کریں' : 'Resolve Conflict — Assign Fresh Bilty #'}</span>
                         </button>
                       )}
                     </div>

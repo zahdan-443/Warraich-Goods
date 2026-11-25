@@ -163,12 +163,12 @@ describe('Multi-Branch & Multi-User Role System', () => {
     setActiveBranchId(DEFAULT_SAMUNDRI_BRANCH.id);
     expect(isUsingSharedBranchScope(OWNER_EMAIL)).toBe(false);
 
-    // Branch staff on Lahore branch isolates Bilties & Khata under branch_lahore_badami_bagh
+    // Branch staff on Lahore branch isolates Bilties under branch_lahore_badami_bagh while keeping Khata personal
     safeStorage.setItem('ah-gmail-user', 'lhr.owner@gmail.com');
     setActiveBranchId(LAHORE_BRANCH.id);
     expect(isUsingSharedBranchScope('lhr.owner@gmail.com')).toBe(true);
     expect(getActiveBiltyScope()).toBe(`branch_${LAHORE_BRANCH.id}`);
-    expect(getActiveKhataScope()).toBe(`branch_${LAHORE_BRANCH.id}`);
+    expect(getActiveKhataScope()).toBe(getActiveUserScope());
 
     // Saving a bilty inside Lahore branch does not leak into Samundri or Guest
     const sampleBilty: BiltyRecord = {

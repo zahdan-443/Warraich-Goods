@@ -49,19 +49,93 @@ export function formatBiltyMobile(val: string): string {
 }
 
 /**
- * Ensures Bilty number is strictly formatted as "WG-" followed by exactly 4 digits:
- * e.g. "WG-1001" to "WG-9999".
- * Never exceeds 4 digits after WG-, ensuring consistency for online website lookup.
+ * Converts Eastern Arabic / Urdu numerals to Western ASCII digits.
  */
-export function formatStrictBiltyNumber(val: string | number): string {
-  if (!val) return 'WG-1001';
-  const str = String(val).trim().toUpperCase();
-  // Extract only digits
-  const digits = str.replace(/\D/g, '');
-  if (!digits) return 'WG-1001';
-  
-  const fourDigits = digits.length > 4 ? digits.slice(-4) : digits.padStart(4, '0');
-  return `WG-${fourDigits}`;
+export function toWesternDigits(val: string): string {
+  return String(val || '').replace(/[٠-٩۰-۹]/g, (d) => String(d.charCodeAt(0) & 0xf));
+}
+
+/**
+ * Normalizes a Bilty number and preserves 4-digit padding for <10000,
+ * full 5+ digits (WG-10000, WG-10001, ...) without truncation, and optional branch code (WG-LHR-1001).
+ */
+export function formatStrictBiltyNumber(val: string | number, branchCode?: string): string {
+  if (!val && val !== 0) return 'WG-1001';
+  const western = toWesternDigits(String(val)).trim().toUpperCase().replace(/\s+/g, '');
+  if (!western) return 'WG-1001';
+
+  const explicitCode = String(branchCode || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+    .slice(0, 3);
+  const embeddedMatch = western.match(/^WG-([A-Z]{2,3})-(\d+)$/);
+  const resolvedCode =
+    explicitCode && explicitCode !== 'WG' && explicitCode !== 'HEA'
+      ? explicitCode
+      : embeddedMatch && embeddedMatch[1] !== 'WG'
+      ? embeddedMatch[1]
+      : '';
+
+  const trailingMatch = western.match(/(\d+)$/);
+  const digits = trailingMatch ? trailingMatch[1] : western.replace(/\D/g, '');
+  if (!digits) {
+    return resolvedCode ? `WG-${resolvedCode}-1001` : 'WG-1001';
+  }
+
+  const parsed = parseInt(digits, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return resolvedCode ? `WG-${resolvedCode}-1001` : 'WG-1001';
+  }
+  const formattedDigits = parsed > 9999 ? String(parsed) : String(parsed).padStart(4, '0');
+  return resolvedCode ? `WG-${resolvedCode}-${formattedDigits}` : `WG-${formattedDigits}`;
+}
+
+/**
+ * Validates Bilty verification number formats (including 4-digit, 5+ digit, and branch-coded WG-LHR-1001).
+ */
+export function isValidBiltyVerifyFormat(rawTerm: string): boolean {
+  const clean = toWesternDigits(String(rawTerm || '')).trim().toUpperCase().replace(/\s+/g, '');
+  return (
+    /^(?:WG|WGT|AH)-(?:[A-Z]{2,3}-)?\d{4,}$/.test(clean) ||
+    /^WG-2026-\d{4,}$/.test(clean) ||
+    /^(?:[A-Z]{2,3}-)?\d{4,}$/.test(clean)
+  );
+}
+
+/**
+ * Builds ordered Firestore document ID candidates for public Bilty verification lookup.
+ * Supports WG-1001, WG-10001+, WG-LHR-1001, WG-LHR-10001, and legacy prefixes.
+ */
+export function buildBiltyVerificationCandidates(rawTerm: string): string[] {
+  const clean = toWesternDigits(String(rawTerm || '')).trim().toUpperCase().replace(/\s+/g, '');
+  if (!clean) return [];
+
+  const cleanAlpha = clean.replace(/[^A-Z0-9]/g, '');
+  const candidates: string[] = [clean, cleanAlpha];
+
+  const branchCodeDigits = clean.match(/^([A-Z]{2,3})-(\d+)$/);
+  if (branchCodeDigits && !['WG', 'WGT', 'AH'].includes(branchCodeDigits[1])) {
+    candidates.push(`WG-${branchCodeDigits[1]}-${branchCodeDigits[2]}`);
+    candidates.push(`WG-${branchCodeDigits[1]}-${branchCodeDigits[2].padStart(4, '0')}`);
+  }
+
+  if (/^\d+$/.test(clean)) {
+    const padded = clean.length >= 4 ? clean : clean.padStart(4, '0');
+    candidates.push(`WG-${clean}`);
+    candidates.push(`WG-${padded}`);
+    candidates.push(`WG-2026-${padded}`);
+    candidates.push(`WGT-${clean}`);
+    candidates.push(`AH-${clean}`);
+  } else {
+    if (!clean.startsWith('WG-') && !clean.startsWith('WGT-') && !clean.startsWith('AH-')) {
+      candidates.push(`WG-${clean}`);
+      candidates.push(`WGT-${clean}`);
+      candidates.push(`AH-${clean}`);
+    }
+  }
+
+  return Array.from(new Set(candidates.filter(Boolean)));
 }
 
 /**
@@ -110,7 +184,7 @@ export async function generateBiltyVerificationQrDataUrl(biltyInput: string | Pa
   }
 }
 
-import { BiltyBranch, BiltyLanguage } from '../types';
+import { BiltyBranch } from '../types';
 
 export interface BiltyBranchInfo {
   id: BiltyBranch;
@@ -121,14 +195,20 @@ export interface BiltyBranchInfo {
   phone: string;
 }
 
-export const BILTY_BRANCHES: Record<'samundri', BiltyBranchInfo> = {
+const HEAD_OFFICE_BRANCH_INFO: BiltyBranchInfo = {
+  id: 'head',
+  nameUr: 'سمندری',
+  nameEn: 'Samundri',
+  addressUr: 'اوکاڑہ بائی پاس، نزد 466 چوک، سمندری',
+  addressEn: 'Okara Bypass, Near 466 Chock, Samundri',
+  phone: '0300-5370443, 0339-5370443'
+};
+
+export const BILTY_BRANCHES: Record<'head' | 'samundri', BiltyBranchInfo> = {
+  head: HEAD_OFFICE_BRANCH_INFO,
   samundri: {
-    id: 'samundri',
-    nameUr: 'سمندری',
-    nameEn: 'Samundri',
-    addressUr: 'اوکاڑہ بائی پاس، نزد 466 چوک، سمندری',
-    addressEn: 'Okara Bypass, Near 466 Chock, Samundri',
-    phone: '0300-5370443, 0339-5370443'
+    ...HEAD_OFFICE_BRANCH_INFO,
+    id: 'samundri'
   }
 };
 

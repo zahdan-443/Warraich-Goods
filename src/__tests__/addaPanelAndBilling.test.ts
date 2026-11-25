@@ -23,6 +23,7 @@ vi.mock('../utils/firebase', () => ({
 import {
   OWNER_EMAIL,
   FULL_OWNER_PERMISSIONS,
+  formatSalutationGreeting,
   getPresetPermissions
 } from '../utils/authUtils';
 import {
@@ -52,7 +53,8 @@ import { PrintableAddaBill, formatAddaBillWhatsAppText } from '../components/Pri
 import { HomeView } from '../components/views/HomeView';
 import { BiltyAllRecordsTab } from '../components/views/bilty/BiltyAllRecordsTab';
 import { AddaPanelView } from '../components/views/AddaPanelView';
-import type { BiltyRecord, BranchConfig, UserBranchAccess } from '../types';
+import { BiltyLegalVaultModal } from '../components/BiltyLegalVaultModal';
+import type { BiltyAttachmentRecord, BiltyRecord, BranchConfig, UserBranchAccess } from '../types';
 
 function installMemoryLocalStorage() {
   const store = new Map<string, string>();
@@ -208,7 +210,7 @@ describe('Adda Panel, Isolated Pending Billing, Welcome Note & Attachment Gating
     expect(getAddaBills(MULTAN_BRANCH.id)).toHaveLength(1);
   });
 
-  it('reflects live edited branch Company Details on both Printed Bilty & Adda Bill', async () => {
+  it('reflects live edited branch Company Details on both Printed Bilty & Adda Bill and locks legal fields for non-Creator Branch Owners', async () => {
     const updatedBranch = await saveBranchCompanyDetails(MULTAN_BRANCH.id, {
       companyHeaderEn: 'WARRAICH MULTAN LOGISTICS',
       companyHeaderUr: 'وڑائچ ملتان لاجسٹکس',
@@ -219,6 +221,32 @@ describe('Adda Panel, Isolated Pending Billing, Welcome Note & Attachment Gating
       phoneNumbers: '0300-7771122',
       ntn: '8889990-2'
     });
+
+    // Non-creator Branch Owner updates contact address/phone cleanly, while legal NTN/headers remain locked
+    mockFirebase.currentUser = {
+      uid: 'uid_multan_owner',
+      email: 'multan.owner@gmail.com',
+      displayName: 'Hamza Warraich'
+    };
+    const branchOwnerEdit = await saveBranchCompanyDetails(MULTAN_BRANCH.id, {
+      addressEn: 'Gate 4, Northern Bypass, Multan',
+      addressUr: 'گیٹ 4، ناردرن بائی پاس، ملتان',
+      phoneNumbers: '0300-5556677',
+      ntn: '0000000-0',
+      companyHeaderEn: 'HIJACKED NAME',
+      proprietorNameEn: 'HIJACKED PROPRIETOR'
+    });
+    expect(branchOwnerEdit.addressEn).toBe('Gate 4, Northern Bypass, Multan');
+    expect(branchOwnerEdit.phoneNumbers).toBe('0300-5556677');
+    expect(branchOwnerEdit.ntn).toBe('8889990-2');
+    expect(branchOwnerEdit.companyHeaderEn).toBe('WARRAICH MULTAN LOGISTICS');
+    expect(branchOwnerEdit.proprietorNameEn).toBe('HAMZA WARRAICH');
+
+    mockFirebase.currentUser = {
+      uid: 'uid_creator',
+      email: OWNER_EMAIL,
+      displayName: 'Zahdan Nasar Warraich'
+    };
 
     const bilty: BiltyRecord = {
       id: 3001,
@@ -249,14 +277,14 @@ describe('Adda Panel, Isolated Pending Billing, Welcome Note & Attachment Gating
     const biltyHtml = renderToStaticMarkup(
       React.createElement(PrintableBilty, {
         record: bilty,
-        branchConfig: updatedBranch,
+        branchConfig: branchOwnerEdit,
         language: 'en'
       })
     );
     expect(biltyHtml).toContain('WARRAICH MULTAN LOGISTICS');
     expect(biltyHtml).toContain('HAMZA WARRAICH');
-    expect(biltyHtml).toContain('New Truck Adda, Northern Bypass, Multan');
-    expect(biltyHtml).toContain('0300-7771122');
+    expect(biltyHtml).toContain('Gate 4, Northern Bypass, Multan');
+    expect(biltyHtml).toContain('0300-5556677');
     expect(biltyHtml).toContain('8889990-2');
 
     const freight = upsertAddaPendingFreight({
@@ -280,12 +308,12 @@ describe('Adda Panel, Isolated Pending Billing, Welcome Note & Attachment Gating
       React.createElement(PrintableAddaBill, {
         bill,
         lang: 'en',
-        branchConfig: updatedBranch
+        branchConfig: branchOwnerEdit
       })
     );
     expect(billHtml).toContain('WARRAICH MULTAN LOGISTICS');
-    expect(billHtml).toContain('New Truck Adda, Northern Bypass, Multan');
-    expect(billHtml).toContain('0300-7771122');
+    expect(billHtml).toContain('Gate 4, Northern Bypass, Multan');
+    expect(billHtml).toContain('0300-5556677');
     expect(billHtml).toContain('NTN: 8889990-2');
 
     const waText = formatAddaBillWhatsAppText(bill, 'en', updatedBranch);
@@ -481,7 +509,153 @@ describe('Adda Panel, Isolated Pending Billing, Welcome Note & Attachment Gating
     expect(biltyViewSrc).toContain('{isCreatorUser && (');
     expect(biltyViewSrc).toContain('{isCreatorUser && vaultModalBilty && (');
     expect(biltyViewSrc).toContain('canManageAttachments={isCreatorUser}');
-    expect(biltyViewSrc).toContain('upsertAddaPendingFreight');
-    expect(biltyViewSrc).toContain('upsertAddaPendingCommission');
+    expect(biltyViewSrc).toContain('syncBiltyAddaLinks');
+    expect(biltyViewSrc).toContain('assertBiltyEditAllowedForAdda');
+  });
+
+  it('supports Mr/Ms/none salutations, renders signed-in no-access Copy Email card only for authenticated non-branch users, and shows Vault quota/Not-backed-up indicators', () => {
+    expect(formatSalutationGreeting('en', 'Sara Khan', 'Ms')).toBe('Welcome Ms Sara Khan');
+    expect(formatSalutationGreeting('en', 'Hamza Ali', 'none')).toBe('Welcome Hamza Ali');
+    expect(formatSalutationGreeting('en', 'Hamza Ali', undefined)).toBe('Welcome Mr Hamza Ali');
+    expect(formatSalutationGreeting('ur', 'سارہ خان', 'Ms')).toBe('خوش آمدید محترمہ سارہ خان');
+    expect(formatSalutationGreeting('ur', 'حمزہ علی', 'none')).toBe('خوش آمدید حمزہ علی');
+
+    const noAccessHtml = renderToStaticMarkup(
+      React.createElement(HomeView, {
+        lang: 'en',
+        trips: [],
+        vehicles: [],
+        drivers: [],
+        bilties: [],
+        authInitialized: true,
+        userEmail: 'ali.k.dot@gmail.com',
+        userBranchAccess: null,
+        isBiltyAuthorized: false,
+        canManageBranchStaff: false,
+        onNavigate: () => {},
+        activeBranch: null
+      })
+    );
+    expect(noAccessHtml).toContain('data-testid="home-no-access-card"');
+    expect(noAccessHtml).toContain('data-testid="copy-my-email-btn"');
+    expect(noAccessHtml).toContain('ali.k.dot@gmail.com');
+    expect(noAccessHtml).toContain('Copy my email');
+    expect(noAccessHtml.toLowerCase()).not.toContain('bilty');
+
+    // Revoked user also sees revoked status + exact email copy button
+    const revokedHtml = renderToStaticMarkup(
+      React.createElement(HomeView, {
+        lang: 'en',
+        trips: [],
+        vehicles: [],
+        drivers: [],
+        bilties: [],
+        authInitialized: true,
+        userEmail: 'ali.k.dot@gmail.com',
+        userBranchAccess: {
+          email: 'ali.k.dot@gmail.com',
+          branchId: MULTAN_BRANCH.id,
+          presetRole: 'munshi',
+          permissions: getPresetPermissions('munshi'),
+          status: 'revoked',
+          createdAt: '2026-11-24T00:00:00Z',
+          updatedAt: '2026-11-24T00:00:00Z'
+        },
+        isBiltyAuthorized: false,
+        canManageBranchStaff: false,
+        onNavigate: () => {},
+        activeBranch: MULTAN_BRANCH
+      })
+    );
+    expect(revokedHtml).toContain('Branch Access Revoked');
+    expect(revokedHtml).toContain('data-testid="copy-my-email-btn"');
+
+    // Guest never sees the no-access card
+    const guestHtml = renderToStaticMarkup(
+      React.createElement(HomeView, {
+        lang: 'en',
+        trips: [],
+        vehicles: [],
+        drivers: [],
+        bilties: [],
+        authInitialized: true,
+        userEmail: null,
+        isBiltyAuthorized: false,
+        canManageBranchStaff: false,
+        onNavigate: () => {},
+        activeBranch: null
+      })
+    );
+    expect(guestHtml).not.toContain('data-testid="home-no-access-card"');
+
+    // BiltyLegalVaultModal shows 70%+ quota meter and Not backed up badges on audio/local-only records
+    const sampleAudio: BiltyAttachmentRecord = {
+      id: 'att_audio_1',
+      biltyKey: 'WG-3001',
+      biltyNo: 'WG-3001',
+      slot: 'voiceNote',
+      kind: 'audio',
+      isIdCard: false,
+      name: 'Driver Confirmation',
+      mimeType: 'audio/webm',
+      dataUrl: 'data:audio/webm;base64,AAAA',
+      byteSize: 24576,
+      duration: 18,
+      createdAt: '2026-11-24T00:00:00Z',
+      createdAtMs: Date.now(),
+      updatedAt: '2026-11-24T00:00:00Z',
+      expireAtMs: Date.now() + 180 * 86_400_000,
+      expireAtIso: '2027-05-24T00:00:00Z',
+      legalHold: false,
+      localOnly: true,
+      localOnlyReason: 'audio_local_only'
+    };
+
+    const sampleBilty: BiltyRecord = {
+      id: 3001,
+      biltyNo: 'WG-3001',
+      date: '2026-11-24',
+      vehicleNo: 'MNA-1234',
+      driverName: 'Sajid',
+      mobileNo: '0300-9999999',
+      sendingCity: 'Multan',
+      receivingCity: 'Karachi',
+      senderName: 'Alpha Mills',
+      senderMobile: '0300-1111111',
+      senderCnic: '',
+      receiverName: 'Beta Traders',
+      receiverMobile: '0321-2222222',
+      qty: '10',
+      itemDescription: 'Cargo',
+      weight: '500',
+      total: 15000,
+      advance: 0,
+      payable: 15000,
+      createdAt: '2026-11-24T00:00:00Z'
+    };
+
+    const vaultHtml = renderToStaticMarkup(
+      React.createElement(BiltyLegalVaultModal, {
+        isOpen: true,
+        onClose: () => {},
+        bilty: sampleBilty,
+        initialAttachments: [sampleAudio],
+        initialStorageStats: {
+          totalCount: 12,
+          cloudBackedCount: 11,
+          localOnlyCount: 1,
+          totalBytes: 800 * 1024 * 1024,
+          cloudBytes: 760 * 1024 * 1024,
+          cloudQuotaBytes: 1024 * 1024 * 1024,
+          usedMb: 760,
+          quotaMb: 1024,
+          usageRatio: 0.742,
+          warningLevel: 'warn70'
+        }
+      })
+    );
+    expect(vaultHtml).toContain('data-testid="vault-quota-meter"');
+    expect(vaultHtml).toContain('70%+ Quota Used');
+    expect(vaultHtml).toContain('Not backed up (صرف فون پر)');
   });
 });

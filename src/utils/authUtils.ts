@@ -9,12 +9,41 @@ import type {
   BranchConfig,
   BranchPermissions,
   BranchPresetRole,
+  BranchSalutation,
+  Language,
   UserBranchAccess
 } from '../types';
 
 export const OWNER_EMAIL = 'warraichgoods43@gmail.com';
 export const DEFAULT_AUTHORIZED_EMAILS: readonly string[] = [OWNER_EMAIL];
-export const DEFAULT_HEAD_OFFICE_BRANCH_ID = 'samundri';
+export const DEFAULT_HEAD_OFFICE_BRANCH_ID = 'head';
+export const LEGACY_HEAD_OFFICE_BRANCH_ID = 'samundri';
+
+export function isHeadOfficeBranchId(branchId?: string | null): boolean {
+  const clean = String(branchId || '').trim();
+  return clean === DEFAULT_HEAD_OFFICE_BRANCH_ID || clean === LEGACY_HEAD_OFFICE_BRANCH_ID;
+}
+
+export function normalizeSalutation(sal?: string | null): BranchSalutation {
+  if (sal === 'Ms' || sal === 'none' || sal === 'Mr') return sal;
+  return 'Mr';
+}
+
+export function formatSalutationGreeting(
+  lang: Language,
+  personName: string,
+  salutation?: BranchSalutation | null
+): string {
+  const cleanName = String(personName || '').trim() || (lang === 'ur' ? 'صارف' : 'Member');
+  const sal = normalizeSalutation(salutation);
+  if (lang === 'ur') {
+    if (sal === 'none') return `خوش آمدید ${cleanName}`;
+    if (sal === 'Ms') return `خوش آمدید محترمہ ${cleanName}`;
+    return `خوش آمدید جناب ${cleanName}`;
+  }
+  if (sal === 'none') return `Welcome ${cleanName}`;
+  return `Welcome ${sal} ${cleanName}`;
+}
 
 export const EMPTY_BRANCH_PERMISSIONS: BranchPermissions = {
   createBilty: false,

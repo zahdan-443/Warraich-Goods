@@ -157,6 +157,8 @@ vi.mock('../utils/firebase', () => ({
 }));
 
 import {
+  ATTACHMENT_AUDIO_HARD_CAP_BYTES,
+  ATTACHMENT_CLOUD_QUOTA_BYTES,
   ATTACHMENT_HARD_CAP_BYTES,
   ATTACHMENT_RETENTION_DAYS,
   BILTY_VAULT_MIGRATED_PREFIX,
@@ -168,11 +170,13 @@ import {
   flushBiltyAttachmentSyncQueue,
   getAllBiltyAttachments,
   getAttachmentsForBilty,
+  getBiltyAttachmentStorageStats,
   getExpiringBiltyAttachmentsSummary,
   migrateLegacyBiltyLegalVaults,
   runDailyBiltyAttachmentCleanup,
   saveBiltyAttachment,
-  setBiltyLegalHold
+  setBiltyLegalHold,
+  validateAudioAttachmentDataUrl
 } from '../utils/biltyAttachments';
 import {
   deletePreRestoreSnapshotIdbOnly,
@@ -559,15 +563,83 @@ describe('Bilty Attachment Isolation, Khata Tombstone Import & Hygiene Regressio
     const rootDir = process.cwd();
     const privacyHtml = fs.readFileSync(path.join(rootDir, 'public/privacy.html'), 'utf8');
     const privacyModal = fs.readFileSync(path.join(rootDir, 'src/components/PrivacyPolicyModal.tsx'), 'utf8');
-    expect(privacyHtml.toLowerCase()).toContain('bilty system');
+    expect(privacyHtml.toLowerCase()).toContain('bilty');
     expect(privacyHtml).toMatch(/180\s*days|6\s*months/i);
-    expect(privacyModal.toLowerCase()).toContain('bilty system');
+    expect(privacyModal.toLowerCase()).toContain('bilty');
     expect(privacyModal).toMatch(/180\s*days|6\s*months/i);
 
     const rules = fs.readFileSync(path.join(rootDir, 'firestore.rules'), 'utf8');
     expect(rules).toContain('match /biltyAttachments/{attachmentId}');
     expect(rules).toContain('isOwner()');
     expect(rules).toContain('409600');
+  });
+
+  it('enforces 600 KB local-only audio caps (never uploaded to Firestore) and 70%/85%/100% cloud quota fallback', async () => {
+    expect(ATTACHMENT_AUDIO_HARD_CAP_BYTES).toBe(600 * 1024);
+    expect(ATTACHMENT_CLOUD_QUOTA_BYTES).toBe(1024 * 1024 * 1024);
+
+    const bilty = makeBilty({ id: 6001, biltyNo: 'WG-6001' });
+    setScopedItem('bilties', JSON.stringify([bilty]));
+
+    // <= 600 KB audio saves strictly locally and NEVER touches Firestore
+    const smallAudioUrl = `data:audio/webm;base64,${'A'.repeat(Math.ceil((500 * 1024) / 3) * 4)}`;
+    expect(validateAudioAttachmentDataUrl(smallAudioUrl).byteSize).toBeGreaterThan(450 * 1024);
+    const savedAudio = await saveBiltyAttachment(bilty, {
+      slot: 'voiceNote',
+      kind: 'audio',
+      name: 'Driver_Confirm',
+      dataUrl: smallAudioUrl,
+      duration: 45
+    });
+    expect(savedAudio.localOnly).toBe(true);
+    expect(savedAudio.localOnlyReason).toBe('audio_local_only');
+
+    // > 600 KB audio is strictly rejected
+    const oversizedAudioUrl = `data:audio/webm;base64,${'A'.repeat(Math.ceil((620 * 1024) / 3) * 4)}`;
+    expect(() => validateAudioAttachmentDataUrl(oversizedAudioUrl)).toThrow(/600 KB/i);
+    await expect(
+      saveBiltyAttachment(bilty, {
+        slot: 'voiceNote',
+        kind: 'audio',
+        dataUrl: oversizedAudioUrl
+      })
+    ).rejects.toThrow(/600 KB/i);
+
+    await flushBiltyAttachmentSyncQueue('uid_owner_test');
+    expect(mockState.docs.get(`users/uid_owner_test/biltyAttachments/${savedAudio.id}`)).toBeUndefined();
+
+    // Save 75 KB image (counts toward cloud quota; audio does NOT count toward cloud quota)
+    const img1 = await saveBiltyAttachment(
+      bilty,
+      {
+        slot: 'driverCnic',
+        kind: 'image',
+        dataUrl: makeSmallJpegDataUrl(75 * 1024)
+      }
+    );
+    expect(img1.localOnly).toBeUndefined();
+
+    const stats70 = await getBiltyAttachmentStorageStats(100 * 1024);
+    expect(stats70.cloudBackedCount).toBe(1);
+    expect(stats70.localOnlyCount).toBe(1);
+    expect(stats70.warningLevel).toBe('warn70');
+
+    const stats85 = await getBiltyAttachmentStorageStats(85 * 1024);
+    expect(stats85.warningLevel).toBe('urgent85');
+
+    // Saving a new image that pushes cloudBytes above quotaLimitBytes falls back cleanly to localOnly
+    const imgQuotaFallback = await saveBiltyAttachment(bilty, {
+      slot: 'vehiclePhoto',
+      kind: 'image',
+      dataUrl: makeSmallJpegDataUrl(30 * 1024),
+      quotaLimitBytes: 100 * 1024
+    });
+    expect(imgQuotaFallback.localOnly).toBe(true);
+    expect(imgQuotaFallback.localOnlyReason).toBe('quota_exceeded');
+
+    await new Promise((r) => setTimeout(r, 15));
+    expect(mockState.docs.get(`users/uid_owner_test/biltyAttachments/${img1.id}`)).toBeDefined();
+    expect(mockState.docs.get(`users/uid_owner_test/biltyAttachments/${imgQuotaFallback.id}`)).toBeUndefined();
   });
 
   // =========================================================================

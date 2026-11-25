@@ -1,6 +1,7 @@
 import React from 'react';
 import type { AddaBillRecord, BranchConfig, CompanyProfile, Language } from '../types';
-import { resolveEffectiveCompanyDetails } from '../utils/addaBillingStorage';
+import { fromPaisa } from '../utils/calculator';
+import { getBillPaidPaisa, getBillRemainingPaisa, resolveEffectiveCompanyDetails } from '../utils/addaBillingStorage';
 
 interface PrintableAddaBillProps {
   bill: AddaBillRecord;
@@ -31,6 +32,21 @@ export function formatAddaBillWhatsAppText(
 
   const fmt = (n: number) => Math.max(0, Number(n) || 0).toLocaleString('en-US');
   const isEn = lang === 'en';
+  const paidAmt = fromPaisa(getBillPaidPaisa(bill));
+  const remainingAmt = fromPaisa(getBillRemainingPaisa(bill));
+  const statusLabelEn =
+    bill.status === 'paid'
+      ? 'PAID ✅'
+      : bill.status === 'partial'
+      ? 'PARTIAL PAYMENT ◐'
+      : 'PENDING / UNPAID ⏳';
+  const statusLabelUr =
+    bill.status === 'paid'
+      ? 'ادا شدہ (PAID) ✅'
+      : bill.status === 'partial'
+      ? 'جزوی ادائیگی (PARTIAL) ◐'
+      : 'بقایا / بل جاری (UNPAID) ⏳';
+
   const itemLines = bill.items.map(
     (it, idx) =>
       `${idx + 1}. [${it.itemType === 'freight' ? (isEn ? 'Freight' : 'کرایہ') : (isEn ? 'Commission' : 'کمیشن')}] ${it.biltyNo} (${it.date}) — Rs ${fmt(it.amount)}`
@@ -45,7 +61,7 @@ export function formatAddaBillWhatsAppText(
       `📄 *Bill No:* ${bill.billNumber}`,
       `📅 *Date:* ${bill.date}`,
       `👤 *Party:* ${bill.partyName}${bill.partyMobile ? ` (${bill.partyMobile})` : ''}`,
-      `📌 *Status:* ${bill.status === 'paid' ? 'PAID ✅' : 'PENDING / BILLED ⏳'}`,
+      `📌 *Status:* ${statusLabelEn}`,
       `───────────────────────`,
       ...itemLines,
       `───────────────────────`,
@@ -53,6 +69,8 @@ export function formatAddaBillWhatsAppText(
       bill.extraCharges > 0 ? `➕ *Extra Charges:* Rs ${fmt(bill.extraCharges)}` : '',
       bill.discount > 0 ? `➖ *Discount:* Rs ${fmt(bill.discount)}` : '',
       `💵 *Grand Total:* Rs ${fmt(bill.totalAmount)}`,
+      paidAmt > 0 ? `✅ *Paid:* Rs ${fmt(paidAmt)}` : '',
+      paidAmt > 0 ? `⏳ *Balance Due:* Rs ${fmt(remainingAmt)}` : '',
       bill.notes ? `📝 *Note:* ${bill.notes}` : '',
       `───────────────────────`,
       `Thank you for your business.`
@@ -69,7 +87,7 @@ export function formatAddaBillWhatsAppText(
     `📄 *بل نمبر:* ${bill.billNumber}`,
     `📅 *تاریخ:* ${bill.date}`,
     `👤 *پارٹی:* ${bill.partyName}${bill.partyMobile ? ` (${bill.partyMobile})` : ''}`,
-    `📌 *اسٹیٹس:* ${bill.status === 'paid' ? 'ادا شدہ (PAID) ✅' : 'بقایا / بل جاری (BILLED) ⏳'}`,
+    `📌 *اسٹیٹس:* ${statusLabelUr}`,
     `───────────────────────`,
     ...itemLines,
     `───────────────────────`,
@@ -77,6 +95,8 @@ export function formatAddaBillWhatsAppText(
     bill.extraCharges > 0 ? `➕ *اضافی چارجز:* روپے ${fmt(bill.extraCharges)}` : '',
     bill.discount > 0 ? `➖ *رعایت (ڈسکاؤنٹ):* روپے ${fmt(bill.discount)}` : '',
     `💵 *کل قابلِ ادائیگی:* روپے ${fmt(bill.totalAmount)}`,
+    paidAmt > 0 ? `✅ *وصول شدہ رقم:* روپے ${fmt(paidAmt)}` : '',
+    paidAmt > 0 ? `⏳ *بقایا رقم:* روپے ${fmt(remainingAmt)}` : '',
     bill.notes ? `📝 *نوٹ:* ${bill.notes}` : '',
     `───────────────────────`,
     `تشریف آوری اور اعتماد کا شکریہ۔`
@@ -108,6 +128,8 @@ export const PrintableAddaBill: React.FC<PrintableAddaBillProps> = ({
         };
 
   const fmt = (n: number) => Math.max(0, Number(n) || 0).toLocaleString('en-US');
+  const paidAmt = fromPaisa(getBillPaidPaisa(bill));
+  const remainingAmt = fromPaisa(getBillRemainingPaisa(bill));
 
   return (
     <div
@@ -156,6 +178,8 @@ export const PrintableAddaBill: React.FC<PrintableAddaBillProps> = ({
               className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
                 bill.status === 'paid'
                   ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                  : bill.status === 'partial'
+                  ? 'bg-sky-100 text-sky-900 border-sky-300'
                   : 'bg-amber-100 text-amber-900 border-amber-300'
               }`}
             >
@@ -163,6 +187,10 @@ export const PrintableAddaBill: React.FC<PrintableAddaBillProps> = ({
                 ? isEn
                   ? 'PAID'
                   : 'ادا شدہ (PAID)'
+                : bill.status === 'partial'
+                ? isEn
+                  ? 'PARTIAL PAYMENT'
+                  : 'جزوی ادائیگی (PARTIAL)'
                 : isEn
                 ? 'BILLED / UNPAID'
                 : 'بل جاری / بقایا'}
@@ -290,6 +318,18 @@ export const PrintableAddaBill: React.FC<PrintableAddaBillProps> = ({
             <span>{isEn ? 'Grand Total' : 'کل رقم'}</span>
             <span className="font-mono tabular-nums">Rs {fmt(bill.totalAmount)}</span>
           </div>
+          {paidAmt > 0 && (
+            <>
+              <div className="flex items-center justify-between text-emerald-800 font-bold">
+                <span>{isEn ? 'Paid Amount' : 'وصول شدہ رقم'}</span>
+                <span className="font-mono tabular-nums">Rs {fmt(paidAmt)}</span>
+              </div>
+              <div className="flex items-center justify-between text-[#0f2942] font-black">
+                <span>{isEn ? 'Balance Due' : 'بقایا رقم'}</span>
+                <span className="font-mono tabular-nums">Rs {fmt(remainingAmt)}</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

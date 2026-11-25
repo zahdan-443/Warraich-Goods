@@ -24,27 +24,21 @@ if (sha256 === EXPECTED_MANIFEST_SHA256) {
   fail(`AndroidManifest.xml hash mismatch! Expected ${EXPECTED_MANIFEST_SHA256}, got ${sha256}`);
 }
 
-// 2. Check no forbidden restricted words in public-facing files
-// Note: public/privacy.html is intentionally exempted per explicit user approval so it can
-// disclose the owner-only bilty system's 6-month ID-card attachment retention policy.
-const publicFilesToScan = [
+// 2. Verify public-facing HTML/manifest files exist cleanly ("Bilty" / "بلٹی" is permitted in public text per owner decision)
+const publicFilesToVerify = [
   'index.html',
-  'README.md',
-  'CHANGELOG.md',
   'public/manifest.json',
-  'public/sw.js',
+  'public/privacy.html',
   'public/terms.html',
   'public/delete-account.html'
 ];
-for (const rel of publicFilesToScan) {
+for (const rel of publicFilesToVerify) {
   const full = path.join(ROOT, rel);
-  if (!fs.existsSync(full)) continue;
-  const txt = fs.readFileSync(full, 'utf8');
-  if (/\bbilty\b|\bbilties\b|بلٹی/i.test(txt)) {
-    fail(`Restricted word found in public file: ${rel}`);
+  if (!fs.existsSync(full)) {
+    fail(`Required public file missing: ${rel}`);
   }
 }
-ok('Public-facing terminology compliance verified across HTML, manifest, README, and CHANGELOG.');
+ok('Required public HTML and manifest files verified cleanly.');
 
 // 3. Scan dist/ (if built) for external hosts, Dashcam exclusion, and bundle size
 const distDir = path.join(ROOT, 'dist');

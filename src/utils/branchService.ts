@@ -2,41 +2,48 @@
  * Driver Dost - Multi-Branch & Role-Based Staff Access Service
  *
  * Manages:
- * - Branch definitions (address, phone numbers, starting Bilty number, owner Gmail)
- * - Staff assignments & preset/custom module permissions per branch
- * - Signed-in Gmail user directory (strictly excluding App Creator from other branches)
- * - Real-time access resolution & immediate revocation support
+ * - Branch definitions (immutable branchCode, address, phones, starting Bilty seq, owner Gmail)
+ * - Staff membership (`branches/{branchId}/members/{emailKey}`), salutation & permissions
+ * - Creator-locked legal identity vs Branch Owner editable profile details
+ * - Real-time self-access resolution via collectionGroup('members') without any public user directory
  */
 
 import {
   collection,
+  collectionGroup,
   deleteDoc,
   doc,
   getDoc,
   getDocs,
   onSnapshot,
+  query,
   setDoc,
   Unsubscribe,
+  where,
   writeBatch
 } from 'firebase/firestore';
 import type {
   BranchConfig,
   BranchPermissions,
   BranchPresetRole,
+  BranchSalutation,
   BranchStaffMember,
   UserBranchAccess
 } from '../types';
 import { auth, db } from './firebase';
 import {
   DEFAULT_HEAD_OFFICE_BRANCH_ID,
+  LEGACY_HEAD_OFFICE_BRANCH_ID,
   filterStaffRosterExcludingCreator,
   getPresetPermissions,
+  isHeadOfficeBranchId,
   isOwnerEmail,
   normalizeBranchPermissions,
-  normalizeEmail
+  normalizeEmail,
+  normalizeSalutation
 } from './authUtils';
 import {
-  DEFAULT_SAMUNDRI_BRANCH,
+  DEFAULT_HEAD_OFFICE_BRANCH,
   getCachedBranchById,
   getCachedBranches,
   setCachedBranches
@@ -99,16 +106,16 @@ function throwBranchFirestoreError(
   throw new Error(JSON.stringify(info));
 }
 
-export interface SignedInDirectoryEntry {
-  email: string;
-  uid?: string;
-  displayName?: string;
-  lastLogin?: string;
-}
-
 const USER_ACCESS_CACHE_PREFIX = 'wg_user_branch_access_v1_';
 const BRANCH_STAFF_CACHE_PREFIX = 'wg_branch_staff_v1_';
-const SIGNED_IN_DIR_CACHE_KEY = 'wg_signed_in_directory_v1';
+const LEGACY_SIGNED_IN_DIR_CACHE_KEY = 'wg_signed_in_directory_v1';
+
+// Clean up any legacy cached directory blob
+try {
+  safeStorage.removeItem(LEGACY_SIGNED_IN_DIR_CACHE_KEY);
+} catch {
+  // ignore
+}
 
 export function slugifyBranchId(nameEn: string): string {
   const clean = String(nameEn || '')
@@ -121,6 +128,45 @@ export function slugifyBranchId(nameEn: string): string {
   return clean ? `${clean}_${suffix}` : `branch_${Date.now()}`;
 }
 
+export function normalizeBranchCode(raw?: string | null): string {
+  return String(raw || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+    .slice(0, 3);
+}
+
+export function suggestBranchCode(nameEn: string, existingCodes: string[]): string {
+  const letters = normalizeBranchCode(
+    String(nameEn || '')
+      .replace(/[^A-Za-z]/g, '')
+  );
+  const words = String(nameEn || '')
+    .trim()
+    .toUpperCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  let base = '';
+  if (words.length >= 2) {
+    base = words.map(w => w[0]).join('').replace(/[^A-Z]/g, '').slice(0, 3);
+  }
+  if (base.length < 2) {
+    base = letters.slice(0, 3);
+  }
+  if (base.length < 2) {
+    base = 'BR';
+  }
+  const taken = new Set(existingCodes.map(c => normalizeBranchCode(c)).filter(Boolean));
+  if (!taken.has(base)) return base;
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const prefix2 = base.slice(0, 2);
+  for (const ch of alphabet) {
+    const candidate = `${prefix2}${ch}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return base;
+}
+
 export function getCachedUserBranchAccess(email?: string | null): UserBranchAccess | null {
   const clean = normalizeEmail(email);
   if (!clean || isOwnerEmail(clean)) return null;
@@ -128,7 +174,15 @@ export function getCachedUserBranchAccess(email?: string | null): UserBranchAcce
     const raw = safeStorage.getItem(`${USER_ACCESS_CACHE_PREFIX}${clean}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as UserBranchAccess;
-    return parsed && parsed.branchId ? parsed : null;
+    if (!parsed || !parsed.branchId) return null;
+    return {
+      ...parsed,
+      branchId:
+        parsed.branchId === LEGACY_HEAD_OFFICE_BRANCH_ID
+          ? DEFAULT_HEAD_OFFICE_BRANCH_ID
+          : parsed.branchId,
+      salutation: normalizeSalutation(parsed.salutation)
+    };
   } catch {
     return null;
   }
@@ -149,43 +203,77 @@ export function setCachedUserBranchAccess(email: string, access: UserBranchAcces
 }
 
 export function getCachedBranchStaff(branchId: string): BranchStaffMember[] {
+  const canonical = isHeadOfficeBranchId(branchId) ? DEFAULT_HEAD_OFFICE_BRANCH_ID : branchId;
   try {
-    const raw = safeStorage.getItem(`${BRANCH_STAFF_CACHE_PREFIX}${branchId}`);
+    const raw =
+      safeStorage.getItem(`${BRANCH_STAFF_CACHE_PREFIX}${canonical}`) ||
+      (canonical === DEFAULT_HEAD_OFFICE_BRANCH_ID
+        ? safeStorage.getItem(`${BRANCH_STAFF_CACHE_PREFIX}${LEGACY_HEAD_OFFICE_BRANCH_ID}`)
+        : null);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? filterStaffRosterExcludingCreator(parsed) : [];
+    return Array.isArray(parsed)
+      ? filterStaffRosterExcludingCreator(parsed).map(m => ({
+          ...m,
+          salutation: normalizeSalutation(m.salutation)
+        }))
+      : [];
   } catch {
     return [];
   }
 }
 
 function setCachedBranchStaff(branchId: string, staff: BranchStaffMember[]): void {
-  const filtered = filterStaffRosterExcludingCreator(staff);
+  const canonical = isHeadOfficeBranchId(branchId) ? DEFAULT_HEAD_OFFICE_BRANCH_ID : branchId;
+  const filtered = filterStaffRosterExcludingCreator(staff).map(m => ({
+    ...m,
+    branchId: canonical,
+    salutation: normalizeSalutation(m.salutation)
+  }));
   try {
-    safeStorage.setItem(`${BRANCH_STAFF_CACHE_PREFIX}${branchId}`, JSON.stringify(filtered));
+    safeStorage.setItem(`${BRANCH_STAFF_CACHE_PREFIX}${canonical}`, JSON.stringify(filtered));
   } catch {
     // ignore
   }
 }
 
 /**
- * Ensures the Samundri Head Office branch document exists in Firestore for the App Owner.
+ * Ensures the canonical Head Office branch (`branches/head`) exists in Firestore for the App Creator.
  */
-export async function ensureSamundriBranchInFirestore(): Promise<void> {
+export async function ensureHeadOfficeBranchInFirestore(): Promise<void> {
   if (!db || !auth.currentUser || !isOwnerEmail(auth.currentUser.email)) return;
   if (typeof navigator !== 'undefined' && !navigator.onLine) return;
 
-  const ref = doc(db, 'branches', DEFAULT_HEAD_OFFICE_BRANCH_ID);
+  const headRef = doc(db, 'branches', DEFAULT_HEAD_OFFICE_BRANCH_ID);
   try {
-    const snap = await getDoc(ref);
+    const snap = await getDoc(headRef);
     if (!snap.exists()) {
+      // Carry over custom Head Office profile fields if legacy branches/samundri exists
+      let seedProfile: BranchConfig = DEFAULT_HEAD_OFFICE_BRANCH;
+      try {
+        const legacySnap = await getDoc(doc(db, 'branches', LEGACY_HEAD_OFFICE_BRANCH_ID));
+        if (legacySnap.exists()) {
+          const legacyData = legacySnap.data() as BranchConfig;
+          seedProfile = {
+            ...DEFAULT_HEAD_OFFICE_BRANCH,
+            ...legacyData,
+            id: DEFAULT_HEAD_OFFICE_BRANCH_ID,
+            isHeadOffice: true
+          };
+        }
+      } catch {
+        // non-fatal legacy lookup
+      }
+
       const nowIso = new Date().toISOString();
       await setDoc(
-        ref,
+        headRef,
         {
-          ...DEFAULT_SAMUNDRI_BRANCH,
+          ...seedProfile,
+          id: DEFAULT_HEAD_OFFICE_BRANCH_ID,
+          isHeadOffice: true,
           createdBy: normalizeEmail(auth.currentUser.email),
-          createdAt: nowIso,
+          createdAt: seedProfile.createdAt || nowIso,
           updatedAt: nowIso
         },
         { merge: true }
@@ -195,6 +283,9 @@ export async function ensureSamundriBranchInFirestore(): Promise<void> {
     logBranchFirestoreWarning(err, BranchFirestoreOp.WRITE, `branches/${DEFAULT_HEAD_OFFICE_BRANCH_ID}`);
   }
 }
+
+/** Backwards-compatible alias */
+export const ensureSamundriBranchInFirestore = ensureHeadOfficeBranchInFirestore;
 
 export async function fetchAllBranches(): Promise<BranchConfig[]> {
   if (!db || !auth.currentUser || (typeof navigator !== 'undefined' && !navigator.onLine)) {
@@ -207,10 +298,13 @@ export async function fetchAllBranches(): Promise<BranchConfig[]> {
       const list: BranchConfig[] = [];
       snap.forEach(d => {
         const data = d.data() as BranchConfig;
-        if (data && (data.id || d.id)) {
+        const docId = d.id;
+        // Skip legacy samundri shadow if head exists
+        if (docId === LEGACY_HEAD_OFFICE_BRANCH_ID) return;
+        if (data && (data.id || docId)) {
           list.push({
             ...data,
-            id: data.id || d.id,
+            id: data.id || docId,
             startingBiltySeq: Math.max(1001, Number(data.startingBiltySeq) || 1001)
           });
         }
@@ -242,9 +336,10 @@ export async function fetchAllBranches(): Promise<BranchConfig[]> {
 
 export async function fetchBranchById(branchId: string): Promise<BranchConfig | null> {
   if (!branchId) return null;
+  const canonical = isHeadOfficeBranchId(branchId) ? DEFAULT_HEAD_OFFICE_BRANCH_ID : branchId;
   if (db && auth.currentUser && (typeof navigator === 'undefined' || navigator.onLine)) {
     try {
-      const snap = await getDoc(doc(db, 'branches', branchId));
+      const snap = await getDoc(doc(db, 'branches', canonical));
       if (snap.exists()) {
         const data = snap.data() as BranchConfig;
         const normalized: BranchConfig = {
@@ -257,10 +352,10 @@ export async function fetchBranchById(branchId: string): Promise<BranchConfig | 
         return normalized;
       }
     } catch (err) {
-      logBranchFirestoreWarning(err, BranchFirestoreOp.GET, `branches/${branchId}`);
+      logBranchFirestoreWarning(err, BranchFirestoreOp.GET, `branches/${canonical}`);
     }
   }
-  return getCachedBranchById(branchId);
+  return getCachedBranchById(canonical);
 }
 
 export function subscribeToBranchesForOwner(
@@ -274,6 +369,7 @@ export function subscribeToBranchesForOwner(
     snap => {
       const list: BranchConfig[] = [];
       snap.forEach(d => {
+        if (d.id === LEGACY_HEAD_OFFICE_BRANCH_ID) return;
         const data = d.data() as BranchConfig;
         if (data && (data.id || d.id)) {
           list.push({
@@ -297,28 +393,50 @@ export async function saveBranchConfig(
 ): Promise<BranchConfig> {
   const callerEmail = normalizeEmail(auth.currentUser?.email);
   if (!isOwnerEmail(callerEmail)) {
-    throw new Error('Only the App Owner can create or modify branches.');
+    throw new Error('Only the App Creator can create or modify branches.');
   }
 
   const nowIso = new Date().toISOString();
-  const branchId = (input.id && input.id.trim()) || slugifyBranchId(input.nameEn || input.nameUr);
+  const rawId = (input.id && input.id.trim()) || slugifyBranchId(input.nameEn || input.nameUr);
+  const branchId = isHeadOfficeBranchId(rawId) ? DEFAULT_HEAD_OFFICE_BRANCH_ID : rawId;
+  const isHead = branchId === DEFAULT_HEAD_OFFICE_BRANCH_ID;
   const existing = getCachedBranchById(branchId);
   const ownerEmailClean = normalizeEmail(input.ownerEmail);
-  // App Creator is never listed as a branch staff member inside other branches
   const effectiveOwnerEmail =
     ownerEmailClean && !isOwnerEmail(ownerEmailClean) ? ownerEmailClean : undefined;
+
+  // Immutable 2-3 uppercase letter branch code for non-Head branches
+  let resolvedBranchCode: string | undefined = existing?.branchCode;
+  if (!isHead && !resolvedBranchCode) {
+    const requested = normalizeBranchCode(input.branchCode);
+    const otherCodes = getCachedBranches()
+      .filter(b => b.id !== branchId)
+      .map(b => normalizeBranchCode(b.branchCode))
+      .filter(Boolean);
+    if (requested.length >= 2 && requested.length <= 3) {
+      if (otherCodes.includes(requested)) {
+        throw new Error(`Branch code "${requested}" is already used by another branch.`);
+      }
+      resolvedBranchCode = requested;
+    } else if (input.branchCode && input.branchCode.trim()) {
+      throw new Error('Branch code must be 2 to 3 uppercase letters (e.g. LHR, MLT).');
+    } else {
+      resolvedBranchCode = suggestBranchCode(input.nameEn || input.nameUr, otherCodes);
+    }
+  }
 
   const startingSeq = Math.max(1001, Math.min(999999, Math.floor(Number(input.startingBiltySeq) || 1001)));
   const cleanOwnerDisplayName = (input.ownerDisplayName ?? existing?.ownerDisplayName ?? '').trim();
 
   const branchDoc: BranchConfig = {
     id: branchId,
+    ...(!isHead && resolvedBranchCode ? { branchCode: resolvedBranchCode } : {}),
     nameUr: (input.nameUr || '').trim() || input.nameEn.trim(),
     nameEn: (input.nameEn || '').trim() || input.nameUr.trim(),
     addressUr: (input.addressUr || '').trim(),
     addressEn: (input.addressEn || '').trim(),
     phoneNumbers: (input.phoneNumbers || '').trim(),
-    ntn: (input.ntn ?? existing?.ntn ?? DEFAULT_SAMUNDRI_BRANCH.ntn ?? '7779394-1').trim(),
+    ntn: (input.ntn ?? existing?.ntn ?? DEFAULT_HEAD_OFFICE_BRANCH.ntn ?? '7779394-1').trim(),
     ...(input.companyHeaderUr !== undefined
       ? { companyHeaderUr: input.companyHeaderUr.trim() }
       : existing?.companyHeaderUr
@@ -345,7 +463,7 @@ export async function saveBranchConfig(
       ? { taglineUr: existing.taglineUr }
       : {}),
     startingBiltySeq: startingSeq,
-    isHeadOffice: branchId === DEFAULT_HEAD_OFFICE_BRANCH_ID || Boolean(input.isHeadOffice),
+    isHeadOffice: isHead || Boolean(input.isHeadOffice),
     active: input.active !== false,
     ...(effectiveOwnerEmail ? { ownerEmail: effectiveOwnerEmail } : {}),
     ...(cleanOwnerDisplayName ? { ownerDisplayName: cleanOwnerDisplayName } : {}),
@@ -354,7 +472,6 @@ export async function saveBranchConfig(
     updatedAt: nowIso
   };
 
-  // Update local cache immediately
   const merged = [...getCachedBranches().filter(b => b.id !== branchId), branchDoc];
   setCachedBranches(merged);
   if (typeof window !== 'undefined') {
@@ -366,30 +483,39 @@ export async function saveBranchConfig(
     try {
       await setDoc(doc(db, 'branches', branchId), branchDoc, { merge: false });
 
-      // Seed branch counter if not already initialized
-      const counterId =
-        branchId === DEFAULT_HEAD_OFFICE_BRANCH_ID ? 'biltyCounter' : `branch_${branchId}_bilty`;
-      const counterRef = doc(db, 'counters', counterId);
-      const counterSnap = await getDoc(counterRef);
-      if (!counterSnap.exists()) {
-        const seedVal = Math.max(0, startingSeq - 1);
-        await setDoc(
-          counterRef,
-          {
-            currentValue: seedVal,
-            value: seedVal,
-            updatedAt: nowIso
-          },
-          { merge: true }
-        );
+      // Seed branch-scoped counters if not initialized yet
+      const biltyCounterRef = doc(db, 'branches', branchId, 'counters', 'bilty');
+      const biltyCounterSnap = await getDoc(biltyCounterRef).catch(() => null);
+      if (biltyCounterSnap && !biltyCounterSnap.exists()) {
+        const seedVal = Math.max(1000, startingSeq - 1);
+        await setDoc(biltyCounterRef, {
+          branchId,
+          nextSeq: seedVal + 1,
+          currentValue: seedVal,
+          value: seedVal,
+          updatedAt: nowIso
+        });
       }
 
-      // If a Branch Owner email is assigned, automatically grant them branch_owner staff access
+      const billCounterRef = doc(db, 'branches', branchId, 'counters', 'bill');
+      const billCounterSnap = await getDoc(billCounterRef).catch(() => null);
+      if (billCounterSnap && !billCounterSnap.exists()) {
+        await setDoc(billCounterRef, {
+          branchId,
+          nextSeq: 101,
+          currentValue: 100,
+          value: 100,
+          updatedAt: nowIso
+        });
+      }
+
+      // If Branch Owner changed or was assigned, sync their membership record cleanly
       if (effectiveOwnerEmail) {
         await upsertBranchStaffMember({
           branch: branchDoc,
           email: effectiveOwnerEmail,
           displayName: cleanOwnerDisplayName || undefined,
+          salutation: 'Mr',
           presetRole: 'branch_owner',
           permissions: getPresetPermissions('branch_owner'),
           status: 'active'
@@ -418,59 +544,68 @@ export interface BranchCompanyDetailsPatch {
 }
 
 /**
- * Updates branch-level Company Details (Header Name, Proprietor, NTN, Address, Phones)
- * used live on Printed Bilties & Adda Bills.
- * Allowed for App Creator on any branch OR Branch Owner on their own branch.
+ * Updates branch-level contact & display details.
+ * Legal fields (`ntn`, legal company headers, proprietor name, tagline) are strictly editable ONLY by App Creator;
+ * non-creator Branch Owners may update ONLY branch display name, address, and phone numbers.
  */
 export async function saveBranchCompanyDetails(
   branchId: string,
   details: BranchCompanyDetailsPatch
 ): Promise<BranchConfig> {
+  const canonical = isHeadOfficeBranchId(branchId) ? DEFAULT_HEAD_OFFICE_BRANCH_ID : branchId;
   const callerEmail = normalizeEmail(auth.currentUser?.email);
-  const existing = getCachedBranchById(branchId) || DEFAULT_SAMUNDRI_BRANCH;
+  const existing = getCachedBranchById(canonical) || DEFAULT_HEAD_OFFICE_BRANCH;
+  const isCreatorCaller = isOwnerEmail(callerEmail);
   const cachedAccess = getCachedUserBranchAccess(callerEmail);
   const isBranchOwnerCaller =
     Boolean(callerEmail) &&
     (normalizeEmail(existing.ownerEmail) === callerEmail ||
-      (cachedAccess?.branchId === branchId &&
+      (cachedAccess?.branchId === canonical &&
         cachedAccess?.status === 'active' &&
         cachedAccess?.presetRole === 'branch_owner'));
 
-  if (!isOwnerEmail(callerEmail) && !isBranchOwnerCaller) {
-    throw new Error('Only the Branch Owner or App Creator can edit company details.');
+  if (!isCreatorCaller && !isBranchOwnerCaller) {
+    throw new Error('Only the Branch Owner or App Creator can edit branch details.');
   }
 
   const nowIso = new Date().toISOString();
-  const safePatch: BranchCompanyDetailsPatch & { updatedAt: string } = {
+  const branchEditablePatch: Partial<BranchConfig> & { updatedAt: string } = {
     nameUr: (details.nameUr ?? existing.nameUr).trim() || existing.nameUr,
     nameEn: (details.nameEn ?? existing.nameEn).trim() || existing.nameEn,
     addressUr: (details.addressUr ?? existing.addressUr).trim(),
     addressEn: (details.addressEn ?? existing.addressEn).trim(),
     phoneNumbers: (details.phoneNumbers ?? existing.phoneNumbers).trim(),
-    ntn: (details.ntn ?? existing.ntn ?? '7779394-1').trim(),
-    companyHeaderUr: (details.companyHeaderUr ?? existing.companyHeaderUr ?? '').trim(),
-    companyHeaderEn: (details.companyHeaderEn ?? existing.companyHeaderEn ?? '').trim(),
-    proprietorNameUr: (details.proprietorNameUr ?? existing.proprietorNameUr ?? '').trim(),
-    proprietorNameEn: (details.proprietorNameEn ?? existing.proprietorNameEn ?? '').trim(),
-    taglineUr: (details.taglineUr ?? existing.taglineUr ?? '').trim(),
     updatedAt: nowIso
   };
 
+  // Legal fields strictly preserved for non-creators; only App Creator may write them
+  const firestorePatch: Partial<BranchConfig> & { updatedAt: string } = isCreatorCaller
+    ? {
+        ...branchEditablePatch,
+        ntn: (details.ntn ?? existing.ntn ?? '7779394-1').trim(),
+        companyHeaderUr: (details.companyHeaderUr ?? existing.companyHeaderUr ?? '').trim(),
+        companyHeaderEn: (details.companyHeaderEn ?? existing.companyHeaderEn ?? '').trim(),
+        proprietorNameUr: (details.proprietorNameUr ?? existing.proprietorNameUr ?? '').trim(),
+        proprietorNameEn: (details.proprietorNameEn ?? existing.proprietorNameEn ?? '').trim(),
+        taglineUr: (details.taglineUr ?? existing.taglineUr ?? '').trim()
+      }
+    : branchEditablePatch;
+
   const updatedBranch: BranchConfig = {
     ...existing,
-    ...safePatch
+    ...firestorePatch
   };
 
-  const merged = [...getCachedBranches().filter(b => b.id !== branchId), updatedBranch];
+  const merged = [...getCachedBranches().filter(b => b.id !== canonical), updatedBranch];
   setCachedBranches(merged);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('driverdost:company_updated', { detail: updatedBranch }));
   }
 
   if (db && auth.currentUser && (typeof navigator === 'undefined' || navigator.onLine)) {
-    const path = `branches/${branchId}`;
+    const path = `branches/${canonical}`;
     try {
-      await setDoc(doc(db, 'branches', branchId), safePatch, { merge: true });
+      await setDoc(doc(db, 'branches', canonical), firestorePatch, { merge: true });
     } catch (err) {
       throwBranchFirestoreError(err, BranchFirestoreOp.UPDATE, path);
     }
@@ -482,21 +617,39 @@ export async function saveBranchCompanyDetails(
 export async function toggleBranchActive(branchId: string, active: boolean): Promise<void> {
   const existing = getCachedBranchById(branchId);
   if (!existing) return;
-  await saveBranchConfig({
+  const saved = await saveBranchConfig({
     ...existing,
     active
   });
+
+  // Keep branchActive mirror on members docs in sync so single-get() rules react immediately
+  if (db && auth.currentUser && isOwnerEmail(auth.currentUser.email)) {
+    try {
+      const memSnap = await getDocs(collection(db, 'branches', saved.id, 'members'));
+      if (!memSnap.empty) {
+        const batch = writeBatch(db);
+        const nowIso = new Date().toISOString();
+        memSnap.forEach(d => {
+          batch.set(d.ref, { branchActive: active, updatedAt: nowIso }, { merge: true });
+        });
+        await batch.commit();
+      }
+    } catch (err) {
+      logBranchFirestoreWarning(err, BranchFirestoreOp.UPDATE, `branches/${saved.id}/members`);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Branch Staff & User Access Registry
+// Branch Staff Membership Registry (`branches/{branchId}/members/{emailKey}`)
 // ---------------------------------------------------------------------------
 
 export async function fetchBranchStaff(branchId: string): Promise<BranchStaffMember[]> {
-  if (!branchId) return [];
+  const canonical = isHeadOfficeBranchId(branchId) ? DEFAULT_HEAD_OFFICE_BRANCH_ID : branchId;
+  if (!canonical) return [];
   if (db && auth.currentUser && (typeof navigator === 'undefined' || navigator.onLine)) {
     try {
-      const snap = await getDocs(collection(db, 'branches', branchId, 'staff'));
+      const snap = await getDocs(collection(db, 'branches', canonical, 'members'));
       const list: BranchStaffMember[] = [];
       snap.forEach(d => {
         const data = d.data() as BranchStaffMember;
@@ -504,26 +657,28 @@ export async function fetchBranchStaff(branchId: string): Promise<BranchStaffMem
           list.push({
             ...data,
             email: normalizeEmail(data.email),
+            salutation: normalizeSalutation(data.salutation),
             permissions: normalizeBranchPermissions(data.permissions, data.presetRole)
           });
         }
       });
-      setCachedBranchStaff(branchId, list);
+      setCachedBranchStaff(canonical, list);
       return list;
     } catch (err) {
-      logBranchFirestoreWarning(err, BranchFirestoreOp.LIST, `branches/${branchId}/staff`);
+      logBranchFirestoreWarning(err, BranchFirestoreOp.LIST, `branches/${canonical}/members`);
     }
   }
-  return getCachedBranchStaff(branchId);
+  return getCachedBranchStaff(canonical);
 }
 
 export function subscribeToBranchStaff(
   branchId: string,
   onUpdate: (staff: BranchStaffMember[]) => void
 ): Unsubscribe {
-  if (!db || !auth.currentUser || !branchId) return () => {};
+  const canonical = isHeadOfficeBranchId(branchId) ? DEFAULT_HEAD_OFFICE_BRANCH_ID : branchId;
+  if (!db || !auth.currentUser || !canonical) return () => {};
   return onSnapshot(
-    collection(db, 'branches', branchId, 'staff'),
+    collection(db, 'branches', canonical, 'members'),
     snap => {
       const list: BranchStaffMember[] = [];
       snap.forEach(d => {
@@ -532,15 +687,16 @@ export function subscribeToBranchStaff(
           list.push({
             ...data,
             email: normalizeEmail(data.email),
+            salutation: normalizeSalutation(data.salutation),
             permissions: normalizeBranchPermissions(data.permissions, data.presetRole)
           });
         }
       });
-      setCachedBranchStaff(branchId, list);
+      setCachedBranchStaff(canonical, list);
       onUpdate(list);
     },
     err => {
-      logBranchFirestoreWarning(err, BranchFirestoreOp.LIST, `branches/${branchId}/staff`);
+      logBranchFirestoreWarning(err, BranchFirestoreOp.LIST, `branches/${canonical}/members`);
     }
   );
 }
@@ -549,6 +705,7 @@ export interface UpsertStaffInput {
   branch: BranchConfig;
   email: string;
   displayName?: string;
+  salutation?: BranchSalutation;
   uid?: string;
   presetRole: BranchPresetRole;
   permissions: BranchPermissions;
@@ -565,39 +722,55 @@ export async function upsertBranchStaffMember(input: UpsertStaffInput): Promise<
   }
 
   const callerEmail = normalizeEmail(auth.currentUser?.email);
+  const callerIsCreator = isOwnerEmail(callerEmail);
+  const canonicalBranchId = isHeadOfficeBranchId(input.branch.id)
+    ? DEFAULT_HEAD_OFFICE_BRANCH_ID
+    : input.branch.id;
+
+  if (!callerIsCreator && input.presetRole === 'branch_owner') {
+    throw new Error('Only the App Creator can assign the Branch Owner role.');
+  }
+  if (!callerIsCreator && emailLower === callerEmail) {
+    throw new Error('You cannot modify your own branch membership permissions.');
+  }
+
+  const sanitizedPermissions = normalizeBranchPermissions(input.permissions, input.presetRole);
+  if (!callerIsCreator) {
+    sanitizedPermissions.manageBranchStaff = false;
+  }
+
   const nowIso = new Date().toISOString();
-  const existingList = getCachedBranchStaff(input.branch.id);
+  const existingList = getCachedBranchStaff(canonicalBranchId);
   const prev = existingList.find(s => normalizeEmail(s.email) === emailLower);
 
   const member: BranchStaffMember = {
     email: emailLower,
     ...(input.uid || prev?.uid ? { uid: input.uid || prev?.uid } : {}),
     displayName: (input.displayName ?? prev?.displayName ?? emailLower.split('@')[0]).trim(),
-    branchId: input.branch.id,
+    salutation: normalizeSalutation(input.salutation ?? prev?.salutation),
+    branchId: canonicalBranchId,
+    ...(input.branch.branchCode ? { branchCode: input.branch.branchCode } : {}),
     branchNameUr: input.branch.nameUr,
     branchNameEn: input.branch.nameEn,
     ...(input.branch.ownerEmail ? { branchOwnerEmail: normalizeEmail(input.branch.ownerEmail) } : {}),
+    branchActive: input.branch.active !== false,
     presetRole: input.presetRole,
-    permissions: normalizeBranchPermissions(input.permissions, input.presetRole),
+    permissions: sanitizedPermissions,
     status: input.status || 'active',
     addedBy: callerEmail || prev?.addedBy || 'owner',
     createdAt: prev?.createdAt || nowIso,
     updatedAt: nowIso
   };
 
-  // Update local cache
   const nextList = [member, ...existingList.filter(s => normalizeEmail(s.email) !== emailLower)];
-  setCachedBranchStaff(input.branch.id, nextList);
+  setCachedBranchStaff(canonicalBranchId, nextList);
 
   if (db && auth.currentUser && (typeof navigator === 'undefined' || navigator.onLine)) {
-    const staffPath = `branches/${input.branch.id}/staff/${emailLower}`;
+    const memberPath = `branches/${canonicalBranchId}/members/${emailLower}`;
     try {
-      const batch = writeBatch(db);
-      batch.set(doc(db, 'branches', input.branch.id, 'staff', emailLower), member);
-      batch.set(doc(db, 'userBranchAccess', emailLower), member);
-      await batch.commit();
+      await setDoc(doc(db, 'branches', canonicalBranchId, 'members', emailLower), member, { merge: false });
     } catch (err) {
-      throwBranchFirestoreError(err, BranchFirestoreOp.WRITE, staffPath);
+      throwBranchFirestoreError(err, BranchFirestoreOp.WRITE, memberPath);
     }
   }
 
@@ -619,6 +792,7 @@ export async function setBranchStaffStatus(
     branch,
     email: target.email,
     displayName: target.displayName,
+    salutation: target.salutation,
     uid: target.uid,
     presetRole: target.presetRole,
     permissions: target.permissions,
@@ -629,29 +803,20 @@ export async function setBranchStaffStatus(
 export async function removeBranchStaffMember(branchId: string, email: string): Promise<void> {
   const emailLower = normalizeEmail(email);
   if (!emailLower || isOwnerEmail(emailLower)) return;
+  const canonical = isHeadOfficeBranchId(branchId) ? DEFAULT_HEAD_OFFICE_BRANCH_ID : branchId;
 
-  const existing = getCachedBranchStaff(branchId);
+  const existing = getCachedBranchStaff(canonical);
   setCachedBranchStaff(
-    branchId,
+    canonical,
     existing.filter(s => normalizeEmail(s.email) !== emailLower)
   );
 
   if (db && auth.currentUser && (typeof navigator === 'undefined' || navigator.onLine)) {
-    const staffPath = `branches/${branchId}/staff/${emailLower}`;
+    const memberPath = `branches/${canonical}/members/${emailLower}`;
     try {
-      const batch = writeBatch(db);
-      batch.delete(doc(db, 'branches', branchId, 'staff', emailLower));
-      batch.delete(doc(db, 'userBranchAccess', emailLower));
-      await batch.commit();
+      await deleteDoc(doc(db, 'branches', canonical, 'members', emailLower));
     } catch (err) {
-      // Fallback to sequential delete if batch fails on missing userBranchAccess
-      try {
-        await deleteDoc(doc(db, 'branches', branchId, 'staff', emailLower));
-        await deleteDoc(doc(db, 'userBranchAccess', emailLower)).catch(() => {});
-      } catch (innerErr) {
-        throwBranchFirestoreError(innerErr, BranchFirestoreOp.DELETE, staffPath);
-      }
-      logBranchFirestoreWarning(err, BranchFirestoreOp.DELETE, staffPath);
+      throwBranchFirestoreError(err, BranchFirestoreOp.DELETE, memberPath);
     }
   }
 }
@@ -665,90 +830,45 @@ export function subscribeToUserBranchAccess(
     return () => {};
   }
 
+  const membersQuery = query(
+    collectionGroup(db, 'members'),
+    where('email', '==', emailLower)
+  );
+
   return onSnapshot(
-    doc(db, 'userBranchAccess', emailLower),
+    membersQuery,
     async snap => {
-      if (!snap.exists()) {
+      if (snap.empty) {
         setCachedUserBranchAccess(emailLower, null);
         onUpdate(null, null);
         return;
       }
-      const data = snap.data() as UserBranchAccess;
+
+      // Prefer an active membership if multiple exist, otherwise surface revoked doc
+      const docs = snap.docs.map(d => d.data() as UserBranchAccess);
+      const chosen =
+        docs.find(d => d.status === 'active' && d.branchActive !== false) ||
+        docs[0];
+
       const normalized: UserBranchAccess = {
-        ...data,
-        email: normalizeEmail(data.email || emailLower),
-        permissions: normalizeBranchPermissions(data.permissions, data.presetRole)
+        ...chosen,
+        email: normalizeEmail(chosen.email || emailLower),
+        salutation: normalizeSalutation(chosen.salutation),
+        branchId:
+          chosen.branchId === LEGACY_HEAD_OFFICE_BRANCH_ID
+            ? DEFAULT_HEAD_OFFICE_BRANCH_ID
+            : chosen.branchId,
+        permissions: normalizeBranchPermissions(chosen.permissions, chosen.presetRole)
       };
       setCachedUserBranchAccess(emailLower, normalized);
-      const branch = await fetchBranchById(normalized.branchId);
+      const branch =
+        normalized.status === 'active' && normalized.branchActive !== false
+          ? await fetchBranchById(normalized.branchId)
+          : null;
       onUpdate(normalized, branch);
     },
     err => {
-      logBranchFirestoreWarning(err, BranchFirestoreOp.GET, `userBranchAccess/${emailLower}`);
+      logBranchFirestoreWarning(err, BranchFirestoreOp.GET, `members/${emailLower}`);
     }
   );
-}
-
-// ---------------------------------------------------------------------------
-// Signed-In Gmail Directory (Strictly Excludes App Creator)
-// ---------------------------------------------------------------------------
-
-export async function recordSignedInDirectoryUser(entry: {
-  uid: string;
-  email: string;
-  displayName?: string;
-}): Promise<void> {
-  const emailLower = normalizeEmail(entry.email);
-  if (!emailLower || isOwnerEmail(emailLower)) return;
-  if (!db || !auth.currentUser || (typeof navigator !== 'undefined' && !navigator.onLine)) return;
-
-  const payload: SignedInDirectoryEntry = {
-    email: emailLower,
-    uid: entry.uid,
-    displayName: (entry.displayName || emailLower.split('@')[0]).trim().slice(0, 100),
-    lastLogin: new Date().toISOString()
-  };
-
-  try {
-    await setDoc(doc(db, 'signedInDirectory', emailLower), payload, { merge: true });
-  } catch (err) {
-    logBranchFirestoreWarning(err, BranchFirestoreOp.WRITE, `signedInDirectory/${emailLower}`);
-  }
-}
-
-export async function fetchSignedInDirectoryUsers(): Promise<SignedInDirectoryEntry[]> {
-  let cached: SignedInDirectoryEntry[] = [];
-  try {
-    const raw = safeStorage.getItem(SIGNED_IN_DIR_CACHE_KEY);
-    if (raw) cached = JSON.parse(raw);
-  } catch {
-    cached = [];
-  }
-
-  if (db && auth.currentUser && (typeof navigator === 'undefined' || navigator.onLine)) {
-    try {
-      const snap = await getDocs(collection(db, 'signedInDirectory'));
-      const list: SignedInDirectoryEntry[] = [];
-      snap.forEach(d => {
-        const data = d.data() as SignedInDirectoryEntry;
-        if (data && data.email && !isOwnerEmail(data.email)) {
-          list.push({
-            email: normalizeEmail(data.email),
-            uid: data.uid,
-            displayName: data.displayName,
-            lastLogin: data.lastLogin
-          });
-        }
-      });
-      list.sort((a, b) => String(b.lastLogin || '').localeCompare(String(a.lastLogin || '')));
-      try {
-        safeStorage.setItem(SIGNED_IN_DIR_CACHE_KEY, JSON.stringify(list));
-      } catch {}
-      return list;
-    } catch (err) {
-      logBranchFirestoreWarning(err, BranchFirestoreOp.LIST, 'signedInDirectory');
-    }
-  }
-
-  return filterStaffRosterExcludingCreator(cached);
 }

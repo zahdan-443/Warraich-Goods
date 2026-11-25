@@ -47,7 +47,7 @@ import { PrivacyPolicyModal } from '../PrivacyPolicyModal';
 import { TollCalculatorModal } from '../TollCalculatorModal';
 import { checkExpiringDocuments, processExpiryNotifications, ExpiringDocumentItem } from '../../utils/documentExpiry';
 import { resolveEffectiveCompanyDetails } from '../../utils/addaBillingStorage';
-import { isOwnerEmail } from '../../utils/authUtils';
+import { formatSalutationGreeting, isOwnerEmail } from '../../utils/authUtils';
 
 // Embedded high-resolution base64 images - 100% offline proof, zero 404s, works across all Android PWA & APK wrappers
 import {
@@ -84,6 +84,7 @@ interface HomeViewProps {
   userEmail?: string | null;
   userDisplayName?: string | null;
   userBranchAccess?: UserBranchAccess | null;
+  authInitialized?: boolean;
   companyProfile?: CompanyProfile | null;
   isBiltyAuthorized?: boolean;
   onNavigate: (tab: ActiveTab, subSection?: string) => void;
@@ -266,6 +267,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   userEmail = null,
   userDisplayName = null,
   userBranchAccess = null,
+  authInitialized = true,
   companyProfile = null,
   isBiltyAuthorized = false,
   onNavigate, 
@@ -287,6 +289,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const [showHomePrivacyModal, setShowHomePrivacyModal] = useState(false);
   const [showSafarDiaryModal, setShowSafarDiaryModal] = useState(false);
   const [showTollCalculatorModal, setShowTollCalculatorModal] = useState(false);
+  const [copiedSignedInEmail, setCopiedSignedInEmail] = useState(false);
 
 
   // Document Expiry Tracking (Feature A)
@@ -406,9 +409,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     data-testid="home-welcome-note"
                     className="text-xs sm:text-sm font-bold text-white/95"
                   >
-                    {lang === 'ur'
-                      ? `خوش آمدید جناب ${assignedPersonName}`
-                      : `Welcome Mr ${assignedPersonName}`}
+                    {formatSalutationGreeting(
+                      lang,
+                      assignedPersonName,
+                      isCreatorUser ? 'Mr' : userBranchAccess?.salutation
+                    )}
                   </p>
                 </div>
 
@@ -416,7 +421,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   {onSelectBranch && branches && branches.length > 1 ? (
                     <select
                       aria-label={lang === 'ur' ? 'برانچ منتخب کریں' : 'Select Active Branch'}
-                      value={activeBranch?.id || branches[0]?.id || 'samundri'}
+                      value={activeBranch?.id || branches[0]?.id || 'head'}
                       onChange={(e) => onSelectBranch(e.target.value)}
                       className="bg-white/15 hover:bg-white/25 text-white border border-white/25 rounded-xl px-2.5 py-1.5 text-xs font-bold cursor-pointer focus:outline-none"
                     >
@@ -459,6 +464,103 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           );
         })()}
+
+        {/* Signed-In Without Branch Access Diagnostic Card (Copy Exact Gmail for Owner Assignment) */}
+        {authInitialized &&
+          Boolean(userEmail) &&
+          !isOwnerEmail(userEmail) &&
+          !isBiltyAuthorized &&
+          !canManageBranchStaff && (() => {
+            const signedInEmailStr = String(userEmail || '').trim();
+            const isRevoked = userBranchAccess?.status === 'revoked';
+            const isBranchPaused = Boolean(userBranchAccess?.status === 'active' && activeBranch?.active === false);
+
+            const handleCopySignedInEmail = async () => {
+              if (!signedInEmailStr) return;
+              let copied = false;
+              try {
+                if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                  await navigator.clipboard.writeText(signedInEmailStr);
+                  copied = true;
+                }
+              } catch {}
+              if (!copied && typeof document !== 'undefined') {
+                try {
+                  const ta = document.createElement('textarea');
+                  ta.value = signedInEmailStr;
+                  ta.setAttribute('readonly', '');
+                  ta.style.position = 'fixed';
+                  ta.style.opacity = '0';
+                  document.body.appendChild(ta);
+                  ta.select();
+                  copied = document.execCommand('copy');
+                  document.body.removeChild(ta);
+                } catch {}
+              }
+              if (copied) {
+                setCopiedSignedInEmail(true);
+                setTimeout(() => setCopiedSignedInEmail(false), 2500);
+              }
+            };
+
+            return (
+              <div
+                data-testid="home-no-access-card"
+                className="rounded-3xl bg-white dark:bg-[#1a1c22] border-2 border-amber-300/80 dark:border-amber-700/60 p-4 sm:p-5 shadow-xs space-y-3"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                      <h2 className="text-xs sm:text-sm font-black text-[#2b2c20] dark:text-slate-100">
+                        {isRevoked
+                          ? (lang === 'ur' ? 'برانچ رسائی منسوخ ہے' : 'Branch Access Revoked')
+                          : isBranchPaused
+                          ? (lang === 'ur' ? 'برانچ عارضی طور پر غیر فعال ہے' : 'Branch Currently Paused')
+                          : (lang === 'ur' ? 'گوگل سائن ان مکمل — برانچ رسائی درکار ہے' : 'Signed In — Waiting for Branch Access')}
+                      </h2>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-[#555644] dark:text-slate-300 leading-relaxed">
+                      {lang === 'ur'
+                        ? 'رسائی حاصل کرنے کے لیے یہ ای میل اپنے برانچ مالک کو بھیجیں (ڈاٹ اور اسپیلنگ بالکل یہی ہونی چاہیے):'
+                        : 'Send this email to your branch owner to request access (dots and spelling must match exactly):'}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    data-testid="copy-my-email-btn"
+                    onClick={() => void handleCopySignedInEmail()}
+                    className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0 min-h-[40px] ${
+                      copiedSignedInEmail
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-[#0f2942] hover:bg-[#1a3a5c] text-white shadow-2xs'
+                    }`}
+                  >
+                    {copiedSignedInEmail ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{lang === 'ur' ? 'ای میل کاپی ہو گیا!' : 'Copied!'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-amber-300" />
+                        <span>{lang === 'ur' ? 'میرا ای میل کاپی کریں' : 'Copy my email'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div
+                  dir="ltr"
+                  data-testid="signed-in-exact-email"
+                  className="px-3.5 py-2.5 rounded-2xl bg-[#fdfbf7] dark:bg-slate-900 border border-[#e4e1cf] dark:border-slate-700 font-mono text-xs sm:text-sm font-bold text-[#0f2942] dark:text-amber-300 break-all"
+                >
+                  {signedInEmailStr}
+                </div>
+              </div>
+            );
+          })()}
 
         {/* Documents Expiring Soon Reminder Section (Feature A) */}
         {expiringDocs.length > 0 && !isExpiryBannerDismissed && (

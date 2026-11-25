@@ -61,11 +61,30 @@ export const ATTACHMENT_IMAGE_MAX_DIM = 1000;
 export const ATTACHMENT_IMAGE_JPEG_QUALITY = 0.7;
 export const ATTACHMENT_IMAGE_TARGET_BYTES = 150 * 1024;
 export const ATTACHMENT_HARD_CAP_BYTES = 400 * 1024;
+export const ATTACHMENT_AUDIO_HARD_CAP_BYTES = 600 * 1024;
+export const ATTACHMENT_AUDIO_MAX_SECONDS = 90;
+export const ATTACHMENT_AUDIO_BITRATE = 20000;
+export const ATTACHMENT_CLOUD_QUOTA_BYTES = 1024 * 1024 * 1024; // 1 GiB
+export const ATTACHMENT_QUOTA_WARN_70 = 0.7;
+export const ATTACHMENT_QUOTA_WARN_85 = 0.85;
 
 export const ATTACHMENT_RETENTION_DAYS = 180;
 export const ATTACHMENT_EXPIRY_WARNING_DAYS = 7;
 export const LEGAL_HOLD_FAR_FUTURE_YEARS = 50;
 export const DAILY_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+export interface AttachmentStorageStats {
+  totalCount: number;
+  cloudBackedCount: number;
+  localOnlyCount: number;
+  totalBytes: number;
+  cloudBytes: number;
+  cloudQuotaBytes: number;
+  usedMb: number;
+  quotaMb: number;
+  usageRatio: number;
+  warningLevel: 'none' | 'warn70' | 'urgent85' | 'exceeded';
+}
 
 export const ID_CARD_SLOTS: ReadonlySet<BiltyAttachmentSlot> = new Set([
   'driverCnic',
@@ -464,7 +483,7 @@ export function compressAttachmentImage(
 
 export function validateAudioAttachmentDataUrl(
   dataUrl: string,
-  hardCapBytes = ATTACHMENT_HARD_CAP_BYTES
+  hardCapBytes = ATTACHMENT_AUDIO_HARD_CAP_BYTES
 ): { byteSize: number; mimeType: string } {
   const byteSize = estimateDataUrlBytes(dataUrl);
   if (byteSize > hardCapBytes) {
@@ -476,6 +495,52 @@ export function validateAudioAttachmentDataUrl(
   return {
     byteSize,
     mimeType: match ? match[1] : 'audio/webm'
+  };
+}
+
+export async function getBiltyAttachmentStorageStats(
+  quotaBytes = ATTACHMENT_CLOUD_QUOTA_BYTES
+): Promise<AttachmentStorageStats> {
+  const all = await idbGetAllBiltyAttachments<BiltyAttachmentRecord>();
+  let totalBytes = 0;
+  let cloudBytes = 0;
+  let cloudBackedCount = 0;
+  let localOnlyCount = 0;
+
+  for (const att of all) {
+    if (!att) continue;
+    const size = typeof att.byteSize === 'number' && Number.isFinite(att.byteSize) ? att.byteSize : estimateDataUrlBytes(att.dataUrl);
+    totalBytes += size;
+    if (att.localOnly || att.kind === 'audio') {
+      localOnlyCount++;
+    } else {
+      cloudBackedCount++;
+      cloudBytes += size;
+    }
+  }
+
+  const safeQuota = Math.max(1, quotaBytes);
+  const usageRatio = cloudBytes / safeQuota;
+  let warningLevel: AttachmentStorageStats['warningLevel'] = 'none';
+  if (cloudBytes >= safeQuota) {
+    warningLevel = 'exceeded';
+  } else if (usageRatio >= ATTACHMENT_QUOTA_WARN_85) {
+    warningLevel = 'urgent85';
+  } else if (usageRatio >= ATTACHMENT_QUOTA_WARN_70) {
+    warningLevel = 'warn70';
+  }
+
+  return {
+    totalCount: all.length,
+    cloudBackedCount,
+    localOnlyCount,
+    totalBytes,
+    cloudBytes,
+    cloudQuotaBytes: safeQuota,
+    usedMb: Number((cloudBytes / (1024 * 1024)).toFixed(2)),
+    quotaMb: Math.round(safeQuota / (1024 * 1024)),
+    usageRatio,
+    warningLevel
   };
 }
 
@@ -598,6 +663,10 @@ async function enqueueAttachmentSyncOp(
 }
 
 async function syncSingleAttachmentToCloud(uid: string, record: BiltyAttachmentRecord): Promise<boolean> {
+  // Voice notes & quota-fallback records are strictly local-only and never uploaded to Firestore
+  if (record.localOnly || record.kind === 'audio') {
+    return false;
+  }
   if (!db || (typeof navigator !== 'undefined' && !navigator.onLine)) {
     await enqueueAttachmentSyncOp(uid, 'upsert', record.id);
     return false;
@@ -666,6 +735,9 @@ export async function flushBiltyAttachmentSyncQueue(uidOverride?: string): Promi
   const queue = await getAttachmentSyncQueue(uid);
   if (queue.length === 0) return { synced: 0, remaining: 0 };
 
+  const stats = await getBiltyAttachmentStorageStats().catch(() => null);
+  let projectedCloudBytes = stats ? stats.cloudBytes : 0;
+
   const remaining: AttachmentSyncQueueItem[] = [];
   let synced = 0;
 
@@ -677,14 +749,20 @@ export async function flushBiltyAttachmentSyncQueue(uidOverride?: string): Promi
         synced++;
       } else {
         const rec = await idbGetBiltyAttachment<BiltyAttachmentRecord>(item.attachmentId);
-        if (!rec) {
+        if (!rec || rec.localOnly || rec.kind === 'audio') {
           synced++;
           continue;
         }
         if (rec.byteSize > ATTACHMENT_HARD_CAP_BYTES) {
           continue;
         }
+        if (projectedCloudBytes + rec.byteSize > ATTACHMENT_CLOUD_QUOTA_BYTES) {
+          await idbPutBiltyAttachment({ ...rec, localOnly: true, localOnlyReason: 'quota_exceeded' });
+          synced++;
+          continue;
+        }
         await setDoc(ref, toFirestoreAttachmentPayload({ ...rec, ownerUid: uid }), { merge: true });
+        projectedCloudBytes += rec.byteSize;
         synced++;
       }
     } catch (err) {
@@ -783,16 +861,17 @@ export async function getAllBiltyAttachments(): Promise<BiltyAttachmentRecord[]>
 
 export async function saveBiltyAttachment(
   bilty: Pick<BiltyRecord, 'id' | 'biltyNo' | 'legalHold'>,
-  input: SaveAttachmentInput
+  input: SaveAttachmentInput & { quotaLimitBytes?: number }
 ): Promise<BiltyAttachmentRecord> {
   const biltyKey = getBiltyAttachmentKey(bilty);
   const existing = await idbGetAttachmentsByBiltyKey<BiltyAttachmentRecord>(biltyKey);
   const isId = isIdCardSlot(input.slot);
 
   const byteSize = estimateDataUrlBytes(input.dataUrl);
-  if (byteSize > ATTACHMENT_HARD_CAP_BYTES) {
+  const cap = input.kind === 'audio' ? ATTACHMENT_AUDIO_HARD_CAP_BYTES : ATTACHMENT_HARD_CAP_BYTES;
+  if (byteSize > cap) {
     throw new Error(
-      `Attachment size (${Math.round(byteSize / 1024)} KB) exceeds the ${Math.round(ATTACHMENT_HARD_CAP_BYTES / 1024)} KB hard cap.`
+      `Attachment size (${Math.round(byteSize / 1024)} KB) exceeds the ${Math.round(cap / 1024)} KB hard cap.`
     );
   }
 
@@ -813,6 +892,20 @@ export async function saveBiltyAttachment(
   const legalHold = Boolean(bilty.legalHold);
   const expireAtMs = computeAttachmentExpireAtMs(nowMs, legalHold);
   const ownerUid = auth.currentUser && isOwnerEmail(auth.currentUser.email) ? auth.currentUser.uid : undefined;
+
+  let localOnly = input.kind === 'audio';
+  let localOnlyReason: BiltyAttachmentRecord['localOnlyReason'] = input.kind === 'audio' ? 'audio_local_only' : undefined;
+
+  if (!localOnly && ownerUid) {
+    const quotaBytes = input.quotaLimitBytes ?? ATTACHMENT_CLOUD_QUOTA_BYTES;
+    const stats = await getBiltyAttachmentStorageStats(quotaBytes);
+    const existingReplaced = existing.find((e) => e.id === targetId && !e.localOnly && e.kind !== 'audio');
+    const netCloudBytes = Math.max(0, stats.cloudBytes - (existingReplaced?.byteSize || 0));
+    if (netCloudBytes + byteSize > quotaBytes) {
+      localOnly = true;
+      localOnlyReason = 'quota_exceeded';
+    }
+  }
 
   const record: BiltyAttachmentRecord = {
     id: targetId,
@@ -836,7 +929,8 @@ export async function saveBiltyAttachment(
     expireAtIso: new Date(expireAtMs).toISOString(),
     legalHold,
     ownerUid,
-    migratedFromLegacy: input.migratedFromLegacy
+    migratedFromLegacy: input.migratedFromLegacy,
+    ...(localOnly ? { localOnly: true, localOnlyReason } : {})
   };
 
   await idbPutBiltyAttachment(record);
@@ -844,7 +938,7 @@ export async function saveBiltyAttachment(
   const refreshed = await idbGetAttachmentsByBiltyKey<BiltyAttachmentRecord>(biltyKey);
   updateLocalBiltyAttachmentMetadata(biltyKey, { attachmentCount: refreshed.length });
 
-  if (ownerUid) {
+  if (ownerUid && !record.localOnly && record.kind !== 'audio') {
     void syncSingleAttachmentToCloud(ownerUid, record);
   }
 

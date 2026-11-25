@@ -17,10 +17,10 @@
 ## 4. Notifications & System Status Bar
 - Maintain native device status bar and notification panel push alerts via Service Worker and Notifications API for all important transport operations (saved trips, vehicles, fuel logs, etc.).
 
-## 5. Public-Facing Terminology Policy (Strict Rule)
-- The word "Bilty" (and Urdu "بلٹی") must never appear in any public-facing text shown to regular users: README, public/*.html, public/manifest.json, index.html, store text, CHANGELOG.
-- It may exist only in source code paths that are already restricted to the authorised owner account.
-- Use neutral words like "documents" or "authorised business accounts" instead.
+## 5. Public-Facing Terminology Policy
+- Per owner decision (2026-11-24), the word "Bilty" (and Urdu "بلٹی") is permitted in in-app text, README, CHANGELOG, and `public/*.html` files (including `privacy.html` and feature explanations).
+- Keep the word "Bilty" out of the Google Play Store listing title and short/full description unless explicitly requested by the owner.
+- Access to Bilty creation, Adda Billing, and Owner controls remains strictly restricted to authorized owner/branch roles (never exposed in guest mode).
 
 ## 6. Project Memory & Current Status Snapshot (Updated: 2026-11-17)
 

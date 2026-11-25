@@ -29,12 +29,19 @@ import {
 } from '../types';
 import { downloadBiltyLegalZip } from '../utils/zipHelper';
 import {
+  ATTACHMENT_AUDIO_BITRATE,
+  ATTACHMENT_AUDIO_HARD_CAP_BYTES,
+  ATTACHMENT_AUDIO_MAX_SECONDS,
   ATTACHMENT_HARD_CAP_BYTES,
   ATTACHMENT_RETENTION_DAYS,
+  AttachmentStorageStats,
   compressAttachmentImage,
   DEFAULT_MAX_ID_IMAGES_PER_DOC,
   deleteBiltyAttachment,
+  exportAttachmentsZipBundle,
   getAttachmentsForBilty,
+  getBiltyAttachmentStorageStats,
+  getExpiringBiltyAttachmentsSummary,
   isIdCardSlot,
   saveBiltyAttachment,
   setBiltyLegalHold,
@@ -52,6 +59,8 @@ interface BiltyLegalVaultModalProps {
   ) => void;
   onGeneratePdf?: (bilty: BiltyRecord) => Promise<{ pdf: any; pdfBlob: Blob } | null>;
   isOwner?: boolean;
+  initialAttachments?: BiltyAttachmentRecord[];
+  initialStorageStats?: AttachmentStorageStats | null;
 }
 
 export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
@@ -59,9 +68,11 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
   onClose,
   bilty,
   onAttachmentsChanged,
-  onGeneratePdf
+  onGeneratePdf,
+  initialAttachments = [],
+  initialStorageStats = null
 }) => {
-  const [attachments, setAttachments] = useState<BiltyAttachmentRecord[]>([]);
+  const [attachments, setAttachments] = useState<BiltyAttachmentRecord[]>(initialAttachments);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
   const [processingSlot, setProcessingSlot] = useState<string | null>(null);
   const [legalHold, setLegalHold] = useState<boolean>(Boolean(bilty.legalHold));
@@ -70,6 +81,9 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<{ title: string; url: string } | null>(null);
+  const [storageStats, setStorageStats] = useState<AttachmentStorageStats | null>(initialStorageStats);
+  const [expiringAttachments, setExpiringAttachments] = useState<BiltyAttachmentRecord[]>([]);
+  const [exportingExpiringZip, setExportingExpiringZip] = useState(false);
 
   // Audio recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -77,6 +91,16 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordingSecondsRef = useRef<number>(0);
+
+  const refreshVaultMetrics = useCallback(async () => {
+    const [stats, expiring] = await Promise.all([
+      getBiltyAttachmentStorageStats().catch(() => null),
+      getExpiringBiltyAttachmentsSummary().catch(() => ({ count: 0, attachments: [] as BiltyAttachmentRecord[] }))
+    ]);
+    if (stats) setStorageStats(stats);
+    setExpiringAttachments(expiring.attachments || []);
+  }, []);
 
   const loadAttachments = useCallback(async () => {
     setLoadingAttachments(true);
@@ -85,12 +109,13 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
       setAttachments(list);
       const effectiveHold = Boolean(bilty.legalHold || list.some((a) => a.legalHold));
       setLegalHold(effectiveHold);
+      await refreshVaultMetrics();
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Failed to load attachments');
     } finally {
       setLoadingAttachments(false);
     }
-  }, [bilty]);
+  }, [bilty, refreshVaultMetrics]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -173,7 +198,7 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
     setProcessingSlot(slot);
     try {
       const compressed = await compressAttachmentImage(file);
-      await saveBiltyAttachment(
+      const savedRecord = await saveBiltyAttachment(
         { id: bilty.id, biltyNo: bilty.biltyNo, legalHold },
         {
           slot,
@@ -188,8 +213,11 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
       const updatedList = await getAttachmentsForBilty({ ...bilty, legalHold });
       setAttachments(updatedList);
       notifyParent(updatedList, legalHold);
+      await refreshVaultMetrics();
       setStatusMessage(
-        `تصویر محفوظ ہو گئی (${Math.round(compressed.byteSize / 1024)} KB)`
+        savedRecord.localOnly
+          ? `تصویر صرف فون پر محفوظ ہوئی (${Math.round(compressed.byteSize / 1024)} KB — 1 GiB کلاؤڈ حد مکمل)`
+          : `تصویر محفوظ ہو گئی (${Math.round(compressed.byteSize / 1024)} KB)`
       );
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'تصویر محفوظ کرنے میں خرابی آئی۔');
@@ -202,7 +230,7 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
     setErrorMessage(null);
     setStatusMessage(null);
     try {
-      const { byteSize, mimeType } = validateAudioAttachmentDataUrl(dataUrl);
+      const { byteSize, mimeType } = validateAudioAttachmentDataUrl(dataUrl, ATTACHMENT_AUDIO_HARD_CAP_BYTES);
       await saveBiltyAttachment(
         { id: bilty.id, biltyNo: bilty.biltyNo, legalHold },
         {
@@ -217,22 +245,23 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
       const updatedList = await getAttachmentsForBilty({ ...bilty, legalHold });
       setAttachments(updatedList);
       notifyParent(updatedList, legalHold);
-      setStatusMessage(`آڈیو نوٹ محفوظ ہو گیا (${Math.round(byteSize / 1024)} KB)`);
+      await refreshVaultMetrics();
+      setStatusMessage(`آڈیو نوٹ صرف فون پر محفوظ ہو گیا (${Math.round(byteSize / 1024)} KB — کلاؤڈ بیک اپ نہیں)`);
     } catch (err) {
       setErrorMessage(
         err instanceof Error
           ? err.message
-          : `آڈیو فائل ${Math.round(ATTACHMENT_HARD_CAP_BYTES / 1024)} KB حد سے بڑی ہے۔`
+          : `آڈیو فائل ${Math.round(ATTACHMENT_AUDIO_HARD_CAP_BYTES / 1024)} KB حد سے بڑی ہے۔`
       );
     }
   };
 
   const handleAudioUpload = (file: File) => {
     if (!file) return;
-    if (file.size > ATTACHMENT_HARD_CAP_BYTES * 0.95) {
+    if (file.size > ATTACHMENT_AUDIO_HARD_CAP_BYTES) {
       setErrorMessage(
         `آڈیو فائل بہت بڑی ہے (${Math.round(file.size / 1024)} KB)۔ زیادہ سے زیادہ حد ${Math.round(
-          ATTACHMENT_HARD_CAP_BYTES / 1024
+          ATTACHMENT_AUDIO_HARD_CAP_BYTES / 1024
         )} KB ہے۔`
       );
       return;
@@ -249,6 +278,17 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
 
   const isStoreBuild = import.meta.env.VITE_STORE_BUILD === 'true';
 
+  const stopRecording = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  }, []);
+
   const startRecording = async () => {
     setErrorMessage(null);
     if (isStoreBuild) {
@@ -258,8 +298,14 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(stream);
+      let mediaRecorder: MediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream, { audioBitsPerSecond: ATTACHMENT_AUDIO_BITRATE });
+      } catch {
+        mediaRecorder = new MediaRecorder(stream);
+      }
       mediaRecorderRef.current = mediaRecorder;
+      recordingSecondsRef.current = 0;
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -268,6 +314,7 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
       };
 
       mediaRecorder.onstop = () => {
+        const recordedDur = recordingSecondsRef.current;
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -276,7 +323,7 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
             void handleAudioDataUrl(
               dataUrl,
               `Voice_Call_Note_${audioList.length + 1}`,
-              recordingSeconds
+              recordedDur
             );
           }
         };
@@ -288,19 +335,15 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
       setIsRecording(true);
       setRecordingSeconds(0);
       timerRef.current = setInterval(() => {
-        setRecordingSeconds((sec) => sec + 1);
+        recordingSecondsRef.current += 1;
+        setRecordingSeconds(recordingSecondsRef.current);
+        if (recordingSecondsRef.current >= ATTACHMENT_AUDIO_MAX_SECONDS) {
+          stopRecording();
+        }
       }, 1000);
     } catch (err) {
       console.warn('Microphone permission or recording error:', err);
       setErrorMessage('مائیکروفون تک رسائی حاصل نہیں ہو سکی۔ براہ کرم آڈیو فائل اپلوڈ کریں۔');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      if (timerRef.current) clearInterval(timerRef.current);
     }
   };
 
@@ -312,6 +355,7 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
       const updatedList = await getAttachmentsForBilty({ ...bilty, legalHold });
       setAttachments(updatedList);
       notifyParent(updatedList, legalHold);
+      await refreshVaultMetrics();
       setStatusMessage('منسلکہ فائل حذف کر دی گئی ہے۔');
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'فائل حذف کرنے میں خرابی آئی۔');
@@ -329,6 +373,7 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
       setLegalHold(nextHold);
       setAttachments(updatedList);
       notifyParent(updatedList, nextHold);
+      await refreshVaultMetrics();
       setStatusMessage(
         nextHold
           ? 'قانونی تحفظ (Legal Hold) فعال کر دیا گیا — خودکار حذف معطل ہے۔'
@@ -338,6 +383,21 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
       setErrorMessage(err instanceof Error ? err.message : 'Legal Hold اپ ڈیٹ نہیں ہو سکا۔');
     } finally {
       setTogglingHold(false);
+    }
+  };
+
+  const handleExportExpiringZip = async () => {
+    if (exportingExpiringZip || expiringAttachments.length === 0) return;
+    setExportingExpiringZip(true);
+    try {
+      const res = await exportAttachmentsZipBundle(expiringAttachments);
+      if (res.success) {
+        setStatusMessage(`${res.count} جلد حذف ہونے والی دستاویزات ZIP میں محفوظ ہو گئیں۔`);
+      } else if (res.error) {
+        setErrorMessage(res.error);
+      }
+    } finally {
+      setExportingExpiringZip(false);
     }
   };
 
@@ -465,6 +525,57 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
           </div>
         </div>
 
+        {/* Cloud Quota Meter (~1 GiB) & 7-Day Expiring ZIP Export Banner */}
+        {storageStats && (
+          <div
+            data-testid="vault-quota-meter"
+            className={`px-5 py-2 border-b text-[11px] flex flex-wrap items-center justify-between gap-2 ${
+              storageStats.warningLevel === 'exceeded' || storageStats.warningLevel === 'urgent85'
+                ? 'bg-rose-50 border-rose-200 text-rose-900'
+                : storageStats.warningLevel === 'warn70'
+                ? 'bg-amber-50 border-amber-200 text-amber-950'
+                : 'bg-slate-50 border-slate-200 text-slate-700'
+            }`}
+          >
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold">
+                Cloud Quota: <span dir="ltr" className="font-mono">{storageStats.usedMb} MB / {storageStats.quotaMb} MB</span>
+              </span>
+              <span className="text-[10px] opacity-80">
+                ({storageStats.cloudBackedCount} cloud · {storageStats.localOnlyCount} local-only)
+              </span>
+              {storageStats.warningLevel === 'exceeded' && (
+                <span className="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-bold">
+                  1 GiB Exceeded — Local-Only Mode (Not backed up)
+                </span>
+              )}
+              {storageStats.warningLevel === 'urgent85' && (
+                <span className="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-bold">
+                  85%+ Full — Export &amp; clean old items
+                </span>
+              )}
+              {storageStats.warningLevel === 'warn70' && (
+                <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold">
+                  70%+ Quota Used
+                </span>
+              )}
+            </div>
+            {expiringAttachments.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void handleExportExpiringZip()}
+                disabled={exportingExpiringZip}
+                className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer"
+              >
+                <FileArchive className="w-3 h-3" />
+                <span>
+                  {expiringAttachments.length} Expiring (&le;7d) • Export ZIP
+                </span>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Inline Error or Status Banner (replaces window.alert) */}
         {(errorMessage || statusMessage) && (
           <div className="px-5 pt-3 shrink-0 space-y-2">
@@ -568,6 +679,11 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
                             <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-mono">
                               {Math.round(existingAtt.byteSize / 1024)}KB
                             </span>
+                            {existingAtt.localOnly && (
+                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-amber-500 text-white text-[8px] font-bold">
+                                Not backed up
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <label className="w-full h-24 rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors mb-2">
@@ -600,13 +716,18 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
                 </div>
               </div>
 
-              {/* Section 2: Audio & Voice Notes */}
+              {/* Section 2: Audio & Voice Notes (Strictly Local-Only, Max 90s / <=600KB) */}
               <div className="pt-2 border-t border-slate-200">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                    <PhoneCall className="w-4 h-4 text-emerald-600" />
-                    <span>صوتی نوٹس و ہدایات آڈیو (Voice Notes &amp; Audio Instructions)</span>
-                  </h4>
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                      <PhoneCall className="w-4 h-4 text-emerald-600" />
+                      <span>صوتی نوٹس و ہدایات آڈیو (Voice Notes — Local Only)</span>
+                    </h4>
+                    <p className="text-[10px] text-amber-800 font-semibold mt-0.5">
+                      زیادہ سے زیادہ 90 سیکنڈ / 600KB • آڈیو صرف اس ڈیوائس پر محفوظ رہتا ہے (Not backed up to cloud)
+                    </p>
+                  </div>
 
                   <div className="flex items-center gap-2">
                     {!isStoreBuild && (
@@ -617,7 +738,7 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
                           className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer animate-pulse"
                         >
                           <Square className="w-3.5 h-3.5 fill-current" />
-                          <span>ریکارڈنگ روکیں ({recordingSeconds}s)</span>
+                          <span>روکیں ({recordingSeconds}s / {ATTACHMENT_AUDIO_MAX_SECONDS}s)</span>
                         </button>
                       ) : (
                         <button
@@ -626,14 +747,14 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
                           className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
                         >
                           <Mic className="w-3.5 h-3.5 text-amber-400" />
-                          <span>آواز ریکارڈ کریں</span>
+                          <span>آواز ریکارڈ کریں (90s)</span>
                         </button>
                       )
                     )}
 
                     <label className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5 cursor-pointer border border-slate-300">
                       <Upload className="w-3.5 h-3.5" />
-                      <span>آڈیو فائل اپلوڈ (≤400KB)</span>
+                      <span>آڈیو فائل اپلوڈ (≤600KB)</span>
                       <input
                         type="file"
                         accept="audio/*"
@@ -660,11 +781,17 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
                             <PhoneCall className="w-4 h-4" />
                           </div>
                           <div>
-                            <div className="font-bold text-xs text-slate-900">
-                              {rec.name || 'Voice_Note'}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-xs text-slate-900">
+                                {rec.name || 'Voice_Note'}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-bold">
+                                Not backed up (صرف فون پر)
+                              </span>
                             </div>
                             <div className="text-[10px] text-slate-500 font-mono">
                               {new Date(rec.createdAt).toLocaleString('en-PK')} • {Math.round(rec.byteSize / 1024)} KB
+                              {typeof rec.duration === 'number' && rec.duration > 0 ? ` • ${rec.duration}s` : ''}
                             </div>
                           </div>
                         </div>

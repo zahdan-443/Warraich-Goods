@@ -4,9 +4,7 @@ import {
   CheckCircle2,
   Edit3,
   KeyRound,
-  Mail,
   Plus,
-  RefreshCw,
   ShieldAlert,
   ShieldCheck,
   Trash2,
@@ -20,6 +18,7 @@ import type {
   BranchConfig,
   BranchPermissions,
   BranchPresetRole,
+  BranchSalutation,
   BranchStaffMember,
   Language
 } from '../types';
@@ -28,12 +27,11 @@ import {
   filterStaffRosterExcludingCreator,
   getPresetPermissions,
   isOwnerEmail,
-  normalizeEmail
+  normalizeEmail,
+  normalizeSalutation
 } from '../utils/authUtils';
 import {
-  SignedInDirectoryEntry,
   fetchBranchStaff,
-  fetchSignedInDirectoryUsers,
   getCachedBranchStaff,
   removeBranchStaffMember,
   setBranchStaffStatus,
@@ -82,7 +80,6 @@ export const BranchStaffModal: React.FC<BranchStaffModalProps> = ({
 }) => {
   const isUr = lang === 'ur';
   const [staff, setStaff] = useState<BranchStaffMember[]>([]);
-  const [directoryUsers, setDirectoryUsers] = useState<SignedInDirectoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ text: string; ok: boolean } | null>(null);
@@ -90,6 +87,7 @@ export const BranchStaffModal: React.FC<BranchStaffModalProps> = ({
   // Add / Edit Form State
   const [emailInput, setEmailInput] = useState('');
   const [nameInput, setNameInput] = useState('');
+  const [salutation, setSalutation] = useState<BranchSalutation>('Mr');
   const [presetRole, setPresetRole] = useState<BranchPresetRole>('munshi');
   const [permissions, setPermissions] = useState<BranchPermissions>(() =>
     getPresetPermissions('munshi')
@@ -103,12 +101,9 @@ export const BranchStaffModal: React.FC<BranchStaffModalProps> = ({
     setStaff(getCachedBranchStaff(branch.id));
     setLoading(true);
 
-    void Promise.all([
-      fetchBranchStaff(branch.id).then(list => setStaff(filterStaffRosterExcludingCreator(list))),
-      fetchSignedInDirectoryUsers().then(users =>
-        setDirectoryUsers(filterStaffRosterExcludingCreator(users))
-      )
-    ]).finally(() => setLoading(false));
+    void fetchBranchStaff(branch.id)
+      .then(list => setStaff(filterStaffRosterExcludingCreator(list)))
+      .finally(() => setLoading(false));
 
     const unsub = subscribeToBranchStaff(branch.id, list => {
       setStaff(filterStaffRosterExcludingCreator(list));
@@ -144,6 +139,7 @@ export const BranchStaffModal: React.FC<BranchStaffModalProps> = ({
   const resetForm = () => {
     setEmailInput('');
     setNameInput('');
+    setSalutation('Mr');
     setPresetRole('munshi');
     setPermissions(getPresetPermissions('munshi'));
     setEditingEmail(null);
@@ -158,17 +154,11 @@ export const BranchStaffModal: React.FC<BranchStaffModalProps> = ({
     setPermissions(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleQuickPickEmail = (entry: SignedInDirectoryEntry) => {
-    setEmailInput(entry.email);
-    if (!nameInput && entry.displayName) {
-      setNameInput(entry.displayName);
-    }
-  };
-
   const handleEditMember = (member: BranchStaffMember) => {
     setEditingEmail(member.email);
     setEmailInput(member.email);
     setNameInput(member.displayName || '');
+    setSalutation(normalizeSalutation(member.salutation));
     setPresetRole(member.presetRole);
     setPermissions({ ...member.permissions });
     setStatusMsg(null);
@@ -195,12 +185,11 @@ export const BranchStaffModal: React.FC<BranchStaffModalProps> = ({
     setSaving(true);
     setStatusMsg(null);
     try {
-      const matchedDir = directoryUsers.find(u => normalizeEmail(u.email) === cleanEmail);
       await upsertBranchStaffMember({
         branch,
         email: cleanEmail,
-        displayName: nameInput.trim() || matchedDir?.displayName || cleanEmail.split('@')[0],
-        uid: matchedDir?.uid,
+        displayName: nameInput.trim() || cleanEmail.split('@')[0],
+        salutation,
         presetRole,
         permissions,
         status: 'active'
@@ -278,7 +267,6 @@ export const BranchStaffModal: React.FC<BranchStaffModalProps> = ({
   };
 
   const visibleStaff = filterStaffRosterExcludingCreator(staff);
-  const availableDirectory = filterStaffRosterExcludingCreator(directoryUsers);
 
   return (
     <div className="fixed inset-0 bg-black/65 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
@@ -329,44 +317,6 @@ export const BranchStaffModal: React.FC<BranchStaffModalProps> = ({
             </div>
           )}
 
-          {/* Signed-in Gmail Directory Quick Picker */}
-          {availableDirectory.length > 0 && (
-            <div className="p-3 bg-[#fdfbf7] dark:bg-slate-800/60 border border-[#ecece0] dark:border-slate-700 rounded-2xl space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-[#4a4a35] dark:text-slate-200 flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-[#8b9d77]" />
-                  {isUr
-                    ? 'سائن ان شدہ جی میل اکاؤنٹس (منتخب کرنے کیلئے کلک کریں)'
-                    : 'Signed-in Gmail Accounts (Click to select)'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void fetchSignedInDirectoryUsers().then(u =>
-                      setDirectoryUsers(filterStaffRosterExcludingCreator(u))
-                    )
-                  }
-                  className="text-[10px] font-bold text-[#1a477a] dark:text-sky-400 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  {isUr ? 'تازہ کریں' : 'Refresh'}
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
-                {availableDirectory.map(entry => (
-                  <button
-                    key={entry.email}
-                    type="button"
-                    onClick={() => handleQuickPickEmail(entry)}
-                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-[#d6c3b0] dark:border-slate-600 text-[11px] font-mono text-[#1a477a] dark:text-slate-200 hover:bg-[#1a477a] hover:text-white transition-colors cursor-pointer"
-                  >
-                    {entry.email}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Add / Edit Form */}
           <form
             onSubmit={handleSubmitStaff}
@@ -396,7 +346,7 @@ export const BranchStaffModal: React.FC<BranchStaffModalProps> = ({
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
               <div>
                 <label className="block text-[10px] font-bold text-[#6b6b55] dark:text-slate-400 mb-1">
                   {isUr ? 'اسٹاف جی میل *' : 'Staff Gmail *'}
@@ -415,7 +365,7 @@ export const BranchStaffModal: React.FC<BranchStaffModalProps> = ({
 
               <div>
                 <label className="block text-[10px] font-bold text-[#6b6b55] dark:text-slate-400 mb-1">
-                  {isUr ? 'شخص کا نام (خوش آمدید نوٹ کیلئے) *' : 'Assigned Person Name (Welcome Note) *'}
+                  {isUr ? 'شخص کا نام (خوش آمدید نوٹ کیلئے) *' : 'Assigned Person Name *'}
                 </label>
                 <input
                   type="text"
@@ -425,6 +375,21 @@ export const BranchStaffModal: React.FC<BranchStaffModalProps> = ({
                   placeholder={isUr ? 'مثلاً علی خان' : 'e.g. Ali Khan'}
                   className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-900 border border-[#d6c3b0] dark:border-slate-600 rounded-xl focus:outline-none focus:border-[#1a477a]"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-[#6b6b55] dark:text-slate-400 mb-1">
+                  {isUr ? 'لقب (Mr/Ms)' : 'Salutation'}
+                </label>
+                <select
+                  value={salutation}
+                  onChange={e => setSalutation(normalizeSalutation(e.target.value))}
+                  className="w-full px-3 py-2 text-xs font-bold bg-white dark:bg-slate-900 border border-[#d6c3b0] dark:border-slate-600 rounded-xl focus:outline-none focus:border-[#1a477a]"
+                >
+                  <option value="Mr">{isUr ? 'جناب (Mr)' : 'Mr'}</option>
+                  <option value="Ms">{isUr ? 'محترمہ (Ms)' : 'Ms'}</option>
+                  <option value="none">{isUr ? 'بغیر لقب' : 'None'}</option>
+                </select>
               </div>
 
               <div>

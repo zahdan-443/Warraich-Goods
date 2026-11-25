@@ -72,6 +72,12 @@ import {
   getAllReceivingPoints
 } from './khataModulesStorage';
 import { shareOrDownloadText } from './nativeExport';
+import {
+  applyAuthorizedBranchBackups,
+  collectAuthorizedBranchBackups,
+  normalizeBranchBackupsInput,
+  type BranchBackupSlice
+} from './branchBackupHelper';
 
 export const MAX_CLOUD_CHUNK_BYTES = 700_000;
 export const MAX_CLOUD_BACKUP_SNAPSHOTS = 14;
@@ -100,6 +106,9 @@ export interface FullFleetBackup {
     totalLedgerAccounts?: number;
     totalLedgerEntries?: number;
     totalCashbookEntries?: number;
+    totalBranchesBackedUp?: number;
+    totalBranchBilties?: number;
+    totalAddaItems?: number;
   };
   data: {
     trips: ReturnType<typeof getStoredTrips>;
@@ -123,6 +132,7 @@ export interface FullFleetBackup {
     receivingPoints?: ReturnType<typeof getAllReceivingPoints>;
     receivingEntries?: ReturnType<typeof getAllReceivingEntries>;
     dailyExpenses?: ReturnType<typeof getAllDailyExpenses>;
+    branchBackups?: Record<string, BranchBackupSlice>;
   };
 }
 
@@ -171,7 +181,7 @@ const CORE_ARRAY_KEYS = [
   'dailyExpenses'
 ] as const;
 
-export type BackupDatasetKey = (typeof CORE_ARRAY_KEYS)[number];
+export type BackupDatasetKey = (typeof CORE_ARRAY_KEYS)[number] | 'branchBackups';
 
 /**
  * Computes exact UTF-8 serialized byte size for Firestore document budget checks (#12).
@@ -271,6 +281,13 @@ export function generateFullFleetBackup(): FullFleetBackup {
   const receivingPoints = getAllReceivingPoints();
   const receivingEntries = getAllReceivingEntries();
   const dailyExpenses = getAllDailyExpenses();
+  const branchBackups = collectAuthorizedBranchBackups();
+  const branchValues = Object.values(branchBackups);
+  const totalBranchBilties = branchValues.reduce((s, b) => s + b.bilties.length, 0);
+  const totalAddaItems = branchValues.reduce(
+    (s, b) => s + b.addaFreight.length + b.addaCommissions.length + b.addaBills.length,
+    0
+  );
 
   return {
     appVersion: APP_VERSION,
@@ -295,7 +312,14 @@ export function generateFullFleetBackup(): FullFleetBackup {
       totalBills: bills.length,
       totalEmployees: employees.length,
       totalReceivingPoints: receivingPoints.length,
-      totalDailyExpenses: dailyExpenses.length
+      totalDailyExpenses: dailyExpenses.length,
+      ...(branchValues.length > 0
+        ? {
+            totalBranchesBackedUp: branchValues.length,
+            totalBranchBilties,
+            totalAddaItems
+          }
+        : {})
     },
     data: {
       trips,
@@ -318,7 +342,8 @@ export function generateFullFleetBackup(): FullFleetBackup {
       employeeEntries,
       receivingPoints,
       receivingEntries,
-      dailyExpenses
+      dailyExpenses,
+      ...(branchValues.length > 0 ? { branchBackups } : {})
     }
   };
 }
@@ -434,6 +459,13 @@ export async function runScheduledDailyCloudBackup(): Promise<{
     for (const key of CORE_ARRAY_KEYS) {
       const dataset = backup.data[key] || [];
       allChunks.push(...shardCollectionForBackup(key, dataset as unknown[]));
+    }
+    if (backup.data.branchBackups && Object.keys(backup.data.branchBackups).length > 0) {
+      const branchSlices = Object.entries(backup.data.branchBackups).map(([branchId, slice]) => ({
+        ...slice,
+        branchId
+      }));
+      allChunks.push(...shardCollectionForBackup('branchBackups', branchSlices));
     }
 
     const chunkIds = allChunks.map(c => c.chunkId);
@@ -563,6 +595,23 @@ export function previewJsonBackup(jsonStr: string): BackupPreviewSummary {
       }
     }
 
+    if ('branchBackups' in payload && payload.branchBackups !== undefined) {
+      recognized++;
+      if (typeof payload.branchBackups !== 'object' || payload.branchBackups === null) {
+        errors.push('Field "branchBackups" is malformed (expected object)');
+      } else {
+        const branchEntries = normalizeBranchBackupsInput(payload.branchBackups);
+        counts.branchBackups = branchEntries.length;
+        for (const entry of branchEntries) {
+          totalRecords +=
+            entry.slice.bilties.length +
+            entry.slice.addaFreight.length +
+            entry.slice.addaCommissions.length +
+            entry.slice.addaBills.length;
+        }
+      }
+    }
+
     if (recognized === 0) {
       errors.push('No recognized Driver Dost backup collections were found in this file');
     }
@@ -672,7 +721,7 @@ async function fetchAndValidateCloudBackup(
     });
 
     for (const [key, parts] of grouped.entries()) {
-      if ((CORE_ARRAY_KEYS as readonly string[]).includes(key)) {
+      if ((CORE_ARRAY_KEYS as readonly string[]).includes(key) || key === 'branchBackups') {
         parts.sort((a, b) => a.partIndex - b.partIndex);
         datasets[key as BackupDatasetKey] = parts.flatMap(p => p.items);
       }
@@ -761,9 +810,21 @@ export async function previewCloudBackup(backupId = 'latestIndex'): Promise<Back
     let totalRecords = 0;
 
     for (const [k, list] of Object.entries(fetched.datasets)) {
-      const len = Array.isArray(list) ? list.length : 0;
-      counts[k] = len;
-      totalRecords += len;
+      if (k === 'branchBackups') {
+        const branchEntries = normalizeBranchBackupsInput(list);
+        counts.branchBackups = branchEntries.length;
+        for (const entry of branchEntries) {
+          totalRecords +=
+            entry.slice.bilties.length +
+            entry.slice.addaFreight.length +
+            entry.slice.addaCommissions.length +
+            entry.slice.addaBills.length;
+        }
+      } else {
+        const len = Array.isArray(list) ? list.length : 0;
+        counts[k] = len;
+        totalRecords += len;
+      }
     }
 
     return {
@@ -832,6 +893,9 @@ export async function undoLastRestore(): Promise<{ success: boolean; message: st
     if (Array.isArray(snap.receivingPoints)) restoreKhataCollection(KHATA_STORAGE_KEYS.RECEIVING_POINTS, 'khataReceivingPoints', snap.receivingPoints as Array<{ id: string }>, 'overwrite');
     if (Array.isArray(snap.receivingEntries)) restoreKhataCollection(KHATA_STORAGE_KEYS.RECEIVING_ENTRIES, 'khataReceivingEntries', snap.receivingEntries as Array<{ id: string }>, 'overwrite');
     if (Array.isArray(snap.dailyExpenses)) restoreKhataCollection(KHATA_STORAGE_KEYS.DAILY_EXPENSES, 'khataDailyExpenses', snap.dailyExpenses as Array<{ id: string }>, 'overwrite');
+    if (snap.branchBackups) {
+      applyAuthorizedBranchBackups(snap.branchBackups, 'overwrite');
+    }
 
     await syncAllKhataToFirestore().catch(() => {});
 
@@ -917,7 +981,8 @@ export async function restoreFromCloudBackup(
     employeeEntries: getAllEmployeeEntries(),
     receivingPoints: getAllReceivingPoints(),
     receivingEntries: getAllReceivingEntries(),
-    dailyExpenses: getAllDailyExpenses()
+    dailyExpenses: getAllDailyExpenses(),
+    branchBackups: collectAuthorizedBranchBackups()
   };
 
   try {
@@ -997,6 +1062,9 @@ export async function restoreFromCloudBackup(
     if (Array.isArray(d.dailyExpenses)) {
       restoreKhataCollection(KHATA_STORAGE_KEYS.DAILY_EXPENSES, 'khataDailyExpenses', d.dailyExpenses as Array<{ id: string }>, mode);
     }
+    if (d.branchBackups) {
+      applyAuthorizedBranchBackups(d.branchBackups, mode);
+    }
 
     await syncAllKhataToFirestore().catch(() => {});
     return true;
@@ -1036,6 +1104,9 @@ export async function restoreFromCloudBackup(
         KHATA_STORAGE_KEYS.DAILY_EXPENSES,
         JSON.stringify(preRestoreSnapshot.dailyExpenses)
       );
+      if (preRestoreSnapshot.branchBackups) {
+        applyAuthorizedBranchBackups(preRestoreSnapshot.branchBackups, 'overwrite');
+      }
     } catch {
       // ignore secondary rollback failure
     }

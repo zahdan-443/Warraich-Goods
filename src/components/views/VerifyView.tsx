@@ -28,7 +28,7 @@ import {
 import { BiltyVerificationCard } from './BiltyVerificationCard';
 import { PublicImage } from '../PublicImage';
 import { getStoredBilties, extractPublicBiltyVerification, PublicBiltyVerification } from '../../utils/storage';
-import { getBiltyVerificationUrl } from '../../utils/biltyHelpers';
+import { buildBiltyVerificationCandidates, getBiltyVerificationUrl } from '../../utils/biltyHelpers';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
 
@@ -96,12 +96,19 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
     const normalizedTerm = cleanLower.replace(/[^a-z0-9]/g, '');
 
     // 2. Check local getStoredBilties (creator's device, offline capable)
+    const upper = rawTerm.toUpperCase().trim();
+    const candidateKeys = buildBiltyVerificationCandidates(upper);
+    const candidateLower = new Set(candidateKeys.map((k) => k.toLowerCase()));
+    const candidateAlpha = new Set(candidateKeys.map((k) => k.replace(/[^A-Z0-9]/g, '').toLowerCase()));
+
     const allBilties = getStoredBilties();
     const localMatch = allBilties.find((b) => {
-      const bNo = String(b.biltyNo || '').toLowerCase();
+      const bNo = String(b.biltyNo || '').toLowerCase().trim();
       const bId = String(b.id ?? '').toLowerCase();
       return (
         bNo === cleanLower ||
+        candidateLower.has(bNo) ||
+        candidateAlpha.has(bNo.replace(/[^a-z0-9]/g, '')) ||
         bNo.replace(/[^a-z0-9]/g, '') === normalizedTerm ||
         bId === cleanLower
       );
@@ -116,25 +123,6 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
     // 3. Fallback to public Firestore collection: publicBiltyVerifications/{BILTY_NO_UPPERCASE}
     try {
       if (db) {
-        const upper = rawTerm.toUpperCase().trim();
-        const cleanAlpha = upper.replace(/[^A-Z0-9]/g, '');
-        const candidateKeys = [
-          upper,
-          cleanAlpha,
-          upper.replace(/\s+/g, ''),
-        ];
-
-        if (!upper.startsWith('WG-')) {
-          candidateKeys.push(`WG-${upper}`);
-          candidateKeys.push(`WG-2026-${upper.padStart(4, '0')}`);
-        }
-        if (!upper.startsWith('WGT-')) {
-          candidateKeys.push(`WGT-${upper}`);
-        }
-        if (!upper.startsWith('AH-')) {
-          candidateKeys.push(`AH-${upper}`);
-        }
-
         let remoteDocData: any = null;
         for (const docKey of candidateKeys) {
           try {
@@ -1343,7 +1331,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                         {isUrdu ? 'دستاویز نمبر درج کریں:' : 'Enter Document Number:'}
                       </label>
                       <span className="text-[11px] text-[#8e8e75] dark:text-slate-400">
-                        {isUrdu ? 'مثال: WG-2026-0001 یا 0001' : 'e.g. WG-2026-0001'}
+                        {isUrdu ? 'مثال: WG-1001، WG-LHR-1001 یا WG-10001' : 'e.g. WG-1001, WG-LHR-1001, WG-10001'}
                       </span>
                     </div>
 
@@ -1353,7 +1341,7 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
                           type="text"
                           value={biltyQuery}
                           onChange={(e) => setBiltyQuery(e.target.value)}
-                          placeholder={isUrdu ? 'مثال: WG-2026-0001' : 'e.g. WG-2026-0001'}
+                          placeholder={isUrdu ? 'مثال: WG-1001 یا WG-LHR-1001' : 'e.g. WG-1001 or WG-LHR-1001'}
                           className="w-full ps-10 pe-4 py-3 rounded-2xl bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#333844] focus:border-[#8b9d77] focus:ring-1 focus:ring-[#8b9d77] outline-hidden text-sm font-mono font-bold text-[#4a4a35] dark:text-white transition-all"
                         />
                         <Search className="w-4 h-4 text-[#8e8e75] dark:text-slate-400 absolute start-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />

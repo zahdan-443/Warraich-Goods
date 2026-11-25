@@ -10,7 +10,7 @@
 
 import { auth } from './firebase';
 import { getStorageScope, getScopedStorageKey } from './calculator';
-import { isOwnerEmail } from './authUtils';
+import { isHeadOfficeBranchId, isOwnerEmail } from './authUtils';
 import {
   clearKeyDeletedForHydration,
   idbDelete,
@@ -114,8 +114,7 @@ export const KHATA_BASE_KEYS = [
 
 const BRANCH_SCOPED_KEY_SET = new Set<string>([
   'bilties',
-  'bilty-counter',
-  ...KHATA_BASE_KEYS
+  'bilty-counter'
 ]);
 
 export function isBranchScopedKey(baseKey: string): boolean {
@@ -126,7 +125,7 @@ export function getEffectiveScopeForKey(baseKey: string): string {
   if (isBranchScopedKey(baseKey)) {
     const branchId = safeStorage.getItem('wg_active_branch_id_v1');
     const localEmail = safeStorage.getItem('ah-gmail-user');
-    if (branchId && branchId.trim() && !(isOwnerEmail(localEmail) && branchId.trim() === 'samundri')) {
+    if (branchId && branchId.trim() && !(isOwnerEmail(localEmail) && isHeadOfficeBranchId(branchId))) {
       return `branch_${branchId.trim()}`;
     }
   }

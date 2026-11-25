@@ -13,12 +13,14 @@ import {
 import { getAllReceivingPoints } from '../../utils/khataModulesStorage';
 import { DEFAULT_SAMUNDRI_BRANCH, getActiveBranchId, getCachedBranchById } from '../../utils/branchContext';
 import { DEFAULT_HEAD_OFFICE_BRANCH_ID, isOwnerEmail } from '../../utils/authUtils';
-import { formatBiltySeqNumber } from '../../utils/storageSync';
 import {
+  AddaLifecycleError,
+  assertBiltyEditAllowedForAdda,
+  getAddaParties,
   getAddaPendingCommissions,
   getAddaPendingFreight,
-  upsertAddaPendingCommission,
-  upsertAddaPendingFreight
+  syncBiltyAddaLinks,
+  syncBiltyDeleteAddaCleanup
 } from '../../utils/addaBillingStorage';
 import {
   Receipt,
@@ -57,11 +59,12 @@ import { PrintableBilty } from '../PrintableBilty';
 import { BiltyLegalVaultModal } from '../BiltyLegalVaultModal';
 import { ConfirmDialog } from '../ConfirmDialog';
 import {
+  OfflineBlockExhaustedError,
   exportContactsCSV,
   getContactList,
   allocateNextBiltyNumber,
   checkBiltyNoConflict,
-  findNextAvailableBiltySeq,
+  resolveBiltyNumberConflict,
   exportAllBiltiesCSV,
   saveStoredBilties
 } from '../../utils/storage';
@@ -79,17 +82,22 @@ import { BiltyDeleteModal } from './bilty/BiltyDeleteModal';
 import { BiltyAllRecordsTab } from './bilty/BiltyAllRecordsTab';
 import { countBiltyAttachments, LegalVaultImageKey } from './bilty/biltyVaultUtils';
 import {
-  ATTACHMENT_HARD_CAP_BYTES,
+  ATTACHMENT_AUDIO_HARD_CAP_BYTES,
   ATTACHMENT_RETENTION_DAYS,
+  AttachmentStorageStats,
   compressAttachmentImage,
   DEFAULT_MAX_ID_IMAGES_PER_DOC,
+  exportAttachmentsZipBundle,
   getAttachmentsForBilty,
+  getBiltyAttachmentStorageStats,
+  getExpiringBiltyAttachmentsSummary,
   isIdCardSlot,
   PendingDraftAttachment,
   saveBiltyAttachment,
   setBiltyLegalHold,
   validateAudioAttachmentDataUrl
 } from '../../utils/biltyAttachments';
+import type { BiltyAttachmentRecord } from '../../types';
 
 interface AndroidPrinterWindow extends Window {
   AndroidPrinter?: {
@@ -126,6 +134,7 @@ interface BiltyViewProps {
   onAddBilty: (record: Omit<BiltyRecord, 'id'>) => BiltyRecord | Promise<BiltyRecord> | void;
   onUpdateBilty?: (record: BiltyRecord) => void;
   onDeleteBilty?: (id: number) => void;
+  onResolveConflict?: (biltyId: number) => void | Promise<void>;
   onNavigate?: (tab: string, subSection?: string) => void;
   activeBranch?: BranchConfig | null;
   branchPermissions?: BranchPermissions;
@@ -140,6 +149,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   onAddBilty,
   onUpdateBilty,
   onDeleteBilty,
+  onResolveConflict,
   onNavigate,
   activeBranch,
   branchPermissions,
@@ -159,6 +169,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const canCreateBilty = branchPermissions ? branchPermissions.createBilty : true;
   const canEditDeleteBilty = branchPermissions ? branchPermissions.editDeleteBilty : true;
   const canViewAllBilties = branchPermissions ? branchPermissions.viewAllBilties : true;
+  const conflictBilties = useMemo(() => bilties.filter((b) => Boolean(b.numberConflict)), [bilties]);
+  const [resolvingConflictId, setResolvingConflictId] = useState<number | null>(null);
 
   // SubTab: 'all' (Sari Bilties) | 'create' (Nai Bilty) | 'search' (Talaash)
   const [subTab, setSubTab] = useState<'all' | 'create' | 'search'>(() => {
@@ -310,6 +322,24 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const [isVaultModalOpen, setIsVaultModalOpen] = useState(false);
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
   const [contactsList, setContactsList] = useState<ContactItem[]>(() => getContactList());
+  const [expiringAttachments, setExpiringAttachments] = useState<BiltyAttachmentRecord[]>([]);
+  const [exportingExpiringZip, setExportingExpiringZip] = useState(false);
+  const [attachmentQuotaStats, setAttachmentQuotaStats] = useState<AttachmentStorageStats | null>(null);
+  const [dismissedExpiringBanner, setDismissedExpiringBanner] = useState(false);
+
+  const refreshCreatorVaultSummary = useCallback(async () => {
+    if (!isCreatorUser) return;
+    const [expRes, statsRes] = await Promise.all([
+      getExpiringBiltyAttachmentsSummary().catch(() => ({ count: 0, attachments: [] as BiltyAttachmentRecord[] })),
+      getBiltyAttachmentStorageStats().catch(() => null)
+    ]);
+    setExpiringAttachments(expRes.attachments || []);
+    if (statsRes) setAttachmentQuotaStats(statsRes);
+  }, [isCreatorUser]);
+
+  useEffect(() => {
+    void refreshCreatorVaultSummary();
+  }, [refreshCreatorVaultSummary, bilties.length]);
 
   const resetFormFields = useCallback(() => {
     setVehicleNo('');
@@ -542,6 +572,11 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setContactsList(getContactList());
   }, [bilties]);
 
+  const addaPartiesList = useMemo(() => {
+    void bilties;
+    return getAddaParties(effectiveBranch.id);
+  }, [bilties, effectiveBranch.id]);
+
   // Dispatch volume aggregates for All Bilties (no payment totals)
   const dispatchStats = useMemo(() => {
     let deliveredCount = 0;
@@ -688,6 +723,23 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       return;
     }
 
+    if (freightPendingEnabled && (!freightPendingPartyName.trim() || !(Number(freightPendingAmount) > 0))) {
+      setFormError(
+        selectedLanguage === 'en'
+          ? 'Please enter Payee Name and a positive Pending Freight amount (> 0).'
+          : 'براہ کرم ادائیگی کنندہ کا نام اور صفر سے زیادہ بقایا کرایہ رقم درج کریں۔'
+      );
+      return;
+    }
+    if (commissionPendingEnabled && (!commissionPendingFromName.trim() || !(Number(commissionPendingAmount) > 0))) {
+      setFormError(
+        selectedLanguage === 'en'
+          ? 'Please enter Payee Name and a positive Pending Commission amount (> 0).'
+          : 'براہ کرم وصولی والے کا نام اور صفر سے زیادہ کمیشن رقم درج کریں۔'
+      );
+      return;
+    }
+
     if (editingBilty) {
       if (!canEditDeleteBilty) {
         setFormError(selectedLanguage === 'en' ? 'You do not have permission to edit bilties.' : 'آپ کو بلٹی میں ترمیم کی اجازت نہیں ہے۔');
@@ -739,8 +791,43 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       };
       delete updatedRecord.legalVault;
 
+      try {
+        assertBiltyEditAllowedForAdda(editingBilty, updatedRecord);
+        const linked = syncBiltyAddaLinks({
+          bilty: updatedRecord,
+          freightInput: {
+            enabled: freightPendingEnabled,
+            partyName: freightPendingPartyName.trim(),
+            partyMobile: freightPendingPartyMobile.trim(),
+            amount: Number(freightPendingAmount) || 0
+          },
+          commissionInput: {
+            enabled: commissionPendingEnabled,
+            fromWhomName: commissionPendingFromName.trim(),
+            fromWhomMobile: commissionPendingFromMobile.trim(),
+            amount: Number(commissionPendingAmount) || 0
+          }
+        });
+        updatedRecord.pendingFreightId = linked.pendingFreightId;
+        updatedRecord.pendingCommissionId = linked.pendingCommissionId;
+      } catch (err) {
+        if (err instanceof AddaLifecycleError) {
+          setFormError(selectedLanguage === 'en' ? err.messageEn : err.messageUr);
+          return;
+        }
+        throw err;
+      }
+
       if (onUpdateBilty) {
-        onUpdateBilty(updatedRecord);
+        try {
+          onUpdateBilty(updatedRecord);
+        } catch (err) {
+          if (err instanceof AddaLifecycleError) {
+            setFormError(selectedLanguage === 'en' ? err.messageEn : err.messageUr);
+            return;
+          }
+          throw err;
+        }
       } else {
         const nextList = bilties.map(b => (b.id === updatedRecord.id ? updatedRecord : b));
         saveStoredBilties(nextList);
@@ -769,37 +856,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         }
       }
 
-      const routeText = `${updatedRecord.sendingCity || '-'} -> ${updatedRecord.receivingCity || '-'}`;
-      const branchIdSaved = updatedRecord.branchId || effectiveBranch.id;
-      if (freightPendingEnabled && freightPendingPartyName.trim() && Number(freightPendingAmount) > 0) {
-        upsertAddaPendingFreight({
-          branchId: branchIdSaved,
-          biltyId: updatedRecord.id,
-          biltyNo: updatedRecord.biltyNo,
-          date: updatedRecord.date,
-          vehicleNo: updatedRecord.vehicleNo,
-          route: routeText,
-          partyName: freightPendingPartyName.trim(),
-          partyMobile: freightPendingPartyMobile.trim(),
-          amount: Math.max(0, Number(freightPendingAmount) || 0),
-          createdByEmail: currentUserEmail || undefined
-        });
-      }
-      if (commissionPendingEnabled && commissionPendingFromName.trim() && Number(commissionPendingAmount) > 0) {
-        upsertAddaPendingCommission({
-          branchId: branchIdSaved,
-          biltyId: updatedRecord.id,
-          biltyNo: updatedRecord.biltyNo,
-          date: updatedRecord.date,
-          vehicleNo: updatedRecord.vehicleNo,
-          route: routeText,
-          fromWhomName: commissionPendingFromName.trim(),
-          fromWhomMobile: commissionPendingFromMobile.trim(),
-          amount: Math.max(0, Number(commissionPendingAmount) || 0),
-          createdByEmail: currentUserEmail || undefined
-        });
-      }
-
       setLastBilty(updatedRecord);
       resetFormFields();
       return;
@@ -810,19 +866,29 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       return;
     }
 
-    // Allocate sequential unique Bilty Number per active branch starting number + collision check
-    let allocatedBiltyNo = await allocateNextBiltyNumber(undefined, effectiveBranch);
-    const conflictRes = await checkBiltyNoConflict(allocatedBiltyNo).catch(() => ({ conflict: false }));
-    if (conflictRes.conflict) {
-      try {
-        const allowOver9999 = Number(effectiveBranch.startingBiltySeq || 1001) > 9999;
-        const rawDigits = String(allocatedBiltyNo).replace(/\D/g, '');
-        const seqNum = parseInt(!allowOver9999 && rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10) || (effectiveBranch.startingBiltySeq || 1001);
-        const nextSeq = findNextAvailableBiltySeq(seqNum + 1, allowOver9999);
-        allocatedBiltyNo = formatBiltySeqNumber(nextSeq);
-      } catch {
-        allocatedBiltyNo = `WG-${Date.now().toString().slice(-6)}`;
+    // Allocate sequential unique Bilty Number per active branch block reservation (strictly no wrap/truncation)
+    let allocatedBiltyNo = '';
+    try {
+      allocatedBiltyNo = await allocateNextBiltyNumber(undefined, effectiveBranch);
+      const conflictRes = await checkBiltyNoConflict(allocatedBiltyNo).catch(() => ({ conflict: false }));
+      if (conflictRes.conflict) {
+        allocatedBiltyNo = await allocateNextBiltyNumber(undefined, effectiveBranch);
       }
+    } catch (err) {
+      if (err instanceof OfflineBlockExhaustedError) {
+        setFormError(
+          selectedLanguage === 'en'
+            ? err.messageEn
+            : err.messageUr
+        );
+        return;
+      }
+      setFormError(
+        selectedLanguage === 'en'
+          ? 'Unable to reserve a sequential Bilty number. Please check your connection and retry.'
+          : 'بلٹی نمبر حاصل کرنے میں مسئلہ آیا ہے۔ براہ کرم انٹرنیٹ چیک کر کے دوبارہ کوشش کریں۔'
+      );
+      return;
     }
     const isPendingOnline = allocatedBiltyNo.includes('-OFF-');
 
@@ -887,35 +953,39 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     }
 
     // Save optional Pending Freight & Pending Commission strictly to isolated Adda billing storage
-    const routeStr = `${finalSavedRecord.sendingCity || '-'} -> ${finalSavedRecord.receivingCity || '-'}`;
-    const branchIdForPending = finalSavedRecord.branchId || effectiveBranch.id;
-    if (freightPendingEnabled && freightPendingPartyName.trim() && Number(freightPendingAmount) > 0) {
-      upsertAddaPendingFreight({
-        branchId: branchIdForPending,
-        biltyId: finalSavedRecord.id,
-        biltyNo: finalSavedRecord.biltyNo,
-        date: finalSavedRecord.date,
-        vehicleNo: finalSavedRecord.vehicleNo,
-        route: routeStr,
-        partyName: freightPendingPartyName.trim(),
-        partyMobile: freightPendingPartyMobile.trim(),
-        amount: Math.max(0, Number(freightPendingAmount) || 0),
-        createdByEmail: currentUserEmail || undefined
-      });
-    }
-    if (commissionPendingEnabled && commissionPendingFromName.trim() && Number(commissionPendingAmount) > 0) {
-      upsertAddaPendingCommission({
-        branchId: branchIdForPending,
-        biltyId: finalSavedRecord.id,
-        biltyNo: finalSavedRecord.biltyNo,
-        date: finalSavedRecord.date,
-        vehicleNo: finalSavedRecord.vehicleNo,
-        route: routeStr,
-        fromWhomName: commissionPendingFromName.trim(),
-        fromWhomMobile: commissionPendingFromMobile.trim(),
-        amount: Math.max(0, Number(commissionPendingAmount) || 0),
-        createdByEmail: currentUserEmail || undefined
-      });
+    if (freightPendingEnabled || commissionPendingEnabled) {
+      try {
+        const linked = syncBiltyAddaLinks({
+          bilty: finalSavedRecord,
+          freightInput: freightPendingEnabled
+            ? {
+                enabled: true,
+                partyName: freightPendingPartyName.trim(),
+                partyMobile: freightPendingPartyMobile.trim(),
+                amount: Number(freightPendingAmount) || 0
+              }
+            : undefined,
+          commissionInput: commissionPendingEnabled
+            ? {
+                enabled: true,
+                fromWhomName: commissionPendingFromName.trim(),
+                fromWhomMobile: commissionPendingFromMobile.trim(),
+                amount: Number(commissionPendingAmount) || 0
+              }
+            : undefined
+        });
+        if (linked.pendingFreightId || linked.pendingCommissionId) {
+          finalSavedRecord.pendingFreightId = linked.pendingFreightId;
+          finalSavedRecord.pendingCommissionId = linked.pendingCommissionId;
+          if (onUpdateBilty) {
+            onUpdateBilty(finalSavedRecord);
+          }
+        }
+      } catch (err) {
+        if (err instanceof AddaLifecycleError) {
+          setFormError(selectedLanguage === 'en' ? err.messageEn : err.messageUr);
+        }
+      }
     }
 
     setLastBilty(finalSavedRecord);
@@ -1523,12 +1593,114 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
           </div>
         </div>
 
+        {/* Creator-only 7-Day Expiring Attachments Banner & 1 GiB Quota Meter */}
+        {isCreatorUser &&
+          ((expiringAttachments.length > 0 && !dismissedExpiringBanner) ||
+            (attachmentQuotaStats && attachmentQuotaStats.warningLevel !== 'none')) && (
+            <div
+              data-testid="bilty-expiring-attachments-banner"
+              className="p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 text-xs flex flex-wrap items-center justify-between gap-2.5"
+            >
+              <div className="flex items-start gap-2 min-w-0 flex-1">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  {expiringAttachments.length > 0 && !dismissedExpiringBanner && (
+                    <div className="font-bold">
+                      {isUrdu
+                        ? `${expiringAttachments.length} دستاویزات آئندہ 7 دن میں 6 ماہ کی مدت پوری ہونے پر خودکار حذف ہو جائیں گی — محفوظ رکھنے کے لیے Export ZIP یا Legal Hold استعمال کریں۔`
+                        : `${expiringAttachments.length} attachment(s) will expire within 7 days — Export ZIP or enable Legal Hold to preserve them.`}
+                    </div>
+                  )}
+                  {attachmentQuotaStats && attachmentQuotaStats.warningLevel !== 'none' && (
+                    <div className="text-[11px] font-bold text-rose-800">
+                      {attachmentQuotaStats.warningLevel === 'exceeded'
+                        ? `Cloud storage quota exceeded (${attachmentQuotaStats.usedMb} / ${attachmentQuotaStats.quotaMb} MB). New files saved local-only.`
+                        : `Attachment quota ${Math.round(attachmentQuotaStats.usageRatio * 100)}% used (${attachmentQuotaStats.usedMb} / ${attachmentQuotaStats.quotaMb} MB).`}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {expiringAttachments.length > 0 && !dismissedExpiringBanner && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={exportingExpiringZip}
+                      onClick={async () => {
+                        setExportingExpiringZip(true);
+                        try {
+                          await exportAttachmentsZipBundle(expiringAttachments);
+                        } finally {
+                          setExportingExpiringZip(false);
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                    >
+                      {exportingExpiringZip ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileArchive className="w-3.5 h-3.5" />}
+                      <span>Export ZIP</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDismissedExpiringBanner(true)}
+                      aria-label={isUrdu ? 'چھپائیں' : 'Dismiss'}
+                      className="p-1.5 rounded-lg hover:bg-amber-200/60 text-amber-900 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
         {/* Global Datalist for Autocomplete */}
         <datalist id="contacts-autocomplete">
           {contactsList.map((c, idx) => (
             <option key={idx} value={c.name}>{c.phone ? `${c.name} (${c.phone})` : c.name}</option>
           ))}
         </datalist>
+        <datalist id="adda-parties-autocomplete">
+          {addaPartiesList.map((p) => (
+            <option key={p.id} value={p.name}>
+              {p.mobile ? `${p.name} (${p.mobile})` : p.name}
+            </option>
+          ))}
+          {contactsList.map((c, idx) => (
+            <option key={`c_${idx}`} value={c.name}>{c.phone ? `${c.name} (${c.phone})` : c.name}</option>
+          ))}
+        </datalist>
+
+        {conflictBilties.length > 0 && (
+          <div
+            data-testid="bilty-number-conflict-banner"
+            className="p-3.5 rounded-2xl bg-rose-50 border border-rose-300 text-rose-950 text-xs flex flex-wrap items-center justify-between gap-2.5 shadow-2xs"
+          >
+            <div className="flex items-start gap-2 min-w-0 flex-1">
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <div className="font-black">
+                  {isUrdu
+                    ? `${conflictBilties.length} بلٹی نمبروں میں تصادم (Duplicate Bilty #) پایا گیا ہے۔`
+                    : `${conflictBilties.length} duplicate Bilty number conflict(s) detected across synced devices.`}
+                </div>
+                <div className="text-[11px] text-rose-800">
+                  {isUrdu
+                    ? 'دونوں ریکارڈ محفوظ ہیں — "تمام بلٹیاں" میں جا کر متصادم بلٹی کو نیا نمبر تفویض کریں۔'
+                    : 'Both records are preserved — open All Bilties and tap "Resolve #" to assign a fresh sequential number.'}
+                </div>
+              </div>
+            </div>
+            {subTab !== 'all' && canViewAllBilties && (
+              <button
+                type="button"
+                onClick={() => navigateSubTab('all')}
+                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer shrink-0"
+              >
+                {isUrdu ? 'متصادم بلٹیاں دیکھیں' : 'Review Conflicts'}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* ALL BILTIES ARCHIVE / LEDGER */}
         {subTab === 'all' && canViewAllBilties && (
@@ -1572,6 +1744,25 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             }}
             onEditBilty={handleStartEditBilty}
             onDownloadZip={handleDownloadZip}
+            onResolveConflict={canEditDeleteBilty ? async (b) => {
+              if (resolvingConflictId === b.id) return;
+              setResolvingConflictId(b.id);
+              try {
+                if (onResolveConflict) {
+                  await onResolveConflict(b.id);
+                } else {
+                  await resolveBiltyNumberConflict(b.id, effectiveBranch);
+                }
+              } catch (err) {
+                setFormError(
+                  err instanceof OfflineBlockExhaustedError
+                    ? (isUrdu ? err.messageUr : err.messageEn)
+                    : (isUrdu ? 'نیا بلٹی نمبر تفویض کرنے میں مسئلہ آیا۔' : 'Could not resolve Bilty number conflict.')
+                );
+              } finally {
+                setResolvingConflictId(null);
+              }
+            } : undefined}
             onRequestDelete={canEditDeleteBilty && onDeleteBilty ? (b) => {
               if (typeof window !== 'undefined' && window.history?.pushState) {
                 try { window.history.pushState({ tab: 'bilty', modal: 'delete' }, ''); } catch {}
@@ -2009,9 +2200,18 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                         </label>
                         <input
                           type="text"
-                          list="contacts-autocomplete"
+                          list="adda-parties-autocomplete"
                           value={freightPendingPartyName}
-                          onChange={(e) => setFreightPendingPartyName(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFreightPendingPartyName(val);
+                            const matched = addaPartiesList.find(
+                              p => p.name.trim().toLowerCase() === val.trim().toLowerCase() && p.mobile
+                            );
+                            if (matched && !freightPendingPartyMobile.trim()) {
+                              setFreightPendingPartyMobile(formatBiltyMobile(matched.mobile));
+                            }
+                          }}
                           placeholder={isEnForm ? 'Payee name' : 'پارٹی کا نام'}
                           className="w-full min-h-[40px] bg-white border border-blue-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:border-[#0f2942] focus:outline-none"
                         />
@@ -2128,9 +2328,18 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                         </label>
                         <input
                           type="text"
-                          list="contacts-autocomplete"
+                          list="adda-parties-autocomplete"
                           value={commissionPendingFromName}
-                          onChange={(e) => setCommissionPendingFromName(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCommissionPendingFromName(val);
+                            const matched = addaPartiesList.find(
+                              p => p.name.trim().toLowerCase() === val.trim().toLowerCase() && p.mobile
+                            );
+                            if (matched && !commissionPendingFromMobile.trim()) {
+                              setCommissionPendingFromMobile(formatBiltyMobile(matched.mobile));
+                            }
+                          }}
                           placeholder={isEnForm ? 'Person / party name' : 'شخص یا پارٹی کا نام'}
                           className="w-full min-h-[40px] bg-white border border-amber-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 focus:border-amber-600 focus:outline-none"
                         />
@@ -2327,11 +2536,11 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                       })}
                     </div>
 
-                    {/* Audio note input */}
-                    <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                    {/* Audio note input (Local-only <=600KB) */}
+                    <div className="pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
                       <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                         <PhoneCall className="w-3.5 h-3.5 text-blue-600" />
-                        <span>{isEnForm ? 'Voice Note File (≤400KB)' : 'صوتی ہدایات فائل (≤400KB Audio Note)'}</span>
+                        <span>{isEnForm ? 'Voice Note File (≤600KB • Not backed up)' : 'صوتی ہدایات فائل (≤600KB • صرف فون پر)'}</span>
                       </span>
                       <label className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-xs font-bold text-slate-700 cursor-pointer flex items-center gap-1.5">
                         <Upload className="w-3.5 h-3.5" />
@@ -2345,11 +2554,11 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                             e.target.value = '';
                             if (!f) return;
                             setDraftAttachmentError(null);
-                            if (f.size > ATTACHMENT_HARD_CAP_BYTES * 0.95) {
+                            if (f.size > ATTACHMENT_AUDIO_HARD_CAP_BYTES) {
                               setDraftAttachmentError(
                                 isEnForm
-                                  ? `Audio exceeds ${Math.round(ATTACHMENT_HARD_CAP_BYTES / 1024)} KB limit.`
-                                  : `آڈیو فائل ${Math.round(ATTACHMENT_HARD_CAP_BYTES / 1024)} KB حد سے بڑی ہے۔`
+                                  ? `Audio exceeds ${Math.round(ATTACHMENT_AUDIO_HARD_CAP_BYTES / 1024)} KB limit.`
+                                  : `آڈیو فائل ${Math.round(ATTACHMENT_AUDIO_HARD_CAP_BYTES / 1024)} KB حد سے بڑی ہے۔`
                               );
                               return;
                             }
@@ -2358,7 +2567,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                               const res = ev.target?.result as string;
                               if (!res) return;
                               try {
-                                const { byteSize, mimeType } = validateAudioAttachmentDataUrl(res);
+                                const { byteSize, mimeType } = validateAudioAttachmentDataUrl(res, ATTACHMENT_AUDIO_HARD_CAP_BYTES);
                                 const nextRec: PendingDraftAttachment = {
                                   tempId: `rec_${Date.now()}`,
                                   slot: 'voiceNote',
@@ -2383,8 +2592,11 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                       </label>
                     </div>
                     {pendingAttachments.filter((a) => a.kind === 'audio').length > 0 && (
-                      <div className="text-[11px] text-emerald-700 font-bold">
-                        ✓ {pendingAttachments.filter((a) => a.kind === 'audio').length} ریکارڈنگ منسلک ہے
+                      <div className="text-[11px] text-amber-800 font-bold flex items-center gap-2">
+                        <span>✓ {pendingAttachments.filter((a) => a.kind === 'audio').length} ریکارڈنگ منسلک ہے</span>
+                        <span className="px-1.5 py-0.5 rounded bg-amber-100 border border-amber-300 text-[9px]">
+                          Not backed up
+                        </span>
                       </div>
                     )}
                   </div>
@@ -2509,8 +2721,20 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
         isUrdu={isUrdu}
         onCancel={() => setBiltyToDelete(null)}
         onConfirmDelete={(id) => {
-          if (onDeleteBilty) {
-            onDeleteBilty(id);
+          const targetRec = bilties.find((b) => b.id === id);
+          try {
+            if (onDeleteBilty) {
+              onDeleteBilty(id);
+            } else if (targetRec) {
+              syncBiltyDeleteAddaCleanup(targetRec);
+              const updated = bilties.filter((b) => b.id !== id);
+              saveStoredBilties(updated);
+            }
+          } catch (err) {
+            setBiltyToDelete(null);
+            if (err instanceof AddaLifecycleError) {
+              setFormError(isUrdu ? err.messageUr : err.messageEn);
+            }
           }
         }}
       />

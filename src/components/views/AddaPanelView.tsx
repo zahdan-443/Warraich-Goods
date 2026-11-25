@@ -10,11 +10,11 @@ import {
   FileCheck2,
   FileText,
   KeyRound,
-  Mail,
   Plus,
   Printer,
   Receipt,
   RefreshCw,
+  RotateCcw,
   Search,
   Share2,
   ShieldAlert,
@@ -25,6 +25,7 @@ import {
   UserPlus,
   Users,
   UserX,
+  Wallet,
   X
 } from 'lucide-react';
 import type {
@@ -37,6 +38,7 @@ import type {
   BranchConfig,
   BranchPermissions,
   BranchPresetRole,
+  BranchSalutation,
   BranchStaffMember,
   CompanyProfile,
   Language,
@@ -48,30 +50,36 @@ import {
   filterStaffRosterExcludingCreator,
   getPresetPermissions,
   isOwnerEmail,
-  normalizeEmail
+  normalizeEmail,
+  normalizeSalutation
 } from '../../utils/authUtils';
 import {
   ADDA_UPDATED_EVENT,
-  createAddaBillFromPendingItems,
+  AddaLifecycleError,
+  computePartyMatchKey,
+  createAddaBillTransactional,
   deleteAddaBill,
   deleteAddaPendingCommission,
   deleteAddaPendingFreight,
   fetchAddaFromFirestore,
   getAddaBills,
+  getAddaParties,
   getAddaPendingCommissions,
   getAddaPendingFreight,
+  getBillPaidPaisa,
+  getBillRemainingPaisa,
   getPartyPendingGroups,
-  markAddaBillPaid,
+  recordAddaBillPayment,
   resolveEffectiveCompanyDetails,
+  reverseAddaBillPayment,
   setAddaCommissionStatus,
   setAddaFreightStatus,
   upsertAddaPendingCommission,
   upsertAddaPendingFreight
 } from '../../utils/addaBillingStorage';
+import { fromPaisa, toPaisa } from '../../utils/calculator';
 import {
-  SignedInDirectoryEntry,
   fetchBranchStaff,
-  fetchSignedInDirectoryUsers,
   getCachedBranchStaff,
   removeBranchStaffMember,
   saveBranchCompanyDetails,
@@ -79,7 +87,11 @@ import {
   subscribeToBranchStaff,
   upsertBranchStaffMember
 } from '../../utils/branchService';
-import { saveCompanyProfileInFirestore } from '../../utils/storage';
+import {
+  loadBranchBiltiesFromFirestore,
+  saveCompanyProfileInFirestore,
+  triggerFullResync
+} from '../../utils/storage';
 import { generatePdfFromElement, sharePdfFileOrWhatsApp } from '../../utils/pdfHelper';
 import { shareOrDownloadBlob, shareOrDownloadText } from '../../utils/nativeExport';
 import { openWhatsAppMessage } from '../../utils/externalLinks';
@@ -190,6 +202,35 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
     setAddaBills(getAddaBills(branchId));
   };
 
+  const handleFullResync = async () => {
+    if (syncingAdda) return;
+    setSyncingAdda(true);
+    setNotice(null);
+    try {
+      await triggerFullResync();
+      await Promise.all([
+        loadBranchBiltiesFromFirestore(branchId, { forceFullResync: true }).catch(() => {}),
+        fetchAddaFromFirestore(branchId, { forceFullResync: true }).catch(() => {})
+      ]);
+      reloadAddaData();
+      setNotice({
+        ok: true,
+        text: isUr
+          ? 'مکمل کلاؤڈ دوبارہ سنک مکمل ہو گیا۔'
+          : 'Full cloud resync complete.'
+      });
+    } catch {
+      setNotice({
+        ok: false,
+        text: isUr
+          ? 'دوبارہ سنک مکمل نہیں ہو سکا، نیٹ ورک چیک کریں۔'
+          : 'Full resync could not complete. Check connection and try again.'
+      });
+    } finally {
+      setSyncingAdda(false);
+    }
+  };
+
   useEffect(() => {
     reloadAddaData();
     setSyncingAdda(true);
@@ -265,9 +306,34 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
   const [billDiscount, setBillDiscount] = useState('');
   const [billNotes, setBillNotes] = useState('');
   const [billSearchQuery, setBillSearchQuery] = useState('');
-  const [savedBillsFilter, setSavedBillsFilter] = useState<'all' | 'billed' | 'paid'>('all');
+  const [savedBillsFilter, setSavedBillsFilter] = useState<'all' | 'unpaid' | 'partial' | 'paid'>('all');
   const [previewBill, setPreviewBill] = useState<AddaBillRecord | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [generatingBill, setGeneratingBill] = useState(false);
+
+  // Payment recording / reversal modal state
+  const [paymentModalBillId, setPaymentModalBillId] = useState<string | null>(null);
+  const [paymentAmountInput, setPaymentAmountInput] = useState('');
+  const [paymentNoteInput, setPaymentNoteInput] = useState('');
+  const [paymentIdempotencyKey, setPaymentIdempotencyKey] = useState('');
+  const [pendingOverpaymentConfirm, setPendingOverpaymentConfirm] = useState<{
+    billId: string;
+    amountRupees: number;
+    remainingPaisa: number;
+    overpaymentPaisa: number;
+  } | null>(null);
+
+  const addaParties = useMemo(() => {
+    void freightItems;
+    void commissionItems;
+    void addaBills;
+    return getAddaParties(branchId);
+  }, [branchId, freightItems, commissionItems, addaBills]);
+
+  const paymentModalBill = useMemo(
+    () => (paymentModalBillId ? addaBills.find(b => b.id === paymentModalBillId) || null : null),
+    [addaBills, paymentModalBillId]
+  );
 
   const partyGroups = useMemo(() => {
     void freightItems;
@@ -306,11 +372,11 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
   // 5. Branch Staff Management State
   // -------------------------------------------------------------------------
   const [staffList, setStaffList] = useState<BranchStaffMember[]>(() => getCachedBranchStaff(branchId));
-  const [directoryUsers, setDirectoryUsers] = useState<SignedInDirectoryEntry[]>([]);
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [savingStaff, setSavingStaff] = useState(false);
   const [staffEmailInput, setStaffEmailInput] = useState('');
   const [staffNameInput, setStaffNameInput] = useState('');
+  const [staffSalutationInput, setStaffSalutationInput] = useState<BranchSalutation>('Mr');
   const [staffRoleInput, setStaffRoleInput] = useState<BranchPresetRole>('munshi');
   const [staffPermsInput, setStaffPermsInput] = useState<BranchPermissions>(() =>
     getPresetPermissions('munshi')
@@ -322,20 +388,15 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
     if (subModule !== 'staff') return;
     setLoadingStaff(true);
     setStaffList(getCachedBranchStaff(branchId));
-    void Promise.all([
-      fetchBranchStaff(branchId).then(l => setStaffList(filterStaffRosterExcludingCreator(l))),
-      canManageStaff
-        ? fetchSignedInDirectoryUsers().then(u =>
-            setDirectoryUsers(filterStaffRosterExcludingCreator(u))
-          )
-        : Promise.resolve()
-    ]).finally(() => setLoadingStaff(false));
+    void fetchBranchStaff(branchId)
+      .then(l => setStaffList(filterStaffRosterExcludingCreator(l)))
+      .finally(() => setLoadingStaff(false));
 
     const unsub = subscribeToBranchStaff(branchId, list => {
       setStaffList(filterStaffRosterExcludingCreator(list));
     });
     return () => unsub();
-  }, [subModule, branchId, canManageStaff]);
+  }, [subModule, branchId]);
 
   // -------------------------------------------------------------------------
   // 6. Edit / Modify Company Details State
@@ -385,6 +446,111 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
   // -------------------------------------------------------------------------
   // Handlers
   // -------------------------------------------------------------------------
+  const getLifecycleMsg = (err: unknown, fallback: string) => {
+    if (err instanceof AddaLifecycleError) {
+      return isUr ? err.messageUr : err.messageEn;
+    }
+    return err instanceof Error ? err.message : fallback;
+  };
+
+  const maybeFillPartyMobile = (
+    nameValue: string,
+    currentMobile: string,
+    setMobile: React.Dispatch<React.SetStateAction<string>>
+  ) => {
+    if (currentMobile.trim()) return;
+    const norm = nameValue.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!norm) return;
+    const matches = addaParties.filter(
+      p => p.name.trim().toLowerCase().replace(/\s+/g, ' ') === norm && Boolean(p.mobile)
+    );
+    if (matches.length === 1 && matches[0].mobile) {
+      setMobile(matches[0].mobile);
+    }
+  };
+
+  const openPaymentModal = (bill: AddaBillRecord) => {
+    const remainingRupees = fromPaisa(getBillRemainingPaisa(bill));
+    setPaymentModalBillId(bill.id);
+    setPaymentAmountInput(remainingRupees > 0 ? String(remainingRupees) : '');
+    setPaymentNoteInput('');
+    setPaymentIdempotencyKey(`pay_${bill.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`);
+    setPendingOverpaymentConfirm(null);
+  };
+
+  const handleSubmitBillPayment = (e?: React.FormEvent, confirmOverpayment = false) => {
+    if (e) e.preventDefault();
+    if (!paymentModalBill) return;
+    const amt = Number(paymentAmountInput);
+    if (!Number.isFinite(amt) || amt <= 0) {
+      setNotice({
+        text: isUr ? 'درست ادائیگی کی رقم درج کریں (صفر سے زیادہ)۔' : 'Enter a valid payment amount greater than zero.',
+        ok: false
+      });
+      return;
+    }
+    try {
+      const res = recordAddaBillPayment(branchId, paymentModalBill.id, {
+        amountRupees: amt,
+        idempotencyKey: paymentIdempotencyKey || undefined,
+        confirmOverpayment,
+        note: paymentNoteInput.trim() || undefined,
+        recordedByName: userBranchAccess?.displayName || userEmail || undefined
+      });
+      if (res.status === 'needs_overpayment_confirmation') {
+        setPendingOverpaymentConfirm({
+          billId: paymentModalBill.id,
+          amountRupees: amt,
+          remainingPaisa: res.remainingPaisa,
+          overpaymentPaisa: res.overpaymentPaisa
+        });
+        return;
+      }
+      if (previewBill?.id === res.bill.id) {
+        setPreviewBill(res.bill);
+      }
+      setPendingOverpaymentConfirm(null);
+      setPaymentModalBillId(null);
+      setNotice({
+        ok: true,
+        text: isUr
+          ? `بل ${res.bill.billNumber} کی ادائیگی محفوظ ہو گئی۔`
+          : `Payment recorded for ${res.bill.billNumber}.`
+      });
+    } catch (err) {
+      setNotice({
+        ok: false,
+        text: getLifecycleMsg(err, 'Failed recording payment')
+      });
+    }
+  };
+
+  const handleReversePayment = (billId: string, paymentId: string) => {
+    try {
+      const updated = reverseAddaBillPayment(
+        branchId,
+        billId,
+        paymentId,
+        undefined,
+        userBranchAccess?.displayName || userEmail || undefined
+      );
+      if (previewBill?.id === updated.id) {
+        setPreviewBill(updated);
+      }
+      setNotice({
+        ok: true,
+        text: isUr
+          ? `بل ${updated.billNumber} کی ادائیگی ریورس کر دی گئی۔`
+          : `Payment reversed on ${updated.billNumber}.`
+      });
+    } catch (err) {
+      setNotice({
+        ok: false,
+        text: getLifecycleMsg(err, 'Failed reversing payment')
+      });
+    }
+  };
+
   const handleSaveManualFreight = (e: React.FormEvent) => {
     e.preventDefault();
     if (!mfParty.trim() || !(Number(mfAmount) > 0)) {
@@ -394,29 +560,36 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
       });
       return;
     }
-    upsertAddaPendingFreight({
-      branchId,
-      biltyNo: mfBiltyNo.trim() || 'MANUAL',
-      date: mfDate,
-      vehicleNo: mfVehicle.trim() || undefined,
-      route: mfRoute.trim() || undefined,
-      partyName: mfParty.trim(),
-      partyMobile: mfMobile.trim(),
-      amount: Math.max(0, Number(mfAmount) || 0),
-      notes: mfNotes.trim() || undefined
-    });
-    setMfParty('');
-    setMfMobile('');
-    setMfBiltyNo('');
-    setMfVehicle('');
-    setMfRoute('');
-    setMfAmount('');
-    setMfNotes('');
-    setShowAddFreight(false);
-    setNotice({
-      text: isUr ? 'بقایا کرایہ (Freight Pending) شامل کر دیا گیا۔' : 'Pending freight added.',
-      ok: true
-    });
+    try {
+      upsertAddaPendingFreight({
+        branchId,
+        biltyNo: mfBiltyNo.trim() || 'MANUAL',
+        date: mfDate,
+        vehicleNo: mfVehicle.trim() || undefined,
+        route: mfRoute.trim() || undefined,
+        partyName: mfParty.trim(),
+        partyMobile: mfMobile.trim(),
+        amount: Math.max(0, Number(mfAmount) || 0),
+        notes: mfNotes.trim() || undefined
+      });
+      setMfParty('');
+      setMfMobile('');
+      setMfBiltyNo('');
+      setMfVehicle('');
+      setMfRoute('');
+      setMfAmount('');
+      setMfNotes('');
+      setShowAddFreight(false);
+      setNotice({
+        text: isUr ? 'بقایا کرایہ (Freight Pending) شامل کر دیا گیا۔' : 'Pending freight added.',
+        ok: true
+      });
+    } catch (err) {
+      setNotice({
+        text: getLifecycleMsg(err, 'Failed saving freight'),
+        ok: false
+      });
+    }
   };
 
   const handleSaveManualCommission = (e: React.FormEvent) => {
@@ -428,33 +601,40 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
       });
       return;
     }
-    upsertAddaPendingCommission({
-      branchId,
-      biltyNo: mcBiltyNo.trim() || 'MANUAL',
-      date: mcDate,
-      vehicleNo: mcVehicle.trim() || undefined,
-      route: mcRoute.trim() || undefined,
-      fromWhomName: mcParty.trim(),
-      fromWhomMobile: mcMobile.trim(),
-      amount: Math.max(0, Number(mcAmount) || 0),
-      notes: mcNotes.trim() || undefined
-    });
-    setMcParty('');
-    setMcMobile('');
-    setMcBiltyNo('');
-    setMcVehicle('');
-    setMcRoute('');
-    setMcAmount('');
-    setMcNotes('');
-    setShowAddComm(false);
-    setNotice({
-      text: isUr ? 'بقایا کمیشن (Commission Pending) شامل کر دیا گیا۔' : 'Pending commission added.',
-      ok: true
-    });
+    try {
+      upsertAddaPendingCommission({
+        branchId,
+        biltyNo: mcBiltyNo.trim() || 'MANUAL',
+        date: mcDate,
+        vehicleNo: mcVehicle.trim() || undefined,
+        route: mcRoute.trim() || undefined,
+        fromWhomName: mcParty.trim(),
+        fromWhomMobile: mcMobile.trim(),
+        amount: Math.max(0, Number(mcAmount) || 0),
+        notes: mcNotes.trim() || undefined
+      });
+      setMcParty('');
+      setMcMobile('');
+      setMcBiltyNo('');
+      setMcVehicle('');
+      setMcRoute('');
+      setMcAmount('');
+      setMcNotes('');
+      setShowAddComm(false);
+      setNotice({
+        text: isUr ? 'بقایا کمیشن (Commission Pending) شامل کر دیا گیا۔' : 'Pending commission added.',
+        ok: true
+      });
+    } catch (err) {
+      setNotice({
+        text: getLifecycleMsg(err, 'Failed saving commission'),
+        ok: false
+      });
+    }
   };
 
-  const handleGenerateBill = () => {
-    if (!activePartyGroup) return;
+  const handleGenerateBill = async () => {
+    if (!activePartyGroup || generatingBill) return;
     if (selectedFreightIds.length === 0 && selectedCommissionIds.length === 0) {
       setNotice({
         text: isUr ? 'کم از کم ایک کرایہ یا کمیشن آئٹم منتخب کریں۔' : 'Select at least one pending item.',
@@ -462,9 +642,11 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
       });
       return;
     }
+    setGeneratingBill(true);
     try {
-      const created = createAddaBillFromPendingItems({
+      const created = await createAddaBillTransactional({
         branchId,
+        partyId: activePartyGroup.partyId,
         partyName: activePartyGroup.partyName,
         partyMobile: activePartyGroup.partyMobile,
         selectedFreightIds,
@@ -488,9 +670,11 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
       });
     } catch (err) {
       setNotice({
-        text: err instanceof Error ? err.message : 'Failed creating bill',
+        text: getLifecycleMsg(err, 'Failed creating bill'),
         ok: false
       });
+    } finally {
+      setGeneratingBill(false);
     }
   };
 
@@ -573,12 +757,11 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
     setSavingStaff(true);
     setNotice(null);
     try {
-      const matchedDir = directoryUsers.find(u => normalizeEmail(u.email) === cleanEmail);
       await upsertBranchStaffMember({
         branch: activeBranch,
         email: cleanEmail,
-        displayName: staffNameInput.trim() || matchedDir?.displayName || cleanEmail.split('@')[0],
-        uid: matchedDir?.uid,
+        displayName: staffNameInput.trim() || cleanEmail.split('@')[0],
+        salutation: staffSalutationInput,
         presetRole: staffRoleInput,
         permissions: staffPermsInput,
         status: 'active'
@@ -587,6 +770,7 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
       setStaffList(filterStaffRosterExcludingCreator(updated));
       setStaffEmailInput('');
       setStaffNameInput('');
+      setStaffSalutationInput('Mr');
       setStaffRoleInput('munshi');
       setStaffPermsInput(getPresetPermissions('munshi'));
       setEditingStaffEmail(null);
@@ -613,15 +797,19 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
       await saveBranchCompanyDetails(branchId, {
         nameUr: coNameUr.trim() || activeBranch?.nameUr,
         nameEn: coNameEn.trim() || activeBranch?.nameEn,
-        companyHeaderUr: coHeaderUr.trim(),
-        companyHeaderEn: coHeaderEn.trim(),
-        proprietorNameUr: coPropUr.trim(),
-        proprietorNameEn: coPropEn.trim(),
         addressUr: coAddressUr.trim(),
         addressEn: coAddressEn.trim(),
         phoneNumbers: coPhones.trim(),
-        ntn: coNtn.trim() || '7779394-1',
-        taglineUr: coTaglineUr.trim()
+        ...(isCreator
+          ? {
+              companyHeaderUr: coHeaderUr.trim(),
+              companyHeaderEn: coHeaderEn.trim(),
+              proprietorNameUr: coPropUr.trim(),
+              proprietorNameEn: coPropEn.trim(),
+              ntn: coNtn.trim() || '7779394-1',
+              taglineUr: coTaglineUr.trim()
+            }
+          : {})
       });
 
       if (isCreator && applyToGlobalCompany) {
@@ -695,7 +883,9 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
   const filteredSavedBills = useMemo(() => {
     const q = billSearchQuery.trim().toLowerCase();
     return addaBills.filter(b => {
-      if (savedBillsFilter !== 'all' && b.status !== savedBillsFilter) return false;
+      if (savedBillsFilter === 'unpaid' && b.status !== 'billed' && b.status !== 'unpaid') return false;
+      if (savedBillsFilter === 'partial' && b.status !== 'partial') return false;
+      if (savedBillsFilter === 'paid' && b.status !== 'paid') return false;
       if (!q) return true;
       return (
         b.billNumber.toLowerCase().includes(q) ||
@@ -705,7 +895,7 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
     });
   }, [addaBills, savedBillsFilter, billSearchQuery]);
 
-  // Isolated Adda Report Analytics
+  // Isolated Adda Report Analytics (integer paisa math)
   const reportSummary = useMemo(() => {
     const inPeriod = (dateStr?: string) => {
       if (reportAllTime) return true;
@@ -715,37 +905,39 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
     const branchBilties = bilties.filter(
       b => (b.branchId || b.branch || DEFAULT_HEAD_OFFICE_BRANCH_ID) === branchId && inPeriod(b.date)
     );
-    const totalBiltyFreight = branchBilties.reduce((s, b) => s + (Number(b.total) || 0), 0);
+    const totalBiltyFreight = fromPaisa(
+      branchBilties.reduce((s, b) => s + toPaisa(Number(b.total) || 0), 0)
+    );
 
     const periodFreight = freightItems.filter(f => inPeriod(f.date));
-    const freightPendingAmt = periodFreight
-      .filter(f => f.status === 'pending')
-      .reduce((s, f) => s + f.amount, 0);
-    const freightBilledAmt = periodFreight
-      .filter(f => f.status === 'billed')
-      .reduce((s, f) => s + f.amount, 0);
-    const freightPaidAmt = periodFreight
-      .filter(f => f.status === 'paid')
-      .reduce((s, f) => s + f.amount, 0);
+    const freightPendingAmt = fromPaisa(
+      periodFreight.filter(f => f.status === 'pending').reduce((s, f) => s + (f.amountPaisa ?? toPaisa(f.amount)), 0)
+    );
+    const freightBilledAmt = fromPaisa(
+      periodFreight.filter(f => f.status === 'billed').reduce((s, f) => s + (f.amountPaisa ?? toPaisa(f.amount)), 0)
+    );
+    const freightPaidAmt = fromPaisa(
+      periodFreight.filter(f => f.status === 'paid').reduce((s, f) => s + (f.amountPaisa ?? toPaisa(f.amount)), 0)
+    );
 
     const periodComm = commissionItems.filter(c => inPeriod(c.date));
-    const commPendingAmt = periodComm
-      .filter(c => c.status === 'pending')
-      .reduce((s, c) => s + c.amount, 0);
-    const commBilledAmt = periodComm
-      .filter(c => c.status === 'billed')
-      .reduce((s, c) => s + c.amount, 0);
-    const commPaidAmt = periodComm
-      .filter(c => c.status === 'paid')
-      .reduce((s, c) => s + c.amount, 0);
+    const commPendingAmt = fromPaisa(
+      periodComm.filter(c => c.status === 'pending').reduce((s, c) => s + (c.amountPaisa ?? toPaisa(c.amount)), 0)
+    );
+    const commBilledAmt = fromPaisa(
+      periodComm.filter(c => c.status === 'billed').reduce((s, c) => s + (c.amountPaisa ?? toPaisa(c.amount)), 0)
+    );
+    const commPaidAmt = fromPaisa(
+      periodComm.filter(c => c.status === 'paid').reduce((s, c) => s + (c.amountPaisa ?? toPaisa(c.amount)), 0)
+    );
 
     const periodBills = addaBills.filter(b => inPeriod(b.date));
-    const billsBilledTotal = periodBills
-      .filter(b => b.status === 'billed')
-      .reduce((s, b) => s + b.totalAmount, 0);
-    const billsPaidTotal = periodBills
-      .filter(b => b.status === 'paid')
-      .reduce((s, b) => s + b.totalAmount, 0);
+    const billsBilledTotal = fromPaisa(
+      periodBills.reduce((s, b) => s + getBillRemainingPaisa(b), 0)
+    );
+    const billsPaidTotal = fromPaisa(
+      periodBills.reduce((s, b) => s + getBillPaidPaisa(b), 0)
+    );
 
     return {
       biltyCount: branchBilties.length,
@@ -835,25 +1027,27 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
     [bilties, branchId]
   );
 
-  // Selected party bill calculation
+  // Selected party bill calculation (integer paisa exact)
   const selectedBillSubtotal = useMemo(() => {
     if (!activePartyGroup) return 0;
-    const fSum = activePartyGroup.freightItems
+    const fPaisa = activePartyGroup.freightItems
       .filter(f => selectedFreightIds.includes(f.id))
-      .reduce((s, f) => s + f.amount, 0);
-    const cSum = activePartyGroup.commissionItems
+      .reduce((s, f) => s + (f.amountPaisa ?? toPaisa(f.amount)), 0);
+    const cPaisa = activePartyGroup.commissionItems
       .filter(c => selectedCommissionIds.includes(c.id))
-      .reduce((s, c) => s + c.amount, 0);
-    return fSum + cSum;
+      .reduce((s, c) => s + (c.amountPaisa ?? toPaisa(c.amount)), 0);
+    return fromPaisa(fPaisa + cPaisa);
   }, [activePartyGroup, selectedFreightIds, selectedCommissionIds]);
 
-  const selectedBillGrandTotal = Math.max(
-    0,
-    selectedBillSubtotal +
-      (Math.max(0, Number(billExtraCharges) || 0) - Math.max(0, Number(billDiscount) || 0))
+  const selectedBillGrandTotal = fromPaisa(
+    Math.max(
+      0,
+      toPaisa(selectedBillSubtotal) +
+        toPaisa(Math.max(0, Number(billExtraCharges) || 0)) -
+        toPaisa(Math.max(0, Number(billDiscount) || 0))
+    )
   );
 
-  const visibleDirectory = filterStaffRosterExcludingCreator(directoryUsers);
   const visibleStaffList = filterStaffRosterExcludingCreator(staffList);
 
   const statusBadge = (status: AddaPendingStatus) => {
@@ -883,6 +1077,13 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
       className="max-w-6xl mx-auto px-3 sm:px-6 pt-3 sm:pt-5 pb-20 space-y-5 animate-in fade-in duration-200"
       dir={isUr ? 'rtl' : 'ltr'}
     >
+      <datalist id="adda-panel-parties-autocomplete">
+        {addaParties.map(p => (
+          <option key={p.id} value={p.name}>
+            {p.mobile ? `${p.name} (${p.mobile})` : p.name}
+          </option>
+        ))}
+      </datalist>
       {/* Top Adda / Branch Control Header */}
       <div className="bg-gradient-to-br from-[#0f2942] via-[#133556] to-[#1a477a] text-white rounded-3xl p-4 sm:p-5 border border-amber-400/30 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1.5 min-w-0">
@@ -909,6 +1110,17 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => void handleFullResync()}
+            disabled={syncingAdda}
+            className="px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            title={isUr ? 'کلاؤڈ سے مکمل دوبارہ سنک کریں' : 'Force full cloud resync'}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${syncingAdda ? 'animate-spin' : ''}`} />
+            <span>{isUr ? 'مکمل دوبارہ سنک' : 'Full Resync'}</span>
+          </button>
+
           {isCreator && branches.length > 0 && onSelectBranch && (
             <select
               value={branchId}
@@ -1252,8 +1464,12 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                 <input
                   type="text"
                   required
+                  list="adda-panel-parties-autocomplete"
                   value={mcParty}
-                  onChange={e => setMcParty(e.target.value)}
+                  onChange={e => {
+                    setMcParty(e.target.value);
+                    maybeFillPartyMobile(e.target.value, mcMobile, setMcMobile);
+                  }}
                   placeholder={isUr ? 'پارٹی / ایجنٹ / ڈرائیور نام' : 'Name'}
                   className="w-full px-3 py-2 rounded-xl bg-white border border-amber-300"
                 />
@@ -1442,7 +1658,7 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                         type="button"
                         onClick={() =>
                           openPartyForBilling(
-                            item.fromWhomName.trim().toLowerCase().replace(/\s+/g, ' '),
+                            computePartyMatchKey(item.fromWhomName, item.fromWhomMobile),
                             'commission'
                           )
                         }
@@ -1453,11 +1669,18 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                       </button>
                     )}
 
-                    {item.status !== 'paid' && (
+                    {item.status === 'pending' && (
                       <button
                         type="button"
                         onClick={() => {
-                          setAddaCommissionStatus(branchId, item.id, 'paid');
+                          try {
+                            setAddaCommissionStatus(branchId, item.id, 'paid');
+                          } catch (err) {
+                            setNotice({
+                              ok: false,
+                              text: getLifecycleMsg(err, 'Failed updating commission status')
+                            });
+                          }
                         }}
                         className="px-2.5 py-1.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
                       >
@@ -1468,6 +1691,7 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
 
                     <button
                       type="button"
+                      disabled={item.status === 'billed' || item.status === 'paid'}
                       onClick={() =>
                         setPendingDeleteItem({
                           kind: 'commission',
@@ -1475,8 +1699,16 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                           label: `${item.biltyNo} - ${item.fromWhomName}`
                         })
                       }
-                      className="p-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 cursor-pointer"
-                      title={isUr ? 'حذف کریں' : 'Delete'}
+                      className="p-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      title={
+                        item.status === 'billed' || item.status === 'paid'
+                          ? isUr
+                            ? `بل ${item.billNumber || ''} میں شامل ہونے کی وجہ سے حذف نہیں ہو سکتا`
+                            : `Locked by ${item.billNumber || 'bill'}`
+                          : isUr
+                          ? 'حذف کریں'
+                          : 'Delete'
+                      }
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -1527,8 +1759,12 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                 <input
                   type="text"
                   required
+                  list="adda-panel-parties-autocomplete"
                   value={mfParty}
-                  onChange={e => setMfParty(e.target.value)}
+                  onChange={e => {
+                    setMfParty(e.target.value);
+                    maybeFillPartyMobile(e.target.value, mfMobile, setMfMobile);
+                  }}
                   placeholder={isUr ? 'پارٹی یا کمپنی نام' : 'Party / Company Name'}
                   className="w-full px-3 py-2 rounded-xl bg-white border border-sky-300"
                 />
@@ -1717,7 +1953,7 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                         type="button"
                         onClick={() =>
                           openPartyForBilling(
-                            item.partyName.trim().toLowerCase().replace(/\s+/g, ' '),
+                            computePartyMatchKey(item.partyName, item.partyMobile),
                             'freight'
                           )
                         }
@@ -1728,10 +1964,19 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                       </button>
                     )}
 
-                    {item.status !== 'paid' && (
+                    {item.status === 'pending' && (
                       <button
                         type="button"
-                        onClick={() => setAddaFreightStatus(branchId, item.id, 'paid')}
+                        onClick={() => {
+                          try {
+                            setAddaFreightStatus(branchId, item.id, 'paid');
+                          } catch (err) {
+                            setNotice({
+                              ok: false,
+                              text: getLifecycleMsg(err, 'Failed updating freight status')
+                            });
+                          }
+                        }}
                         className="px-2.5 py-1.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1741,6 +1986,7 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
 
                     <button
                       type="button"
+                      disabled={item.status === 'billed' || item.status === 'paid'}
                       onClick={() =>
                         setPendingDeleteItem({
                           kind: 'freight',
@@ -1748,8 +1994,16 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                           label: `${item.biltyNo} - ${item.partyName}`
                         })
                       }
-                      className="p-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 cursor-pointer"
-                      title={isUr ? 'حذف کریں' : 'Delete'}
+                      className="p-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      title={
+                        item.status === 'billed' || item.status === 'paid'
+                          ? isUr
+                            ? `بل ${item.billNumber || ''} میں شامل ہونے کی وجہ سے حذف نہیں ہو سکتا`
+                            : `Locked by ${item.billNumber || 'bill'}`
+                          : isUr
+                          ? 'حذف کریں'
+                          : 'Delete'
+                      }
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -2089,11 +2343,20 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
 
                       <button
                         type="button"
-                        onClick={handleGenerateBill}
-                        className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        disabled={generatingBill}
+                        onClick={() => void handleGenerateBill()}
+                        className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
                       >
                         <FileCheck2 className="w-4 h-4" />
-                        <span>{isUr ? 'بل محفوظ کریں اور دیکھیں' : 'Generate Bill & Preview'}</span>
+                        <span>
+                          {generatingBill
+                            ? isUr
+                              ? 'بل محفوظ ہو رہا ہے...'
+                              : 'Generating...'
+                            : isUr
+                            ? 'بل محفوظ کریں اور دیکھیں'
+                            : 'Generate Bill & Preview'}
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -2117,19 +2380,26 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                     </button>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      {previewBill.status !== 'paid' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = markAddaBillPaid(branchId, previewBill.id);
-                            if (updated) setPreviewBill(updated);
-                          }}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1 cursor-pointer"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>{isUr ? 'ادا شدہ مارک کریں (Mark Paid)' : 'Mark Paid'}</span>
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => openPaymentModal(previewBill)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer ${
+                          previewBill.status !== 'paid'
+                            ? 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                            : 'bg-amber-100 hover:bg-amber-200 text-amber-950'
+                        }`}
+                      >
+                        <Wallet className="w-3.5 h-3.5" />
+                        <span>
+                          {previewBill.status !== 'paid'
+                            ? isUr
+                              ? 'ادائیگی درج کریں'
+                              : 'Record Payment'
+                            : isUr
+                            ? 'ادائیگی ہسٹری / ریورس'
+                            : 'Payments / Reverse'}
+                        </span>
+                      </button>
                       <button
                         type="button"
                         disabled={exportingPdf}
@@ -2169,7 +2439,7 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
               ) : (
                 <>
                   <div className="flex flex-wrap gap-1.5">
-                    {(['all', 'billed', 'paid'] as const).map(st => (
+                    {(['all', 'unpaid', 'partial', 'paid'] as const).map(st => (
                       <button
                         key={st}
                         type="button"
@@ -2184,10 +2454,14 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                           ? isUr
                             ? 'تمام بلز'
                             : 'All'
-                          : st === 'billed'
+                          : st === 'unpaid'
                           ? isUr
                             ? 'بل جاری / بقایا (Unpaid)'
                             : 'Billed (Unpaid)'
+                          : st === 'partial'
+                          ? isUr
+                            ? 'جزوی ادا (Partial)'
+                            : 'Partial'
                           : isUr
                           ? 'وصول شدہ (Paid)'
                           : 'Paid'}
@@ -2201,91 +2475,130 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                     </div>
                   ) : (
                     <div className="space-y-2.5">
-                      {filteredSavedBills.map(b => (
-                        <div
-                          key={b.id}
-                          className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-[#fdfbf7] dark:bg-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                        >
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-mono font-black text-xs px-2 py-0.5 rounded bg-[#0f2942] text-white">
-                                {b.billNumber}
-                              </span>
-                              <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
-                                {b.partyName}
-                              </span>
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  b.status === 'paid'
-                                    ? 'bg-emerald-100 text-emerald-900'
-                                    : 'bg-amber-100 text-amber-900'
-                                }`}
-                              >
-                                {b.status === 'paid'
-                                  ? isUr
-                                    ? 'ادا شدہ (Paid)'
-                                    : 'Paid'
-                                  : isUr
-                                  ? 'بل جاری (Billed)'
-                                  : 'Billed'}
-                              </span>
+                      {filteredSavedBills.map(b => {
+                        const paidRs = fromPaisa(getBillPaidPaisa(b));
+                        const remainingRs = fromPaisa(getBillRemainingPaisa(b));
+                        const hasPayments = getBillPaidPaisa(b) > 0 || b.status === 'paid';
+                        return (
+                          <div
+                            key={b.id}
+                            className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-[#fdfbf7] dark:bg-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono font-black text-xs px-2 py-0.5 rounded bg-[#0f2942] text-white">
+                                  {b.billNumber}
+                                </span>
+                                <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                                  {b.partyName}
+                                </span>
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    b.status === 'paid'
+                                      ? 'bg-emerald-100 text-emerald-900'
+                                      : b.status === 'partial'
+                                      ? 'bg-sky-100 text-sky-900'
+                                      : 'bg-amber-100 text-amber-900'
+                                  }`}
+                                >
+                                  {b.status === 'paid'
+                                    ? isUr
+                                      ? 'ادا شدہ (Paid)'
+                                      : 'Paid'
+                                    : b.status === 'partial'
+                                    ? isUr
+                                      ? 'جزوی ادا (Partial)'
+                                      : 'Partial'
+                                    : isUr
+                                    ? 'بل جاری (Billed)'
+                                    : 'Billed'}
+                                </span>
+                              </div>
+                              <div className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2 flex-wrap">
+                                <span dir="ltr" className="font-mono">
+                                  {b.date}
+                                </span>
+                                <span>•</span>
+                                <span>
+                                  {b.items.length} {isUr ? 'آئٹمز' : 'items'}
+                                </span>
+                                {paidRs > 0 && remainingRs > 0 && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="text-sky-800 dark:text-sky-300 font-bold">
+                                      {isUr ? `وصول: Rs ${fmtNum(paidRs)} • باقی: Rs ${fmtNum(remainingRs)}` : `Paid: Rs ${fmtNum(paidRs)} • Bal: Rs ${fmtNum(remainingRs)}`}
+                                    </span>
+                                  </>
+                                )}
+                                {b.partyMobile && (
+                                  <>
+                                    <span>•</span>
+                                    <span dir="ltr" className="font-mono">
+                                      📞 {b.partyMobile}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2 flex-wrap">
-                              <span dir="ltr" className="font-mono">
-                                {b.date}
-                              </span>
-                              <span>•</span>
-                              <span>
-                                {b.items.length} {isUr ? 'آئٹمز' : 'items'}
-                              </span>
-                              {b.partyMobile && (
-                                <>
-                                  <span>•</span>
-                                  <span dir="ltr" className="font-mono">
-                                    📞 {b.partyMobile}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          </div>
 
-                          <div className="flex items-center gap-2 flex-wrap shrink-0">
-                            <span className="font-mono font-black text-base text-emerald-800 dark:text-emerald-300 px-2">
-                              Rs {fmtNum(b.totalAmount)}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setPreviewBill(b)}
-                              className="px-3 py-1.5 rounded-xl bg-[#0f2942] text-white text-[11px] font-bold cursor-pointer"
-                            >
-                              {isUr ? 'دیکھیں / شیئر' : 'View / Share'}
-                            </button>
-                            {b.status !== 'paid' && (
+                            <div className="flex items-center gap-2 flex-wrap shrink-0">
+                              <span className="font-mono font-black text-base text-emerald-800 dark:text-emerald-300 px-2">
+                                Rs {fmtNum(b.totalAmount)}
+                              </span>
                               <button
                                 type="button"
-                                onClick={() => markAddaBillPaid(branchId, b.id)}
-                                className="px-3 py-1.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-[11px] font-bold cursor-pointer"
+                                onClick={() => setPreviewBill(b)}
+                                className="px-3 py-1.5 rounded-xl bg-[#0f2942] text-white text-[11px] font-bold cursor-pointer"
                               >
-                                {isUr ? 'وصول ہو گیا' : 'Mark Paid'}
+                                {isUr ? 'دیکھیں / شیئر' : 'View / Share'}
                               </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setPendingDeleteItem({
-                                  kind: 'bill',
-                                  id: b.id,
-                                  label: `${b.billNumber} (${b.partyName})`
-                                })
-                              }
-                              className="p-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 cursor-pointer"
-                              title={isUr ? 'حذف کریں' : 'Delete Bill'}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => openPaymentModal(b)}
+                                className={`px-3 py-1.5 rounded-xl text-[11px] font-bold cursor-pointer flex items-center gap-1 ${
+                                  b.status !== 'paid'
+                                    ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900'
+                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                }`}
+                              >
+                                <Wallet className="w-3.5 h-3.5" />
+                                <span>
+                                  {b.status !== 'paid'
+                                    ? isUr
+                                      ? 'ادائیگی درج'
+                                      : 'Record Payment'
+                                    : isUr
+                                    ? 'ادائیگیاں'
+                                    : 'Payments'}
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                disabled={hasPayments}
+                                onClick={() =>
+                                  setPendingDeleteItem({
+                                    kind: 'bill',
+                                    id: b.id,
+                                    label: `${b.billNumber} (${b.partyName})`
+                                  })
+                                }
+                                className="p-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                title={
+                                  hasPayments
+                                    ? isUr
+                                      ? 'وصول شدہ بل حذف نہیں ہو سکتا — پہلے ادائیگی ریورس کریں'
+                                      : 'Paid/partial bills cannot be deleted — reverse payments first'
+                                    : isUr
+                                    ? 'حذف کریں'
+                                    : 'Delete Bill'
+                                }
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </>
@@ -2332,35 +2645,6 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
           </div>
 
           {canManageStaff && (
-            <>
-              {visibleDirectory.length > 0 && (
-                <div className="p-3 bg-[#fdfbf7] dark:bg-slate-800/60 border border-[#ecece0] dark:border-slate-700 rounded-2xl space-y-2">
-                  <div className="text-[11px] font-bold text-[#4a4a35] dark:text-slate-200 flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>
-                      {isUr
-                        ? 'سائن ان شدہ جی میل اکاؤنٹس (منتخب کرنے کیلئے کلک کریں):'
-                        : 'Signed-in Gmail Accounts (Click to select):'}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
-                    {visibleDirectory.map(u => (
-                      <button
-                        key={u.email}
-                        type="button"
-                        onClick={() => {
-                          setStaffEmailInput(u.email);
-                          if (!staffNameInput && u.displayName) setStaffNameInput(u.displayName);
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-[#d6c3b0] text-[11px] font-mono text-[#1a477a] dark:text-sky-300 hover:bg-[#1a477a] hover:text-white transition-colors cursor-pointer"
-                      >
-                        {u.email}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <form
                 onSubmit={handleSaveStaffSubmit}
                 className="p-4 bg-[#fdfbf7] dark:bg-slate-800/50 border border-[#ecece0] dark:border-slate-700 rounded-2xl space-y-3"
@@ -2385,6 +2669,7 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                         setEditingStaffEmail(null);
                         setStaffEmailInput('');
                         setStaffNameInput('');
+                        setStaffSalutationInput('Mr');
                         setStaffRoleInput('munshi');
                         setStaffPermsInput(getPresetPermissions('munshi'));
                       }}
@@ -2395,7 +2680,7 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs">
                   <div>
                     <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
                       {isUr ? 'اسٹاف جی میل *' : 'Staff Gmail *'}
@@ -2413,7 +2698,7 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
-                      {isUr ? 'شخص کا نام (خوش آمدید نوٹ کیلئے) *' : 'Assigned Person Name (Welcome Note) *'}
+                      {isUr ? 'شخص کا نام (خوش آمدید نوٹ کیلئے) *' : 'Assigned Person Name *'}
                     </label>
                     <input
                       type="text"
@@ -2423,6 +2708,20 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                       placeholder={isUr ? 'مثلاً علی خان' : 'e.g. Ali Khan'}
                       className="w-full px-3 py-2 bg-white border border-[#d6c3b0] rounded-xl"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
+                      {isUr ? 'لقب (Mr/Ms)' : 'Salutation'}
+                    </label>
+                    <select
+                      value={staffSalutationInput}
+                      onChange={e => setStaffSalutationInput(normalizeSalutation(e.target.value))}
+                      className="w-full px-3 py-2 bg-white border border-[#d6c3b0] rounded-xl font-bold"
+                    >
+                      <option value="Mr">{isUr ? 'جناب (Mr)' : 'Mr'}</option>
+                      <option value="Ms">{isUr ? 'محترمہ (Ms)' : 'Ms'}</option>
+                      <option value="none">{isUr ? 'بغیر لقب' : 'None'}</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
@@ -2496,7 +2795,6 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                   </button>
                 </div>
               </form>
-            </>
           )}
 
           {/* View All Staff List */}
@@ -2553,6 +2851,7 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
                               setEditingStaffEmail(member.email);
                               setStaffEmailInput(member.email);
                               setStaffNameInput(member.displayName || '');
+                              setStaffSalutationInput(normalizeSalutation(member.salutation));
                               setStaffRoleInput(member.presetRole);
                               setStaffPermsInput({ ...member.permissions });
                             }}
@@ -2647,27 +2946,27 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
-                  {isUr ? 'کمپنی ہیڈر نام (اردو)' : 'Company Header Name (Urdu)'}
+                  {isUr ? 'کمپنی ہیڈر نام (اردو) — صرف کریئیٹر' : 'Company Header Name (Urdu — Creator Locked)'}
                 </label>
                 <input
                   type="text"
-                  disabled={!canEditCompany}
+                  disabled={!isCreator}
                   value={coHeaderUr}
                   onChange={e => setCoHeaderUr(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-[#fdfbf7] disabled:opacity-70"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-[#fdfbf7] disabled:opacity-60"
                 />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
-                  {isUr ? 'کمپنی ہیڈر نام (انگریزی)' : 'Company Header Name (English)'}
+                  {isUr ? 'کمپنی ہیڈر نام (انگریزی) — صرف کریئیٹر' : 'Company Header Name (English — Creator Locked)'}
                 </label>
                 <input
                   type="text"
                   dir="ltr"
-                  disabled={!canEditCompany}
+                  disabled={!isCreator}
                   value={coHeaderEn}
                   onChange={e => setCoHeaderEn(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-[#fdfbf7] disabled:opacity-70"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-[#fdfbf7] disabled:opacity-60"
                 />
               </div>
               <div>
@@ -2697,27 +2996,27 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
-                  {isUr ? 'پروپرائیٹر کا نام (اردو)' : 'Proprietor Name (Urdu)'}
+                  {isUr ? 'پروپرائیٹر کا نام (اردو) — صرف کریئیٹر' : 'Proprietor Name (Urdu — Creator Locked)'}
                 </label>
                 <input
                   type="text"
-                  disabled={!canEditCompany}
+                  disabled={!isCreator}
                   value={coPropUr}
                   onChange={e => setCoPropUr(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-[#fdfbf7] disabled:opacity-70"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-[#fdfbf7] disabled:opacity-60"
                 />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
-                  {isUr ? 'پروپرائیٹر کا نام (انگریزی)' : 'Proprietor Name (English)'}
+                  {isUr ? 'پروپرائیٹر کا نام (انگریزی) — صرف کریئیٹر' : 'Proprietor Name (English — Creator Locked)'}
                 </label>
                 <input
                   type="text"
                   dir="ltr"
-                  disabled={!canEditCompany}
+                  disabled={!isCreator}
                   value={coPropEn}
                   onChange={e => setCoPropEn(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-[#fdfbf7] disabled:opacity-70"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-[#fdfbf7] disabled:opacity-60"
                 />
               </div>
               <div>
@@ -2763,27 +3062,27 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
-                  {isUr ? 'این ٹی این نمبر (NTN)' : 'NTN Number'}
+                  {isUr ? 'این ٹی این نمبر (NTN) — صرف کریئیٹر' : 'NTN Number (Creator Locked)'}
                 </label>
                 <input
                   type="text"
                   dir="ltr"
-                  disabled={!canEditCompany}
+                  disabled={!isCreator}
                   value={coNtn}
                   onChange={e => setCoNtn(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-[#fdfbf7] font-mono disabled:opacity-70"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-[#fdfbf7] font-mono disabled:opacity-60"
                 />
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
-                  {isUr ? 'ٹیگ لائن (اختیاری)' : 'Company Tagline (Optional)'}
+                  {isUr ? 'ٹیگ لائن (صرف کریئیٹر)' : 'Company Tagline (Creator Locked)'}
                 </label>
                 <input
                   type="text"
-                  disabled={!canEditCompany}
+                  disabled={!isCreator}
                   value={coTaglineUr}
                   onChange={e => setCoTaglineUr(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-[#fdfbf7] disabled:opacity-70"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-[#fdfbf7] disabled:opacity-60"
                 />
               </div>
             </div>
@@ -2955,6 +3254,193 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
         </div>
       )}
 
+      {/* Bill Payment & Reversal Modal */}
+      {paymentModalBill && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] flex items-center justify-center p-3"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-lg rounded-3xl bg-white dark:bg-slate-900 border border-[#ecece0] dark:border-slate-700 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="p-4 bg-[#0f2942] text-white flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-black flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-amber-300" />
+                  <span>
+                    {paymentModalBill.billNumber} — {paymentModalBill.partyName}
+                  </span>
+                </h3>
+                <p className="text-[11px] text-sky-200 mt-0.5 font-mono" dir="ltr">
+                  Total: Rs {fmtNum(paymentModalBill.totalAmount)} | Paid: Rs{' '}
+                  {fmtNum(fromPaisa(getBillPaidPaisa(paymentModalBill)))} | Bal: Rs{' '}
+                  {fmtNum(fromPaisa(getBillRemainingPaisa(paymentModalBill)))}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPaymentModalBillId(null);
+                  setPendingOverpaymentConfirm(null);
+                }}
+                className="p-1.5 rounded-xl hover:bg-white/15 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4 max-h-[80vh] overflow-y-auto text-xs">
+              {pendingOverpaymentConfirm ? (
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 space-y-3">
+                  <div className="font-bold text-amber-950 flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span>
+                      {isUr
+                        ? 'درج کردہ رقم بقایا بل سے زیادہ ہے!'
+                        : 'Entered amount exceeds remaining balance!'}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-amber-900 space-y-1 font-mono" dir="ltr">
+                    <div>Remaining Balance: Rs {fmtNum(fromPaisa(pendingOverpaymentConfirm.remainingPaisa))}</div>
+                    <div>Entered Payment: Rs {fmtNum(pendingOverpaymentConfirm.amountRupees)}</div>
+                    <div className="font-bold">
+                      Overpayment Excess: Rs {fmtNum(fromPaisa(pendingOverpaymentConfirm.overpaymentPaisa))}
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setPendingOverpaymentConfirm(null)}
+                      className="px-3.5 py-2 rounded-xl bg-white border border-slate-300 font-bold text-slate-800 cursor-pointer"
+                    >
+                      {isUr ? 'واپس' : 'Back'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSubmitBillPayment(undefined, true)}
+                      className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer"
+                    >
+                      {isUr ? 'اضافی ادائیگی کی تصدیق کریں' : 'Confirm Overpayment'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                paymentModalBill.status !== 'paid' && (
+                  <form onSubmit={e => handleSubmitBillPayment(e, false)} className="space-y-3 p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[10px] font-bold mb-1">
+                          {isUr ? 'وصول رقم (روپے) *' : 'Payment Amount (Rs) *'}
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          min={0.01}
+                          step="0.01"
+                          dir="ltr"
+                          value={paymentAmountInput}
+                          onChange={e => setPaymentAmountInput(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-emerald-300 font-mono font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold mb-1">
+                          {isUr ? 'نوٹ / طریقہ (اختیاری)' : 'Note / Method (Optional)'}
+                        </label>
+                        <input
+                          type="text"
+                          value={paymentNoteInput}
+                          onChange={e => setPaymentNoteInput(e.target.value)}
+                          placeholder={isUr ? 'مثلاً نقد / بینک ٹرانسفر' : 'e.g. Cash / Bank'}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-emerald-300"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{isUr ? 'ادائیگی محفوظ کریں' : 'Save Payment'}</span>
+                      </button>
+                    </div>
+                  </form>
+                )
+              )}
+
+              {/* Payment History & Reversals */}
+              <div className="space-y-2">
+                <div className="font-bold text-slate-700 dark:text-slate-200">
+                  {isUr ? 'ادائیگیوں کی تاریخ' : 'Payment History'}
+                </div>
+                {!paymentModalBill.paymentHistory || paymentModalBill.paymentHistory.length === 0 ? (
+                  <div className="p-4 text-center text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    {isUr ? 'ابھی تک کوئی ادائیگی درج نہیں ہوئی۔' : 'No payments recorded yet.'}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {paymentModalBill.paymentHistory.map(pm => {
+                      const revKey = `rev_${pm.id}`;
+                      const alreadyReversed =
+                        pm.kind === 'payment' &&
+                        (paymentModalBill.paymentHistory || []).some(
+                          x => x.kind === 'reversal' && x.idempotencyKey === revKey
+                        );
+                      return (
+                        <div
+                          key={pm.id}
+                          className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${
+                            pm.kind === 'reversal'
+                              ? 'bg-rose-50 border-rose-200 text-rose-900'
+                              : 'bg-slate-50 border-slate-200 text-slate-800'
+                          }`}
+                        >
+                          <div className="space-y-0.5 min-w-0">
+                            <div className="font-bold flex items-center gap-1.5 flex-wrap">
+                              <span className="font-mono" dir="ltr">
+                                {pm.kind === 'reversal' ? '-' : '+'}Rs {fmtNum(fromPaisa(pm.amountPaisa))}
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-white border border-slate-200">
+                                {pm.kind === 'reversal'
+                                  ? isUr
+                                    ? 'ریورس'
+                                    : 'Reversal'
+                                  : alreadyReversed
+                                  ? isUr
+                                    ? 'ریورس شدہ'
+                                    : 'Reversed'
+                                  : isUr
+                                  ? 'وصولی'
+                                  : 'Payment'}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 truncate">
+                              {pm.recordedAt.slice(0, 16).replace('T', ' ')}
+                              {pm.note ? ` • ${pm.note}` : ''}
+                            </div>
+                          </div>
+
+                          {pm.kind === 'payment' && !alreadyReversed && (
+                            <button
+                              type="button"
+                              onClick={() => handleReversePayment(paymentModalBill.id, pm.id)}
+                              className="px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-900 font-bold text-[10px] flex items-center gap-1 shrink-0 cursor-pointer"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>{isUr ? 'ریورس' : 'Reverse'}</span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Confirmation Dialogs */}
       <ConfirmDialog
         isOpen={Boolean(pendingDeleteItem)}
@@ -2970,15 +3456,23 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
         onCancel={() => setPendingDeleteItem(null)}
         onConfirm={() => {
           if (!pendingDeleteItem) return;
-          if (pendingDeleteItem.kind === 'freight') {
-            deleteAddaPendingFreight(branchId, pendingDeleteItem.id);
-          } else if (pendingDeleteItem.kind === 'commission') {
-            deleteAddaPendingCommission(branchId, pendingDeleteItem.id);
-          } else {
-            deleteAddaBill(branchId, pendingDeleteItem.id);
-            if (previewBill?.id === pendingDeleteItem.id) setPreviewBill(null);
+          try {
+            if (pendingDeleteItem.kind === 'freight') {
+              deleteAddaPendingFreight(branchId, pendingDeleteItem.id);
+            } else if (pendingDeleteItem.kind === 'commission') {
+              deleteAddaPendingCommission(branchId, pendingDeleteItem.id);
+            } else {
+              deleteAddaBill(branchId, pendingDeleteItem.id);
+              if (previewBill?.id === pendingDeleteItem.id) setPreviewBill(null);
+            }
+          } catch (err) {
+            setNotice({
+              ok: false,
+              text: getLifecycleMsg(err, 'Failed deleting record')
+            });
+          } finally {
+            setPendingDeleteItem(null);
           }
-          setPendingDeleteItem(null);
         }}
       />
 

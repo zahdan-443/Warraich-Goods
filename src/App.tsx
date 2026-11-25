@@ -26,6 +26,7 @@ import {
   getNextBiltyNo,
   loadFromFirestore,
   loadBranchBiltiesFromFirestore,
+  migrateHeadOfficeToBranchesHead,
   formatBiltySeqNumber,
   getBiltyAccessConfig,
   subscribeToBiltyAccess,
@@ -35,11 +36,13 @@ import {
   autoReconcileAllLocalToCloud,
   initAmbientSyncEngine,
   subscribeToSyncEvents,
+  triggerFullResync,
   getAccountDeletionStatus,
   fetchAccountDeletionStatus,
   cancelAccountDeletion,
   purgeExpiredAccountData,
   findNextAvailableBiltySeq,
+  resolveBiltyNumberConflict,
   inspectGuestScopeData,
   importGuestDataIntoScope,
   type GuestScopeSummary,
@@ -56,6 +59,7 @@ import {
 } from './utils/authUtils';
 import {
   DEFAULT_SAMUNDRI_BRANCH,
+  clearLocalBranchAndAddaCaches,
   getActiveBranchId,
   getCachedBranchById,
   getCachedBranches,
@@ -63,14 +67,12 @@ import {
 } from './utils/branchContext';
 import {
   ensureSamundriBranchInFirestore,
-  fetchBranchById,
   getCachedUserBranchAccess,
-  recordSignedInDirectoryUser,
   subscribeToBranchesForOwner,
   subscribeToUserBranchAccess
 } from './utils/branchService';
 import { fetchKhataFromFirestore } from './utils/ledgerStorage';
-import { fetchAddaFromFirestore } from './utils/addaBillingStorage';
+import { fetchAddaFromFirestore, assertBiltyEditAllowedForAdda, syncBiltyDeleteAddaCleanup } from './utils/addaBillingStorage';
 import { fetchLiveFuelPrices } from './utils/fuelPrice';
 import { runScheduledDailyCloudBackup } from './utils/backupService';
 import { pruneExpiredPreRestoreSnapshotsIdbOnly } from './utils/persistentStorage';
@@ -316,6 +318,8 @@ export default function App() {
   // Floating "Back to Dashboard" button: appears in upper-left corner when scrolled down on any inner screen
   const [showFloatingBack, setShowFloatingBack] = useState(false);
   const [pendingDeletion, setPendingDeletion] = useState<AccountDeletionRequest | null>(null);
+  const [branchRevocationBanner, setBranchRevocationBanner] = useState<{ ur: string; en: string } | null>(null);
+  const wasBranchActiveRef = useRef<boolean>(Boolean(staffBranchConfig));
 
   // Check account deletion status on user or auth change (local + Firestore)
   useEffect(() => {
@@ -720,6 +724,27 @@ export default function App() {
     }
   };
 
+  const handleFullResync = async () => {
+    const res = await triggerFullResync();
+    setOfflineQueue(getStoredOfflineQueue());
+    setTrips(getStoredTrips());
+    setVehicles(getStoredVehicles());
+    setDrivers(getStoredDrivers());
+    setRoutes(getStoredRoutes());
+    setFuelLogs(getStoredFuelLog());
+    setBilties(getStoredBilties());
+    window.dispatchEvent(new CustomEvent('driverdost:storage_hydrated'));
+    if (res.success) {
+      pushAppNotification(
+        lang === 'ur' ? 'مکمل کلاؤڈ سنک' : 'Full Cloud Resync',
+        lang === 'ur'
+          ? `تمام ریکارڈز دوبارہ چیک و ہم آہنگ ہو گئے (${res.processed})۔`
+          : `All collections re-verified and synced (${res.processed}).`,
+        'system'
+      );
+    }
+  };
+
   // Direct Google Sign-In without internal app popup
   const handleSignIn = async () => {
     if (authLoading) return;
@@ -855,6 +880,8 @@ export default function App() {
         localStorage.removeItem(`wg_v3_guest_import_deferred_${currentUid}`);
       } catch {}
     }
+    wasBranchActiveRef.current = false;
+    setBranchRevocationBanner(null);
     logoutUser();
     setUserEmail(null);
     setCurrentUid(null);
@@ -867,6 +894,7 @@ export default function App() {
     localStorage.removeItem('ah-user-role');
     setRole('driver');
     saveStoredRole('driver');
+    void clearLocalBranchAndAddaCaches();
     setBilties(getStoredBilties());
     window.dispatchEvent(new CustomEvent('driverdost:storage_hydrated'));
   };
@@ -1177,17 +1205,12 @@ export default function App() {
             unsubUserAccess = null;
           }
 
-          recordSignedInDirectoryUser({
-            uid: user.uid,
-            email: userMail,
-            displayName: user.displayName || undefined
-          }).catch(() => {});
-
-          unsubUserAccess = subscribeToUserBranchAccess(userMail, async (access) => {
+          unsubUserAccess = subscribeToUserBranchAccess(userMail, async (access, fetchedBranch) => {
             setUserBranchAccess(access);
-            if (access && access.status === 'active') {
+            if (access && access.status === 'active' && fetchedBranch && fetchedBranch.active !== false) {
+              wasBranchActiveRef.current = true;
+              setBranchRevocationBanner(null);
               setActiveBranchId(access.branchId);
-              const fetchedBranch = await fetchBranchById(access.branchId).catch(() => null);
               setStaffBranchConfig(fetchedBranch);
               await Promise.all([
                 loadBranchBiltiesFromFirestore(access.branchId).catch(() => {}),
@@ -1197,11 +1220,20 @@ export default function App() {
               setBilties(getStoredBilties());
               window.dispatchEvent(new CustomEvent('driverdost:storage_hydrated'));
             } else {
+              const wasActive = wasBranchActiveRef.current;
+              wasBranchActiveRef.current = false;
               setStaffBranchConfig(null);
               setActiveBranchId(null);
               setShowBranchStaffModal(false);
+              await clearLocalBranchAndAddaCaches();
               setBilties(getStoredBilties());
               window.dispatchEvent(new CustomEvent('driverdost:storage_hydrated'));
+              if (wasActive || (access && access.status !== 'active')) {
+                setBranchRevocationBanner({
+                  ur: 'آپ کی برانچ رسائی منسوخ یا غیر فعال کر دی گئی ہے۔ اس ڈیوائس سے برانچ اور اڈا ریکارڈز ہٹا دیے گئے ہیں۔',
+                  en: 'Your branch access was revoked or deactivated. Cached branch and Adda records have been removed from this device.'
+                });
+              }
             }
           });
         }
@@ -1216,6 +1248,9 @@ export default function App() {
         getStoredCompanyProfile().then(setCompanyProfile).catch(() => {});
 
         try {
+          if (ownerAccount) {
+            await migrateHeadOfficeToBranchesHead(user.uid).catch(() => {});
+          }
           await loadFromFirestore(user.uid);
           if (ownerAccount) {
             const ownerBranchId = selectedOwnerBranchIdRef.current || DEFAULT_HEAD_OFFICE_BRANCH_ID;
@@ -1257,6 +1292,8 @@ export default function App() {
           unsubUserAccess();
           unsubUserAccess = null;
         }
+        wasBranchActiveRef.current = false;
+        setBranchRevocationBanner(null);
         setBiltyAllowedUIDs([]);
         setBiltyAllowedEmails([]);
         setUserBranchAccess(null);
@@ -1270,6 +1307,7 @@ export default function App() {
         localStorage.removeItem('ah-user-role');
         setRole('driver');
         saveStoredRole('driver');
+        void clearLocalBranchAndAddaCaches();
         setTrips(getStoredTrips());
         setVehicles(getStoredVehicles());
         setDrivers(getStoredDrivers());
@@ -1504,23 +1542,7 @@ export default function App() {
   // Handlers for Bilty
   const handleAddBilty = (recordObj: Omit<BiltyRecord, 'id'>): BiltyRecord => {
     const current = getStoredBilties();
-    let finalBiltyNo = recordObj.biltyNo;
-
-    // Check if an existing record already has this exact biltyNo (including wrap-around collisions)
-    const existingSameNo = current.find(
-      (b) => b.biltyNo?.trim().toUpperCase() === finalBiltyNo.trim().toUpperCase()
-    );
-    if (existingSameNo) {
-      try {
-        const allowOver9999 = Number(activeBranch?.startingBiltySeq || 1001) > 9999;
-        const rawDigits = String(finalBiltyNo).replace(/\D/g, '');
-        const seqNum = parseInt(!allowOver9999 && rawDigits.length > 4 ? rawDigits.slice(-4) : rawDigits, 10) || (activeBranch?.startingBiltySeq || 1001);
-        const nextSeq = findNextAvailableBiltySeq(seqNum + 1, allowOver9999);
-        finalBiltyNo = formatBiltySeqNumber(nextSeq);
-      } catch {
-        finalBiltyNo = `WG-${Date.now().toString().slice(-6)}`;
-      }
-    }
+    const finalBiltyNo = String(recordObj.biltyNo || '').trim().toUpperCase();
 
     const nowIso = new Date().toISOString();
     const newRecord: BiltyRecord = {
@@ -1539,25 +1561,46 @@ export default function App() {
       updatedAt: nowIso
     };
 
-    // Filter only if same record ID or colliding biltyNo
-    const filtered = current.filter((b) => b.id !== newRecord.id && b.biltyNo !== newRecord.biltyNo);
+    // Deduplicate strictly by record ID so colliding numbers are preserved and flagged (`numberConflict`) rather than lost
+    const filtered = current.filter((b) => b.id !== newRecord.id);
     const updated = [newRecord, ...filtered];
-    setBilties(updated);
     saveStoredBilties(updated);
-    syncPublicBiltyVerification(newRecord).catch(() => {});
+    const refreshed = getStoredBilties();
+    setBilties(refreshed);
+    const savedRecord = refreshed.find((b) => b.id === newRecord.id) || newRecord;
+    syncPublicBiltyVerification(savedRecord).catch(() => {});
 
     pushAppNotification(
       lang === 'ur' ? 'نئی بلٹی تیار ہے' : 'Bilty Created',
-      lang === 'ur' ? `بلٹی نمبر ${newRecord.biltyNo} (${newRecord.senderName || ''}) محفوظ ہو گئی۔` : `Bilty #${newRecord.biltyNo} saved.`,
+      lang === 'ur' ? `بلٹی نمبر ${savedRecord.biltyNo} (${savedRecord.senderName || ''}) محفوظ ہو گئی۔` : `Bilty #${savedRecord.biltyNo} saved.`,
       'system'
     );
-    return newRecord;
+    return savedRecord;
+  };
+
+  const handleResolveBiltyConflict = async (biltyId: number) => {
+    if (!isOwner && !effectiveBranchPermissions.editDeleteBilty) return;
+    const updated = await resolveBiltyNumberConflict(biltyId, activeBranch);
+    setBilties(updated);
+    const resolved = updated.find((b) => b.id === biltyId);
+    if (resolved) {
+      pushAppNotification(
+        lang === 'ur' ? 'بلٹی نمبر کا تصادم حل ہو گیا' : 'Bilty Conflict Resolved',
+        lang === 'ur'
+          ? `بلٹی کو نیا نمبر ${resolved.biltyNo} تفویض کر دیا گیا۔`
+          : `Bilty re-assigned cleanly to #${resolved.biltyNo}.`,
+        'system'
+      );
+    }
   };
 
   const handleUpdateBilty = (updatedRecord: BiltyRecord) => {
     if (!isOwner && !effectiveBranchPermissions.editDeleteBilty) return;
     const current = getStoredBilties();
     const existing = current.find((b) => b.id === updatedRecord.id);
+    if (existing) {
+      assertBiltyEditAllowedForAdda(existing, updatedRecord);
+    }
     const stampedRecord: BiltyRecord = {
       ...updatedRecord,
       updatedAt: new Date().toISOString()
@@ -1586,6 +1629,9 @@ export default function App() {
     if (!isOwner && !effectiveBranchPermissions.editDeleteBilty) return;
     const current = getStoredBilties();
     const target = current.find((b) => b.id === id);
+    if (target) {
+      syncBiltyDeleteAddaCleanup(target);
+    }
     const updated = current.filter((b) => b.id !== id);
     setBilties(updated);
     saveStoredBilties(updated);
@@ -1715,6 +1761,7 @@ export default function App() {
               isOffline={isOffline}
               onToggleOffline={handleToggleOffline}
               onSyncOffline={handleSyncOffline}
+              onFullResync={handleFullResync}
               isDashboard={!activeTab || activeTab === 'home'}
               showTopMenuExternal={showTopMenu}
               onOpenTopMenu={() => {
@@ -1749,6 +1796,21 @@ export default function App() {
               }}
               onToggleLang={handleToggleLang}
             />
+          )}
+
+          {branchRevocationBanner && (
+            <div className="bg-rose-50 dark:bg-rose-950/60 text-rose-950 dark:text-rose-200 px-4 py-2.5 text-xs flex flex-wrap items-center justify-between gap-2 shadow-sm border-b border-rose-200 dark:border-rose-800">
+              <div className="font-bold">
+                {lang === 'ur' ? branchRevocationBanner.ur : branchRevocationBanner.en}
+              </div>
+              <button
+                type="button"
+                onClick={() => setBranchRevocationBanner(null)}
+                className="px-2.5 py-1 bg-white dark:bg-slate-800 hover:bg-rose-100 text-rose-900 dark:text-rose-200 font-bold rounded-lg border border-rose-300 dark:border-rose-700 cursor-pointer text-[11px]"
+              >
+                {lang === 'ur' ? 'بند کریں' : 'Dismiss'}
+              </button>
+            </div>
           )}
 
           {pendingDeletion && (
@@ -1790,6 +1852,7 @@ export default function App() {
                   userEmail={userEmail}
                   userDisplayName={userDisplayName}
                   userBranchAccess={userBranchAccess}
+                  authInitialized={authInitialized}
                   companyProfile={companyProfile}
                   isBiltyAuthorized={isBiltyAuthorized}
                   onNavigate={handleNavigate}
@@ -1893,6 +1956,7 @@ export default function App() {
               onAddBilty={handleAddBilty}
               onUpdateBilty={handleUpdateBilty}
               onDeleteBilty={handleDeleteBilty}
+              onResolveConflict={handleResolveBiltyConflict}
               onNavigate={handleNavigate}
               activeBranch={activeBranch}
               branchPermissions={effectiveBranchPermissions}

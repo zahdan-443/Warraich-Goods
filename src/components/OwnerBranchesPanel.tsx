@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Edit3,
   KeyRound,
-  Mail,
   MapPin,
   Phone,
   Plus,
@@ -22,6 +21,7 @@ import type {
   BranchConfig,
   BranchPermissions,
   BranchPresetRole,
+  BranchSalutation,
   BranchStaffMember,
   Language
 } from '../types';
@@ -30,21 +30,23 @@ import {
   PRESET_ROLE_LABELS,
   filterStaffRosterExcludingCreator,
   getPresetPermissions,
+  isHeadOfficeBranchId,
   isOwnerEmail,
-  normalizeEmail
+  normalizeEmail,
+  normalizeSalutation
 } from '../utils/authUtils';
 import { getCachedBranches } from '../utils/branchContext';
 import {
-  SignedInDirectoryEntry,
   ensureSamundriBranchInFirestore,
   fetchAllBranches,
   fetchBranchStaff,
-  fetchSignedInDirectoryUsers,
   getCachedBranchStaff,
+  normalizeBranchCode,
   removeBranchStaffMember,
   saveBranchConfig,
   setBranchStaffStatus,
   subscribeToBranchStaff,
+  suggestBranchCode,
   toggleBranchActive,
   upsertBranchStaffMember
 } from '../utils/branchService';
@@ -92,7 +94,6 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
     activeBranchId || DEFAULT_HEAD_OFFICE_BRANCH_ID
   );
   const [staffList, setStaffList] = useState<BranchStaffMember[]>([]);
-  const [directoryUsers, setDirectoryUsers] = useState<SignedInDirectoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [savingBranch, setSavingBranch] = useState(false);
   const [savingStaff, setSavingStaff] = useState(false);
@@ -100,6 +101,7 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
 
   // Branch Create / Edit Form
   const [editingBranchId, setEditingBranchId] = useState<string | null>(null);
+  const [branchCodeInput, setBranchCodeInput] = useState('');
   const [nameEn, setNameEn] = useState('');
   const [nameUr, setNameUr] = useState('');
   const [addressUr, setAddressUr] = useState('');
@@ -113,6 +115,7 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
   // Staff Form
   const [staffEmail, setStaffEmail] = useState('');
   const [staffName, setStaffName] = useState('');
+  const [staffSalutation, setStaffSalutation] = useState<BranchSalutation>('Mr');
   const [presetRole, setPresetRole] = useState<BranchPresetRole>('munshi');
   const [permissions, setPermissions] = useState<BranchPermissions>(() =>
     getPresetPermissions('munshi')
@@ -124,13 +127,9 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
     setLoading(true);
     try {
       await ensureSamundriBranchInFirestore();
-      const [fetchedBranches, dirUsers] = await Promise.all([
-        fetchAllBranches(),
-        fetchSignedInDirectoryUsers()
-      ]);
+      const fetchedBranches = await fetchAllBranches();
       setBranches(fetchedBranches);
       onBranchesUpdated?.(fetchedBranches);
-      setDirectoryUsers(filterStaffRosterExcludingCreator(dirUsers));
     } finally {
       setLoading(false);
     }
@@ -154,6 +153,7 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
 
   const resetBranchForm = () => {
     setEditingBranchId(null);
+    setBranchCodeInput('');
     setNameEn('');
     setNameUr('');
     setAddressUr('');
@@ -167,6 +167,7 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
 
   const handleEditBranch = (b: BranchConfig) => {
     setEditingBranchId(b.id);
+    setBranchCodeInput(b.branchCode || '');
     setNameEn(b.nameEn);
     setNameUr(b.nameUr);
     setAddressUr(b.addressUr);
@@ -197,7 +198,7 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
     }
     if (!phoneNumbers.trim()) {
       setFeedback({
-        text: isUr ? 'برانچ کا فون نمبر درج کریں۔' : 'Branch phone number(s) required for printed Bilty.',
+        text: isUr ? 'برانچ کا فون نمبر درج کریں۔' : 'Branch phone number required for printed Bilty.',
         ok: false
       });
       return;
@@ -213,11 +214,21 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
       return;
     }
 
+    const editingIsHead = editingBranchId ? isHeadOfficeBranchId(editingBranchId) : false;
+    const normalizedCode = editingIsHead
+      ? ''
+      : normalizeBranchCode(branchCodeInput) ||
+        suggestBranchCode(
+          nameEn || nameUr,
+          branches.map(b => b.branchCode || '').filter(Boolean)
+        );
+
     setSavingBranch(true);
     setFeedback(null);
     try {
       const saved = await saveBranchConfig({
         ...(editingBranchId ? { id: editingBranchId } : {}),
+        ...(!editingIsHead && normalizedCode ? { branchCode: normalizedCode } : {}),
         nameEn: nameEn.trim() || nameUr.trim(),
         nameUr: nameUr.trim() || nameEn.trim(),
         addressUr: addressUr.trim() || addressEn.trim(),
@@ -266,6 +277,7 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
   const resetStaffForm = () => {
     setStaffEmail('');
     setStaffName('');
+    setStaffSalutation('Mr');
     setPresetRole('munshi');
     setPermissions(getPresetPermissions('munshi'));
     setEditingStaffEmail(null);
@@ -280,6 +292,7 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
     setEditingStaffEmail(member.email);
     setStaffEmail(member.email);
     setStaffName(member.displayName || '');
+    setStaffSalutation(normalizeSalutation(member.salutation));
     setPresetRole(member.presetRole);
     setPermissions({ ...member.permissions });
     setFeedback(null);
@@ -310,12 +323,11 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
     setSavingStaff(true);
     setFeedback(null);
     try {
-      const matchedDir = directoryUsers.find(u => normalizeEmail(u.email) === cleanEmail);
       await upsertBranchStaffMember({
         branch: targetBranch,
         email: cleanEmail,
-        displayName: staffName.trim() || matchedDir?.displayName || cleanEmail.split('@')[0],
-        uid: matchedDir?.uid,
+        displayName: staffName.trim() || cleanEmail.split('@')[0],
+        salutation: staffSalutation,
         presetRole,
         permissions,
         status: 'active'
@@ -385,7 +397,6 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
 
   const selectedBranchObj =
     branches.find(b => b.id === selectedStaffBranchId) || branches[0] || null;
-  const visibleDirectory = filterStaffRosterExcludingCreator(directoryUsers);
   const visibleStaff = filterStaffRosterExcludingCreator(staffList);
 
   return (
@@ -457,6 +468,11 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
                   <div>
                     <div className="font-bold text-xs text-[#1a477a] flex items-center gap-1.5 flex-wrap">
                       <span>{isUr ? b.nameUr : b.nameEn}</span>
+                      {b.branchCode && (
+                        <span className="px-1.5 py-0.5 rounded bg-sky-100 text-sky-900 font-mono text-[9px] font-bold">
+                          WG-{b.branchCode}
+                        </span>
+                      )}
                       {isHead && (
                         <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 text-[9px] font-bold">
                           HQ
@@ -683,6 +699,28 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
             />
           </div>
 
+          {(!editingBranchId || !isHeadOfficeBranchId(editingBranchId)) && (
+            <div>
+              <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
+                {isUr
+                  ? 'برانچ کوڈ (2-3 انگریزی حروف، جیسے LHR — بلٹی نمبر کیلئے مستقل)'
+                  : 'Branch Code (2–3 letters, e.g. LHR — immutable once saved)'}
+              </label>
+              <input
+                type="text"
+                maxLength={3}
+                disabled={Boolean(
+                  editingBranchId && branches.find(b => b.id === editingBranchId)?.branchCode
+                )}
+                value={branchCodeInput}
+                onChange={e => setBranchCodeInput(normalizeBranchCode(e.target.value))}
+                placeholder="LHR"
+                dir="ltr"
+                className="w-full px-3 py-2 bg-white border border-[#d6c3b0] rounded-xl font-mono uppercase focus:outline-none focus:border-[#1a477a] disabled:opacity-60"
+              />
+            </div>
+          )}
+
           <div>
             <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
               {isUr ? 'آنر کا نام (ڈیش بورڈ خوش آمدید نوٹ کیلئے)' : 'Branch Owner Name (for Welcome Note)'}
@@ -752,35 +790,6 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
           </select>
         </div>
 
-        {/* Signed-In Gmail Directory Chips */}
-        {visibleDirectory.length > 0 && (
-          <div className="space-y-1.5">
-            <div className="text-[10px] font-bold text-[#6b6b55] flex items-center gap-1">
-              <Mail className="w-3 h-3 text-emerald-700" />
-              <span>
-                {isUr
-                  ? 'سائن ان شدہ جی میل اکاؤنٹس (منتخب کرنے کیلئے کلک کریں):'
-                  : 'Signed-in Gmail Accounts (Click to select):'}
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
-              {visibleDirectory.map(u => (
-                <button
-                  key={u.email}
-                  type="button"
-                  onClick={() => {
-                    setStaffEmail(u.email);
-                    if (!staffName && u.displayName) setStaffName(u.displayName);
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-[#d6c3b0] text-[11px] font-mono text-[#1a477a] hover:bg-[#1a477a] hover:text-white transition-colors cursor-pointer"
-                >
-                  {u.email}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         <form onSubmit={handleSaveStaff} className="space-y-3 bg-white p-3.5 rounded-2xl border border-[#ecece0]">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#1a477a]">
@@ -789,8 +798,8 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
                   ? `اسٹاف رول ترمیم: ${editingStaffEmail}`
                   : `Editing Role: ${editingStaffEmail}`
                 : isUr
-                ? `"${selectedBranchObj?.nameUr || ''}" میں اسٹاف شامل کریں`
-                : `Add Staff to "${selectedBranchObj?.nameEn || ''}"`}
+                ? `"${selectedBranchObj?.nameUr || ''}" میں اسٹاف شامل کریں (Gmail درج کریں)`
+                : `Add Staff to "${selectedBranchObj?.nameEn || ''}" by Gmail`}
             </span>
             {editingStaffEmail && (
               <button
@@ -803,7 +812,7 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs">
             <div>
               <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
                 {isUr ? 'اسٹاف جی میل *' : 'Staff Gmail *'}
@@ -822,7 +831,7 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
 
             <div>
               <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
-                {isUr ? 'شخص کا نام (خوش آمدید نوٹ کیلئے) *' : 'Assigned Person Name (Welcome Note) *'}
+                {isUr ? 'شخص کا نام (خوش آمدید نوٹ کیلئے) *' : 'Assigned Person Name *'}
               </label>
               <input
                 type="text"
@@ -832,6 +841,21 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
                 placeholder={isUr ? 'مثلاً علی خان' : 'e.g. Ali Khan'}
                 className="w-full px-3 py-2 bg-[#fdfbf7] border border-[#d6c3b0] rounded-xl focus:outline-none focus:border-[#1a477a]"
               />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-[#5a5a40] mb-1">
+                {isUr ? 'لقب (Mr/Ms)' : 'Salutation'}
+              </label>
+              <select
+                value={staffSalutation}
+                onChange={e => setStaffSalutation(normalizeSalutation(e.target.value))}
+                className="w-full px-3 py-2 bg-[#fdfbf7] border border-[#d6c3b0] rounded-xl font-bold focus:outline-none focus:border-[#1a477a]"
+              >
+                <option value="Mr">{isUr ? 'جناب (Mr)' : 'Mr'}</option>
+                <option value="Ms">{isUr ? 'محترمہ (Ms)' : 'Ms'}</option>
+                <option value="none">{isUr ? 'بغیر لقب' : 'None'}</option>
+              </select>
             </div>
 
             <div>

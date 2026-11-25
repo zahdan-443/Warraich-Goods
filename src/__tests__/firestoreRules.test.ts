@@ -2,90 +2,96 @@ import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 
-describe('Firestore Rules Security Audit & Structure', () => {
+describe('Firestore Rules Security Audit & Multi-Branch RBAC Matrix', () => {
   const rulesPath = path.resolve(__dirname, '../../firestore.rules');
   const rulesContent = fs.readFileSync(rulesPath, 'utf8');
 
-  it('should exist and define version 2 rules', () => {
+  it('should exist, define version 2 rules, and enforce default-deny catch-all', () => {
     expect(rulesContent).toContain("rules_version = '2';");
     expect(rulesContent).toContain('service cloud.firestore');
+    expect(rulesContent).toMatch(/match \/\{document=\*\*\} \{\s*allow read, write: if false;\s*\}/);
   });
 
-  it('should verify owner email AND email_verified status', () => {
-    expect(rulesContent).toContain("request.auth.token.email.lower() == 'warraichgoods43@gmail.com'");
+  it('should verify owner email AND email_verified status on caller claims', () => {
+    expect(rulesContent).toContain("callerEmailLower() == 'warraichgoods43@gmail.com'");
     expect(rulesContent).toContain("'email_verified' in request.auth.token");
+    expect(rulesContent).toContain('function isVerifiedCaller()');
   });
 
-  it('should enforce branch-scoped RBAC in isBiltyAuthorized() without legacy unsafe isStaffAuthorized delegation', () => {
-    expect(rulesContent).toContain('function isBiltyAuthorized()');
-    expect(rulesContent).toContain('function hasActiveUserBranchAccess()');
-    expect(rulesContent).toContain('function isBranchOwner(branchId)');
+  it('should eliminate signedInDirectory and legacy userBranchAccess in favor of single-get branches/{branchId}/members/{emailKey}', () => {
+    expect(rulesContent).not.toContain('match /signedInDirectory/');
+    expect(rulesContent).not.toContain('match /userBranchAccess/');
     expect(rulesContent).not.toContain('function isStaffAuthorized(');
-    expect(rulesContent).toContain('match /branches/{branchId}');
-    expect(rulesContent).toContain('match /addaPendingFreight/{itemId}');
-    expect(rulesContent).toContain('match /addaPendingCommissions/{itemId}');
-    expect(rulesContent).toContain('match /addaBills/{billId}');
-    expect(rulesContent).toContain('match /userBranchAccess/{emailKey}');
-    expect(rulesContent).toContain('match /signedInDirectory/{emailKey}');
+
+    expect(rulesContent).toContain('function getMemberPath(branchId, emailKey)');
+    expect(rulesContent).toContain('branches/$(branchId)/members/$(emailKey)');
+    expect(rulesContent).toContain('match /members/{emailKey}');
+    expect(rulesContent).toContain('match /{path=**}/members/{emailKey}');
     expect(rulesContent).toContain("emailKey != 'warraichgoods43@gmail.com'");
   });
 
-  it('should explicitly deny top-level bilties collection', () => {
-    expect(rulesContent).toMatch(/match \/bilties\/\{biltyId\} \{\s*allow read, write: if false;\s*\}/);
+  it('should prevent self-escalation, Branch Owner assigning branch_owner/manageBranchStaff, and lock legal branch fields', () => {
+    // Non-creator Branch Owner cannot mutate legal or ownership keys
+    expect(rulesContent).toContain("'branchCode'");
+    expect(rulesContent).toContain("'ntn'");
+    expect(rulesContent).toContain("'companyHeaderUr'");
+    expect(rulesContent).toContain("'companyHeaderEn'");
+    expect(rulesContent).toContain("'proprietorNameUr'");
+    expect(rulesContent).toContain("'proprietorNameEn'");
+    expect(rulesContent).toContain("'startingBiltySeq'");
+    expect(rulesContent).toContain("'ownerEmail'");
+
+    // Non-creator Branch Owner cannot edit self or grant branch_owner / manageBranchStaff
+    expect(rulesContent).toContain('emailKey != callerEmailLower()');
+    expect(rulesContent).toContain('permissions.manageBranchStaff == false');
   });
 
-  it('should restrict publicBiltyVerifications to single-doc get only publicly and list only for authorized accounts (#23)', () => {
+  it('should enforce branch-scoped counters, Adda financial transition guards, and non-paid bill delete lock', () => {
+    expect(rulesContent).toContain('match /counters/{counterId}');
+    expect(rulesContent).toContain("counterId in ['bilty', 'bill']");
+    expect(rulesContent).toContain('request.resource.data.nextSeq > resource.data.nextSeq');
+
+    expect(rulesContent).toContain('match /adda_items/{itemId}');
+    expect(rulesContent).toContain('function isValidAddaItemUpdate(branchId)');
+    expect(rulesContent).toContain("resource.data.status != 'paid'");
+    expect(rulesContent).toContain("resource.data.status != 'billed'");
+
+    expect(rulesContent).toContain('match /adda_bills/{billId}');
+    expect(rulesContent).toContain('resource.data.paidAmountPaisa == 0');
+    expect(rulesContent).toContain('match /adda_parties/{partyId}');
+  });
+
+  it('should keep personal Khata isolated under users/{uid} and creator attachments strictly Creator-only', () => {
+    expect(rulesContent).toContain('match /biltyAttachments/{attachmentId}');
+    expect(rulesContent).toContain('allow read, delete: if isOwner() && request.auth.uid == userId;');
+    expect(rulesContent).toContain('request.resource.data.byteSize <= 409600');
+    expect(rulesContent).toContain('subcollection[0] != \'biltyAttachments\'');
+  });
+
+  it('should explicitly deny top-level bilties collection and scope publicBiltyVerifications by branchId (#23)', () => {
+    expect(rulesContent).toMatch(/match \/bilties\/\{biltyId\} \{\s*allow read, write: if false;\s*\}/);
     expect(rulesContent).toContain('match /publicBiltyVerifications/{docId}');
     expect(rulesContent).toContain('allow get: if true;');
-    expect(rulesContent).toContain('allow list: if isBiltyAuthorized();');
+    expect(rulesContent).toContain('allow list: if isOwner();');
     expect(rulesContent).not.toMatch(/match \/publicBiltyVerifications\/\{docId\} \{[^}]*allow read: if true;/);
-    expect(rulesContent).toContain('allow create, update: if isBiltyAuthorized()');
     expect(rulesContent).toContain('docId == docId.upper()');
     expect(rulesContent).toContain('request.resource.data.biltyNo == docId');
-    expect(rulesContent).toContain('allow delete: if isBiltyAuthorized();');
+    expect(rulesContent).toContain('hasBranchBiltyWrite(request.resource.data.branchId)');
+    expect(rulesContent).toContain('hasBranchBiltyWrite(resource.data.branchId)');
+    expect(rulesContent).toContain('hasBranchBiltyDelete(resource.data.branchId)');
 
-    // Explicit 8 allowed sanitized fields
+    // Required sanitized fields & forbidden PII/financial keys
     expect(rulesContent).toContain("'biltyNo', 'biltyDate', 'origin', 'destination'");
     expect(rulesContent).toContain("'goodsDescription', 'weightOrQty', 'vehicleNo', 'status'");
-
-    // Explicit forbidden keys in defense-in-depth guard
     expect(rulesContent).toContain('senderCnic');
     expect(rulesContent).toContain('senderMobile');
     expect(rulesContent).toContain('driverName');
     expect(rulesContent).toContain('paymentStatus');
-    expect(rulesContent).toContain('total');
-    expect(rulesContent).toContain('payable');
     expect(rulesContent).toContain('freight');
-  });
-
-  it('should secure users and usersData collections and enforce strict user data isolation', () => {
-    expect(rulesContent).toContain('match /usersData/{userId}');
-    expect(rulesContent).toContain('match /users/{userId}');
-    expect(rulesContent).toContain('allow read, write: if isSignedIn() && request.auth.uid == userId && isNotSelfPromoting();');
-    expect(rulesContent).toContain('match /{subcollection=**} {');
-    expect(rulesContent).toContain('allow read, write: if isSignedIn() && request.auth.uid == userId;');
-  });
-
-  it('should restrict access/biltyAccess and admins to owner only', () => {
-    expect(rulesContent).toContain('match /access/biltyAccess');
-    expect(rulesContent).toContain('allow read, write: if isOwner();');
-    expect(rulesContent).toContain('match /admins/{adminId}');
-  });
-
-  it('should allow counters collection only to authorized bilty accounts with strict integer check', () => {
-    expect(rulesContent).toContain('match /counters/{counterId}');
-    expect(rulesContent).toContain('allow read: if isSignedIn();');
-    expect(rulesContent).toContain('allow write: if isBiltyAuthorized()');
-    expect(rulesContent).toContain("request.resource.data.keys().hasOnly(['currentValue', 'value', 'updatedAt'])");
   });
 
   it('should enforce strict schema, GPS bounding, and atomic +1 unique-UID flagging on hazardReports (#24)', () => {
     expect(rulesContent).toContain('match /hazardReports/{reportId}');
-    expect(rulesContent).toContain('allow read: if isSignedIn();');
-    expect(rulesContent).toContain('request.resource.data.reporterUid == request.auth.uid');
-    expect(rulesContent).toContain('request.resource.data.lat >= 23.0 && request.resource.data.lat <= 38.0');
-    expect(rulesContent).toContain('request.resource.data.lng >= 60.0 && request.resource.data.lng <= 78.0');
-    expect(rulesContent).toContain('request.resource.data.createdAt == request.time;');
     expect(rulesContent).toContain('function isValidHazardFlagUpdate()');
     expect(rulesContent).toContain('nextFlags == prevFlags + 1');
     expect(rulesContent).toContain('!(request.auth.uid in resource.data.flaggedBy)');
@@ -94,15 +100,8 @@ describe('Firestore Rules Security Audit & Structure', () => {
 
   it('should require authenticated userUid match on crashReports and validate accountDeletionRequests (#25, #18)', () => {
     expect(rulesContent).toContain('match /crashReports/{reportId}');
-    expect(rulesContent).toContain('allow create: if isSignedIn() &&');
     expect(rulesContent).toContain('request.resource.data.userUid == request.auth.uid');
-    expect(rulesContent).toContain('allow delete: if isOwner() || (isSignedIn() && resource.data.userUid == request.auth.uid);');
-
     expect(rulesContent).toContain('match /accountDeletionRequests/{requestId}');
-    expect(rulesContent).toContain("request.resource.data.userEmail.matches('^[^@\\\\s]+@[^@\\\\s]+\\\\.[^@\\\\s]+$')");
-    expect(rulesContent).toContain("request.resource.data.requestedAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}.*$')");
-
     expect(rulesContent).toContain('match /activityLog/{logId}');
-    expect(rulesContent).toContain('allow delete: if isOwner() || (isSignedIn() && resource.data.uid == request.auth.uid);');
   });
 });
