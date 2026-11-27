@@ -28,7 +28,7 @@ import {
 import { getCrashReportingConsent, setCrashReportingConsent } from '../utils/crashReportingService';
 import { isOwnerEmail } from '../utils/authUtils';
 import { APP_VERSION } from '../constants/version';
-import { resolvePublicAppShareUrl, shareTextOrUrl } from '../utils/externalLinks';
+import { PALM_STORE_URL, shareTextOrUrl } from '../utils/externalLinks';
 
 interface HeaderProps {
   lang: Language;
@@ -256,7 +256,7 @@ export const Header: React.FC<HeaderProps> = ({
     const shareText = lang === 'ur'
       ? 'ڈرائیور دوست - ٹرپ اخراجات کیلکولیٹر، ٹول ٹیکس، ڈیزل مانیٹر اور فلیٹ مینجمنٹ سسٹم۔'
       : 'Driver Dost - Road Freight, Trip Diary, Toll Calculator & Fleet Management System.';
-    const shareUrl = resolvePublicAppShareUrl();
+    const shareUrl = PALM_STORE_URL;
 
     const status = await shareTextOrUrl({
       title: shareTitle,
@@ -664,11 +664,20 @@ export const Header: React.FC<HeaderProps> = ({
                       handleCloseMenu();
                       handleShareApp();
                     }}
-                    className="w-full py-2.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-all active:scale-95"
+                    className="w-full min-h-[44px] py-2.5 px-4 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xs cursor-pointer transition-all active:scale-95"
                   >
-                    <Share2 className="w-4 h-4 text-emerald-200" />
-                    <span>{lang === 'ur' ? 'ایپ کا لنک شیئر کریں' : 'Share App Link'}</span>
+                    <Share2 className="w-4 h-4 text-emerald-200 shrink-0" />
+                    <span>{lang === 'ur' ? 'ایپ کا لنک شیئر کریں (پام اسٹور)' : 'Share App Link (Palm Store)'}</span>
                   </button>
+                  <a
+                    href={PALM_STORE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full min-h-[44px] py-2.5 px-4 bg-[#1e3a68] hover:bg-[#162a4d] text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-95"
+                  >
+                    <Download className="w-4 h-4 text-[#f3d478] shrink-0" />
+                    <span>{lang === 'ur' ? 'پام اسٹور سے ڈرائیور دوست ڈاؤن لوڈ کریں' : 'Download Driver Dost on Palm Store'}</span>
+                  </a>
                 </div>
 
                 {/* NATIVE APP STATUS OR PWA INSTALL CARD */}

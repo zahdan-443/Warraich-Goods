@@ -39,7 +39,8 @@ import {
   Info,
   RefreshCw,
   Building2,
-  Briefcase
+  Briefcase,
+  Download
 } from 'lucide-react';
 import { HomeWeatherFuelCard } from '../HomeWeatherFuelCard';
 import { TermsModal } from '../TermsModal';
@@ -48,6 +49,7 @@ import { TollCalculatorModal } from '../TollCalculatorModal';
 import { checkExpiringDocuments, processExpiryNotifications, ExpiringDocumentItem } from '../../utils/documentExpiry';
 import { resolveEffectiveCompanyDetails } from '../../utils/addaBillingStorage';
 import { formatSalutationGreeting, isOwnerEmail } from '../../utils/authUtils';
+import { PALM_STORE_URL } from '../../utils/externalLinks';
 
 // Embedded high-resolution base64 images - 100% offline proof, zero 404s, works across all Android PWA & APK wrappers
 import {
@@ -892,6 +894,34 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
         {/* Merged Date, Live Weather & Pakistan POL Rates Monitor (Minimalist & Beautiful) */}
         <HomeWeatherFuelCard lang={lang} onApplyRates={onLogFuelPrice ? (diesel, petrol, cng) => { onLogFuelPrice(typeof diesel === 'number' ? diesel : (diesel ? Number(diesel) : undefined), typeof petrol === 'number' ? petrol : (petrol ? Number(petrol) : undefined), typeof cng === 'number' ? cng : (cng ? Number(cng) : undefined)); } : undefined} onOpenTerms={() => setShowTermsModal(true)} onOpenPrivacy={() => setShowHomePrivacyModal(true)} />
+
+        {/* Official Palm Store App Download Footer (Visible on Web & Android App) */}
+        <footer className="bg-white dark:bg-[#1a1c22] border border-[#ecece0] dark:border-[#2d313b] rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs">
+          <div className="space-y-0.5 min-w-0">
+            <p className="font-serif font-bold text-sm text-[#4a4a35] dark:text-slate-100">
+              {lang === 'ur' ? 'ڈرائیور دوست اینڈرائیڈ ایپ — پام اسٹور' : 'Driver Dost Android App on Palm Store'}
+            </p>
+            <p className="text-xs text-[#62774f] dark:text-slate-400">
+              {lang === 'ur'
+                ? 'پام اسٹور پر آفیشل اینڈرائیڈ ورژن حاصل کریں اور دوستوں سے شیئر کریں'
+                : 'Get the official Android edition on Palm Store for Pakistan fleet and trip tools'}
+            </p>
+          </div>
+          <a
+            href={PALM_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 min-h-[44px] py-2.5 px-5 rounded-xl bg-[#1e3a68] hover:bg-[#162a4d] text-white font-bold text-xs sm:text-sm whitespace-nowrap shrink-0 shadow-xs transition-all active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1e3a68]"
+          >
+            <Download className="w-4 h-4 text-[#f3d478] shrink-0" />
+            <span>
+              {lang === 'ur'
+                ? 'پام اسٹور سے ڈرائیور دوست ڈاؤن لوڈ کریں'
+                : 'Download Driver Dost on Palm Store'}
+            </span>
+            <ExternalLink className="w-3.5 h-3.5 text-white/85 shrink-0" />
+          </a>
+        </footer>
 
       </div>
 

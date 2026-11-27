@@ -1,7 +1,8 @@
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 
-export const PUBLIC_APP_SHARE_URL = 'https://zahdan-443.github.io/Warraich-Goods/';
+export const PALM_STORE_URL = 'https://palmplaystore.com/detail/com.warraichgoods.driverdost?country=PK';
+export const PUBLIC_APP_SHARE_URL = PALM_STORE_URL;
 
 /**
  * Resolves the canonical public HTTPS URL for sharing the app.
