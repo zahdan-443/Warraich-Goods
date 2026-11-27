@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-1.3.1-mwyd95zh';
+const CACHE_NAME = 'driver-dost-1.3.1-mwyf0iz2';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const MAX_CACHED_TILES = 350;
 
@@ -51,32 +51,32 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/AddaPanelView-CqFFd5uK.js',
-  './assets/BiltyView-CssImHTD.js',
-  './assets/DashcamView-t1R6imPC.js',
-  './assets/DriversView-CHKmLcn_.js',
-  './assets/FuelLogView-DA3KUU75.js',
-  './assets/LedgerView-iB8aT059.js',
+    './assets/AddaPanelView-CmfVcyB4.js',
+  './assets/BiltyView-vCTXq8vV.js',
+  './assets/DashcamView-DjKxnXu5.js',
+  './assets/DriversView-Hh7AXwvo.js',
+  './assets/FuelLogView-CGRWu_5s.js',
+  './assets/LedgerView-Ce0RJkCm.js',
   './assets/MapView-CIGW-MKW.css',
-  './assets/MapView-k4fJCTi7.js',
-  './assets/NavigationView-BKCRtSSq.js',
-  './assets/RoutesView-BhTe4XBS.js',
-  './assets/TollPlazaView-DWOKMlLt.js',
-  './assets/TripCostView-CS4TZ7qa.js',
-  './assets/VehicleAccountView-BqJeAS_m.js',
-  './assets/VehiclesView-Sd857dpu.js',
-  './assets/VerifyView-6UThp9bT.js',
+  './assets/MapView-DMREGW7U.js',
+  './assets/NavigationView-DFZ6YDkf.js',
+  './assets/RoutesView-DWBrscCa.js',
+  './assets/TollPlazaView-B1xE_-jD.js',
+  './assets/TripCostView-CExxCa8J.js',
+  './assets/VehicleAccountView-CGSYNbzY.js',
+  './assets/VehiclesView-CeIKK2-E.js',
+  './assets/VerifyView-B7c7N7M6.js',
   './assets/bilty_watermark_bg_1794821577675-BFAqost0.jpg',
-  './assets/index-3BR2exfy.js',
-  './assets/index-DUaoPclq.css',
-  './assets/pdfHelper-BzVwU99k.js',
+  './assets/index-BW4yyOgM.css',
+  './assets/index-ZQjh23ZC.js',
+  './assets/pdfHelper-Bjf2epLT.js',
   './assets/vendor-firebase-BqtaKuRp.js',
-  './assets/vendor-pdf-Dg6mzf7j.js',
-  './assets/vendor-react-DEe09b3l.js',
+  './assets/vendor-pdf-nSiifT6Q.js',
+  './assets/vendor-react-hzAChmK4.js',
+  './assets/web-C56y9C6j.js',
   './assets/web-CCwXpY4x.js',
   './assets/web-CQbvCdY3.js',
-  './assets/web-CgmvjRPY.js',
-  './assets/web-EWaxnMw9.js'
+  './assets/web-CgmvjRPY.js'
 ];
 
 // 1. Install Event: Precache All Shell Assets + Parse HTML for Vite Bundles
