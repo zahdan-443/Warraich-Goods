@@ -24,6 +24,8 @@ interface RouteHazardAdvisoryBannerProps {
   onOpenReportModal: () => void;
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  blockedCount?: number;
+  onRestoreBlocked?: () => void;
 }
 
 export const RouteHazardAdvisoryBanner: React.FC<RouteHazardAdvisoryBannerProps> = ({
@@ -31,7 +33,9 @@ export const RouteHazardAdvisoryBanner: React.FC<RouteHazardAdvisoryBannerProps>
   summaries,
   onOpenReportModal,
   onRefresh,
-  isRefreshing = false
+  isRefreshing = false,
+  blockedCount = 0,
+  onRestoreBlocked
 }) => {
   const isUrdu = lang === 'ur';
 
@@ -68,6 +72,27 @@ export const RouteHazardAdvisoryBanner: React.FC<RouteHazardAdvisoryBannerProps>
   };
 
   if (summaries.length === 0) {
+    if (blockedCount > 0 && onRestoreBlocked) {
+      return (
+        <div
+          className="px-3.5 py-2.5 rounded-xl bg-amber-50/70 dark:bg-[#231707]/60 border border-amber-200 dark:border-amber-700/60 flex items-center justify-between gap-2 text-xs"
+          dir={isUrdu ? 'rtl' : 'ltr'}
+        >
+          <span className="text-amber-900 dark:text-amber-200 font-medium">
+            {isUrdu
+              ? `${blockedCount} صارف کی روڈ رپورٹس چھپائی گئی ہیں`
+              : `${blockedCount} blocked hazard ${blockedCount === 1 ? 'reporter is' : 'reporters are'} hidden`}
+          </span>
+          <button
+            type="button"
+            onClick={onRestoreBlocked}
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#16181e] border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 font-bold hover:bg-amber-100 transition-colors cursor-pointer shrink-0"
+          >
+            {isUrdu ? 'سب دوبارہ دکھائیں' : 'Show all'}
+          </button>
+        </div>
+      );
+    }
     return null;
   }
 
@@ -161,6 +186,23 @@ export const RouteHazardAdvisoryBanner: React.FC<RouteHazardAdvisoryBannerProps>
           );
         })}
       </div>
+
+      {blockedCount > 0 && onRestoreBlocked && (
+        <div className="pt-1 border-t border-amber-200/70 dark:border-amber-800/40 flex items-center justify-between gap-2 text-[11px] text-amber-900 dark:text-amber-300">
+          <span>
+            {isUrdu
+              ? `${blockedCount} بلاک کردہ صارفین کی رپورٹس چھپی ہوئی ہیں`
+              : `${blockedCount} blocked ${blockedCount === 1 ? 'reporter is' : 'reporters are'} hidden`}
+          </span>
+          <button
+            type="button"
+            onClick={onRestoreBlocked}
+            className="font-bold underline hover:text-amber-950 dark:hover:text-white cursor-pointer"
+          >
+            {isUrdu ? 'سب دوبارہ دکھائیں' : 'Restore hidden'}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

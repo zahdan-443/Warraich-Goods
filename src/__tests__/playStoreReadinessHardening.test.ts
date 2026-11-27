@@ -108,4 +108,27 @@ describe('Google Play Readiness & Security Hardening Suite', () => {
       expect(res.message).toContain('sign in');
     });
   });
+
+  describe('Store APK Payload Slimming & Compliance Checks', () => {
+    it('should alias CameraOcrInput and VoiceInputButton to zero-footprint stubs in VITE_STORE_BUILD mode', async () => {
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+      const root = process.cwd();
+
+      const viteConfig = fs.readFileSync(path.join(root, 'vite.config.ts'), 'utf8');
+      expect(viteConfig).toContain('CameraOcrInputStub.tsx');
+      expect(viteConfig).toContain('VoiceInputButtonStub.tsx');
+      expect(fs.existsSync(path.join(root, 'src/components/CameraOcrInputStub.tsx'))).toBe(true);
+      expect(fs.existsSync(path.join(root, 'src/components/VoiceInputButtonStub.tsx'))).toBe(true);
+
+      const syncScript = fs.readFileSync(path.join(root, 'scripts/sync-android-assets.js'), 'utf8');
+      expect(syncScript).toContain("rel === 'tesseract'");
+      expect(syncScript).toContain("'warraich-card.png'");
+      expect(syncScript).toContain("'manifest.json'");
+
+      const mapViewSource = fs.readFileSync(path.join(root, 'src/components/views/MapView.tsx'), 'utf8');
+      expect(mapViewSource).toContain('blockHazardReporter');
+      expect(mapViewSource).not.toMatch(/\balert\(/);
+    });
+  });
 });

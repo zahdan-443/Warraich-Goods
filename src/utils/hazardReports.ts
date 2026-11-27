@@ -185,6 +185,72 @@ export function formatTimeAgo(timestamp: any, lang: Language): string {
 // Local storage key for rate limit fast check
 const LOCAL_RATE_LIMIT_KEY = 'wg_last_hazard_report_ms';
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+const BLOCKED_REPORTERS_STORAGE_KEY = 'wg_blocked_hazard_reporters';
+
+function getBlockedReportersKey(): string {
+  const uid = auth.currentUser?.uid;
+  return uid ? `${BLOCKED_REPORTERS_STORAGE_KEY}_${uid}` : BLOCKED_REPORTERS_STORAGE_KEY;
+}
+
+export function getBlockedHazardReporters(): string[] {
+  try {
+    const raw = localStorage.getItem(getBlockedReportersKey());
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? Array.from(new Set(parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export function blockHazardReporter(reporterUid: string): string[] {
+  const cleanUid = (reporterUid || '').trim();
+  if (!cleanUid) return getBlockedHazardReporters();
+  const current = getBlockedHazardReporters();
+  if (current.includes(cleanUid)) return current;
+  const next = [...current, cleanUid];
+  try {
+    localStorage.setItem(getBlockedReportersKey(), JSON.stringify(next));
+  } catch {
+    // ignore storage quota failures
+  }
+  return next;
+}
+
+export function unblockHazardReporter(reporterUid: string): string[] {
+  const cleanUid = (reporterUid || '').trim();
+  const next = getBlockedHazardReporters().filter((uid) => uid !== cleanUid);
+  try {
+    localStorage.setItem(getBlockedReportersKey(), JSON.stringify(next));
+  } catch {
+    // ignore
+  }
+  return next;
+}
+
+export function clearBlockedHazardReporters(): string[] {
+  try {
+    localStorage.removeItem(getBlockedReportersKey());
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+export function filterUnblockedHazardReports(
+  reports: HazardReport[],
+  blockedReporterUids: string[] = getBlockedHazardReporters()
+): HazardReport[] {
+  if (!Array.isArray(reports) || reports.length === 0) return [];
+  const blockedSet = new Set(blockedReporterUids);
+  return reports.filter(
+    (report) =>
+      (typeof report.flags !== 'number' || report.flags < 3) &&
+      (!report.reporterUid || !blockedSet.has(report.reporterUid))
+  );
+}
 
 /**
  * Check if the user has reported a hazard in the last 5 minutes (Requirement 3).

@@ -204,13 +204,9 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
       const timeoutId = controller ? setTimeout(() => controller.abort(), 12000) : null;
       let resp;
       try {
-        resp = await fetch(url, { 
+        resp = await fetch(url, {
           cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          },
-          signal: controller ? controller.signal : undefined 
+          signal: controller ? controller.signal : undefined
         });
       } finally {
         if (timeoutId) clearTimeout(timeoutId);
@@ -402,9 +398,11 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
       setEffectiveDate(data.effectiveDate);
       if (force) {
         setFuelStatusMsg({
-          type: 'success',
-          text: data.isFallback
-            ? (isUrdu ? `آف لائن / محفوظ ریٹس فعال ہیں (${data.effectiveDate})` : `Cached / Official rates active (${data.effectiveDate})`)
+          type: data.isFallback || data.isStale ? 'error' : 'success',
+          text: data.isManualOverride
+            ? (isUrdu ? `پمپ کا دستی ریٹ فعال ہے (${data.effectiveDate})` : `Manual pump override active (${data.effectiveDate})`)
+            : data.isFallback
+            ? (isUrdu ? `لائیو فیڈ دستیاب نہیں — آخری محفوظ / سرکاری ریٹ فعال ہے (${data.effectiveDate})` : `Live feed offline — cached / official rates active (${data.effectiveDate})`)
             : (isUrdu ? `سرکاری ریٹس کامیابی سے ہم آہنگ ہو گئے (${data.effectiveDate})` : `Official rates synced (${data.effectiveDate})`)
         });
       }
@@ -804,9 +802,15 @@ export const HomeWeatherFuelCard: React.FC<HomeWeatherFuelCardProps> = ({
 
         {/* Status Msg */}
         {fuelStatusMsg && (
-          <div className="p-2 rounded-xl text-xs font-medium flex items-center justify-between gap-1.5 bg-[#f9f9f2] text-[#5a5a40] border border-[#8b9d77] animate-in fade-in">
+          <div className={`p-2 rounded-xl text-xs font-medium flex items-center justify-between gap-1.5 animate-in fade-in ${
+            fuelStatusMsg.type === 'success'
+              ? 'bg-[#f9f9f2] text-[#5a5a40] border border-[#8b9d77]'
+              : 'bg-amber-50 text-amber-800 border border-amber-200'
+          }`}>
             <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#8b9d77] shrink-0" />
+              {fuelStatusMsg.type === 'success'
+                ? <CheckCircle2 className="w-3.5 h-3.5 text-[#8b9d77] shrink-0" />
+                : <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />}
               <span>{fuelStatusMsg.text}</span>
             </div>
             <button

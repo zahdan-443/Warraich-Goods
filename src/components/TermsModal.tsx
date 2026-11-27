@@ -36,8 +36,8 @@ const SECTIONS: TermSection[] = [
     id: 3,
     titleEn: '3. What the App Offers',
     titleUr: '3. ایپ کی سہولیات',
-    contentEn: 'Trip fuel and cost calculation, motorway and highway toll estimates, route comparison, weather and fuel-rate information, navigation help using your location, road hazard alerts shared by drivers, fleet, vehicle, driver and expense records, billing and invoice records, employee salary and advance ledgers, receiving point balances, daily expense tracking, financial summary reports, document-expiry reminders, local OCR document scanning, local PDF export and WhatsApp sharing, and quick links to third-party government portals. All user-entered bills, employee names/phones/salary entries, and receiving point records stay strictly on your own device or private authenticated account without collecting government IDs. Features may be added, changed or removed over time.',
-    contentUr: 'ٹرپ کے ایندھن اور اخراجات کا حساب، موٹروے اور ہائی وے ٹول کا تخمینہ، روٹ کا موازنہ، موسم اور ایندھن کے نرخوں کی معلومات، آپ کی لوکیشن کے ذریعے نیویگیشن میں مدد، ڈرائیورز کی طرف سے روڈ ہیزرڈ الرٹس، فلیٹ، گاڑی، ڈرائیور اور روزمرہ اخراجات کا ریکارڈ، بلز اور انوائس ریکارڈ، ملازمین کی تنخواہ اور ایڈوانس کھاتہ، ریسیونگ پوائنٹس کا حساب، کاروباری رپورٹس، دستاویزات کی میعاد کی یاد دہانی، لوکل او سی آر دستاویز اسکیننگ، لوکل پی ڈی ایف ایکسپورٹ اور واٹس ایپ شیئرنگ، اور تھرڈ پارٹی سرکاری پورٹلز کے فوری لنکس۔ صارف کے درج کردہ بلز، ملازمین کے نام/فون/تنخواہ کے اندراجات اور ریسیونگ پوائنٹس کا ڈیٹا بغیر کسی سرکاری آئی ڈی کے صرف آپ کی ڈیوائس یا نجی اکاؤنٹ میں رہتا ہے۔ فیچرز وقتاً فوقتاً شامل، تبدیل یا ختم کیے جا سکتے ہیں۔'
+    contentEn: 'Trip fuel and cost calculation, motorway and highway toll estimates, route comparison, weather and fuel-rate information, navigation help using your location, road hazard alerts shared by drivers, fleet, vehicle, driver and expense records, billing and invoice records, employee salary and advance ledgers, receiving point balances, daily expense tracking, financial summary reports, document-expiry reminders, local PDF export and WhatsApp sharing, and quick links to third-party government portals (plus local OCR document scanning on the Web edition). All user-entered bills, employee names/phones/salary entries, and receiving point records stay strictly on your own device or private authenticated account without collecting government IDs. Features may be added, changed or removed over time.',
+    contentUr: 'ٹرپ کے ایندھن اور اخراجات کا حساب، موٹروے اور ہائی وے ٹول کا تخمینہ، روٹ کا موازنہ، موسم اور ایندھن کے نرخوں کی معلومات، آپ کی لوکیشن کے ذریعے نیویگیشن میں مدد، ڈرائیورز کی طرف سے روڈ ہیزرڈ الرٹس، فلیٹ، گاڑی، ڈرائیور اور روزمرہ اخراجات کا ریکارڈ، بلز اور انوائس ریکارڈ، ملازمین کی تنخواہ اور ایڈوانس کھاتہ، ریسیونگ پوائنٹس کا حساب، کاروباری رپورٹس، دستاویزات کی میعاد کی یاد دہانی، لوکل پی ڈی ایف ایکسپورٹ اور واٹس ایپ شیئرنگ، اور تھرڈ پارٹی سرکاری پورٹلز کے فوری لنکس (نیز ویب ایڈیشن پر لوکل او سی آر دستاویز اسکیننگ)۔ صارف کے درج کردہ بلز، ملازمین کے نام/فون/تنخواہ کے اندراجات اور ریسیونگ پوائنٹس کا ڈیٹا بغیر کسی سرکاری آئی ڈی کے صرف آپ کی ڈیوائس یا نجی اکاؤنٹ میں رہتا ہے۔ فیچرز وقتاً فوقتاً شامل، تبدیل یا ختم کیے جا سکتے ہیں۔'
   },
   {
     id: 4,
@@ -62,24 +62,24 @@ const SECTIONS: TermSection[] = [
   },
   {
     id: 7,
-    titleEn: '7. Permissions: Location, Camera, Notifications',
-    titleUr: '7. اجازتیں: لوکیشن، کیمرہ، نوٹیفکیشنز',
-    contentEn: 'Location is used only while the App is open and only after you allow it, for route calculation, highway weather and nearby fuel rates. It is never tracked in the background, and you can use the App without location by choosing cities manually. The camera is used solely on-demand for local document and receipt scanning (OCR). The App does not require or access microphone audio. You can withdraw any permission at any time in device settings.',
-    contentUr: 'لوکیشن صرف اس وقت استعمال ہوتی ہے جب ایپ کھلی ہو اور آپ نے اجازت دی ہو، روٹ کے فاصلے، شاہراہوں کے موسم اور قریبی ایندھن کے نرخوں کے لیے۔ پس منظر (بیک گراؤنڈ) میں لوکیشن کبھی ٹریک نہیں ہوتی، اور آپ شہر خود چن کر لوکیشن کے بغیر بھی ایپ استعمال کر سکتے ہیں۔ کیمرہ صرف رسیدوں اور دستاویزات کی آن ڈیوائس اسکیننگ (OCR) کے لیے ہے۔ ایپ مائیکروفون کی اجازت طلب نہیں کرتی۔ آپ کسی بھی وقت ڈیوائس سیٹنگز میں اجازت واپس لے سکتے ہیں۔'
+    titleEn: '7. Permissions: Location & Notifications',
+    titleUr: '7. اجازتیں: لوکیشن اور نوٹیفکیشنز',
+    contentEn: 'Location is used only while the App is open and only after you allow it, for route calculation, highway weather and nearby fuel rates. It is never tracked in the background, and you can use the App without location by choosing cities manually. The official Android Store edition does not request camera or microphone permissions; local document OCR is limited to the Web edition. You can withdraw any permission at any time in device settings.',
+    contentUr: 'لوکیشن صرف اس وقت استعمال ہوتی ہے جب ایپ کھلی ہو اور آپ نے اجازت دی ہو، روٹ کے فاصلے، شاہراہوں کے موسم اور قریبی ایندھن کے نرخوں کے لیے۔ پس منظر (بیک گراؤنڈ) میں لوکیشن کبھی ٹریک نہیں ہوتی، اور آپ شہر خود چن کر لوکیشن کے بغیر بھی ایپ استعمال کر سکتے ہیں۔ آفیشل اینڈرائیڈ اسٹور ایپ کیمرہ یا مائیکروفون کی اجازت طلب نہیں کرتی؛ لوکل دستاویز اسکیننگ (OCR) صرف ویب ایڈیشن پر دستیاب ہے۔ آپ کسی بھی وقت ڈیوائس سیٹنگز میں اجازت واپس لے سکتے ہیں۔'
   },
   {
     id: 8,
     titleEn: '8. Road Hazard Reports (User-Generated)',
     titleUr: '8. روڈ ہیزرڈ رپورٹس (صارفین کی جانب سے)',
-    contentEn: 'Signed-in users can submit road hazard reports (category, location and time). By submitting, you confirm the report is genuine and made in good faith. Do not submit false, misleading or abusive reports or spam; submission frequency is limited. Reports are visible to other signed-in users, stop being shown after 24 hours, and you may delete your own reports. To flag an inaccurate or abusive report, email us; we may remove content and restrict users who misuse this feature. Reports are community information, not official advisories; always follow NHMP (helpline 130) and official instructions.',
-    contentUr: 'سائن اِن صارفین روڈ ہیزرڈ رپورٹس (قسم، مقام اور وقت) جمع کرا سکتے ہیں۔ رپورٹ جمع کرانے کا مطلب ہے کہ آپ تصدیق کرتے ہیں کہ یہ درست اور نیک نیتی سے ہے۔ جھوٹی، گمراہ کن یا توہین آمیز رپورٹس یا اسپیم جمع نہ کریں؛ رپورٹس بھیجنے کی تعداد محدود ہے۔ رپورٹس دیگر سائن اِن صارفین کو نظر آتی ہیں، 24 گھنٹے بعد دکھانا بند ہو جاتی ہیں، اور آپ اپنی رپورٹس حذف کر سکتے ہیں۔ غلط یا توہین آمیز رپورٹ کی نشاندہی کے لیے ہمیں ای میل کریں؛ ہم مواد ہٹا سکتے ہیں اور اس فیچر کا غلط استعمال کرنے والوں پر پابندی لگا سکتے ہیں۔ رپورٹس کمیونٹی کی معلومات ہیں، سرکاری ایڈوائزری نہیں؛ ہمیشہ این ایچ ایم پی (ہیلپ لائن 130) اور سرکاری ہدایات پر عمل کریں۔'
+    contentEn: 'Signed-in users can submit road hazard reports (category, location and time). By submitting, you confirm the report is genuine and made in good faith. Do not submit false, misleading or abusive reports or spam; submission frequency is limited. Reports are visible to other signed-in users, stop being shown after 24 hours, and you may delete your own reports. Users can flag inaccurate reports or block/hide any reporter directly from the map pin, or email us; reports with 3 flags are automatically hidden, and we may restrict users who misuse this feature. Reports are community information, not official advisories; always follow NHMP (helpline 130) and official instructions.',
+    contentUr: 'سائن اِن صارفین روڈ ہیزرڈ رپورٹس (قسم، مقام اور وقت) جمع کرا سکتے ہیں۔ رپورٹ جمع کرانے کا مطلب ہے کہ آپ تصدیق کرتے ہیں کہ یہ درست اور نیک نیتی سے ہے۔ جھوٹی، گمراہ کن یا توہین آمیز رپورٹس یا اسپیم جمع نہ کریں؛ رپورٹس بھیجنے کی تعداد محدود ہے۔ رپورٹس دیگر سائن اِن صارفین کو نظر آتی ہیں، 24 گھنٹے بعد دکھانا بند ہو جاتی ہیں، اور آپ اپنی رپورٹس حذف کر سکتے ہیں۔ صارفین نقشے سے ہی غلط رپورٹ کو فلیگ (Flag) کر سکتے ہیں اور کسی بھی رپورٹ کنندہ کو بلاک/چھپا سکتے ہیں یا ہمیں ای میل کر سکتے ہیں؛ 3 فلیگز والی رپورٹس خودکار چھپ جاتی ہیں۔ رپورٹس کمیونٹی کی معلومات ہیں، سرکاری ایڈوائزری نہیں؛ ہمیشہ این ایچ ایم پی (ہیلپ لائن 130) اور سرکاری ہدایات پر عمل کریں۔'
   },
   {
     id: 9,
-    titleEn: '9. Document Scanning and Local OCR',
-    titleUr: '9. دستاویزات اسکیننگ اور لوکل او سی آر',
-    contentEn: 'Document scanning is optional and initiates only when you tap the camera scan button. The recognition processing runs 100% locally on your device using bundled WebAssembly. Scanned images are not uploaded to external servers, and we cannot access your personal photos. You retain full control over adding, editing, and deleting records.',
-    contentUr: 'دستاویزات کی اسکیننگ اختیاری ہے اور صرف اس وقت شروع ہوتی ہے جب آپ کیمرہ اسکین بٹن دبائیں۔ تحریر پڑھنے کا عمل مکمل طور پر آپ کے فون کے اندر آف لائن ویب اسمبلی سے ہوتا ہے۔ اسکین شدہ تصاویر کسی بیرونی سرور پر اپلوڈ نہیں کی جاتیں اور ہم آپ کی تصاویر تک رسائی نہیں رکھتے۔ ریکارڈ میں ترمیم اور حذف کا مکمل اختیار آپ کے پاس ہے۔'
+    titleEn: '9. Document Scanning and Local OCR (Web Edition)',
+    titleUr: '9. دستاویزات اسکیننگ اور لوکل او سی آر (ویب ایڈیشن)',
+    contentEn: 'On the Web edition, document scanning is optional and initiates only when you tap the camera scan button, running 100% locally on your device without uploading images to external servers. To keep the Android Store app compact and privacy-minimized, OCR scanning is disabled in the Store APK. You retain full control over adding, editing, and deleting records.',
+    contentUr: 'ویب ایڈیشن پر دستاویزات کی اسکیننگ اختیاری ہے اور صرف آپ کے بٹن دبانے پر مکمل طور پر آپ کی ڈیوائس کے اندر آف لائن چلتی ہے، کوئی تصویر بیرونی سرور پر نہیں جاتی۔ اینڈرائیڈ اسٹور ایپ کا سائز ہلکا رکھنے کے لیے اسٹور ایپ میں OCR اسکیننگ شامل نہیں کی گئی۔ ریکارڈ میں ترمیم اور حذف کا مکمل اختیار آپ کے پاس ہے۔'
   },
   {
     id: 10,
@@ -148,8 +148,8 @@ const SECTIONS: TermSection[] = [
     id: 19,
     titleEn: '19. Contact',
     titleUr: '19. رابطہ',
-    contentEn: 'Publisher: Warraich Goods Transport Company\nEmail: warraichgoods43@gmail.com\nPhone: +92 300 5370443\nAddress: Near General Bus Stand, Samundri / Faisalabad, Punjab, Pakistan\nFor data-deletion requests or to report content, email us with the subject "Driver Dost - Request".',
-    contentUr: 'پبلشر: وڑائچ گڈز ٹرانسپورٹ کمپنی\nای میل: warraichgoods43@gmail.com\nفون: +92 300 5370443\nپتہ: جنرل بس اسٹینڈ کے قریب، سمندری / فیصل آباد، پنجاب، پاکستان\nڈیٹا حذف کرنے کی درخواست یا مواد کی شکایت کے لیے سبجیکٹ "Driver Dost - Request" کے ساتھ ہمیں ای میل کریں۔'
+    contentEn: 'Publisher: Warraich Goods Transport Company\nEmail: warraichgoods43@gmail.com\nPhone: +92 300 5370443\nAddress: Okara Bypass, Near 466 Chock, Samundri, Punjab, Pakistan\nFor data-deletion requests or to report content, email us with the subject "Driver Dost - Request".',
+    contentUr: 'پبلشر: وڑائچ گڈز ٹرانسپورٹ کمپنی\nای میل: warraichgoods43@gmail.com\nفون: +92 300 5370443\nپتہ: اوکاڑہ بائی پاس، نزد 466 چوک، سمندری، پنجاب، پاکستان\nڈیٹا حذف کرنے کی درخواست یا مواد کی شکایت کے لیے سبجیکٹ "Driver Dost - Request" کے ساتھ ہمیں ای میل کریں۔'
   }
 ];
 
@@ -202,8 +202,8 @@ export const TermsModal: React.FC<TermsModalProps> = ({
               </h2>
               <p className="text-xs text-blue-200 font-sans mt-0.5">
                 {isUrdu
-                  ? `ڈرائیور دوست · وڑائچ گڈز ٹرانسپورٹ کمپنی · ورژن ${APP_VERSION} · 15 نومبر 2026`
-                  : `Driver Dost · Warraich Goods Transport Company · v${APP_VERSION} · 15 November 2026`}
+                  ? `ڈرائیور دوست · وڑائچ گڈز ٹرانسپورٹ کمپنی · ورژن ${APP_VERSION} · 27 نومبر 2026`
+                  : `Driver Dost · Warraich Goods Transport Company · v${APP_VERSION} · 27 November 2026`}
               </p>
             </div>
           </div>

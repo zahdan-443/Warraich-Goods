@@ -2,6 +2,13 @@
 
 All notable changes to the "Driver Dost" transport & logistics application will be documented in this file.
 
+## [1.3.2] - 2026-11-27
+### Fixed & Improved
+- **Live Fuel Rate Sync & Upgrade Fix**: Upgraded primary live feed from deprecated `eklitre.pk/v1/latest` to `eklitre.pk/v2/latest` (with `v1/latest`, `api2.autoones.com`, and `/api/fuel-prices` fallbacks), updated the official offline benchmark to `27-November-2026` (`HSD Rs. 346.00`, `PMG Rs. 313.00`, `LDO Rs. 220.28`, `SKO Rs. 273.22`), fixed `parseSortableDate` for `DD-Month-YYYY` strings, and ensured stale caches from earlier app versions bypass the 3-hour TTL on startup.
+- **Trip Cost Calculator Live Propagation**: Fixed `TripCostView` skipping live fuel rate updates whenever the previous diesel rate was `>= 340`; live/manual rate updates now sync automatically until the user manually edits the calculator input.
+- **Weather CORS & Service Worker Caching**: Removed unsupported `Cache-Control`/`Pragma` request headers on `api.open-meteo.com` fetches that caused CORS preflight failures in browsers/WebViews, and excluded `/api/*` endpoints from Service Worker cache-first interception.
+- **Version Bump**: Bumped app version to `1.3.2` (`versionCode 10302`) for clean store & PWA upgrade over `1.3.1`.
+
 ## [1.3.1] - 2026-11-19
 ### Security & Reliability
 - **Sync & Restore Hardening**: Switched cloud conflict resolution to strict mutation-only timestamps (`updatedAt`/`deletedAt`/`createdAt`) so future business dates never resurrect deleted items, bounded local deletion tombstones (`500` per collection), enforced offline-queue tombstone filtering, added delta checksum caching on public verification syncs, chunked large Firestore batch commits (`<= 450` writes/batch), added single-flight locking + remote sync kill-switch support, and upgraded backup restore with pre-restore Undo snapshots and explicit Merge vs Snapshot Replace modes.

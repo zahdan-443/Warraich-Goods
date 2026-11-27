@@ -28,6 +28,11 @@ import {
   formatTimeAgo, 
   getRouteHazardSummaries, 
   checkRateLimit,
+  getBlockedHazardReporters,
+  blockHazardReporter,
+  unblockHazardReporter,
+  clearBlockedHazardReporters,
+  filterUnblockedHazardReports,
   HazardReport
 } from '../utils/hazardReports';
 
@@ -195,6 +200,60 @@ describe('Road Hazard Alert Feature Test Suite', () => {
       expect(summaries.length).toBe(1);
       expect(summaries[0].category).toBe('flooding');
       expect(summaries[0].count).toBe(3);
+    });
+  });
+
+  // 6. UGC Reporter Block / Hide / Restore Controls
+  describe('UGC Reporter Blocking & Filtering Controls', () => {
+    it('blocks, unblocks, filters, and clears hidden reporters cleanly', () => {
+      expect(getBlockedHazardReporters()).toEqual([]);
+
+      const afterBlock = blockHazardReporter('bad_actor_1');
+      expect(afterBlock).toEqual(['bad_actor_1']);
+      expect(blockHazardReporter('bad_actor_1')).toEqual(['bad_actor_1']); // deduped
+
+      const reports: HazardReport[] = [
+        {
+          id: 'r1',
+          category: 'traffic',
+          lat: 31.06,
+          lng: 72.96,
+          createdAt: Date.now(),
+          expiresAt: Date.now() + 3600000,
+          reporterUid: 'bad_actor_1',
+          flags: 0
+        },
+        {
+          id: 'r2',
+          category: 'checkpoint',
+          lat: 31.07,
+          lng: 72.97,
+          createdAt: Date.now(),
+          expiresAt: Date.now() + 3600000,
+          reporterUid: 'good_driver_2',
+          flags: 0
+        },
+        {
+          id: 'r3',
+          category: 'accident',
+          lat: 31.08,
+          lng: 72.98,
+          createdAt: Date.now(),
+          expiresAt: Date.now() + 3600000,
+          reporterUid: 'flagged_driver_3',
+          flags: 3
+        }
+      ];
+
+      const visible = filterUnblockedHazardReports(reports);
+      expect(visible.map((r) => r.id)).toEqual(['r2']);
+
+      expect(unblockHazardReporter('bad_actor_1')).toEqual([]);
+      expect(filterUnblockedHazardReports(reports).map((r) => r.id)).toEqual(['r1', 'r2']);
+
+      blockHazardReporter('bad_actor_1');
+      expect(clearBlockedHazardReporters()).toEqual([]);
+      expect(getBlockedHazardReporters()).toEqual([]);
     });
   });
 });

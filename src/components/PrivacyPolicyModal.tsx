@@ -66,8 +66,8 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
               </h2>
               <p className="text-xs text-blue-200 font-sans mt-0.5">
                 {isUrdu
-                  ? `ڈرائیور دوست · وڑائچ گڈز ٹرانسپورٹ کمپنی · ورژن ${APP_VERSION} · 15 نومبر 2026`
-                  : `Driver Dost · Warraich Goods Transport Co. · v${APP_VERSION} · 15 November 2026`}
+                  ? `ڈرائیور دوست · وڑائچ گڈز ٹرانسپورٹ کمپنی · ورژن ${APP_VERSION} · 27 نومبر 2026`
+                  : `Driver Dost · Warraich Goods Transport Co. · v${APP_VERSION} · 27 November 2026`}
               </p>
             </div>
           </div>
@@ -126,8 +126,10 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
                 {isUrdu ? 'آپ کی اجازت سے روزانہ ڈائجسٹ (ایندھن کے نرخ، موسم، سڑکوں کی صورتحال) اور آپ کی درج کردہ دستاویزات کی میعاد سے 30، 15 اور 7 دن پہلے یاد دہانی۔ کوئی اشتہاری نوٹیفکیشن نہیں۔ RECEIVE_BOOT_COMPLETED اور WAKE_LOCK کا استعمال صرف فون ریبوٹ کے بعد مقامی یاد دہانیوں کو دوبارہ فعال کرنے کے لیے کیا جاتا ہے۔' : 'With your permission, a daily digest (fuel rates, weather, road conditions) plus reminders for document expiry dates you entered (30, 15 and 7 days before). No marketing. RECEIVE_BOOT_COMPLETED and WAKE_LOCK are used only to restore local reminders after reboot.'}
               </li>
               <li>
-                <strong>{isUrdu ? 'کیمرہ (OCR اسکیننگ):' : 'Camera (OCR Scanning):'}</strong>{' '}
-                {isUrdu ? 'صرف دستاویزات، گاڑی کے نمبر یا رسید کی تصویر سے تحریر پڑھنے (OCR) کے لیے جب آپ کیمرہ بٹن دبائیں۔ ایپ مائیکروفون کی اجازت بالکل طلب نہیں کرتی۔' : 'Strictly for on-demand optical character recognition (OCR) of documents, plates, or fuel receipts when you tap the scan button. The app does not request or access microphone audio.'}
+                <strong>{isUrdu ? 'کیمرہ / دستاویز OCR (ویب ایڈیشن):' : 'Camera / Document OCR (Web Edition):'}</strong>{' '}
+                {isUrdu
+                  ? 'صرف ویب ایڈیشن میں جب آپ خود تصویر منتخب کریں یا اسکین بٹن دبائیں تو دستاویز/رسید سے تحریر مقامی طور پر پڑھی جاتی ہے۔ آفیشل اسٹور اینڈرائیڈ ایپ کیمرہ یا مائیکروفون کی کوئی اجازت طلب نہیں کرتی۔'
+                  : 'Available on the Web edition only when you tap the scan button to read a document or fuel receipt locally. The official Android Store edition disables camera OCR and speech input and requests zero camera or microphone permissions.'}
               </li>
             </ul>
           </div>
@@ -142,8 +144,8 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             </div>
             <p className="text-xs text-[#5a5a40] leading-relaxed">
               {isUrdu
-                ? 'ایپ میں دستاویزات کی تصویر اسکیننگ (OCR)، کیو آر کوڈ (QR Code) بنانا اور پی ڈی ایف محفوظ کرنا مکمل طور پر آپ کے فون کے اندر آف لائن ہوتا ہے۔ کوئی بھی تصویر یا تحریر بیرونی سرور پر نہیں بھیجی جاتی۔ کریش رپورٹس اور تشخیصی ڈیٹا ڈیفالٹ کے طور پر مکمل بند ہے اور صرف اس صورت میں بھیجا جاتا ہے جب صارف سیٹنگز سے خود رضامندی فراہم کرے۔'
-                : 'Document image scanning (OCR), QR code generation, and PDF exports are processed 100% locally and offline on your device. No images or scanned texts are transmitted to external servers. Diagnostic crash telemetry is disabled by default and operates strictly on-device unless voluntarily enabled in settings.'}
+                ? 'ایپ میں کیو آر کوڈ (QR Code) بنانا، پی ڈی ایف محفوظ کرنا اور (ویب پر) دستاویزات کی تصویر اسکیننگ (OCR) مکمل طور پر آپ کی ڈیوائس کے اندر آف لائن ہوتا ہے۔ کوئی بھی تصویر بیرونی سرور پر نہیں بھیجی جاتی۔ کریش رپورٹس اور تشخیصی ڈیٹا ڈیفالٹ کے طور پر مکمل بند ہے اور صرف صارف کی واضح رضامندی پر فعال ہوتا ہے۔'
+                : 'QR code generation, PDF exports, and (on Web) document OCR scanning run 100% locally on your device. No images or scanned texts are transmitted to external servers. Diagnostic crash telemetry is disabled by default unless voluntarily enabled in settings.'}
             </p>
           </div>
 
@@ -172,8 +174,8 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             </div>
             <p className="text-xs text-[#5a5a40] leading-relaxed">
               {isUrdu
-                ? 'اگر آپ سائن اِن ہو کر روڈ ہیزرڈ رپورٹ جمع کرائیں تو اس کی قسم، مقام، وقت اور آپ کی اکاؤنٹ آئی ڈی گوگل فائر بیس میں محفوظ ہوتی ہے۔ دیگر سائن اِن صارفین رپورٹ (قسم، مقام، وقت) دیکھ سکتے ہیں۔ ایپ آپ کا نام یا ای میل نہیں دکھاتی، البتہ رپورٹ آپ کی اکاؤنٹ آئی ڈی سے منسلک ہوتی ہے۔ رپورٹس 24 گھنٹے بعد دکھانا بند ہو جاتی ہیں؛ آپ اپنی رپورٹس حذف کر سکتے ہیں۔'
-                : 'If signed in and you submit a hazard report, we store its category, location, time and your account ID in Google Firebase. Other signed-in users can view the report (category, location, time). The app does not show your name or email, but the report is linked to your account ID. Reports stop being shown after 24 hours; you can delete your own reports.'}
+                ? 'اگر آپ سائن اِن ہو کر روڈ ہیزرڈ رپورٹ جمع کرائیں تو اس کی قسم، مقام، وقت اور آپ کی اکاؤنٹ آئی ڈی گوگل فائر بیس میں محفوظ ہوتی ہے۔ دیگر سائن اِن صارفین رپورٹ (قسم، مقام، وقت) دیکھ سکتے ہیں۔ ایپ آپ کا نام یا ای میل نہیں دکھاتی، البتہ رپورٹ آپ کی اکاؤنٹ آئی ڈی سے منسلک ہوتی ہے۔ صارفین نقشے سے ہی غلط رپورٹس کو فلیگ (Flag) کر سکتے ہیں اور کسی بھی رپورٹ کنندہ کو بلاک/چھپا سکتے ہیں؛ 3 فلیگز والی رپورٹس خودکار طور پر چھپ جاتی ہیں۔ رپورٹس 24 گھنٹے بعد دکھانا بند ہو جاتی ہیں؛ آپ اپنی رپورٹس حذف کر سکتے ہیں۔'
+                : 'If signed in and you submit a hazard report, we store its category, location, time and your account ID in Google Firebase. Other signed-in users can view the report (category, location, time). The app does not show your name or email, but the report is linked to your account ID. Users can flag inaccurate reports or block/hide any reporter directly from the map pin; reports with 3 flags are automatically hidden. Reports stop being shown after 24 hours; you can delete your own reports.'}
             </p>
           </div>
 

@@ -23,12 +23,12 @@ export interface FuelPricesData {
 }
 
 export const CURRENT_OFFICIAL_BENCHMARK: FuelPricesData = {
-  diesel: '360.00',
-  petrol: '330.00',
+  diesel: '346.00',
+  petrol: '313.00',
   hiOctane: '375.00',
-  ldo: '231.72',
-  kerosene: '283.64',
-  effectiveDate: '14-November-2026',
+  ldo: '220.28',
+  kerosene: '273.22',
+  effectiveDate: '27-November-2026',
   lastUpdated: 'Official PSO / OGRA Notification',
   source: 'OGRA / PSO'
 };
@@ -37,7 +37,7 @@ export const FUEL_CACHE_KEY = 'ah_fuel_prices_cache';
 export const MANUAL_FUEL_OVERRIDE_KEY = 'ah_fuel_prices_manual_override';
 export const STALE_FUEL_THRESHOLD_DAYS = 7;
 
-const FUEL_CACHE_VERSION = 2;
+const FUEL_CACHE_VERSION = 3;
 const CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours
 
 export function resolveCustomFuelApiUrl(rawUrl?: unknown): string {
@@ -119,13 +119,14 @@ function effectiveDateToIsoKey(raw: unknown): string {
 }
 
 function parseSortableDate(raw: unknown): number {
-  if (!raw || typeof raw !== 'string') return 0;
-  const isoMatch = raw.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (isoMatch) {
-    return Date.UTC(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
+  const isoKey = effectiveDateToIsoKey(raw);
+  if (isoKey) {
+    const [y, m, d] = isoKey.split('-').map(Number);
+    if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
+      return Date.UTC(y, m - 1, d);
+    }
   }
-  const d = new Date(raw.trim());
-  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+  return 0;
 }
 
 export function computeFuelStaleness(
@@ -492,9 +493,12 @@ export async function fetchLiveFuelPrices(
       if (cachedStr) {
         const cached = JSON.parse(cachedStr) as CachedFuelRecord;
         const dNum = parseFloat(cached.diesel);
+        const benchmarkTimeMs = parseSortableDate(CURRENT_OFFICIAL_BENCHMARK.effectiveDate);
+        const cachedEffectiveTimeMs = parseSortableDate(cached.effectiveDate);
         const isLegacyCache =
           !cached.cacheVersion ||
           cached.cacheVersion < FUEL_CACHE_VERSION ||
+          (benchmarkTimeMs > 0 && cachedEffectiveTimeMs > 0 && cachedEffectiveTimeMs < benchmarkTimeMs) ||
           String(cached.source || '').toLowerCase().includes('trackmate');
 
         if (
@@ -526,16 +530,35 @@ export async function fetchLiveFuelPrices(
     }
 
     if (candidates.length === 0) {
+      const fetchEklitreLatest = async (): Promise<ParsedProviderResult | null> => {
+        try {
+          const v2Data = await fetchJsonWithTimeout('https://eklitre.pk/v2/latest', 8000);
+          const parsedV2 = parseEklitrePayload(v2Data);
+          if (parsedV2) return parsedV2;
+        } catch {
+          // fallback to v1 if v2 fails transiently
+        }
+        try {
+          const v1Data = await fetchJsonWithTimeout('https://eklitre.pk/v1/latest', 8000);
+          return parseEklitrePayload(v1Data);
+        } catch {
+          return null;
+        }
+      };
+
       const requests: Array<Promise<ParsedProviderResult | null>> = [
-        fetchJsonWithTimeout('https://eklitre.pk/v1/latest', 8000)
-          .then(parseEklitrePayload)
-          .catch(() => null),
+        fetchEklitreLatest(),
         fetchJsonWithTimeout('https://api2.autoones.com/api/fuel-prices', 8000)
           .then(parseAutoonesPayload)
           .catch(() => null)
       ];
 
-      if (!isCapacitorNativeRuntime() && typeof window !== 'undefined' && window.location?.origin?.startsWith('http')) {
+      if (
+        !isCapacitorNativeRuntime() &&
+        typeof window !== 'undefined' &&
+        window.location?.origin?.startsWith('http') &&
+        !/github\.io$/i.test(window.location.hostname || '')
+      ) {
         requests.push(
           fetchJsonWithTimeout(`${window.location.origin}/api/fuel-prices`, 6000)
             .then((d) => parseGenericOrCustomPayload(d, 'PSO POL Archives'))

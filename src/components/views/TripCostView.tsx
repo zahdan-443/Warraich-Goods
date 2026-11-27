@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DICTIONARY, FuelType, Language, Trip, RoutePreset } from '../../types';
 import { PublicImage } from '../../assets/dashboardIcons';
 import { 
@@ -81,6 +81,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   const [distance, setDistance] = useState<string>('195');
   const [liveDieselBenchmark, setLiveDieselBenchmark] = useState<string>(initialFuel.diesel);
   const [fuelPrice, setFuelPrice] = useState<string>(initialFuel.diesel);
+  const hasUserEditedFuelPriceRef = useRef<boolean>(false);
   const [mileage, setMileage] = useState<string>(initialMileage ? initialMileage.toString() : '7');
   const [combinedExpenses, setCombinedExpenses] = useState<string>('3200'); // Driver + Toll + Other
   const [isReturn, setIsReturn] = useState<boolean>(false);
@@ -116,7 +117,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
       setLiveDieselBenchmark(data.diesel);
       setFuelPrice(prev => {
         const pNum = parseFloat(prev);
-        if (!pNum || pNum < 340 || prev === '311.47') {
+        if (!hasUserEditedFuelPriceRef.current || !pNum) {
           return data.diesel;
         }
         return prev;
@@ -128,7 +129,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
         setLiveDieselBenchmark(e.detail.diesel);
         setFuelPrice(prev => {
           const pNum = parseFloat(prev);
-          if (!pNum || pNum < 340 || prev === '311.47') {
+          if (!hasUserEditedFuelPriceRef.current || !pNum) {
             return e.detail.diesel;
           }
           return prev;
@@ -365,6 +366,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
     setOriginCity('Samundri');
     setDestCity('Lahore');
     setDistance('195');
+    hasUserEditedFuelPriceRef.current = false;
     setFuelPrice(liveDieselBenchmark);
     setMileage('7');
     setCombinedExpenses('3200');
@@ -1089,7 +1091,10 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                   </label>
                   <button
                     type="button"
-                    onClick={() => setFuelPrice(liveDieselBenchmark)}
+                    onClick={() => {
+                      hasUserEditedFuelPriceRef.current = false;
+                      setFuelPrice(liveDieselBenchmark);
+                    }}
                     className="text-xs sm:text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg px-2 py-0.5 transition-all flex items-center gap-1 cursor-pointer shrink-0"
                     title={isUrdu ? 'سرکاری لائیو ریٹ لگائیں' : 'Apply Live Rate'}
                   >
@@ -1101,7 +1106,10 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
                     type="number"
                     inputMode="decimal"
                     value={fuelPrice}
-                    onChange={(e) => setFuelPrice(e.target.value)}
+                    onChange={(e) => {
+                      hasUserEditedFuelPriceRef.current = true;
+                      setFuelPrice(e.target.value);
+                    }}
                     onFocus={(e) => e.target.select()}
                     onClick={(e) => (e.target as HTMLInputElement).select()}
                     placeholder={liveDieselBenchmark}

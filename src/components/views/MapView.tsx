@@ -55,6 +55,10 @@ import {
   fetchActiveHazardReports, 
   deleteHazardReport, 
   flagHazardReport,
+  getBlockedHazardReporters,
+  blockHazardReporter,
+  clearBlockedHazardReporters,
+  filterUnblockedHazardReports,
   getRouteHazardSummaries, 
   HAZARD_CATEGORIES, 
   formatTimeAgo 
@@ -206,14 +210,37 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
 
   // --- ROAD HAZARD ALERTS STATE (Requirement 2 & 5) ---
   const [hazardReports, setHazardReports] = useState<HazardReport[]>([]);
+  const [blockedReporters, setBlockedReporters] = useState<string[]>(() => getBlockedHazardReporters());
+  const [hazardToast, setHazardToast] = useState<{ text: string; tone: 'success' | 'info' | 'error' } | null>(null);
+  const hazardToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [loadingHazards, setLoadingHazards] = useState<boolean>(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
+
+  const showHazardToast = (text: string, tone: 'success' | 'info' | 'error' = 'info') => {
+    setHazardToast({ text, tone });
+    if (hazardToastTimerRef.current) {
+      clearTimeout(hazardToastTimerRef.current);
+    }
+    hazardToastTimerRef.current = setTimeout(() => {
+      setHazardToast(null);
+      hazardToastTimerRef.current = null;
+    }, 4500);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hazardToastTimerRef.current) {
+        clearTimeout(hazardToastTimerRef.current);
+      }
+    };
+  }, []);
 
   const loadHazards = async () => {
     setLoadingHazards(true);
     try {
       const reports = await fetchActiveHazardReports();
       setHazardReports(reports);
+      setBlockedReporters(getBlockedHazardReporters());
     } catch (err) {
       console.warn('Failed to load active hazard reports:', err);
     } finally {
@@ -398,14 +425,18 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
     return routeCities;
   }, [routeCities]);
 
+  const visibleHazardReports = useMemo(() => {
+    return filterUnblockedHazardReports(hazardReports, blockedReporters);
+  }, [hazardReports, blockedReporters]);
+
   // Active road hazard alerts along the route corridor (Requirement 5)
   const routeHazardSummaries = useMemo(() => {
-    if (!routeCities || routeCities.length === 0 || hazardReports.length === 0) {
+    if (!routeCities || routeCities.length === 0 || visibleHazardReports.length === 0) {
       return [];
     }
     const routePoints = routeCities.map(c => ({ lat: c.lat, lng: c.lng }));
-    return getRouteHazardSummaries(hazardReports, routePoints, 35);
-  }, [hazardReports, routeCities]);
+    return getRouteHazardSummaries(visibleHazardReports, routePoints, 35);
+  }, [visibleHazardReports, routeCities]);
 
   // Approximate distance and duration calculation
   const routeMetrics = useMemo(() => {
@@ -1086,7 +1117,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
     }
 
     // 3. Add Crowd-Sourced Hazard Markers (Requirement 5)
-    hazardReports.forEach((hazard) => {
+    visibleHazardReports.forEach((hazard) => {
       const meta = HAZARD_CATEGORIES[hazard.category] || HAZARD_CATEGORIES.traffic;
       const timeAgo = formatTimeAgo(hazard.createdAt, lang);
       const catLabel = isUrdu ? meta.labelUr : meta.labelEn;
@@ -1141,19 +1172,34 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
               ${isUrdu ? 'میری رپورٹ حذف کریں' : 'Delete my report'}
             </button>
           ` : `
-            <button id="flag-hazard-${hazard.id}" style="
-              width: 100%;
-              padding: 5px 8px;
-              background: #fef3c7;
-              color: #92400e;
-              border: 1px solid #fde68a;
-              border-radius: 6px;
-              font-size: 10px;
-              font-weight: bold;
-              cursor: pointer;
-            ">
-              🚩 ${isUrdu ? 'غیر مناسب رپورٹ (Flag / Report)' : 'Flag / Report Inaccurate'}
-            </button>
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+              <button id="flag-hazard-${hazard.id}" style="
+                width: 100%;
+                padding: 5px 8px;
+                background: #fef3c7;
+                color: #92400e;
+                border: 1px solid #fde68a;
+                border-radius: 6px;
+                font-size: 10px;
+                font-weight: bold;
+                cursor: pointer;
+              ">
+                🚩 ${isUrdu ? 'غیر مناسب رپورٹ (Flag / Report)' : 'Flag / Report Inaccurate'}
+              </button>
+              <button id="block-hazard-user-${hazard.id}" style="
+                width: 100%;
+                padding: 5px 8px;
+                background: #f1f5f9;
+                color: #334155;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                font-size: 10px;
+                font-weight: bold;
+                cursor: pointer;
+              ">
+                🚫 ${isUrdu ? 'اس صارف کو بلاک / چھپائیں' : 'Block / Hide Reporter'}
+              </button>
+            </div>
           `}
         </div>
       `;
@@ -1178,9 +1224,28 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
             flagBtn.onclick = async () => {
               flagBtn.textContent = isUrdu ? 'رپورٹ ہو رہا ہے...' : 'Flagging...';
               const res = await flagHazardReport(hazard.id, 'Inaccurate or inappropriate user submission');
-              alert(isUrdu ? 'شکریہ! رپورٹ جائزے کے لیے درج کر لی گئی ہے۔' : (res.message || 'Report has been flagged for safety review.'));
+              showHazardToast(
+                res.success
+                  ? (isUrdu ? 'شکریہ! رپورٹ جائزے کے لیے درج کر لی گئی ہے۔' : (res.message || 'Report has been flagged for safety review.'))
+                  : (isUrdu ? 'رپورٹ فلیگ کرنے کے لیے براہ کرم سائن اِن کریں۔' : (res.message || 'Please sign in to report/flag content.')),
+                res.success ? 'success' : 'error'
+              );
               loadHazards();
               map.closePopup();
+            };
+          }
+          const blockBtn = document.getElementById(`block-hazard-user-${hazard.id}`);
+          if (blockBtn) {
+            blockBtn.onclick = () => {
+              const updated = blockHazardReporter(hazard.reporterUid);
+              setBlockedReporters(updated);
+              map.closePopup();
+              showHazardToast(
+                isUrdu
+                  ? 'اس صارف کی تمام رپورٹس آپ کے نقشے سے چھپا دی گئی ہیں۔'
+                  : 'All hazard reports from this reporter have been hidden.',
+                'info'
+              );
             };
           }
         }
@@ -1191,7 +1256,7 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
     if (bounds.isValid() && routeCities.length >= 2 && !isNavigating) {
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 10, animate: true });
     }
-  }, [routeCities, weatherMap, lang, userLocation, isNavigating, navCurrentPos, hazardReports]);
+  }, [routeCities, weatherMap, lang, userLocation, isNavigating, navCurrentPos, visibleHazardReports]);
 
   // Swap Origin and Destination
   const handleSwapCities = () => {
@@ -1349,6 +1414,21 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
       {locationError && (
         <div className="bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold p-2 rounded-xl text-center shadow-2xs shrink-0">
           {locationError}
+        </div>
+      )}
+
+      {hazardToast && (
+        <div
+          role="status"
+          className={`text-xs font-bold p-2 rounded-xl text-center shadow-2xs shrink-0 border ${
+            hazardToast.tone === 'success'
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+              : hazardToast.tone === 'error'
+                ? 'bg-red-50 border-red-300 text-red-900'
+                : 'bg-slate-50 border-slate-300 text-slate-900'
+          }`}
+        >
+          {hazardToast.text}
         </div>
       )}
 
@@ -1741,13 +1821,21 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
           onRefreshWeather={fetchAllCitiesWeather}
         />
 
-        {/* Crowd-Sourced Road Hazard Advisory Summary Banner (Only alerts if active hazard reports exist) */}
+        {/* Crowd-Sourced Road Hazard Advisory Summary Banner (Only alerts if active hazard reports exist or reporters hidden) */}
         <RouteHazardAdvisoryBanner
           lang={lang}
           summaries={routeHazardSummaries}
           onOpenReportModal={() => setIsReportModalOpen(true)}
           onRefresh={loadHazards}
           isRefreshing={loadingHazards}
+          blockedCount={blockedReporters.length}
+          onRestoreBlocked={() => {
+            setBlockedReporters(clearBlockedHazardReporters());
+            showHazardToast(
+              isUrdu ? 'چھپائے گئے صارفین کی رپورٹس دوبارہ بحال کر دی گئی ہیں۔' : 'Hidden reporters have been restored.',
+              'info'
+            );
+          }}
         />
 
         {/* Navigation & Highway Actions Bar (Right below Map for immediate access) */}

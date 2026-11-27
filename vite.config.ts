@@ -68,6 +68,14 @@ export default defineConfig(() => {
               {
                 find: /.*\/utils\/dashcamService(\.ts)?$/,
                 replacement: path.resolve(__dirname, 'src/utils/dashcamServiceStub.ts')
+              },
+              {
+                find: /.*\/components\/CameraOcrInput(\.tsx)?$/,
+                replacement: path.resolve(__dirname, 'src/components/CameraOcrInputStub.tsx')
+              },
+              {
+                find: /.*\/components\/VoiceInputButton(\.tsx)?$/,
+                replacement: path.resolve(__dirname, 'src/components/VoiceInputButtonStub.tsx')
               }
             ]
           : [])

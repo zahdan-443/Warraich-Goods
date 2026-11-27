@@ -25,7 +25,7 @@ android {
     }
 
     androidResources {
-        ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:server.cjs*:sw.js*:registerSW.js:404.html:sitemap.xml:robots.txt:screenshot*.png:*.map:aistudio*'
+        ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:server.cjs*:sw.js*:registerSW.js:404.html:sitemap.xml:robots.txt:BingSiteAuth.xml:manifest.json:screenshot*.png:*.map:aistudio*:tesseract:warraich-card.png:scan-me-qr.png:quick-ops-icon.png:safar-diary-icon.png:bilty-icon.png:bilty-official-icon.png:dashcam-icon*.png'
     }
 
     flavorDimensions = ["distribution"]

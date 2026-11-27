@@ -73,11 +73,12 @@ jobs:
           find android/app/src/main/java -name "MainActivity.java" ! -path "*/com/warraichgoods/driverdost/*" -delete || true
           # Safety cleanup: remove any corrupt/non-standard land-hdpi splash that can fail aapt2 compilation
           rm -rf android/app/src/main/res/drawable-land-hdpi || true
-          # Asset Hygiene: Purge web-only server, service worker, 404, and screenshots from mobile APK assets
+          # Asset Hygiene: Purge web-only server, service worker, SEO, OCR wasm/traineddata, and redundant web images from mobile APK assets
           rm -f android/app/src/main/assets/public/server.cjs* android/app/src/main/assets/public/sw.js* android/app/src/main/assets/public/registerSW.js || true
-          rm -f android/app/src/main/assets/public/404.html android/app/src/main/assets/public/sitemap.xml android/app/src/main/assets/public/robots.txt || true
+          rm -f android/app/src/main/assets/public/404.html android/app/src/main/assets/public/sitemap.xml android/app/src/main/assets/public/robots.txt android/app/src/main/assets/public/BingSiteAuth.xml android/app/src/main/assets/public/manifest.json || true
           rm -f android/app/src/main/assets/public/screenshot*.png android/app/src/main/assets/public/dashcam-icon.png android/app/src/main/assets/public/dashcam-icon.jpg || true
-          rm -rf android/app/src/main/assets/public/assets/aistudio || true
+          rm -f android/app/src/main/assets/public/warraich-card.png android/app/src/main/assets/public/scan-me-qr.png android/app/src/main/assets/public/quick-ops-icon.png android/app/src/main/assets/public/safar-diary-icon.png android/app/src/main/assets/public/bilty-icon.png android/app/src/main/assets/public/bilty-official-icon.png || true
+          rm -rf android/app/src/main/assets/public/tesseract android/app/src/main/assets/public/assets/aistudio || true
           # Final post-sync sweep: Ensure zero forbidden domains exist in android/app/src/main/assets/public
           node -e "
             const fs = require('fs');
@@ -195,7 +196,7 @@ jobs:
             LISTING=$(unzip -l "$apk")
 
             # Check forbidden files
-            FORBIDDEN_FILES="server.cjs sw.js 404.html sitemap.xml screenshot-"
+            FORBIDDEN_FILES="server.cjs sw.js 404.html sitemap.xml screenshot- tesseract warraich-card.png manifest.json BingSiteAuth.xml"
             for pattern in $FORBIDDEN_FILES; do
               if echo "$LISTING" | grep -E "assets/public/.*$pattern"; then
                 echo "::error::[Asset Hygiene Failure] Found forbidden asset ($pattern) inside $apk"
@@ -232,7 +233,7 @@ jobs:
             for aab in $AAB_FILES; do
               echo "Verifying Play Store AAB hygiene for: $aab ($(wc -c < "$aab") bytes)"
               AAB_LISTING=$(unzip -l "$aab")
-              for pattern in "server.cjs" "sw.js" "404.html" "sitemap.xml" "screenshot-" "\.map"; do
+              for pattern in "server.cjs" "sw.js" "404.html" "sitemap.xml" "screenshot-" "tesseract" "warraich-card.png" "manifest.json" "BingSiteAuth.xml" "\.map"; do
                 if echo "$AAB_LISTING" | grep -E "base/assets/public/.*$pattern"; then
                   echo "::error::[AAB Hygiene Failure] Found forbidden asset ($pattern) inside $aab"
                   exit 1

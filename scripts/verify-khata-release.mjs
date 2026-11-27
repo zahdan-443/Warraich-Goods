@@ -142,3 +142,24 @@ if (!fs.existsSync(distDir)) {
     ok('Zero new tracking/analytics/CDN hosts introduced in dist/.');
   }
 }
+
+// 4. Check Android assets/public payload hygiene (if synced)
+const androidPublicDir = path.join(ROOT, 'android/app/src/main/assets/public');
+if (fs.existsSync(androidPublicDir)) {
+  const forbiddenInAndroid = ['tesseract', 'warraich-card.png', 'manifest.json', 'BingSiteAuth.xml', 'sw.js'];
+  for (const rel of forbiddenInAndroid) {
+    if (fs.existsSync(path.join(androidPublicDir, rel))) {
+      fail(`Excluded asset still present in android/app/src/main/assets/public: ${rel}`);
+    }
+  }
+  let androidBytes = 0;
+  function walkAndroid(dir) {
+    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, ent.name);
+      if (ent.isDirectory()) walkAndroid(p);
+      else androidBytes += fs.statSync(p).size;
+    }
+  }
+  walkAndroid(androidPublicDir);
+  ok(`Android assets/public slimmed to ${(androidBytes / (1024 * 1024)).toFixed(2)} MB (OCR & web-only assets excluded).`);
+}

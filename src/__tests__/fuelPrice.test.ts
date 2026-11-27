@@ -288,4 +288,48 @@ describe('Live Pakistan Fuel Prices Multi-Provider Sync', () => {
     expect(resolveOptionalAppCheckSiteKey('null')).toBeNull();
     expect(appCheck).toBeNull();
   });
+
+  it('prefers eklitre.pk/v2/latest and bypasses older cached effectiveDate from previous app version', async () => {
+    localStorage.setItem(
+      FUEL_CACHE_KEY,
+      JSON.stringify({
+        diesel: '360.00',
+        petrol: '330.00',
+        effectiveDate: '14-November-2026',
+        source: 'OGRA / PSO (eklitre.pk)',
+        cacheVersion: 2,
+        timestamp: Date.now()
+      })
+    );
+
+    const requestedUrls: string[] = [];
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      requestedUrls.push(url);
+      if (url.includes('eklitre.pk/v2/latest')) {
+        return new Response(
+          JSON.stringify({
+            day: {
+              effective_date: '2026-11-27',
+              products: {
+                petrol: { pump_price: 313.0 },
+                diesel: { pump_price: 346.0 },
+                kerosene: { pump_price: 273.22 },
+                light_diesel: { pump_price: 220.28 }
+              }
+            }
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        );
+      }
+      return new Response('Not found', { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const live = await fetchLiveFuelPrices(false);
+    expect(requestedUrls.some((u) => u.includes('eklitre.pk/v2/latest'))).toBe(true);
+    expect(live.isFallback).toBe(false);
+    expect(live.diesel).toBe('346.00');
+    expect(live.petrol).toBe('313.00');
+    expect(live.effectiveDate).toBe('27-November-2026');
+  });
 });

@@ -51,13 +51,21 @@ if (fs.existsSync(distDir)) {
         'registerSW.js',
         'robots.txt',
         'sitemap.xml',
+        'BingSiteAuth.xml',
+        'manifest.json',
         '404.html',
         '_headers',
         '.nojekyll',
         'screenshot-desktop.png',
         'screenshot-mobile.png',
         'dashcam-icon.png',
-        'dashcam-icon.jpg'
+        'dashcam-icon.jpg',
+        'warraich-card.png',
+        'scan-me-qr.png',
+        'quick-ops-icon.png',
+        'safar-diary-icon.png',
+        'bilty-icon.png',
+        'bilty-official-icon.png'
       ]);
 
       fs.cpSync(distDir, androidPublicDir, { 
@@ -68,6 +76,8 @@ if (fs.existsSync(distDir)) {
           
           // Exclude exact matches from web-only set
           if (webOnlyOrRedundant.has(baseName)) return false;
+          // Exclude offline OCR WASM & language models from Android APK assets
+          if (rel === 'tesseract' || rel.startsWith('tesseract' + path.sep) || rel.startsWith('tesseract/')) return false;
           // Exclude hidden web domain folders like .well-known
           if (rel.startsWith('.well-known') || baseName === '.well-known') return false;
           // Exclude internal AI Studio chat screenshots and attachments
@@ -81,12 +91,16 @@ if (fs.existsSync(distDir)) {
         }
       });
 
-      // Strict post-copy scrub of any web, server, or diagnostic files from Android assets
+      // Strict post-copy scrub of any web, server, OCR, or diagnostic files from Android assets
       for (const redundantFile of webOnlyOrRedundant) {
         const target = path.join(androidPublicDir, redundantFile);
         if (fs.existsSync(target)) {
           fs.rmSync(target, { recursive: true, force: true });
         }
+      }
+      const tesseractAssets = path.join(androidPublicDir, 'tesseract');
+      if (fs.existsSync(tesseractAssets)) {
+        fs.rmSync(tesseractAssets, { recursive: true, force: true });
       }
       const aistudioAssets = path.join(androidPublicDir, 'assets/aistudio');
       if (fs.existsSync(aistudioAssets)) {

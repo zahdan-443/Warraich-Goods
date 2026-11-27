@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-1.3.1-r3';
+const CACHE_NAME = 'driver-dost-1.3.2-r1';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const MAX_CACHED_TILES = 350;
 
@@ -147,6 +147,7 @@ self.addEventListener('fetch', (event) => {
   if (
     url.pathname.startsWith('/@') ||
     url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/api/') ||
     url.pathname.includes('/node_modules/')
   ) {
     return;
