@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Driver,
   KhataEmployee,
@@ -77,6 +77,36 @@ export const KhataEmployeesPanel: React.FC<KhataEmployeesPanelProps> = ({
     setAllEntries(getAllEmployeeEntries());
     onDataChanged?.();
   };
+
+  useEffect(() => {
+    if (!pendingDeleteEmp && !showEntryModal && !showEmpModal && !selectedEmpId) return;
+    const handleModalBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (pendingDeleteEmp) {
+        setPendingDeleteEmp(null);
+        e.preventDefault();
+        return;
+      }
+      if (showEntryModal) {
+        setShowEntryModal(false);
+        e.preventDefault();
+        return;
+      }
+      if (showEmpModal) {
+        setShowEmpModal(false);
+        setEditingEmp(null);
+        e.preventDefault();
+        return;
+      }
+      if (selectedEmpId) {
+        setSelectedEmpId(null);
+        e.preventDefault();
+        return;
+      }
+    };
+    window.addEventListener('app-modal-back', handleModalBack);
+    return () => window.removeEventListener('app-modal-back', handleModalBack);
+  }, [pendingDeleteEmp, showEntryModal, showEmpModal, selectedEmpId]);
 
   const roleLabels: Record<KhataEmployeeRole, { ur: string; en: string }> = {
     driver: { ur: 'ڈرائیور', en: 'Driver' },

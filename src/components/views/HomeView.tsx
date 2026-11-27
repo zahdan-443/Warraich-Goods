@@ -335,6 +335,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   useEffect(() => {
     const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
       if (showTollCalculatorModal) {
         setShowTollCalculatorModal(false);
         e.preventDefault();
@@ -351,7 +352,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
   }, [showTollCalculatorModal, showSafarDiaryModal, showRecentLogs]);
 
   const openModalWithHistory = (setter: React.Dispatch<React.SetStateAction<boolean>>) => {
-    window.history.pushState({ modal: true }, '');
     setter(true);
   };
 

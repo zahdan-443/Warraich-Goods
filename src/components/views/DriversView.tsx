@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DICTIONARY, Driver, Language } from '../../types';
 import { 
   Users, 
@@ -37,6 +37,18 @@ export const DriversView: React.FC<DriversViewProps> = ({
   const t = DICTIONARY[lang].drivers;
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!showModal) return;
+    const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      setShowModal(false);
+      setEditingId(null);
+      e.preventDefault();
+    };
+    window.addEventListener('app-back-button', handleBack);
+    return () => window.removeEventListener('app-back-button', handleBack);
+  }, [showModal]);
 
   // form state
   const [name, setName] = useState('');

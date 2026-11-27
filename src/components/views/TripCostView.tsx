@@ -249,6 +249,7 @@ export const TripCostView: React.FC<TripCostViewProps> = ({
   // Back button listener: Return from Result mode to Input mode
   useEffect(() => {
     const handleBackButton = (e: Event) => {
+      if (e.defaultPrevented) return;
       if (activeTab === 'calculator' && viewMode === 'result') {
         e.preventDefault();
         setViewMode('input');

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, ArrowLeft, ArrowRight, Globe } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Globe } from 'lucide-react';
 import { Language } from '../types';
 
 interface ViewHeaderProps {
@@ -46,12 +46,12 @@ export const ViewHeader: React.FC<ViewHeaderProps> = ({
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
         
-        {/* Zone 1: Standardized "Back to Dashboard" Anchor (Identical pixel coordinates & styling across all tabs) */}
+        {/* Zone 1: Standardized Step-Back Anchor across inner views */}
         <button
           type="button"
           onClick={handleBack}
-          aria-label={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Home Dashboard'}
-          title={isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Home Dashboard'}
+          aria-label={isUrdu ? 'پچھلے صفحے پر واپس جائیں' : 'Go Back'}
+          title={isUrdu ? 'پچھلے صفحے پر واپس جائیں' : 'Go Back'}
           className="min-h-[44px] min-w-[44px] px-3 sm:px-3.5 py-1.5 rounded-xl bg-white dark:bg-[#1a1b15] hover:bg-[#f2f2e6] dark:hover:bg-[#25261f] active:bg-[#e4e4d6] dark:active:bg-[#2d2e24] border-2 border-[#d5d5c5] dark:border-[#424336] hover:border-[#8b9d77] text-[#383827] dark:text-[#f5f5ee] shadow-xs active:scale-95 transition-all duration-150 cursor-pointer flex items-center gap-1.5 shrink-0 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b9d77]"
         >
           {isUrdu ? (
@@ -59,9 +59,8 @@ export const ViewHeader: React.FC<ViewHeaderProps> = ({
           ) : (
             <ArrowLeft className="w-4 h-4 text-[#8b9d77] dark:text-emerald-400 group-hover:-translate-x-0.5 transition-transform shrink-0" />
           )}
-          <Home className="w-4 h-4 text-[#8b9d77] dark:text-emerald-400 shrink-0" />
           <span className="text-xs sm:text-sm font-black font-serif tracking-tight whitespace-nowrap text-[#2b2b1f] dark:text-[#f5f5ee]">
-            {isUrdu ? 'ڈیش بورڈ' : 'Dashboard'}
+            {isUrdu ? 'واپس' : 'Back'}
           </span>
         </button>
 

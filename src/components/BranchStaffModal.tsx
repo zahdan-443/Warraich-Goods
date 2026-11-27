@@ -116,19 +116,39 @@ export const BranchStaffModal: React.FC<BranchStaffModalProps> = ({
 
   useEffect(() => {
     if (!isOpen || !canManageStaff) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !pendingDeleteMember) onClose();
+    const closeStep = () => {
+      if (pendingDeleteMember) {
+        setPendingDeleteMember(null);
+        return;
+      }
+      if (editingEmail) {
+        setEditingEmail(null);
+        setEmailInput('');
+        setNameInput('');
+        setSalutation('Mr');
+        setPresetRole('munshi');
+        setPermissions(getPresetPermissions('munshi'));
+        return;
+      }
+      onClose();
     };
-    const onBack = () => {
-      if (!pendingDeleteMember) onClose();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeStep();
+    };
+    const onBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      closeStep();
+      e.preventDefault();
     };
     window.addEventListener('keydown', onKey);
+    window.addEventListener('app-modal-back', onBack);
     window.addEventListener('app-back-button', onBack);
     return () => {
       window.removeEventListener('keydown', onKey);
+      window.removeEventListener('app-modal-back', onBack);
       window.removeEventListener('app-back-button', onBack);
     };
-  }, [isOpen, canManageStaff, pendingDeleteMember, onClose]);
+  }, [isOpen, canManageStaff, pendingDeleteMember, editingEmail, onClose]);
 
   if (!isOpen || !branch || !canManageStaff) {
     return null;

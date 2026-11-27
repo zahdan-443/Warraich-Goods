@@ -203,20 +203,36 @@ export const ManageBiltyAccessModal: React.FC<ManageBiltyAccessModalProps> = ({
 
   useEffect(() => {
     if (!isOpen || !isOwner) return;
+    const closeStep = (): boolean => {
+      if (showResetTollConfirm) {
+        setShowResetTollConfirm(false);
+        return true;
+      }
+      if (pendingRestorePreview) {
+        setPendingRestorePreview(null);
+        setPendingRestoreJson(null);
+        return true;
+      }
+      onClose();
+      return true;
+    };
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !showResetTollConfirm && !pendingRestorePreview) {
-        onClose();
+      if (e.key === 'Escape') {
+        closeStep();
       }
     };
-    const handleBackButton = () => {
-      if (!showResetTollConfirm && !pendingRestorePreview) {
-        onClose();
+    const handleBackButton = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (closeStep()) {
+        e.preventDefault();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('app-modal-back', handleBackButton);
     window.addEventListener('app-back-button', handleBackButton);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('app-modal-back', handleBackButton);
       window.removeEventListener('app-back-button', handleBackButton);
     };
   }, [isOpen, isOwner, showResetTollConfirm, pendingRestorePreview, onClose]);

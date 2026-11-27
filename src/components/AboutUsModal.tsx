@@ -21,14 +21,15 @@ export const AboutUsModal: React.FC<AboutUsModalProps> = ({
       if (e.key === 'Escape') onClose();
     };
     const handleHardwareBack = (e: Event) => {
+      if (e.defaultPrevented) return;
       e.preventDefault();
       onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('app-back-button', handleHardwareBack);
+    window.addEventListener('app-modal-back', handleHardwareBack);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('app-back-button', handleHardwareBack);
+      window.removeEventListener('app-modal-back', handleHardwareBack);
     };
   }, [isOpen, onClose]);
 

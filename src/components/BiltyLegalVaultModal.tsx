@@ -128,11 +128,12 @@ export const BiltyLegalVaultModal: React.FC<BiltyLegalVaultModalProps> = ({
   useEffect(() => {
     if (!isOpen || !previewImage) return;
     const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
       e.preventDefault();
       setPreviewImage(null);
     };
-    window.addEventListener('app-back-button', handleBack);
-    return () => window.removeEventListener('app-back-button', handleBack);
+    window.addEventListener('app-modal-back', handleBack);
+    return () => window.removeEventListener('app-modal-back', handleBack);
   }, [isOpen, previewImage]);
 
   useEffect(() => {

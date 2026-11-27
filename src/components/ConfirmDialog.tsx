@@ -39,6 +39,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     };
 
     const handleBackButton = (e: Event) => {
+      if (e.defaultPrevented) return;
       e.preventDefault();
       if (!loading) {
         onCancel();
@@ -46,10 +47,10 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('app-back-button', handleBackButton);
+    window.addEventListener('app-modal-back', handleBackButton);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('app-back-button', handleBackButton);
+      window.removeEventListener('app-modal-back', handleBackButton);
     };
   }, [isOpen, loading, onCancel]);
 

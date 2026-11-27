@@ -260,6 +260,66 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
     return () => clearInterval(timer);
   }, [lockoutRemaining]);
 
+  useEffect(() => {
+    const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (showGuestSaveModal) {
+        setShowGuestSaveModal(false);
+        setPendingGuestSaveAction(null);
+        e.preventDefault();
+        return;
+      }
+      if (pendingDeleteAccount) {
+        setPendingDeleteAccount(null);
+        e.preventDefault();
+        return;
+      }
+      if (showAddEntryModal) {
+        setShowAddEntryModal(null);
+        setEditingEntry(null);
+        e.preventDefault();
+        return;
+      }
+      if (showAddAccountModal) {
+        setShowAddAccountModal(false);
+        setEditingAccount(null);
+        e.preventDefault();
+        return;
+      }
+      if (showReminderModal) {
+        setShowReminderModal(null);
+        e.preventDefault();
+        return;
+      }
+      if (showSettingsModal) {
+        setShowSettingsModal(false);
+        e.preventDefault();
+        return;
+      }
+      if (selectedAccountId) {
+        setSelectedAccountId(null);
+        e.preventDefault();
+        return;
+      }
+      if (activeModule !== 'parties') {
+        setActiveModule('parties');
+        e.preventDefault();
+        return;
+      }
+    };
+    window.addEventListener('app-back-button', handleBack);
+    return () => window.removeEventListener('app-back-button', handleBack);
+  }, [
+    showGuestSaveModal,
+    pendingDeleteAccount,
+    showAddEntryModal,
+    showAddAccountModal,
+    showReminderModal,
+    showSettingsModal,
+    selectedAccountId,
+    activeModule
+  ]);
+
   // Handle PIN Submit
   const handlePinSubmit = async (pinAttempt: string) => {
     const currSettings = getKhataSettings();
@@ -2216,6 +2276,22 @@ const SettingsBackupModal: React.FC<SettingsBackupModalProps> = ({
     billsCount: number;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleModalBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (pendingImport) {
+        setPendingImport(null);
+        e.preventDefault();
+        return;
+      }
+      onClose();
+      e.preventDefault();
+    };
+    window.addEventListener('app-modal-back', handleModalBack);
+    return () => window.removeEventListener('app-modal-back', handleModalBack);
+  }, [isOpen, pendingImport, onClose]);
 
   if (!isOpen) return null;
 

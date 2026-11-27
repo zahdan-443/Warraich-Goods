@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Delete, Lock, ShieldAlert } from 'lucide-react';
 import { Language } from '../../../types';
 
@@ -35,6 +35,17 @@ export const KhataPinLockScreen: React.FC<KhataPinLockScreenProps> = ({
   const [guestResetPhrase, setGuestResetPhrase] = useState('');
   const [resetError, setResetError] = useState('');
   const [resetting, setResetting] = useState(false);
+
+  useEffect(() => {
+    if (!showForgotDialog) return;
+    const handleModalBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      setShowForgotDialog(false);
+      e.preventDefault();
+    };
+    window.addEventListener('app-modal-back', handleModalBack);
+    return () => window.removeEventListener('app-modal-back', handleModalBack);
+  }, [showForgotDialog]);
 
   const appendDigit = (digit: string) => {
     if (lockoutRemaining > 0 || pinInput.length >= 8) return;

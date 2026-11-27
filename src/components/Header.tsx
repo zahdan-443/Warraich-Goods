@@ -225,29 +225,68 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   useEffect(() => {
-    if (!isMenuOpen && !showNotifs) return;
+    const anyOverlayOpen =
+      showAboutModal ||
+      showPrivacyPolicyModal ||
+      showExportPrivacyModal ||
+      showAccountDeletionModal ||
+      showNotifs ||
+      isMenuOpen;
+    if (!anyOverlayOpen) return;
+
+    const closeInnermost = (): boolean => {
+      if (showAboutModal) {
+        setShowAboutModal(false);
+        return true;
+      }
+      if (showPrivacyPolicyModal) {
+        setShowPrivacyPolicyModal(false);
+        return true;
+      }
+      if (showExportPrivacyModal) {
+        setShowExportPrivacyModal(false);
+        return true;
+      }
+      if (showAccountDeletionModal) {
+        setShowAccountDeletionModal(false);
+        return true;
+      }
+      if (showNotifs) {
+        setShowNotifs(false);
+        return true;
+      }
+      if (isMenuOpen) {
+        handleCloseMenu();
+        return true;
+      }
+      return false;
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (showNotifs) setShowNotifs(false);
-        else if (isMenuOpen) handleCloseMenu();
+        closeInnermost();
       }
     };
     const handleHardwareBack = (e: Event) => {
-      if (showNotifs) {
+      if (e.defaultPrevented) return;
+      if (closeInnermost()) {
         e.preventDefault();
-        setShowNotifs(false);
-      } else if (isMenuOpen) {
-        e.preventDefault();
-        handleCloseMenu();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('app-back-button', handleHardwareBack);
+    window.addEventListener('app-modal-back', handleHardwareBack);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('app-back-button', handleHardwareBack);
+      window.removeEventListener('app-modal-back', handleHardwareBack);
     };
-  }, [isMenuOpen, showNotifs]);
+  }, [
+    isMenuOpen,
+    showNotifs,
+    showAboutModal,
+    showPrivacyPolicyModal,
+    showExportPrivacyModal,
+    showAccountDeletionModal
+  ]);
 
   const handleShareApp = async () => {
     const shareTitle = lang === 'ur'

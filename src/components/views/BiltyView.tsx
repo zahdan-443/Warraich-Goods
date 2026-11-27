@@ -127,6 +127,7 @@ interface BiltyViewProps {
   onDeleteBilty?: (id: number) => void;
   onResolveConflict?: (biltyId: number) => void | Promise<void>;
   onNavigate?: (tab: string, subSection?: string) => void;
+  onStepBack?: () => void;
   activeBranch?: BranchConfig | null;
   branchPermissions?: BranchPermissions;
   currentUserEmail?: string | null;
@@ -142,6 +143,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   onDeleteBilty,
   onResolveConflict,
   onNavigate,
+  onStepBack,
   activeBranch,
   branchPermissions,
   currentUserEmail,
@@ -185,11 +187,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     setSubTab((prev) => {
       if (prev !== nextTab) {
         subTabHistoryRef.current.push(prev);
-        if (typeof window !== 'undefined' && window.history?.pushState) {
-          try {
-            window.history.pushState({ tab: 'bilty', subTab: nextTab }, '', '#bilty');
-          } catch {}
-        }
       }
       return nextTab;
     });
@@ -1262,9 +1259,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             <button
               type="button"
               onClick={() => {
-                if (typeof window !== 'undefined' && window.history?.pushState) {
-                  try { window.history.pushState({ tab: 'bilty', modal: 'vault' }, ''); } catch {}
-                }
                 setVaultModalBilty(record);
                 setIsVaultModalOpen(true);
               }}
@@ -1418,14 +1412,15 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       <div className="bg-white p-3.5 sm:p-6 md:p-8 rounded-2xl sm:rounded-[32px] shadow-sm border border-[#ecece0] space-y-4 sm:space-y-5">
         {/* Minimal Slim Back Row (No redundant title, subtitle, or office/address banner) */}
         <div className="flex items-center justify-between gap-3">
-          {onNavigate ? (
+          {(onNavigate || onStepBack) ? (
             <button
               type="button"
               onClick={() => {
                 const backEv = new CustomEvent('app-back-button', { cancelable: true });
                 window.dispatchEvent(backEv);
                 if (!backEv.defaultPrevented) {
-                  onNavigate('home');
+                  if (onStepBack) onStepBack();
+                  else onNavigate?.('home');
                 }
               }}
               className="px-3 py-2 min-h-[40px] bg-[#fdfbf7] border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
@@ -1616,18 +1611,12 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
               setDeliveryFilter('all');
             }}
             onInspectBilty={(b) => {
-              if (typeof window !== 'undefined' && window.history?.pushState) {
-                try { window.history.pushState({ tab: 'bilty', modal: 'inspect' }, ''); } catch {}
-              }
               setSelectedModalBilty(b);
             }}
             onPrintBilty={handlePrintBuilty}
             onDownloadPdf={handleDownloadPDF}
             onShareWhatsApp={handleWhatsAppShare}
             onOpenVault={(b) => {
-              if (typeof window !== 'undefined' && window.history?.pushState) {
-                try { window.history.pushState({ tab: 'bilty', modal: 'vault' }, ''); } catch {}
-              }
               setVaultModalBilty(b);
               setIsVaultModalOpen(true);
             }}
@@ -1653,9 +1642,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
               }
             } : undefined}
             onRequestDelete={canEditDeleteBilty && onDeleteBilty ? (b) => {
-              if (typeof window !== 'undefined' && window.history?.pushState) {
-                try { window.history.pushState({ tab: 'bilty', modal: 'delete' }, ''); } catch {}
-              }
               setBiltyToDelete(b);
             } : undefined}
           />
@@ -2664,6 +2650,8 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             setSubTab(prevSub);
           } else if (bilties.length > 0 && initialSubTab !== 'create') {
             setSubTab('all');
+          } else if (onStepBack) {
+            onStepBack();
           } else if (onNavigate) {
             onNavigate('home');
           }

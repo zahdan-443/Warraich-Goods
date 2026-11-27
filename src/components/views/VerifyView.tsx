@@ -231,6 +231,29 @@ export const VerifyView: React.FC<VerifyViewProps> = ({
     }
   }, [initialSection, initialBiltyNo, initialBiltyToken]);
 
+  useEffect(() => {
+    const isDirectQrLink = Boolean(initialBiltyNo || initialBiltyToken);
+    const defaultTab: 'vehicle' | 'license' | 'challan' | 'history' | 'bilty' = isDirectQrLink
+      ? 'bilty'
+      : initialSection;
+    const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (!isDirectQrLink && (verifiedBilty || biltySearchAttempted)) {
+        setVerifiedBilty(null);
+        setBiltySearchAttempted(false);
+        e.preventDefault();
+        return;
+      }
+      if (!isDirectQrLink && activeSubTab !== defaultTab) {
+        setActiveSubTab(defaultTab);
+        e.preventDefault();
+        return;
+      }
+    };
+    window.addEventListener('app-back-button', handleBack);
+    return () => window.removeEventListener('app-back-button', handleBack);
+  }, [initialBiltyNo, initialBiltyToken, initialSection, verifiedBilty, biltySearchAttempted, activeSubTab]);
+
   // Vehicle Tab State
   const [vehicleReg, setVehicleReg] = useState('LES-20-4124');
   const [vehicleProvince, setVehicleProvince] = useState<'punjab' | 'sindh' | 'islamabad' | 'kpk'>('punjab');

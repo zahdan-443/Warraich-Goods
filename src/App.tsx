@@ -119,7 +119,7 @@ import { InstallPwaModal } from './components/InstallPwaModal';
 import { GuestSavePromptModal } from './components/GuestSavePromptModal';
 import { GuestImportPromptModal } from './components/GuestImportPromptModal';
 import { LanguageSelectionModal } from './components/LanguageSelectionModal';
-import { Home, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { checkExpiringDocuments, processExpiryNotifications } from './utils/documentExpiry';
 import {
   dispatchDailyDigestNotification,
@@ -127,6 +127,12 @@ import {
   NOTIFICATIONS_UPDATED_EVENT
 } from './utils/dailyDigestNotification';
 import { initKhataDueDateScheduler } from './utils/khataNotifications';
+import {
+  pushTabHistory,
+  popTabHistory,
+  evaluateDoubleBackExit,
+  dispatchModalBackEvent
+} from './utils/backNavigation';
 
 export default function App() {
   const isStoreBuild = import.meta.env.VITE_STORE_BUILD === 'true';
@@ -400,6 +406,33 @@ export default function App() {
     action();
   };
 
+  const tabHistoryRef = useRef<ActiveTab[]>(['home']);
+  const exitToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastNativeBackAtRef = useRef<number>(0);
+
+  const resetExitToastState = React.useCallback(() => {
+    lastBackPressTime.current = 0;
+    setExitToast(false);
+    if (exitToastTimerRef.current) {
+      clearTimeout(exitToastTimerRef.current);
+      exitToastTimerRef.current = null;
+    }
+  }, []);
+
+  const syncHistoryGuard = React.useCallback((tab: ActiveTab, mode: 'replace' | 'push' = 'replace') => {
+    if (typeof window === 'undefined' || !window.history) return;
+    try {
+      const targetUrl = window.location.search
+        ? `${window.location.pathname}${window.location.search}#${tab}`
+        : `#${tab}`;
+      if (mode === 'push') {
+        window.history.pushState({ __wgGuard: true, tab }, '', targetUrl);
+      } else {
+        window.history.replaceState({ __wgGuard: true, tab }, '', targetUrl);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     // Check URL parameters first for direct Bilty verification links (from QR code scan or WhatsApp link)
     // E.g. ?page=verify&bilty=WG-2026-0001&vdata=... or ?view=verify&biltyNo=... or ?bilty=...
@@ -408,7 +441,10 @@ export default function App() {
     const paramBilty = urlParams.get('bilty') || urlParams.get('biltyNo') || urlParams.get('id');
     const paramToken = urlParams.get('vdata') || urlParams.get('data') || urlParams.get('d');
 
+    let resolvedInitialTab: ActiveTab = 'home';
+
     if (paramPage === 'verify' || paramBilty || paramToken) {
+      resolvedInitialTab = 'verify';
       setActiveTab('verify');
       setVerifySubSection('bilty');
       if (paramBilty) {
@@ -417,53 +453,64 @@ export default function App() {
       if (paramToken) {
         setInitialBiltyToken(paramToken.trim());
       }
-      return;
-    }
-
-    const rawHash = window.location.hash.replace(/^#\/?/, '').trim();
-    if (rawHash) {
-      const map: Record<string, ActiveTab> = {
-        calculator: 'calculator',
-        trip: 'calculator',
-        'trip-calculator': 'calculator',
-        vehicleaccount: 'vehicleAccount',
-        'vehicle-account': 'vehicleAccount',
-        vehicle: 'vehicle',
-        vehicles: 'vehicle',
-        drivers: 'drivers',
-        routes: 'routes',
-        fuel: 'fuel',
-        verify: 'verify',
-        bilty: 'bilty',
-        toll: 'toll',
-        'toll-plaza': 'toll',
-        tollplaza: 'toll',
-        navigation: 'navigation',
-        nav: 'navigation',
-        ledger: 'ledger',
-        khata: 'ledger',
-        addapanel: 'addaPanel',
-        'adda-panel': 'addaPanel',
-        adda: 'addaPanel',
-        ownerpanel: 'addaPanel',
-        home: 'home',
-      };
-      const resolved = map[rawHash.toLowerCase()];
-      if (resolved) {
-        setActiveTab(resolved);
-        window.history.replaceState({ tab: resolved }, '');
-        return;
+    } else {
+      const rawHash = window.location.hash.replace(/^#\/?/, '').trim();
+      if (rawHash) {
+        const map: Record<string, ActiveTab> = {
+          calculator: 'calculator',
+          trip: 'calculator',
+          'trip-calculator': 'calculator',
+          vehicleaccount: 'vehicleAccount',
+          'vehicle-account': 'vehicleAccount',
+          vehicle: 'vehicle',
+          vehicles: 'vehicle',
+          drivers: 'drivers',
+          routes: 'routes',
+          fuel: 'fuel',
+          verify: 'verify',
+          bilty: 'bilty',
+          toll: 'toll',
+          'toll-plaza': 'toll',
+          tollplaza: 'toll',
+          navigation: 'navigation',
+          nav: 'navigation',
+          ledger: 'ledger',
+          khata: 'ledger',
+          addapanel: 'addaPanel',
+          'adda-panel': 'addaPanel',
+          adda: 'addaPanel',
+          ownerpanel: 'addaPanel',
+          home: 'home',
+        };
+        const resolved = map[rawHash.toLowerCase()];
+        if (resolved) {
+          resolvedInitialTab = resolved;
+          setActiveTab(resolved);
+        }
       }
     }
-    window.history.replaceState({ tab: 'home' }, '');
-    window.history.pushState({ tab: 'home' }, '');
-  }, []);
+
+    activeTabRef.current = resolvedInitialTab;
+    tabHistoryRef.current = pushTabHistory(['home'], resolvedInitialTab);
+
+    try {
+      const rootUrl = window.location.search
+        ? `${window.location.pathname}${window.location.search}`
+        : '#home';
+      window.history.replaceState({ __wgRoot: true, tab: 'home' }, '', rootUrl);
+      syncHistoryGuard(resolvedInitialTab, 'push');
+    } catch {}
+  }, [syncHistoryGuard]);
 
   const handleNavigate = (newTab: ActiveTab | string, subSection?: string) => {
     const target = (newTab === 'vehicles' ? 'vehicle' : newTab) as ActiveTab;
+    resetExitToastState();
+
     if (isStoreBuild && target === 'dashcam') {
+      tabHistoryRef.current = ['home'];
+      activeTabRef.current = 'home';
       setActiveTab('home');
-      window.history.pushState({ tab: 'home' }, '', '#home');
+      syncHistoryGuard('home', 'replace');
       return;
     }
     if (subSection && ['vehicle', 'license', 'challan', 'history', 'bilty'].includes(subSection)) {
@@ -474,9 +521,14 @@ export default function App() {
       else if (subSection === 'ledger' || subSection === 'all') setBiltySubTab('all');
       else if (subSection === 'search') setBiltySubTab('search');
     }
-    if (target !== activeTab) {
-      window.history.pushState({ tab: target }, '', `#${target}`);
+    if (target !== activeTabRef.current) {
+      tabHistoryRef.current = pushTabHistory(tabHistoryRef.current, target);
+      activeTabRef.current = target;
       setActiveTab(target);
+      syncHistoryGuard(target, 'replace');
+      try {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch {}
     }
   };
 
@@ -493,6 +545,135 @@ export default function App() {
   const showBranchStaffModalRef = useRef(showBranchStaffModal);
   showBranchStaffModalRef.current = showBranchStaffModal;
 
+  const showGuestSaveModalRef = useRef(showGuestSaveModal);
+  showGuestSaveModalRef.current = showGuestSaveModal;
+
+  const pendingGuestImportRef = useRef(pendingGuestImport);
+  pendingGuestImportRef.current = pendingGuestImport;
+
+  const showLangPickerRef = useRef(showLangPicker);
+  showLangPickerRef.current = showLangPicker;
+
+  const stepBackOneTab = React.useCallback((): ActiveTab => {
+    const res = popTabHistory(tabHistoryRef.current, activeTabRef.current);
+    tabHistoryRef.current = res.nextStack;
+    activeTabRef.current = res.nextTab;
+    setActiveTab(res.nextTab);
+    resetExitToastState();
+    try {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {}
+    return res.nextTab;
+  }, [resetExitToastState]);
+
+  const executeBackNavigation = React.useCallback(
+    (source: 'native' | 'popstate' | 'ui'): { exited: boolean; currentTab: ActiveTab } => {
+      if (source === 'native') {
+        lastNativeBackAtRef.current = Date.now();
+      } else if (source === 'popstate' && Date.now() - lastNativeBackAtRef.current < 150) {
+        return { exited: false, currentTab: activeTabRef.current || 'home' };
+      }
+
+      // Priority 0: Initial first-launch language picker must stay visible instead of exiting
+      if (showLangPickerRef.current) {
+        resetExitToastState();
+        return { exited: false, currentTab: activeTabRef.current || 'home' };
+      }
+
+      // Priority 1: Allow global overlays/modals (Header, ManageBiltyAccessModal, InstallPwaModal, etc.) to close innermost-first
+      if (dispatchModalBackEvent()) {
+        resetExitToastState();
+        return { exited: false, currentTab: activeTabRef.current || 'home' };
+      }
+
+      // Priority 1.1: Global App-level modal fallbacks (never exit while any overlay is open)
+      if (showGuestSaveModalRef.current) {
+        setShowGuestSaveModal(false);
+        setPendingGuestSaveAction(null);
+        resetExitToastState();
+        return { exited: false, currentTab: activeTabRef.current || 'home' };
+      }
+      if (pendingGuestImportRef.current) {
+        setPendingGuestImport(null);
+        resetExitToastState();
+        return { exited: false, currentTab: activeTabRef.current || 'home' };
+      }
+      if (showBiltyAccessModalRef.current) {
+        setShowBiltyAccessModal(false);
+        resetExitToastState();
+        return { exited: false, currentTab: activeTabRef.current || 'home' };
+      }
+      if (showBranchStaffModalRef.current) {
+        setShowBranchStaffModal(false);
+        resetExitToastState();
+        return { exited: false, currentTab: activeTabRef.current || 'home' };
+      }
+      if (showTopMenuRef.current) {
+        setShowTopMenu(false);
+        resetExitToastState();
+        return { exited: false, currentTab: activeTabRef.current || 'home' };
+      }
+
+      // Priority 1.5: Let active view / inner modal / sub-module intercept Back step-by-step
+      const backEvent = new CustomEvent('app-back-button', { cancelable: true });
+      window.dispatchEvent(backEvent);
+      if (backEvent.defaultPrevented) {
+        resetExitToastState();
+        return { exited: false, currentTab: activeTabRef.current || 'home' };
+      }
+
+      // Priority 2: On any inner tab, step back one page in the visited stack (never jump straight to exit)
+      if (activeTabRef.current !== 'home') {
+        if ('vibrate' in navigator) {
+          try { navigator.vibrate(10); } catch {}
+        }
+        const nextTab = stepBackOneTab();
+        return { exited: false, currentTab: nextTab };
+      }
+
+      // UI Back button never triggers app exit
+      if (source === 'ui') {
+        resetExitToastState();
+        return { exited: false, currentTab: 'home' };
+      }
+
+      // Priority 3: On Dashboard ('home'), require double Back press within 2 seconds to exit app
+      const exitDecision = evaluateDoubleBackExit({
+        activeTab: 'home',
+        lastPressTs: lastBackPressTime.current,
+        now: Date.now()
+      });
+      lastBackPressTime.current = exitDecision.nextLastPressTs;
+
+      if (exitDecision.shouldExit) {
+        resetExitToastState();
+        return { exited: true, currentTab: 'home' };
+      }
+
+      setExitToast(true);
+      if ('vibrate' in navigator) {
+        try { navigator.vibrate(25); } catch {}
+      }
+      if (exitToastTimerRef.current) {
+        clearTimeout(exitToastTimerRef.current);
+      }
+      exitToastTimerRef.current = setTimeout(() => {
+        setExitToast(false);
+        exitToastTimerRef.current = null;
+      }, 2000);
+      return { exited: false, currentTab: 'home' };
+    },
+    [resetExitToastState, stepBackOneTab]
+  );
+
+  const handleUiStepBack = React.useCallback(() => {
+    if ('vibrate' in navigator) {
+      try { navigator.vibrate(10); } catch {}
+    }
+    const res = executeBackNavigation('ui');
+    syncHistoryGuard(res.currentTab, 'replace');
+  }, [executeBackNavigation, syncHistoryGuard]);
+
   useEffect(() => {
     // 1. Android Notification Channel & Permission setup on app initialization
     if (Capacitor.isNativePlatform()) {
@@ -505,96 +686,25 @@ export default function App() {
     let removeCapListener: (() => void) | null = null;
     if (Capacitor.isNativePlatform()) {
       CapApp.addListener('backButton', () => {
-        // Priority 1: Close active drawers or modals
-        if (showTopMenuRef.current) {
-          setShowTopMenu(false);
-          return;
-        }
-        if (showBiltyAccessModalRef.current) {
-          setShowBiltyAccessModal(false);
-          return;
-        }
-        if (showBranchStaffModalRef.current) {
-          setShowBranchStaffModal(false);
-          return;
-        }
-
-        // Priority 1.5: Let active view / inner modal / sub-tab intercept Back step-by-step
-        const backEvent = new CustomEvent('app-back-button', { cancelable: true });
-        window.dispatchEvent(backEvent);
-        if (backEvent.defaultPrevented) {
-          return;
-        }
-
-        // Priority 2: If user is inside ANY inner tool / section, navigate back to Dashboard ('home')
-        if (activeTabRef.current !== 'home') {
-          if ('vibrate' in navigator) {
-            try { navigator.vibrate(10); } catch {}
-          }
-          setActiveTab('home');
-          window.history.replaceState({ tab: 'home' }, '', '#home');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-          return;
-        }
-
-        // Priority 3: When already on Dashboard ('home'), double back within 2 seconds to exit app
-        const now = Date.now();
-        if (now - lastBackPressTime.current < 2000) {
+        const res = executeBackNavigation('native');
+        if (res.exited) {
           CapApp.exitApp();
-        } else {
-          lastBackPressTime.current = now;
-          setExitToast(true);
-          if ('vibrate' in navigator) {
-            try { navigator.vibrate(25); } catch {}
-          }
-          setTimeout(() => setExitToast(false), 2000);
         }
       }).then((handle) => {
         removeCapListener = () => handle.remove();
       }).catch(() => {});
     }
 
-    // 3. Web browser popstate handling
-    const handlePopState = (e: PopStateEvent) => {
-      if (showTopMenuRef.current) {
-        setShowTopMenu(false);
-        return;
-      }
-      if (showBiltyAccessModalRef.current) {
-        setShowBiltyAccessModal(false);
-        return;
-      }
-      if (showBranchStaffModalRef.current) {
-        setShowBranchStaffModal(false);
-        return;
-      }
-
-      const backEvent = new CustomEvent('app-back-button', { cancelable: true });
-      window.dispatchEvent(backEvent);
-      if (backEvent.defaultPrevented) {
-        const currentTab = activeTabRef.current || 'home';
-        window.history.pushState({ tab: currentTab }, '', `#${currentTab}`);
-        return;
-      }
-
-      if (activeTabRef.current !== 'home') {
-        const targetTab = e.state?.tab || 'home';
-        setActiveTab(targetTab);
-        window.history.replaceState({ tab: targetTab }, '', `#${targetTab}`);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else {
-        const now = Date.now();
-        if (now - lastBackPressTime.current < 2000) {
-          if (Capacitor.isNativePlatform()) {
-            CapApp.exitApp();
-          }
-        } else {
-          lastBackPressTime.current = now;
-          setExitToast(true);
-          setTimeout(() => setExitToast(false), 2000);
-          window.history.pushState({ tab: 'home' }, '', '#home');
+    // 3. Web / PWA browser popstate handling with permanent 2-slot guard
+    const handlePopState = () => {
+      const res = executeBackNavigation('popstate');
+      if (res.exited) {
+        if (Capacitor.isNativePlatform()) {
+          CapApp.exitApp();
         }
+        return;
       }
+      syncHistoryGuard(res.currentTab, 'push');
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -602,8 +712,11 @@ export default function App() {
     return () => {
       window.removeEventListener('popstate', handlePopState);
       if (removeCapListener) removeCapListener();
+      if (exitToastTimerRef.current) {
+        clearTimeout(exitToastTimerRef.current);
+      }
     };
-  }, []); // Mounted once: Zero listener churn, preventing Android abrupt exit
+  }, [executeBackNavigation, syncHistoryGuard]);
 
   const handleToggleLang = () => {
     const nextLang: Language = lang === 'en' ? 'ur' : 'en';
@@ -1456,7 +1569,7 @@ export default function App() {
 
   const handleSelectMileage = (mileage: number) => {
     setSelectedMileage(mileage);
-    setActiveTab('calculator');
+    handleNavigate('calculator');
   };
 
   // Handlers for Drivers
@@ -1764,10 +1877,7 @@ export default function App() {
               onFullResync={handleFullResync}
               isDashboard={!activeTab || activeTab === 'home'}
               showTopMenuExternal={showTopMenu}
-              onOpenTopMenu={() => {
-                window.history.pushState({ modal: true }, '');
-                setShowTopMenu(true);
-              }}
+              onOpenTopMenu={() => setShowTopMenu(true)}
               onCloseTopMenu={() => setShowTopMenu(false)}
               onOpenBiltyAccess={() => setShowBiltyAccessModal(true)}
               authLoading={authLoading}
@@ -1784,16 +1894,7 @@ export default function App() {
               subtitle={TAB_HEADER_INFO[activeTab]?.subtitle}
               subtitleUr={TAB_HEADER_INFO[activeTab]?.subtitleUr}
               lang={lang}
-              onBackToDashboard={() => {
-                if (activeTab === 'bilty') {
-                  const backEvent = new CustomEvent('app-back-button', { cancelable: true });
-                  window.dispatchEvent(backEvent);
-                  if (backEvent.defaultPrevented) {
-                    return;
-                  }
-                }
-                handleNavigate('home');
-              }}
+              onBackToDashboard={handleUiStepBack}
               onToggleLang={handleToggleLang}
             />
           )}
@@ -1856,10 +1957,7 @@ export default function App() {
                   companyProfile={companyProfile}
                   isBiltyAuthorized={isBiltyAuthorized}
                   onNavigate={handleNavigate}
-                  onOpenMenu={() => {
-                    window.history.pushState({ modal: true }, '');
-                    setShowTopMenu(true);
-                  }}
+                  onOpenMenu={() => setShowTopMenu(true)}
                   onOpenSignIn={handleSignIn}
                   onOpenBiltyAccess={() => setShowBiltyAccessModal(true)}
                   onSaveTrip={handleSaveTrip}
@@ -1958,6 +2056,7 @@ export default function App() {
               onDeleteBilty={handleDeleteBilty}
               onResolveConflict={handleResolveBiltyConflict}
               onNavigate={handleNavigate}
+              onStepBack={handleUiStepBack}
               activeBranch={activeBranch}
               branchPermissions={effectiveBranchPermissions}
               currentUserEmail={userEmail}
@@ -1990,6 +2089,7 @@ export default function App() {
               originCityId={localStorage.getItem('wg_nav_origin') || 'samundri'}
               destCityId={localStorage.getItem('wg_nav_dest') || 'karachi'}
               onNavigate={handleNavigate}
+              onStepBack={handleUiStepBack}
               onOpenTollCalc={(from, to) => {
                 handleNavigate('toll');
               }}
@@ -2030,6 +2130,7 @@ export default function App() {
               userBranchAccess={userBranchAccess}
               companyProfile={companyProfile}
               onNavigate={handleNavigate}
+              onStepBack={handleUiStepBack}
               onSelectBranch={isOwner ? handleSelectOwnerBranch : undefined}
               onBranchesUpdated={(updatedBranches) => setBranches(updatedBranches)}
               onOpenBiltyAccess={isOwner ? () => setShowBiltyAccessModal(true) : undefined}
@@ -2138,28 +2239,21 @@ export default function App() {
         />
       </React.Suspense>
 
-      {/* FLOATING UPPER-LEFT "BACK TO DASHBOARD" BUTTON (Appears at top-left matching header position when scrolled) */}
+      {/* FLOATING UPPER-LEFT STEP-BACK BUTTON (Appears when scrolled down on any inner screen) */}
       {activeTab !== 'home' && (
         <button
           type="button"
-          onClick={() => {
-            if ('vibrate' in navigator) {
-              try { navigator.vibrate(10); } catch {}
-            }
-            handleNavigate('home');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
+          onClick={handleUiStepBack}
           className={`fixed top-[58px] left-3 sm:left-5 z-40 flex items-center gap-1.5 py-1.5 px-3 bg-white/95 hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl shadow-md border border-[#ecece0] active:scale-95 cursor-pointer font-bold text-xs select-none backdrop-blur-md transition-all duration-200 ease-out ${
             showFloatingBack
               ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
               : 'opacity-0 -translate-y-2 scale-90 pointer-events-none'
           }`}
-          title={lang === 'ur' ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
-          aria-label={lang === 'ur' ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard'}
+          title={lang === 'ur' ? 'پچھلے صفحے پر واپس جائیں' : 'Go Back'}
+          aria-label={lang === 'ur' ? 'پچھلے صفحے پر واپس جائیں' : 'Go Back'}
         >
-          <Home className="w-3.5 h-3.5 text-[#8b9d77] shrink-0" />
-          <span>{lang === 'ur' ? 'ڈیش بورڈ' : 'Dashboard'}</span>
           <ArrowLeft className={`w-3.5 h-3.5 text-[#8b9d77] shrink-0 ${lang === 'ur' ? 'rotate-180' : ''}`} />
+          <span>{lang === 'ur' ? 'واپس' : 'Back'}</span>
         </button>
       )}
 

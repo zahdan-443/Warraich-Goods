@@ -156,6 +156,7 @@ const InstallPwaController: React.FC<InstallPwaModalProps> = ({ lang }) => {
   const markDismissed = useCallback(() => {
     setShowModal(false);
     setShowAutoBanner(false);
+    setShowManualGuide(false);
     try {
       sessionStorage.setItem('wg_install_session_dismissed', 'true');
       localStorage.setItem('wg_install_last_dismissed', Date.now().toString());
@@ -163,6 +164,22 @@ const InstallPwaController: React.FC<InstallPwaModalProps> = ({ lang }) => {
       // ignore
     }
   }, []);
+
+  useEffect(() => {
+    if (!showModal && !showAutoBanner) return;
+    const handleModalBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (showManualGuide && showModal) {
+        setShowManualGuide(false);
+        e.preventDefault();
+        return;
+      }
+      markDismissed();
+      e.preventDefault();
+    };
+    window.addEventListener('app-modal-back', handleModalBack);
+    return () => window.removeEventListener('app-modal-back', handleModalBack);
+  }, [showModal, showAutoBanner, showManualGuide, markDismissed]);
 
   const handleInstallClick = useCallback(async () => {
     const promptEvent = deferredPrompt || (window as any).__wg_pwa_deferred_prompt;

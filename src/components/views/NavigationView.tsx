@@ -43,6 +43,7 @@ interface NavigationViewProps {
   originCityId?: string;
   destCityId?: string;
   onNavigate: (tab: ActiveTab) => void;
+  onStepBack?: () => void;
   onOpenTollCalc?: (fromCity?: string, toCity?: string) => void;
 }
 
@@ -66,6 +67,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
   originCityId = 'samundri',
   destCityId = 'karachi',
   onNavigate,
+  onStepBack,
   onOpenTollCalc
 }) => {
   const isUrdu = lang === 'ur';
@@ -105,6 +107,17 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
   const [copiedShare, setCopiedShare] = useState<boolean>(false);
   const [activeTabMode, setActiveTabMode] = useState<'realGps' | 'roadSteps' | 'services'>('realGps');
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isReportModalOpen) return;
+    const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      setIsReportModalOpen(false);
+      e.preventDefault();
+    };
+    window.addEventListener('app-back-button', handleBack);
+    return () => window.removeEventListener('app-back-button', handleBack);
+  }, [isReportModalOpen]);
   const [realRouteDistanceKm, setRealRouteDistanceKm] = useState<number>(() => {
     return Math.round(calculateHaversineDistance(originCity.lat, originCity.lng, destCity.lat, destCity.lng) * 1.25);
   });
@@ -515,7 +528,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
         {/* Back to Map / Dashboard Button */}
         <button
           type="button"
-          onClick={() => onNavigate('map')}
+          onClick={() => (onStepBack ? onStepBack() : onNavigate('map'))}
           className="p-2 sm:px-3 sm:py-2 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
           title={isUrdu ? 'میپ پر واپس جائیں' : 'Back to Map'}
         >
@@ -824,7 +837,7 @@ export const NavigationView: React.FC<NavigationViewProps> = ({
           {/* Exit Button */}
           <button
             type="button"
-            onClick={() => onNavigate('map')}
+            onClick={() => (onStepBack ? onStepBack() : onNavigate('map'))}
             className="py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 shadow-xs"
             title={isUrdu ? 'بند کریں' : 'Exit Navigation'}
           >

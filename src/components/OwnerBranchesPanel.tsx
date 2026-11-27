@@ -283,6 +283,28 @@ export const OwnerBranchesPanel: React.FC<OwnerBranchesPanelProps> = ({
     setEditingStaffEmail(null);
   };
 
+  useEffect(() => {
+    const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (pendingDeleteStaff) {
+        setPendingDeleteStaff(null);
+        e.preventDefault();
+        return;
+      }
+      if (editingStaffEmail) {
+        resetStaffForm();
+        e.preventDefault();
+        return;
+      }
+      if (editingBranchId) {
+        resetBranchForm();
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('app-back-button', handleBack);
+    return () => window.removeEventListener('app-back-button', handleBack);
+  }, [pendingDeleteStaff, editingStaffEmail, editingBranchId]);
+
   const handleSelectRole = (role: BranchPresetRole) => {
     setPresetRole(role);
     setPermissions(getPresetPermissions(role));

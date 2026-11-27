@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Cloud, AlertCircle, X, Check, Lock, Smartphone } from 'lucide-react';
 import { Language } from '../types';
 import { loginWithGoogle } from '../utils/firebase';
@@ -23,6 +23,23 @@ export const GuestSavePromptModal: React.FC<GuestSavePromptModalProps> = ({
   const isUrdu = lang === 'ur';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (!loading) {
+        onClose();
+      }
+      e.preventDefault();
+    };
+    window.addEventListener('app-modal-back', handleBack);
+    window.addEventListener('app-back-button', handleBack);
+    return () => {
+      window.removeEventListener('app-modal-back', handleBack);
+      window.removeEventListener('app-back-button', handleBack);
+    };
+  }, [isOpen, loading, onClose]);
 
   if (!isOpen) return null;
 

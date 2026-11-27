@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CloudUpload, HardDrive, Trash2, X, ShieldCheck, Layers } from 'lucide-react';
 import { Language } from '../types';
 import type { GuestScopeSummary } from '../utils/storage';
@@ -23,6 +23,23 @@ export const GuestImportPromptModal: React.FC<GuestImportPromptModalProps> = ({
   onDiscard
 }) => {
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !summary || !summary.hasGuestData) return;
+    const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (!busy) {
+        onKeepSeparate();
+      }
+      e.preventDefault();
+    };
+    window.addEventListener('app-modal-back', handleBack);
+    window.addEventListener('app-back-button', handleBack);
+    return () => {
+      window.removeEventListener('app-modal-back', handleBack);
+      window.removeEventListener('app-back-button', handleBack);
+    };
+  }, [isOpen, summary, busy, onKeepSeparate]);
 
   if (!isOpen || !summary || !summary.hasGuestData) return null;
 

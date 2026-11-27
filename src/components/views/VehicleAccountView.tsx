@@ -109,6 +109,25 @@ export const VehicleAccountView: React.FC<VehicleAccountViewProps> = ({
     reloadCashData();
   }, []);
 
+  useEffect(() => {
+    const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (showAddCashModal || editingCashEntry) {
+        setShowAddCashModal(null);
+        setEditingCashEntry(null);
+        e.preventDefault();
+        return;
+      }
+      if (activeSubTab !== 'gari_hisaab') {
+        setActiveSubTab('gari_hisaab');
+        e.preventDefault();
+        return;
+      }
+    };
+    window.addEventListener('app-back-button', handleBack);
+    return () => window.removeEventListener('app-back-button', handleBack);
+  }, [showAddCashModal, editingCashEntry, activeSubTab]);
+
   const addAmount = (setter: React.Dispatch<React.SetStateAction<string>>, current: string, delta: number) => {
     const val = parseFloat(current) || 0;
     setter(String(val + delta));

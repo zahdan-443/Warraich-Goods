@@ -119,6 +119,7 @@ interface AddaPanelViewProps {
   userBranchAccess?: UserBranchAccess | null;
   companyProfile?: CompanyProfile | null;
   onNavigate: (tab: ActiveTab, subSection?: string) => void;
+  onStepBack?: () => void;
   onSelectBranch?: (branchId: string) => void;
   onBranchesUpdated?: (branches: BranchConfig[]) => void;
   onOpenBiltyAccess?: () => void;
@@ -157,6 +158,7 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
   userBranchAccess,
   companyProfile,
   onNavigate,
+  onStepBack,
   onSelectBranch,
   onBranchesUpdated,
   onOpenBiltyAccess
@@ -247,18 +249,6 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
     window.addEventListener(ADDA_UPDATED_EVENT, onUpdated);
     return () => window.removeEventListener(ADDA_UPDATED_EVENT, onUpdated);
   }, [branchId]);
-
-  // Android / browser hardware back returns from sub-module to hub
-  useEffect(() => {
-    if (subModule === 'hub') return;
-    const onBack = (e: Event) => {
-      e.preventDefault();
-      setSubModule('hub');
-      setNotice(null);
-    };
-    window.addEventListener('app-back-button', onBack);
-    return () => window.removeEventListener('app-back-button', onBack);
-  }, [subModule]);
 
   // -------------------------------------------------------------------------
   // 2 & 3. Freight & Commission Pending Filters + Manual Entry States
@@ -442,6 +432,90 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
   // -------------------------------------------------------------------------
   const [reportMonth, setReportMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [reportAllTime, setReportAllTime] = useState(false);
+
+  // Step-by-step Back navigation inside Owner / Adda Panel (modals -> previews -> forms -> sub-modules -> hub)
+  const stepBackInternal = (): boolean => {
+    if (pendingDeleteItem) {
+      setPendingDeleteItem(null);
+      return true;
+    }
+    if (pendingDeleteStaff) {
+      setPendingDeleteStaff(null);
+      return true;
+    }
+    if (pendingOverpaymentConfirm) {
+      setPendingOverpaymentConfirm(null);
+      return true;
+    }
+    if (paymentModalBillId) {
+      setPaymentModalBillId(null);
+      setPendingOverpaymentConfirm(null);
+      return true;
+    }
+    if (subModule === 'bill' && previewBill) {
+      setPreviewBill(null);
+      return true;
+    }
+    if (subModule === 'bill' && selectedPartyKey) {
+      setSelectedPartyKey(null);
+      return true;
+    }
+    if (subModule === 'freight' && showAddFreight) {
+      setShowAddFreight(false);
+      return true;
+    }
+    if (subModule === 'commission' && showAddComm) {
+      setShowAddComm(false);
+      return true;
+    }
+    if (subModule === 'staff' && editingStaffEmail) {
+      setEditingStaffEmail(null);
+      setStaffEmailInput('');
+      setStaffNameInput('');
+      setStaffSalutationInput('Mr');
+      setStaffRoleInput('munshi');
+      setStaffPermsInput(getPresetPermissions('munshi'));
+      return true;
+    }
+    if (subModule !== 'hub') {
+      setSubModule('hub');
+      setShowAddFreight(false);
+      setShowAddComm(false);
+      setPreviewBill(null);
+      setSelectedPartyKey(null);
+      setPaymentModalBillId(null);
+      setPendingOverpaymentConfirm(null);
+      setEditingStaffEmail(null);
+      setNotice(null);
+      try {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch {}
+      return true;
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    const onBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (stepBackInternal()) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('app-back-button', onBack);
+    return () => window.removeEventListener('app-back-button', onBack);
+  }, [
+    subModule,
+    pendingDeleteItem,
+    pendingDeleteStaff,
+    pendingOverpaymentConfirm,
+    paymentModalBillId,
+    previewBill,
+    selectedPartyKey,
+    showAddFreight,
+    showAddComm,
+    editingStaffEmail
+  ]);
 
   // -------------------------------------------------------------------------
   // Handlers
@@ -1140,22 +1214,37 @@ export const AddaPanelView: React.FC<AddaPanelViewProps> = ({
             <button
               type="button"
               onClick={() => {
-                setSubModule('hub');
-                setNotice(null);
+                const backEv = new CustomEvent('app-back-button', { cancelable: true });
+                window.dispatchEvent(backEv);
+                if (!backEv.defaultPrevented) {
+                  setSubModule('hub');
+                  setNotice(null);
+                }
               }}
               className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0f2942] text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <ArrowLeft className={`w-4 h-4 ${isUr ? 'rotate-180' : ''}`} />
-              <span>{isUr ? 'اڈا پینل مینو' : 'Adda Panel Menu'}</span>
+              <span>
+                {previewBill || selectedPartyKey
+                  ? isUr
+                    ? 'واپس'
+                    : 'Back'
+                  : isUr
+                  ? 'اڈا پینل مینو'
+                  : 'Adda Panel Menu'}
+              </span>
             </button>
           ) : (
             <button
               type="button"
-              onClick={() => onNavigate('home')}
+              onClick={() => {
+                if (onStepBack) onStepBack();
+                else onNavigate('home');
+              }}
               className="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className={`w-4 h-4 ${isUr ? 'rotate-180' : ''}`} />
-              <span>{isUr ? 'ڈیش بورڈ' : 'Dashboard'}</span>
+              <span>{isUr ? 'واپس' : 'Back'}</span>
             </button>
           )}
         </div>

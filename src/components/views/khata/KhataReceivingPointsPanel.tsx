@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   KhataReceivingEntry,
   KhataReceivingEntryType,
@@ -69,6 +69,31 @@ export const KhataReceivingPointsPanel: React.FC<KhataReceivingPointsPanelProps>
     setAllEntries(getAllReceivingEntries());
     onDataChanged?.();
   };
+
+  useEffect(() => {
+    if (!showEntryModal && !showPointModal && !selectedPointId) return;
+    const handleModalBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (showEntryModal) {
+        setShowEntryModal(false);
+        e.preventDefault();
+        return;
+      }
+      if (showPointModal) {
+        setShowPointModal(false);
+        setEditingPoint(null);
+        e.preventDefault();
+        return;
+      }
+      if (selectedPointId) {
+        setSelectedPointId(null);
+        e.preventDefault();
+        return;
+      }
+    };
+    window.addEventListener('app-modal-back', handleModalBack);
+    return () => window.removeEventListener('app-modal-back', handleModalBack);
+  }, [showEntryModal, showPointModal, selectedPointId]);
 
   const filteredPoints = useMemo(() => {
     if (!searchQuery.trim()) return points;

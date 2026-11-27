@@ -93,6 +93,34 @@ export const DashcamView: React.FC<DashcamViewProps> = ({ lang, onNavigate }) =>
   const [showPreview, setShowPreview] = useState(true);
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
 
+  useEffect(() => {
+    const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (oledBlackoutMode) {
+        setOledBlackoutMode(false);
+        e.preventDefault();
+        return;
+      }
+      if (clipToDelete) {
+        setClipToDelete(null);
+        e.preventDefault();
+        return;
+      }
+      if (selectedClipToPlay) {
+        setSelectedClipToPlay(null);
+        e.preventDefault();
+        return;
+      }
+      if (showPermissionModal) {
+        setShowPermissionModal(false);
+        e.preventDefault();
+        return;
+      }
+    };
+    window.addEventListener('app-back-button', handleBack);
+    return () => window.removeEventListener('app-back-button', handleBack);
+  }, [oledBlackoutMode, clipToDelete, selectedClipToPlay, showPermissionModal]);
+
   // Load initial status, dual camera capability & clips
   useEffect(() => {
     let isMounted = true;

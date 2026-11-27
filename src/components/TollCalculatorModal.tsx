@@ -82,17 +82,30 @@ export const TollCalculatorModal: React.FC<TollCalculatorModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+    const stepBack = () => {
+      if (viewState === 'result') {
+        setViewState('input');
+      } else {
+        onClose();
+      }
     };
-    const handleBackButton = () => onClose();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') stepBack();
+    };
+    const handleBackButton = (e: Event) => {
+      if (e.defaultPrevented) return;
+      e.preventDefault();
+      stepBack();
+    };
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('app-modal-back', handleBackButton);
     window.addEventListener('app-back-button', handleBackButton);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('app-modal-back', handleBackButton);
       window.removeEventListener('app-back-button', handleBackButton);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, viewState, onClose]);
 
   const loadRates = async () => {
     try {

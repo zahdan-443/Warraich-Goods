@@ -68,6 +68,17 @@ export const TollPlazaView: React.FC<TollPlazaViewProps> = ({
     }).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!showMotorwaysGuide) return;
+    const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      setShowMotorwaysGuide(false);
+      e.preventDefault();
+    };
+    window.addEventListener('app-back-button', handleBack);
+    return () => window.removeEventListener('app-back-button', handleBack);
+  }, [showMotorwaysGuide]);
+
   // Compute live result whenever cities, class or M-tag changes
   useEffect(() => {
     if (fromCity !== toCity) {

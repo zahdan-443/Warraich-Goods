@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DICTIONARY, Language, RoutePreset } from '../../types';
 import { MapPin, Plus, Trash2, ArrowRight, Navigation } from 'lucide-react';
 import { validateFinancialNumber } from '../../utils/calculator';
@@ -23,6 +23,17 @@ export const RoutesView: React.FC<RoutesViewProps> = ({
   const isUrdu = lang === 'ur';
   const t = DICTIONARY[lang].routes;
   const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    if (!showModal) return;
+    const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      setShowModal(false);
+      e.preventDefault();
+    };
+    window.addEventListener('app-back-button', handleBack);
+    return () => window.removeEventListener('app-back-button', handleBack);
+  }, [showModal]);
 
   // Form state
   const [fromCity, setFromCity] = useState('');

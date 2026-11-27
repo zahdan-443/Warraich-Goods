@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DICTIONARY, Language, Vehicle } from '../../types';
 import { 
   Truck, 
@@ -41,6 +41,18 @@ export const VehiclesView: React.FC<VehiclesViewProps> = ({
   const t = DICTIONARY[lang].fleet;
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!showModal) return;
+    const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      setShowModal(false);
+      setEditingId(null);
+      e.preventDefault();
+    };
+    window.addEventListener('app-back-button', handleBack);
+    return () => window.removeEventListener('app-back-button', handleBack);
+  }, [showModal]);
 
   // Form state
   const [reg, setReg] = useState('');

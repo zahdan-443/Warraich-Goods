@@ -225,6 +225,34 @@ export const MapView: React.FC<MapViewProps> = ({ lang, onNavigate, onOpenTollCa
     loadHazards();
   }, []);
 
+  useEffect(() => {
+    const handleBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (isReportModalOpen) {
+        setIsReportModalOpen(false);
+        e.preventDefault();
+        return;
+      }
+      if (selectedCityForDetail) {
+        setSelectedCityForDetail(null);
+        e.preventDefault();
+        return;
+      }
+      if (isOriginOpen) {
+        setIsOriginOpen(false);
+        e.preventDefault();
+        return;
+      }
+      if (isDestOpen) {
+        setIsDestOpen(false);
+        e.preventDefault();
+        return;
+      }
+    };
+    window.addEventListener('app-back-button', handleBack);
+    return () => window.removeEventListener('app-back-button', handleBack);
+  }, [isReportModalOpen, selectedCityForDetail, isOriginOpen, isDestOpen]);
+
   // --- LIVE NAVIGATION STATE ---
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
   const [isNavPaused, setIsNavPaused] = useState<boolean>(false);

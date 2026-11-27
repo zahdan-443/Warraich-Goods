@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   BiltyRecord,
   KhataBill,
@@ -95,6 +95,42 @@ export const KhataBillsPanel: React.FC<KhataBillsPanelProps> = ({
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3500);
   };
+
+  useEffect(() => {
+    if (!pendingDeleteBill && !payingBill && !showDocPicker && !showBillModal && !showFilters) return;
+    const handleModalBack = (e: Event) => {
+      if (e.defaultPrevented) return;
+      if (pendingDeleteBill) {
+        setPendingDeleteBill(null);
+        e.preventDefault();
+        return;
+      }
+      if (payingBill) {
+        setPayingBill(null);
+        e.preventDefault();
+        return;
+      }
+      if (showDocPicker) {
+        setShowDocPicker(false);
+        e.preventDefault();
+        return;
+      }
+      if (showBillModal) {
+        setShowBillModal(false);
+        setEditingBill(null);
+        setDraftFromDoc(null);
+        e.preventDefault();
+        return;
+      }
+      if (showFilters) {
+        setShowFilters(false);
+        e.preventDefault();
+        return;
+      }
+    };
+    window.addEventListener('app-modal-back', handleModalBack);
+    return () => window.removeEventListener('app-modal-back', handleModalBack);
+  }, [pendingDeleteBill, payingBill, showDocPicker, showBillModal, showFilters]);
 
   const uniqueParties = useMemo(() => {
     const set = new Set<string>();
