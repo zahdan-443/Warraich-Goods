@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-1.3.1-mwyf0iz2';
+const CACHE_NAME = 'driver-dost-1.3.1-mwypv4td';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const MAX_CACHED_TILES = 350;
 
@@ -51,29 +51,29 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/AddaPanelView-CmfVcyB4.js',
-  './assets/BiltyView-vCTXq8vV.js',
-  './assets/DashcamView-DjKxnXu5.js',
-  './assets/DriversView-Hh7AXwvo.js',
-  './assets/FuelLogView-CGRWu_5s.js',
-  './assets/LedgerView-Ce0RJkCm.js',
+    './assets/AddaPanelView-ByEWPyuy.js',
+  './assets/BiltyView-S0dvbny_.js',
+  './assets/DashcamView-uzHtSkj3.js',
+  './assets/DriversView-SnWikvyh.js',
+  './assets/FuelLogView-ivcfqvLZ.js',
+  './assets/LedgerView-BlIQ8Oio.js',
+  './assets/MapView-BsMIp7vH.js',
   './assets/MapView-CIGW-MKW.css',
-  './assets/MapView-DMREGW7U.js',
-  './assets/NavigationView-DFZ6YDkf.js',
-  './assets/RoutesView-DWBrscCa.js',
-  './assets/TollPlazaView-B1xE_-jD.js',
-  './assets/TripCostView-CExxCa8J.js',
-  './assets/VehicleAccountView-CGSYNbzY.js',
-  './assets/VehiclesView-CeIKK2-E.js',
-  './assets/VerifyView-B7c7N7M6.js',
+  './assets/NavigationView-a9UglmB4.js',
+  './assets/RoutesView-DJxu6mxm.js',
+  './assets/TollPlazaView-CG57J6-A.js',
+  './assets/TripCostView-FrMI6WbK.js',
+  './assets/VehicleAccountView-DZtJ9YGs.js',
+  './assets/VehiclesView-C9hwfmGM.js',
+  './assets/VerifyView-C6OeNKBF.js',
   './assets/bilty_watermark_bg_1794821577675-BFAqost0.jpg',
   './assets/index-BW4yyOgM.css',
-  './assets/index-ZQjh23ZC.js',
-  './assets/pdfHelper-Bjf2epLT.js',
+  './assets/index-DEzqQZRZ.js',
+  './assets/pdfHelper-BI61eBbj.js',
   './assets/vendor-firebase-BqtaKuRp.js',
-  './assets/vendor-pdf-nSiifT6Q.js',
-  './assets/vendor-react-hzAChmK4.js',
-  './assets/web-C56y9C6j.js',
+  './assets/vendor-pdf-BdMnn2oZ.js',
+  './assets/vendor-react-DCS5R27O.js',
+  './assets/web-BguW7gk6.js',
   './assets/web-CCwXpY4x.js',
   './assets/web-CQbvCdY3.js',
   './assets/web-CgmvjRPY.js'
