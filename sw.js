@@ -10,7 +10,7 @@
    - Web Push Alerts & Notification Management
    ========================================================================== */
 
-const CACHE_NAME = 'driver-dost-1.3.1-mwypv4td';
+const CACHE_NAME = 'driver-dost-1.3.2-mwyrcvc7';
 const TILE_CACHE_NAME = 'driver-dost-tiles-v2';
 const MAX_CACHED_TILES = 350;
 
@@ -51,31 +51,31 @@ const CORE_STATIC_ASSETS = [
 
 // Production build chunks injected during build step (vite build -> sync-android-assets.js)
 const BUILD_ASSETS = [
-    './assets/AddaPanelView-ByEWPyuy.js',
-  './assets/BiltyView-S0dvbny_.js',
-  './assets/DashcamView-uzHtSkj3.js',
-  './assets/DriversView-SnWikvyh.js',
-  './assets/FuelLogView-ivcfqvLZ.js',
-  './assets/LedgerView-BlIQ8Oio.js',
-  './assets/MapView-BsMIp7vH.js',
+    './assets/AddaPanelView-D0rrK2WW.js',
+  './assets/BiltyView-D_WwRvj8.js',
+  './assets/DashcamView-wBWPUsh0.js',
+  './assets/DriversView-BxydMbhi.js',
+  './assets/FuelLogView-Cg4D483T.js',
+  './assets/LedgerView-DMeKvk-9.js',
   './assets/MapView-CIGW-MKW.css',
-  './assets/NavigationView-a9UglmB4.js',
-  './assets/RoutesView-DJxu6mxm.js',
-  './assets/TollPlazaView-CG57J6-A.js',
-  './assets/TripCostView-FrMI6WbK.js',
-  './assets/VehicleAccountView-DZtJ9YGs.js',
-  './assets/VehiclesView-C9hwfmGM.js',
-  './assets/VerifyView-C6OeNKBF.js',
+  './assets/MapView-nWKIwHl0.js',
+  './assets/NavigationView-DFBxXnxM.js',
+  './assets/RoutesView-CDHTmoKN.js',
+  './assets/TollPlazaView-Di8nkznj.js',
+  './assets/TripCostView-DXshyNyK.js',
+  './assets/VehicleAccountView-D9urAstQ.js',
+  './assets/VehiclesView-BB6FId-W.js',
+  './assets/VerifyView-DqOQpsOi.js',
   './assets/bilty_watermark_bg_1794821577675-BFAqost0.jpg',
-  './assets/index-BW4yyOgM.css',
-  './assets/index-DEzqQZRZ.js',
-  './assets/pdfHelper-BI61eBbj.js',
+  './assets/index-BslQXJS3.css',
+  './assets/index-CK7f9U8E.js',
+  './assets/pdfHelper-CZr6L4rb.js',
   './assets/vendor-firebase-BqtaKuRp.js',
   './assets/vendor-pdf-BdMnn2oZ.js',
   './assets/vendor-react-DCS5R27O.js',
-  './assets/web-BguW7gk6.js',
   './assets/web-CCwXpY4x.js',
   './assets/web-CQbvCdY3.js',
+  './assets/web-Cfzcog_t.js',
   './assets/web-CgmvjRPY.js'
 ];
 
@@ -172,6 +172,7 @@ self.addEventListener('fetch', (event) => {
   if (
     url.pathname.startsWith('/@') ||
     url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/api/') ||
     url.pathname.includes('/node_modules/')
   ) {
     return;
