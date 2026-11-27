@@ -22,34 +22,42 @@
 - Keep the word "Bilty" out of the Google Play Store listing title and short/full description unless explicitly requested by the owner.
 - Access to Bilty creation, Adda Billing, and Owner controls remains strictly restricted to authorized owner/branch roles (never exposed in guest mode).
 
-## 6. Project Memory & Current Status Snapshot (Updated: 2026-11-17)
+## 6. Project Memory & Current Status Snapshot (Updated: 2026-11-26)
 
 ### Application & Deployment
-- **App Name / Version**: Driver Dost (`driver-dost` v`1.3.0`), Android `applicationId: com.warraichgoods.driverdost` (`versionCode: 10300`).
+- **App Name / Version**: Driver Dost (`driver-dost` v`1.3.1`), Android `applicationId: com.warraichgoods.driverdost`.
 - **Tech Stack**: React 19, TypeScript, Vite 6, Tailwind CSS v4, Express (`server.ts`), Capacitor 8 (`store` and `full` flavors), Firebase v12 (Auth + Firestore with `memoryLocalCache`), `jsPDF`, `qrcode`, `jsQR`, `Leaflet`, `Tesseract.js`.
 - **Live URLs**:
-  - Driver Dost App (this repo): `https://zahdan-443.github.io/Warraich-Goods/`
+  - Driver Dost Web App (this repo): `https://zahdan-443.github.io/Warraich-Goods/`
+  - Palm Store Android Listing: `https://palmplaystore.com/detail/com.warraichgoods.driverdost?country=PK`
   - Public Company Verification Site (separate GitHub repo): `https://zahdan-443.github.io/Warraichgoodstransportcompany/?page=verify&bilty={BILTY_NO}`
+
+### Search Engine Indexing & Verification
+- **Sitemaps**: Identical `sitemap.xml` at repository root (`/sitemap.xml`) and `public/sitemap.xml` (`lastmod: 2026-11-26`), indexing `/`, `index.html`, `privacy.html`, `terms.html`, and `delete-account.html`.
+- **Site Verification**:
+  - Google Search Console meta tag configured in `index.html`.
+  - Bing Webmaster Tools verification file added by owner at `/BingSiteAuth.xml` (user ID `0946C5F54F3554E8874EFAF8A94B687C`).
+- **Store Indexing & Share Links**:
+  - `index.html` embeds Schema.org `MobileApplication` JSON-LD (`installUrl` -> Palm Store) and a descriptive pre-hydration Palm Store anchor link (avoiding `"Click here"` phrasing).
+  - Bilingual Palm Store download button rendered in Home footer (`HomeView`) across both web and native Android app.
+  - Side-menu **Share App Link** (`Header`) and `PALM_STORE_URL` / `PUBLIC_APP_SHARE_URL` (`externalLinks.ts`) share the official Palm Store listing URL instead of `localhost`.
 
 ### Company Identity & Owner Control
 - **Company**: Warraich Goods Transport Company (`وڑائچ گڈز ٹرانسپورٹ کمپنی`), Proprietor: `Zahdan Nasar Warraich` (`پروپرائیٹر: زاہدان نصر وڑائچ`), NTN: `7779394-1`, Registered mark `®`.
-- **Branch**: Samundri Head Office ONLY — `Okara Bypass, Near 466 Chock, Samundri` (`اوکاڑہ بائی پاس، نزد 466 چوک، سمندری`), Phone: `0300-5370443, 0339-5370443`.
+- **Default Branch**: Samundri Head Office — `Okara Bypass, Near 466 Chock, Samundri` (`اوکاڑہ بائی پاس، نزد 466 چوک، سمندری`), Phone: `0300-5370443, 0339-5370443`; supports multi-branch staff access (`BranchConfig` / `BranchPermissions`) where Branch Owners edit their own branch details and the Creator edits all.
 - **Authorised Owner Email**: `warraichgoods43@gmail.com`.
 
 ### Implemented Program Modules
 - **Core Fleet & Guest Mode**: Home Hub, Trip Cost Calculator, Live PK Fuel Prices & Logs, Vehicles & Drivers (with local document expiry reminders), Routes, Toll Plaza Calculator, GPS Navigation & Hazard Reports, Government Verification Hub (`VerifyView` for MTMIS / DLIMS / PSCA Safe City / QR Lookup).
-- **Khata Expansion (5 Modules)**: Party Ledger, Bills & Invoices, Employees & Salary Ledger, Receiving Points, Daily Expenses, and Reports Hub with local PDF exports & WhatsApp summaries.
+- **Khata Expansion (5 Modules)**: Party Ledger (optimized `collectionGroup('entries')` sync), Bills & Invoices (Freight / Commission / All filtering & Billed -> Paid tracking), Employees & Salary Ledger, Receiving Points, Daily Expenses, and Reports Hub with local PDF exports & WhatsApp summaries.
 - **Owner-Only Bilty Generator (`BiltyView` + `PrintableBilty`)**:
-  - Opens directly to language selection (`ur` / `en`).
-  - A4 Print Layout (`794x1120px`) on clean white card with Navy Blue (`#0f2942`), Gold (`#d97706`), and Emerald (`#065f46`) accents, double outer border, Pakistani ornamental header frame (`pakistani-header-frame`), 3-edge left company emblem, top-right NTN stamp, Nastaleeq font stack (`font-weight: 400` in `@font-face`), soft pastel row tints, 6% opacity logo watermark inside `Nature of Goods` only, enlarged cargo text, clean quantity box (without `Pkgs / Bags` label), top `Freight` row + conditional bottom summary, bold highlighted legal `Remarks` and `Terms & Conditions`, and `88x88` QR aligned with Driver Signature + bottom verification caption.
+  - Opens directly to language selection (`ur` / `en`), supports A4 print layout (`794x1120px`), `88x88` QR verification, and `biltyAttachments.expireAt` TTL attachment lifecycle.
 
 ### Firebase & Verification Status
 - **Primary Firebase Project**: `warraich-goods` (`WARRAICH_GOODS_CONFIG` in `src/utils/firebaseConfig.ts`; supports `VITE_FIREBASE_*` environment overrides cleanly).
-- **Firestore Rules (`firestore.rules`)**: Published to Firebase Console; uses non-reserved parameter `accessDoc` in `isStaffAuthorized(accessDoc)` and `payload` in `hasOnlyPublicBiltyFields()`. Public QR records store ONLY 8 non-PII, non-financial fields under `publicBiltyVerifications/{UPPERCASE_BILTY_NO}`.
+- **Firestore Rules (`firestore.rules`)**: Published to Firebase Console; enforces `isOwner()` and `isActiveBranchMember(branchId)`, plus public QR verification under `publicBiltyVerifications/{UPPERCASE_BILTY_NO}`.
 - **External Website Verification Note**: `Warraichgoodstransportcompany` reads its 6 `VITE_FIREBASE_*` keys strictly from its own GitHub **Repository secrets** at build time and requires a manual **Run workflow** (or new push) after secrets are added before live QR verification resolves.
 
 ### Release & Verification Invariants
 - Never modify `android/app/src/main/AndroidManifest.xml` (verified baseline SHA-256: `eb265574e07cf003dd8ed2ac83d94c9521a2e64418236b0d48d2a2e400adb944`) or `/public/*.png`.
-- Verification commands: `npm run lint` (`tsc --noEmit`), `npm run test` (`21` files / `194` tests), `VITE_STORE_BUILD=true npm run build && node scripts/verify-khata-release.mjs`.
-
-
+- Verification commands: `npm run lint` (`tsc --noEmit`), `npm run test` (`34` files / `285` tests), `VITE_STORE_BUILD=true npm run build && node scripts/verify-khata-release.mjs`.

@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { formatBiltyWhatsAppSummary } from '../utils/pdfHelper';
 import { sanitizeContactOrCnic } from '../utils/biltyHelpers';
+import { BiltyView } from '../components/views/BiltyView';
 import type { BiltyRecord } from '../types';
 
 const readWorkspaceFile = (relPath: string): string => {
@@ -239,4 +242,76 @@ describe('Warraich Goods Bilty PDF Edits, Watermark Sync & BiltyView Form Contro
     expect(biltyViewSrc).not.toContain('پیلی کاپی');
     expect(biltyViewSrc).not.toContain('سبز کاپی');
   });
+
+  it('opens View Bilty directly with Search Bar and all-language bilties (no language modal or scrap headers) and opens Language modal only for Create Bilty', () => {
+    const sampleUr: BiltyRecord = {
+      id: 101,
+      biltyNo: 'WG-1001',
+      branch: 'samundri',
+      language: 'ur',
+      vehicleNo: 'LHR-1111',
+      date: '26 Nov, 2026',
+      driverName: 'Akram',
+      mobileNo: '0300-1111111',
+      sendingCity: 'Samundri',
+      receivingCity: 'Karachi',
+      senderName: 'Al-Rehman Traders',
+      senderMobile: '0300-2222222',
+      receiverName: 'Karachi Depot',
+      receiverMobile: '0321-3333333',
+      senderCnic: '33100-1234567-1',
+      qty: '10',
+      itemDescription: 'Flour Bags',
+      weight: '500',
+      total: 25000,
+      advance: 0,
+      payable: 25000,
+    };
+    const sampleEn: BiltyRecord = {
+      ...sampleUr,
+      id: 102,
+      biltyNo: 'WG-1002',
+      language: 'en',
+      vehicleNo: 'KHI-2222',
+    };
+
+    const viewAllHtml = renderToStaticMarkup(
+      React.createElement(BiltyView, {
+        lang: 'en',
+        initialSubTab: 'all',
+        bilties: [sampleUr, sampleEn],
+        onAddBilty: () => {},
+        onNavigate: () => {},
+      })
+    );
+
+    // View Bilty: NO language modal on opening, NO scrap headers/KPIs, shows search bar and BOTH Urdu & English bilties
+    expect(viewAllHtml).not.toContain('Select Language for Bilty');
+    expect(viewAllHtml).not.toContain('Bilty Generator');
+    expect(viewAllHtml).not.toContain('Total Bilties');
+    expect(viewAllHtml).toContain('Search Bilty #, vehicle plate, driver, party, city...');
+    expect(viewAllHtml).toContain('WG-1001');
+    expect(viewAllHtml).toContain('WG-1002');
+    expect(viewAllHtml).toContain('اردو');
+    expect(viewAllHtml).toContain('English');
+
+    const createHtml = renderToStaticMarkup(
+      React.createElement(BiltyView, {
+        lang: 'en',
+        initialSubTab: 'create',
+        bilties: [sampleUr, sampleEn],
+        onAddBilty: () => {},
+        onNavigate: () => {},
+      })
+    );
+
+    // Create Bilty: opens Language Selection modal showing Branch Address & Helpline, and has zero scrap header/office banner above Vehicle Number
+    expect(createHtml).toContain('Select Language for Bilty');
+    expect(createHtml).toContain('Okara Bypass, Near 466 Chock, Samundri');
+    expect(createHtml).toContain('0300-5370443');
+    expect(createHtml).not.toContain('Bilty Generator');
+    expect(createHtml).not.toContain('Office:');
+    expect(createHtml).toContain('Vehicle No');
+  });
 });
+

@@ -1,19 +1,15 @@
 import React from 'react';
 import {
-  Receipt,
   Search,
   Download,
   FileText,
-  MapPin,
   Share2,
-  FileSpreadsheet,
   Printer,
   AlertTriangle,
   CheckCircle2,
   Eye,
   Trash2,
   Plus,
-  ArrowUpDown,
   X,
   PackageCheck,
   Clock,
@@ -85,185 +81,44 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
   canManageAttachments = false
 }) => {
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* 1. Operational Dispatch Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div className="p-4 rounded-2xl bg-[#0f2942] text-white border border-[#1a3a5c] shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">
-              {isUrdu ? 'کل بلٹیاں' : 'Total Bilties'}
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-amber-400">
-              <Receipt className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-black font-mono text-white">
-              {dispatchStats.count}
-            </div>
-            <div className="text-[11px] text-slate-300 mt-0.5">
-              {isUrdu ? 'تمام محفوظ شدہ بلٹی ریکارڈز' : 'All saved bilty records'}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              {officeTitle || (isUrdu ? 'سمندری آفس' : 'Samundri Office')}
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
-              <MapPin className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-black font-mono text-slate-800">
-              {dispatchStats.count}
-            </div>
-            <div className="text-[11px] text-slate-500 mt-0.5">
-              {branchAddress}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              {isUrdu ? 'مکمل ڈلیوری (POD)' : 'Delivered'}
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center">
-              <PackageCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <div className="text-2xl sm:text-3xl font-black font-mono text-indigo-700">
-              {dispatchStats.deliveredCount}
-            </div>
-            <div className="text-[11px] text-slate-500 mt-0.5">
-              {isUrdu ? 'تصدیق شدہ ترسیل' : 'Confirmed deliveries'}
-            </div>
-          </div>
-        </div>
+    <div className="space-y-4 animate-in fade-in duration-200">
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <input
+          type="text"
+          value={allFilterQuery}
+          onChange={(e) => onChangeFilterQuery(e.target.value)}
+          placeholder={isUrdu ? 'بلٹی نمبر، گاڑی نمبر، ڈرائیور، یا پارٹی تلاش کریں...' : 'Search Bilty #, vehicle plate, driver, party, city...'}
+          className="w-full min-h-[44px] bg-[#fdfbf7] border border-slate-300 rounded-xl pr-10 pl-9 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 placeholder-slate-400 focus:border-[#0f2942] focus:bg-white focus:outline-none transition-all"
+        />
+        {allFilterQuery && (
+          <button
+            type="button"
+            onClick={() => onChangeFilterQuery('')}
+            aria-label={isUrdu ? 'سرچ صاف کریں' : 'Clear search'}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
-      {/* 2. Controls Toolbar */}
-      <div className="bg-[#fdfbf7] p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-[#ecece0] space-y-3.5">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={allFilterQuery}
-              onChange={(e) => onChangeFilterQuery(e.target.value)}
-              placeholder={isUrdu ? 'بلٹی نمبر، گاڑی نمبر، ڈرائیور، یا کسٹمر تلاش کریں...' : 'Search Bilty #, vehicle plate, driver, city...'}
-              className="w-full bg-white border border-slate-300 rounded-xl pr-10 pl-9 py-2.5 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-[#0f2942] focus:outline-none transition-all"
-            />
-            {allFilterQuery && (
-              <button
-                type="button"
-                onClick={() => onChangeFilterQuery('')}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            <button
-              type="button"
-              onClick={onExportCsv}
-              className="px-3 py-2 bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-              title={isUrdu ? 'تمام بلٹیوں کی مکمل ایکسل شیٹ ڈاؤن لوڈ کریں' : 'Export all bilties to CSV'}
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              <span>{isUrdu ? 'ایکسل شیٹ (CSV)' : 'Export CSV'}</span>
-            </button>
-
-            {canCreate && (
-              <button
-                type="button"
-                onClick={onNavigateToCreate}
-                className="px-3.5 py-2 bg-[#0f2942] hover:bg-[#1a3a5c] text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-              >
-                <Plus className="w-4 h-4 text-amber-400" />
-                <span>{isUrdu ? 'نئی بلٹی بنائیں' : 'New Bilty'}</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200/80">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[11px] font-bold text-slate-500 ml-1">
-              {isUrdu ? 'وصولی (POD):' : 'Delivery:'}
-            </span>
-            <button
-              type="button"
-              onClick={() => onChangeDeliveryFilter('all')}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                deliveryFilter === 'all'
-                  ? 'bg-slate-800 text-white'
-                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              {isUrdu ? 'تمام' : 'All'}
-            </button>
-            <button
-              type="button"
-              onClick={() => onChangeDeliveryFilter('delivered')}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                deliveryFilter === 'delivered'
-                  ? 'bg-blue-700 text-white shadow-2xs'
-                  : 'bg-white border border-blue-200 text-blue-800 hover:bg-blue-50'
-              }`}
-            >
-              <PackageCheck className="w-3 h-3" />
-              <span>{isUrdu ? 'پہنچ گیا (POD)' : 'Delivered'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onChangeDeliveryFilter('pending')}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                deliveryFilter === 'pending'
-                  ? 'bg-amber-600 text-white shadow-2xs'
-                  : 'bg-white border border-amber-200 text-amber-800 hover:bg-amber-50'
-              }`}
-            >
-              <Clock className="w-3 h-3" />
-              <span>{isUrdu ? 'جاری شدہ' : 'Issued'}</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
-            <select
-              value={sortBy}
-              onChange={(e) => onChangeSortBy(e.target.value as 'newest' | 'oldest')}
-              className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
-            >
-              <option value="newest">{isUrdu ? 'تازہ ترین پہلے' : 'Newest First'}</option>
-              <option value="oldest">{isUrdu ? 'پرانی بلٹیاں پہلے' : 'Oldest First'}</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Bilty Records Content */}
+      {/* Bilty Records Content */}
       {filteredBilties.length === 0 ? (
-        <div className="p-10 text-center bg-[#fdfbf7] rounded-3xl border-2 border-dashed border-[#ecece0] space-y-3">
+        <div className="p-8 sm:p-10 text-center bg-[#fdfbf7] rounded-3xl border-2 border-dashed border-[#ecece0] space-y-3">
           <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
             <FileText className="w-7 h-7" />
           </div>
           <h3 className="font-bold text-base text-slate-800">
             {bilties.length === 0
               ? (isUrdu ? 'ابھی تک کوئی بلٹی جنریٹ نہیں ہوئی' : 'No Bilties Generated Yet')
-              : (isUrdu ? 'فلٹر کے مطابق کوئی بلٹی نہیں ملی' : 'No Bilties Match Your Filters')}
+              : (isUrdu ? 'تلاش کے مطابق کوئی بلٹی نہیں ملی' : 'No Bilties Match Your Search')}
           </h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
             {bilties.length === 0
-              ? (isUrdu ? 'نئی بلٹی بنائیں کے بٹن پر کلک کر کے اپنی پہلی آفیشل بلٹی رسید تیار کریں۔' : 'Click "New Bilty" to create your first official consignment bilty.')
-              : (isUrdu ? 'براہ کرم سرچ کیورڈ یا فلٹرز تبدیل کر کے دوبارہ کوشش کریں۔' : 'Try clearing your search query or adjusting your filters.')}
+              ? (isUrdu ? 'نئی بلٹی بنائیں کے بٹن پر کلک کر کے اپنی پہلی آفیشل بلٹی رسید تیار کریں۔' : 'Create your first official consignment bilty to see records here.')
+              : (isUrdu ? 'براہ کرم سرچ الفاظ تبدیل کر کے دوبارہ کوشش کریں۔' : 'Try clearing or adjusting your search query.')}
           </p>
           {bilties.length === 0 ? (
             canCreate ? (
@@ -283,7 +138,7 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
               className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-full text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-all"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>{isUrdu ? 'فلٹرز ری سیٹ کریں' : 'Reset Filters'}</span>
+              <span>{isUrdu ? 'سرچ صاف کریں' : 'Clear Search'}</span>
             </button>
           )}
         </div>
@@ -549,7 +404,9 @@ export const BiltyAllRecordsTab: React.FC<BiltyAllRecordsTabProps> = ({
                       <div className="font-semibold text-slate-800 dark:text-slate-200">
                         {b.sendingCity || 'سمندری'} ➔ {b.receivingCity || 'منزل'}
                       </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400">{b.date || '—'}</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                        {b.date || '—'} · {b.language === 'en' ? 'English' : 'اردو'}
+                      </div>
                     </div>
                   </div>
 

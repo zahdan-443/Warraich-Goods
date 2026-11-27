@@ -28,20 +28,14 @@ import {
   Download,
   FileText,
   Share2,
-  FileSpreadsheet,
   Printer,
   Loader2,
   ArrowLeft,
   AlertTriangle,
   CheckCircle2,
   Globe,
-  Settings,
-  Building2,
   Check,
-  Plus,
   X,
-  Layers,
-  User,
   PackageCheck,
   ShieldCheck,
   FileArchive,
@@ -60,7 +54,6 @@ import { BiltyLegalVaultModal } from '../BiltyLegalVaultModal';
 import { ConfirmDialog } from '../ConfirmDialog';
 import {
   OfflineBlockExhaustedError,
-  exportContactsCSV,
   getContactList,
   allocateNextBiltyNumber,
   checkBiltyNoConflict,
@@ -72,8 +65,6 @@ import { validateBiltyFreight, validateFinancialNumber } from '../../utils/calcu
 import { generatePdfFromElement, preloadBiltyPdfAssets, shareBiltyPdfOrWhatsApp } from '../../utils/pdfHelper';
 import { shareOrDownloadBlob } from '../../utils/nativeExport';
 import { downloadBiltyLegalZip } from '../../utils/zipHelper';
-import { PublicImage } from '../PublicImage';
-import { biltyOfficialIconData } from '../../assets/dashboardIcons';
 import {
   generateBiltyVerificationQrDataUrl,
   formatBiltyMobile
@@ -172,8 +163,7 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
   const conflictBilties = useMemo(() => bilties.filter((b) => Boolean(b.numberConflict)), [bilties]);
   const [resolvingConflictId, setResolvingConflictId] = useState<number | null>(null);
 
-  // SubTab: 'all' (Sari Bilties) | 'create' (Nai Bilty) | 'search' (Talaash)
-  const [subTab, setSubTab] = useState<'all' | 'create' | 'search'>(() => {
+  const resolvedInitialSubTab = useMemo<'all' | 'create' | 'search'>(() => {
     if (initialSubTab === 'create' && !canCreateBilty) {
       return canViewAllBilties ? 'all' : 'search';
     }
@@ -184,7 +174,10 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     if (bilties && bilties.length > 0 && canViewAllBilties) return 'all';
     if (canCreateBilty) return 'create';
     return canViewAllBilties ? 'all' : 'search';
-  });
+  }, [initialSubTab, canCreateBilty, canViewAllBilties, bilties]);
+
+  // SubTab: 'all' (Sari Bilties) | 'create' (Nai Bilty) | 'search' (Talaash)
+  const [subTab, setSubTab] = useState<'all' | 'create' | 'search'>(() => resolvedInitialSubTab);
   const subTabHistoryRef = useRef<Array<'all' | 'create' | 'search'>>([]);
   const [showExitCreateConfirm, setShowExitCreateConfirm] = useState(false);
 
@@ -200,17 +193,25 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       }
       return nextTab;
     });
-  }, []);
+    if (nextTab === 'create' && canCreateBilty) {
+      setIsConfigModalOpen(true);
+    } else {
+      setIsConfigModalOpen(false);
+    }
+  }, [canCreateBilty]);
 
   useEffect(() => {
     if (initialSubTab) {
       subTabHistoryRef.current = [];
       if (initialSubTab === 'create' && !canCreateBilty) {
         setSubTab(canViewAllBilties ? 'all' : 'search');
+        setIsConfigModalOpen(false);
       } else if (initialSubTab === 'all' && !canViewAllBilties) {
         setSubTab(canCreateBilty ? 'create' : 'search');
+        setIsConfigModalOpen(Boolean(canCreateBilty));
       } else {
         setSubTab(initialSubTab);
+        setIsConfigModalOpen(initialSubTab === 'create' && canCreateBilty);
       }
     }
   }, [initialSubTab, canCreateBilty, canViewAllBilties]);
@@ -245,8 +246,10 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
     return 'ur';
   });
 
-  // Prompt user on open: Modal is initially open
-  const [isConfigModalOpen, setIsConfigModalOpen] = useState<boolean>(true);
+  // Only open Language Selection modal when opening Create Bilty flow (never on View Bilty / All Bilties)
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState<boolean>(
+    () => resolvedInitialSubTab === 'create' && canCreateBilty
+  );
 
   const getTodayFormatted = () => {
     return new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -599,11 +602,13 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       list = list.filter((b) => !b.isDelivered && !b.podConfirmation);
     }
 
-    // Text search query
+    // Text search query (searches across all languages)
     if (allFilterQuery.trim()) {
       const q = allFilterQuery.trim().toLowerCase();
       list = list.filter((b) => {
+        const langText = b.language === 'en' ? 'english' : 'urdu اردو';
         return (
+          langText.includes(q) ||
           (b.biltyNo && b.biltyNo.toLowerCase().includes(q)) ||
           (b.vehicleNo && b.vehicleNo.toLowerCase().includes(q)) ||
           (b.driverName && b.driverName.toLowerCase().includes(q)) ||
@@ -1394,6 +1399,9 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
                     localStorage.setItem('ah-bilty-branch', effectiveBranch.id || DEFAULT_HEAD_OFFICE_BRANCH_ID);
                     localStorage.setItem('ah-bilty-lang', selectedLanguage);
                   } catch {}
+                  if (canCreateBilty) {
+                    setSubTab('create');
+                  }
                   setIsConfigModalOpen(false);
                 }}
                 className="w-full py-3.5 bg-[#0f2942] hover:bg-[#1a3a5c] text-white font-black text-sm rounded-2xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98"
@@ -1407,118 +1415,60 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
       )}
 
       {/* Main View Container */}
-      <div className="bg-white p-4 sm:p-8 md:p-10 rounded-2xl sm:rounded-[40px] shadow-sm border border-[#ecece0] space-y-6 sm:space-y-8">
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 sm:pb-6 border-b border-[#ecece0]">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white border-2 border-[#0f2942]/20 p-1 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
-              <PublicImage
-                fileName={biltyOfficialIconData}
-                alt="Official Document Seal"
-                className="w-full h-full object-contain rounded-xl"
-              />
-            </div>
-            <div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-[#4a4a35]">
-                  {t.title}
-                </h1>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => exportAllBiltiesCSV()}
-                    title={isUrdu ? 'تمام بلٹیوں کی مکمل ایکسل شیٹ ڈاؤن لوڈ کریں' : 'Download All Bilties CSV'}
-                    className="px-3 py-1.5 bg-[#0f2942] text-amber-300 border border-[#1a3a5c] rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-[#1a3a5c] transition-all cursor-pointer shadow-2xs"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-amber-400" />
-                    <span>{lang === 'ur' ? 'بلٹی لیجر (CSV)' : 'Bilties CSV'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => exportContactsCSV()}
-                    title="Download Customer & Driver Contacts CSV"
-                    className="px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-100 transition-all cursor-pointer shadow-2xs"
-                  >
-                    <User className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{lang === 'ur' ? 'کسٹمر لسٹ' : 'Contacts'}</span>
-                  </button>
-                </div>
-              </div>
-              <p className="text-xs sm:text-sm text-[#8e8e75] font-sans mt-0.5">
-                {t.subtitle}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 self-start sm:self-auto">
-            {onNavigate && (
-              <button
-                type="button"
-                onClick={() => {
-                  const backEv = new CustomEvent('app-back-button', { cancelable: true });
-                  window.dispatchEvent(backEv);
-                  if (!backEv.defaultPrevented) {
-                    onNavigate('home');
-                  }
-                }}
-                className="p-2 bg-white border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-                title={
-                  editingBilty || subTabHistoryRef.current.length > 0 || (subTab !== 'all' && bilties.length > 0)
-                    ? (isUrdu ? 'واپس جائیں' : 'Go Back')
-                    : (isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard')
+      <div className="bg-white p-3.5 sm:p-6 md:p-8 rounded-2xl sm:rounded-[32px] shadow-sm border border-[#ecece0] space-y-4 sm:space-y-5">
+        {/* Minimal Slim Back Row (No redundant title, subtitle, or office/address banner) */}
+        <div className="flex items-center justify-between gap-3">
+          {onNavigate ? (
+            <button
+              type="button"
+              onClick={() => {
+                const backEv = new CustomEvent('app-back-button', { cancelable: true });
+                window.dispatchEvent(backEv);
+                if (!backEv.defaultPrevented) {
+                  onNavigate('home');
                 }
-              >
-                <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
-                <span>
-                  {editingBilty || subTabHistoryRef.current.length > 0 || (subTab !== 'all' && bilties.length > 0)
-                    ? (isUrdu ? 'واپس' : 'Back')
-                    : (isUrdu ? 'ڈیش بورڈ' : 'Dashboard')}
-                </span>
-              </button>
-            )}
+              }}
+              className="px-3 py-2 min-h-[40px] bg-[#fdfbf7] border border-[#ecece0] hover:bg-[#eaeae0] text-[#4a4a35] rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+              title={
+                editingBilty || subTabHistoryRef.current.length > 0 || (subTab !== 'all' && bilties.length > 0)
+                  ? (isUrdu ? 'واپس جائیں' : 'Go Back')
+                  : (isUrdu ? 'ڈیش بورڈ پر واپس جائیں' : 'Back to Dashboard')
+              }
+            >
+              <ArrowLeft className={`w-3.5 h-3.5 ${isUrdu ? 'rotate-180' : ''}`} />
+              <span>
+                {editingBilty || subTabHistoryRef.current.length > 0 || (subTab !== 'all' && bilties.length > 0)
+                  ? (isUrdu ? 'واپس' : 'Back')
+                  : (isUrdu ? 'ڈیش بورڈ' : 'Dashboard')}
+              </span>
+            </button>
+          ) : (
+            <div />
+          )}
 
-            <div className="flex items-center gap-1 sm:gap-1.5 bg-[#fdfbf7] p-1.5 rounded-full border border-[#ecece0] flex-wrap">
-              {canViewAllBilties && (
-                <button
-                  type="button"
-                  onClick={() => navigateSubTab('all')}
-                  className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                    subTab === 'all' ? 'bg-[#5a5a40] text-white shadow-xs' : 'text-[#8e8e75] hover:text-[#4a4a35]'
-                  }`}
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>{isUrdu ? 'تمام بلٹیاں' : 'All Bilties'}</span>
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                    subTab === 'all' ? 'bg-amber-400 text-slate-950' : 'bg-slate-200 text-slate-700'
-                  }`}>
-                    {bilties.length}
-                  </span>
-                </button>
-              )}
-              {canCreateBilty && (
-                <button
-                  type="button"
-                  onClick={() => navigateSubTab('create')}
-                  className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                    subTab === 'create' ? 'bg-[#5a5a40] text-white shadow-xs' : 'text-[#8e8e75] hover:text-[#4a4a35]'
-                  }`}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{t.createTab}</span>
-                </button>
-              )}
+          {subTab === 'create' && (
+            <div className="flex items-center bg-[#fdfbf7] border border-[#ecece0] rounded-xl p-0.5 shadow-2xs">
               <button
                 type="button"
-                onClick={() => navigateSubTab('search')}
-                className={`px-3 sm:px-4 py-2 min-h-[40px] rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  subTab === 'search' ? 'bg-[#5a5a40] text-white shadow-xs' : 'text-[#8e8e75] hover:text-[#4a4a35]'
+                onClick={() => handleLanguageChange('ur')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  selectedLanguage === 'ur' ? 'bg-[#0f2942] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Search className="w-3.5 h-3.5" />
-                <span>{t.searchTab}</span>
+                اردو
+              </button>
+              <button
+                type="button"
+                onClick={() => handleLanguageChange('en')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  selectedLanguage === 'en' ? 'bg-[#0f2942] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                EN
               </button>
             </div>
-          </div>
-        </header>
+          )}
+        </div>
 
         {formError && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-3 rounded-2xl text-center shadow-2xs">
@@ -1531,67 +1481,6 @@ export const BiltyView: React.FC<BiltyViewProps> = ({
             {pdfError}
           </div>
         )}
-
-        {/* 2. Top Single-Office & Language Control Bar */}
-        <div className="p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-linear-to-r from-amber-50/80 via-emerald-50/60 to-blue-50/80 border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0f2942] text-amber-400 flex items-center justify-center shrink-0 shadow-xs">
-              <Building2 className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap text-xs sm:text-sm font-black text-slate-800">
-                <span className="flex items-center gap-1 text-[#0f2942]">
-                  📍 {isEnForm ? 'Office:' : 'برانچ:'} <strong className="underline underline-offset-2">{isEnForm ? branchObj.nameEn : branchObj.nameUr}</strong>
-                </span>
-                <span className="text-slate-300">•</span>
-                <span className="flex items-center gap-1 text-[#0f2942]">
-                  🌐 {isEnForm ? 'Language:' : 'زبان:'} <strong className="underline underline-offset-2">{selectedLanguage === 'en' ? 'English' : 'اردو'}</strong>
-                </span>
-                <span className="text-slate-300">•</span>
-                <span className="text-[11px] font-bold text-slate-600 dir-ltr">
-                  📞 {branchObj.phoneNumbers}
-                </span>
-              </div>
-              <div className="text-[11px] text-slate-600 mt-0.5">
-                <strong>{isEnForm ? 'Address:' : 'ایڈریس:'}</strong> {selectedLanguage === 'en' ? branchObj.addressEn : branchObj.addressUr}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Quick Language Toggle */}
-            <div className="flex items-center bg-white border border-slate-300 rounded-xl p-0.5 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => handleLanguageChange('ur')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedLanguage === 'ur' ? 'bg-[#0f2942] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                اردو
-              </button>
-              <button
-                type="button"
-                onClick={() => handleLanguageChange('en')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedLanguage === 'en' ? 'bg-[#0f2942] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                EN
-              </button>
-            </div>
-
-            {/* Reopen Language Modal Button */}
-            <button
-              type="button"
-              onClick={() => setIsConfigModalOpen(true)}
-              className="p-2 bg-white border border-slate-300 hover:bg-slate-100 text-[#0f2942] rounded-xl transition-all cursor-pointer shadow-2xs"
-              title="زبان منتخب کریں (Select Language)"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
 
         {/* Creator-only 7-Day Expiring Attachments Banner & 1 GiB Quota Meter */}
         {isCreatorUser &&
